@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-7';
+const VERSION = 'piloto-8';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -338,25 +338,53 @@ const idNuevo = () => Date.now().toString(36) + Math.random().toString(36).slice
 // ------------------------------------------------------------------ Ingreso
 function ingreso(msg) {
   VISTA = 'ingreso'; vista('form'); pintarCab(); pintarRed();
+  const hys = LS.get('hys', null);
+  if (hys) {   // Modo Higiene y Seguridad: todos los establecimientos, con la clave maestra guardada en este equipo
+    $('app').innerHTML = '<h1>Ingresar</h1><div class="notice"><b>Modo Higiene y Seguridad.</b> Podés entrar a cualquier establecimiento, también a los que todavía no están habilitados.</div>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
+      campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' +
+        '<optgroup label="Habilitados">' + hys.lista.filter(h => h.activo).map(h => '<option value="' + esc(h.id) + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</optgroup>' +
+        '<optgroup label="Pendientes de alta">' + hys.lista.filter(h => !h.activo).map(h => '<option value="' + esc(h.id) + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</optgroup></select>', ERR.hospital || ERR.clave) +
+      '<p class="mu" style="font-size:13px"><button class="link" data-act="actualizarHys">Actualizar la lista</button> · <button class="link" data-act="salirHys">Salir del modo Higiene y Seguridad</button></p>';
+    bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0); return;
+  }
   const lista = LS.get('lista', LISTA_BASE), rec = LS.get('recordados', {});
   $('app').innerHTML = '<h1>Ingresar</h1><p class="mu">Elegí el establecimiento y escribí la clave.</p>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
     campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + lista.map(h => '<option value="' + h.id + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</select>', ERR.hospital) +
     campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave) +
     '<label style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><input type="checkbox" data-l2="recordar"' + (LOG.recordar ? ' checked' : '') + ' style="width:22px;height:22px"> Recordar la clave en este equipo (solo en equipos de uso del servicio)</label>' +
     (Object.keys(rec).length ? '<h2>Entrar directo</h2><div class="menu">' + Object.keys(rec).map(id => '<div style="position:relative"><button class="big" style="width:100%" data-act="entrarRec" data-arg="' + esc(id) + '"><b>' + esc((lista.find(h => h.id === id) || { nombre: id }).nombre) + '</b><span>Clave guardada en este equipo</span></button><button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidarClave" data-arg="' + esc(id) + '">Olvidar</button></div>').join('') + '</div>' : '');
+  $('app').innerHTML += '<p class="mu" style="font-size:13px;margin-top:24px"><button class="link" data-act="modoHys">Acceso de Higiene y Seguridad</button></p>';
   bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0);
   if (navigator.onLine && API_URL.indexOf('http') === 0) fetch(API_URL + '?accion=lista').then(r => r.json()).then(r => { if (r.ok) LS.set('lista', r.lista); }).catch(() => {});
+}
+function modoHys() {
+  VISTA = 'hys'; vista('form');
+  $('app').innerHTML = '<h1>Acceso de Higiene y Seguridad</h1><p class="mu">Con la clave de Higiene y Seguridad entrás a cualquier establecimiento. Queda guardada en este equipo hasta que salgas del modo Higiene y Seguridad: usala solo en tus equipos.</p>' +
+    '<div class="field"><div class="lab"><label for="f_hclave">Clave de Higiene y Seguridad</label></div><input id="f_hclave" type="password" autocomplete="current-password"' + (ERR.hclave ? ' class="bad"' : '') + '>' + (ERR.hclave ? '<div class="err">' + esc(ERR.hclave) + '</div>' : '') + '</div>';
+  bar('<button class="btn sec" data-act="volverIngreso">Volver</button><button class="btn pri" data-act="entrarHys">Entrar</button>');
+}
+async function entrarHys(clave) {
+  ERR = {}; clave = clave || (document.getElementById('f_hclave') || {}).value || '';
+  if (!clave.trim()) { ERR.hclave = 'Escribí la clave.'; return modoHys(); }
+  if (!navigator.onLine) { ERR.hclave = 'Se necesita conexión.'; return modoHys(); }
+  bar('<button class="btn pri" disabled>Verificando…</button>');
+  try {
+    const r = await api('listaTodos', null, { est: '', clave: clave.trim() });
+    if (!r.ok) { ERR.hclave = r.mensaje || 'La clave no es correcta.'; return modoHys(); }
+    LS.set('hys', { clave: clave.trim(), lista: r.lista }); ingreso();
+  } catch (e) { ERR.hclave = e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el sistema.'; modoHys(); }
 }
 let ENTRANDO = false, PERSONA_PREV = null;
 async function entrar() {
   if (ENTRANDO) return;
   ERR = {};
+  const hys = LS.get('hys', null); if (hys) LOG.clave = hys.clave;
   if (!LOG.est) ERR.hospital = 'Elegí el establecimiento.';
   if (!LOG.clave) ERR.clave = 'Escribí la clave.';
   if (Object.keys(ERR).length) return ingreso();
   ENTRANDO = true;
   try {
-    const nombre = (LS.get('lista', LISTA_BASE).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
+    const nombre = ((hys ? hys.lista : LS.get('lista', LISTA_BASE)).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
     const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, persona: null }, h = await hashTxt(LOG.est + '|' + LOG.clave.trim().toLowerCase());
     const guardado = LS.get('h_' + ses.est);
     if (navigator.onLine) {
@@ -703,6 +731,9 @@ const ACT = {
     SES.persona = p; LS.set('ses', SES); inicio(); },
   olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas', LS.get('personas', []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
   otraPersona: () => { ERR = {}; otraPersona(); },
+  modoHys: () => { ERR = {}; modoHys(); }, entrarHys: () => entrarHys(), volverIngreso: () => { ERR = {}; ingreso(); },
+  actualizarHys: () => { const h = LS.get('hys', null); if (h) entrarHys(h.clave); },
+  salirHys: () => preguntar('¿Salir del modo Higiene y Seguridad? La clave deja de estar guardada en este equipo.', 'Sí, salir', () => { LS.del('hys'); ingreso(); }),
   entrarRec: b => { const r = LS.get('recordados', {}); LOG = { est: b.dataset.arg, clave: r[b.dataset.arg] || '', recordar: true }; entrar(); },
   olvidarClave: b => preguntar('¿Olvidar la clave guardada de este establecimiento en este equipo?', 'Sí, olvidar', () => { const r = LS.get('recordados', {}); delete r[b.dataset.arg]; LS.set('recordados', r); ingreso(); }),
   cambiarEst: () => { const p = SES && SES.persona; SES = null; CFG = null; LS.del('ses'); LOG = { est: '', clave: '' }; PERSONA_PREV = p; ingreso(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
@@ -753,7 +784,7 @@ document.addEventListener('input', e => {
     const v = document.querySelector('[data-k="vol"][data-i="' + i + '"]'); if (v && M.res[i].uni === 'dm³') v.value = M.res[i].vol;
   }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && VISTA === 'ingreso' && e.target.id === 'f_clave') { LOG.clave = e.target.value; entrar(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && VISTA === 'ingreso' && e.target.id === 'f_clave') { LOG.clave = e.target.value; entrar(); } if (e.key === 'Enter' && VISTA === 'hys' && e.target.id === 'f_hclave') entrarHys(); });
 $('ov').addEventListener('click', e => { if (e.target.id === 'ov') cerrarAyuda(); });
 $('net').onclick = () => sincronizar();
 
