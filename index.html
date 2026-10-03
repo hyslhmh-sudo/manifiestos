@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-6';
+const VERSION = 'piloto-7';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -396,20 +396,27 @@ function quienCarga() {
   bar(null);
 }
 function otraPersona() {
-  VISTA = 'otra'; vista('form'); OTRA = OTRA || { nombre: '', funcion: '', otra: '' };
-  $('app').innerHTML = '<h1>Tus datos</h1>' +
-    '<div class="field"><div class="lab"><label for="f_pn">Nombre y apellido</label></div><input id="f_pn" data-o="nombre" value="' + esc(OTRA.nombre) + '"' + (ERR.pn ? ' class="bad"' : '') + '>' + (ERR.pn ? '<div class="err">' + ERR.pn + '</div>' : '') + '</div>' +
-    '<div class="field"><div class="lab"><label for="f_pf">Función</label></div><select id="f_pf" data-o="funcion" data-chg="repOtra"' + (ERR.pf ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + FUNCIONES.map(f => '<option' + (f === OTRA.funcion ? ' selected' : '') + '>' + f + '</option>').join('') + '</select>' +
-    (OTRA.funcion === 'Otra' ? '<input style="margin-top:8px" data-o="otra" placeholder="¿Cuál?" value="' + esc(OTRA.otra) + '">' : '') + (ERR.pf ? '<div class="err">' + ERR.pf + '</div>' : '') + '</div>';
+  VISTA = 'otra'; vista('form'); OTRA = OTRA || { nombre: '', dni: '', funcion: '', otra: '', mail: '' };
+  const inpO = (k, ph, extra) => '<input id="f_p' + k + '" data-o="' + k + '" value="' + esc(OTRA[k]) + '" placeholder="' + ph + '"' + (ERR['p' + k] ? ' class="bad"' : '') + (extra || '') + '>';
+  $('app').innerHTML = '<h1>Tus datos</h1><p class="mu">Quedan registrados en cada carga que hagas. Se piden una sola vez en este equipo.</p>' +
+    campo('pnombre', inpO('nombre', 'Nombre y apellido', ' autocomplete="name"'), ERR.pnombre) +
+    campo('pdni', inpO('dni', 'Sin puntos', ' inputmode="numeric" maxlength="10"'), ERR.pdni) +
+    campo('pfuncion', '<select id="f_pfuncion" data-o="funcion" data-chg="repOtra"' + (ERR.pfuncion ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + FUNCIONES.map(f => '<option' + (f === OTRA.funcion ? ' selected' : '') + '>' + f + '</option>').join('') + '</select>' +
+      (OTRA.funcion === 'Otra' ? '<input style="margin-top:8px" data-o="otra" placeholder="¿Cuál?" value="' + esc(OTRA.otra) + '">' : ''), ERR.pfuncion) +
+    campo('pmail', inpO('mail', 'nombre@correo.com', ' type="email" inputmode="email" autocomplete="email"'), ERR.pmail);
   bar('<button class="btn sec" data-act="quienCarga">Atrás</button><button class="btn pri" data-act="confirmarOtra">Continuar</button>');
 }
 function confirmarOtra() {
+  document.querySelectorAll('[data-o]').forEach(el => { OTRA[el.dataset.o] = el.value; });
   ERR = {};
-  if (!OTRA.nombre.trim() || OTRA.nombre.trim().split(/\s+/).length < 2) ERR.pn = 'Escribí nombre y apellido.';
-  if (!OTRA.funcion || (OTRA.funcion === 'Otra' && !OTRA.otra.trim())) ERR.pf = 'Elegí tu función.';
+  const dni = String(OTRA.dni || '').replace(/\D/g, '');
+  if (!OTRA.nombre.trim() || OTRA.nombre.trim().split(/\s+/).length < 2) ERR.pnombre = 'Escribí nombre y apellido.';
+  if (!/^\d{7,8}$/.test(dni)) ERR.pdni = 'Escribí el DNI sin puntos (7 u 8 números).';
+  if (!OTRA.funcion || (OTRA.funcion === 'Otra' && !OTRA.otra.trim())) ERR.pfuncion = 'Elegí tu función.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(OTRA.mail || '').trim())) ERR.pmail = 'Escribí un correo válido (ejemplo: nombre@correo.com).';
   if (Object.keys(ERR).length) return otraPersona();
-  const p = { nombre: OTRA.nombre.trim(), funcion: OTRA.funcion === 'Otra' ? OTRA.otra.trim() : OTRA.funcion };
-  const ult = LS.get('personas', []).filter(x => x.nombre !== p.nombre); ult.unshift(p); LS.set('personas', ult.slice(0, 5));
+  const p = { nombre: OTRA.nombre.trim(), dni: dni, funcion: OTRA.funcion === 'Otra' ? OTRA.otra.trim() : OTRA.funcion, mail: OTRA.mail.trim().toLowerCase() };
+  const ult = LS.get('personas', []).filter(x => x.dni !== p.dni && x.nombre !== p.nombre); ult.unshift(p); LS.set('personas', ult.slice(0, 5));
   OTRA = null; SES.persona = p; LS.set('ses', SES); inicio();
 }
 
@@ -691,7 +698,9 @@ const ACT = {
   ayuda: b => ayuda(b.dataset.arg), cerrarAyuda: () => cerrarAyuda(),
   preguntaSi: () => { cerrarAyuda(); const f = PREG; PREG = null; if (f) f(); }, preguntaNo: () => { cerrarAyuda(); PREG = null; },
   entrar: () => entrar(), salir: () => preguntar('¿Salir del sistema?', 'Sí, salir', () => salirSesion()),
-  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas', []).filter(p => p.nombre !== ref); SES.persona = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos' } : ult[Number(b.dataset.arg)]; LS.set('ses', SES); inicio(); },
+  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas', []).filter(p => p.nombre !== ref); const p = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos', mail: (CFG.referente && CFG.referente.mail) || '' } : ult[Number(b.dataset.arg)];
+    if (b.dataset.arg !== 'ref' && (!p.dni || !p.mail)) { OTRA = { nombre: p.nombre, dni: p.dni || '', funcion: FUNCIONES.indexOf(p.funcion) >= 0 ? p.funcion : 'Otra', otra: FUNCIONES.indexOf(p.funcion) >= 0 ? '' : p.funcion, mail: p.mail || '' }; ERR = {}; return otraPersona(); }
+    SES.persona = p; LS.set('ses', SES); inicio(); },
   olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas', LS.get('personas', []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
   otraPersona: () => { ERR = {}; otraPersona(); },
   entrarRec: b => { const r = LS.get('recordados', {}); LOG = { est: b.dataset.arg, clave: r[b.dataset.arg] || '', recordar: true }; entrar(); },
