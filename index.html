@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-5';
+const VERSION = 'piloto-6';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -338,14 +338,16 @@ const idNuevo = () => Date.now().toString(36) + Math.random().toString(36).slice
 // ------------------------------------------------------------------ Ingreso
 function ingreso(msg) {
   VISTA = 'ingreso'; vista('form'); pintarCab(); pintarRed();
-  const lista = LS.get('lista', LISTA_BASE);
+  const lista = LS.get('lista', LISTA_BASE), rec = LS.get('recordados', {});
   $('app').innerHTML = '<h1>Ingresar</h1><p class="mu">Elegí el establecimiento y escribí la clave.</p>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
     campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + lista.map(h => '<option value="' + h.id + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</select>', ERR.hospital) +
-    campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave);
+    campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave) +
+    '<label style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><input type="checkbox" data-l2="recordar"' + (LOG.recordar ? ' checked' : '') + ' style="width:22px;height:22px"> Recordar la clave en este equipo (solo en equipos de uso del servicio)</label>' +
+    (Object.keys(rec).length ? '<h2>Entrar directo</h2><div class="menu">' + Object.keys(rec).map(id => '<div style="position:relative"><button class="big" style="width:100%" data-act="entrarRec" data-arg="' + esc(id) + '"><b>' + esc((lista.find(h => h.id === id) || { nombre: id }).nombre) + '</b><span>Clave guardada en este equipo</span></button><button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidarClave" data-arg="' + esc(id) + '">Olvidar</button></div>').join('') + '</div>' : '');
   bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0);
   if (navigator.onLine && API_URL.indexOf('http') === 0) fetch(API_URL + '?accion=lista').then(r => r.json()).then(r => { if (r.ok) LS.set('lista', r.lista); }).catch(() => {});
 }
-let ENTRANDO = false;
+let ENTRANDO = false, PERSONA_PREV = null;
 async function entrar() {
   if (ENTRANDO) return;
   ERR = {};
@@ -372,7 +374,9 @@ async function entrar() {
       if (guardado !== h) { ERR.clave = guardado ? 'La clave no es correcta.' : 'Para el primer ingreso se necesita señal.'; return ingreso(); }
       CFG = LS.get('cfg_' + ses.est, null);
     }
-    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; quienCarga();
+    if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = ses.clave; LS.set('recordados', r); }
+    if (PERSONA_PREV) { ses.persona = PERSONA_PREV; PERSONA_PREV = null; }
+    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; SES.persona ? inicio() : quienCarga();
   } catch (e) {
     ERR.clave = 'Ocurrió un error al ingresar. Probá de nuevo.'; ingreso();
   } finally { ENTRANDO = false; }
@@ -383,7 +387,7 @@ function salirSesion(msg) { SES = null; CFG = null; LS.del('ses'); ingreso(msg);
 function quienCarga() {
   VISTA = 'quien'; vista('form'); pintarCab();
   const ref = CFG && CFG.referente && CFG.referente.nombre ? CFG.referente.nombre : '';
-  const ult = LS.get('personas_' + SES.est, []);
+  const ult = LS.get('personas', []);
   $('app').innerHTML = '<h1>¿Quién va a cargar?</h1><p class="mu">Queda registrado en cada carga.</p><div class="menu">' +
     (ref ? '<button class="big main" data-act="soy" data-arg="ref"><b>' + esc(ref) + '</b><span>Referente de residuos</span></button>' : '') +
     ult.filter(p => p.nombre !== ref).slice(0, 3).map((p, i) => '<div style="position:relative"><button class="big" style="width:100%" data-act="soy" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.funcion) + '</span></button>' +
@@ -405,7 +409,7 @@ function confirmarOtra() {
   if (!OTRA.funcion || (OTRA.funcion === 'Otra' && !OTRA.otra.trim())) ERR.pf = 'Elegí tu función.';
   if (Object.keys(ERR).length) return otraPersona();
   const p = { nombre: OTRA.nombre.trim(), funcion: OTRA.funcion === 'Otra' ? OTRA.otra.trim() : OTRA.funcion };
-  const ult = LS.get('personas_' + SES.est, []).filter(x => x.nombre !== p.nombre); ult.unshift(p); LS.set('personas_' + SES.est, ult.slice(0, 5));
+  const ult = LS.get('personas', []).filter(x => x.nombre !== p.nombre); ult.unshift(p); LS.set('personas', ult.slice(0, 5));
   OTRA = null; SES.persona = p; LS.set('ses', SES); inicio();
 }
 
@@ -418,7 +422,7 @@ function inicio() {
   const ult = CFG && CFG.ultimas && CFG.ultimas.length ? CFG.ultimas[CFG.ultimas.length - 1] : null;
   $('app').innerHTML = '<h1>¿Qué querés cargar?</h1><p class="mu">Podés cargar sin señal: queda guardado en este equipo y se envía solo cuando vuelve la conexión.</p>' +
     (err ? '<div class="notice" style="border-color:var(--er);background:var(--erbg)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Revisalas en «Consultar mis cargas».</div>' : '') +
-    '<p class="mu" style="margin-top:-4px">Carga: <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button>' + (ult ? ' · Último manifiesto registrado: ' + fechaTxt(ult.fecha) + ' (' + esc(ult.sitio) + ')' : '') + '</p>' +
+    '<p class="mu" style="margin-top:-4px">Carga: <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button>' + (ult ? ' · Último manifiesto registrado: ' + fechaTxt(ult.fecha) + ' (' + esc(ult.sitio) + ')' : '') + '</p>' +
     '<div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar un manifiesto</b><span>Cuando la empresa retira los residuos</span></button>' +
     '<button class="big" data-act="nuevoCertificado"><b>Cargar un certificado</b><span>Cuando llega el certificado de tratamiento</span></button>' +
     '<button class="big" data-act="avance"><b>Ver avance por mes</b><span>Retiros y certificados registrados</span></button>' +
@@ -687,9 +691,12 @@ const ACT = {
   ayuda: b => ayuda(b.dataset.arg), cerrarAyuda: () => cerrarAyuda(),
   preguntaSi: () => { cerrarAyuda(); const f = PREG; PREG = null; if (f) f(); }, preguntaNo: () => { cerrarAyuda(); PREG = null; },
   entrar: () => entrar(), salir: () => preguntar('¿Salir del sistema?', 'Sí, salir', () => salirSesion()),
-  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas_' + SES.est, []).filter(p => p.nombre !== ref); SES.persona = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos' } : ult[Number(b.dataset.arg)]; LS.set('ses', SES); inicio(); },
-  olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas_' + SES.est, LS.get('personas_' + SES.est, []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
-  otraPersona: () => { ERR = {}; otraPersona(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
+  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas', []).filter(p => p.nombre !== ref); SES.persona = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos' } : ult[Number(b.dataset.arg)]; LS.set('ses', SES); inicio(); },
+  olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas', LS.get('personas', []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
+  otraPersona: () => { ERR = {}; otraPersona(); },
+  entrarRec: b => { const r = LS.get('recordados', {}); LOG = { est: b.dataset.arg, clave: r[b.dataset.arg] || '', recordar: true }; entrar(); },
+  olvidarClave: b => preguntar('¿Olvidar la clave guardada de este establecimiento en este equipo?', 'Sí, olvidar', () => { const r = LS.get('recordados', {}); delete r[b.dataset.arg]; LS.set('recordados', r); ingreso(); }),
+  cambiarEst: () => { const p = SES && SES.persona; SES = null; CFG = null; LS.del('ses'); LOG = { est: '', clave: '' }; PERSONA_PREV = p; ingreso(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
   inicio: () => inicio(), consulta: () => consulta(), avance: () => avance(), actualizar: () => { actualizarConfig(false); sincronizar(); },
   nuevoManifiesto: () => nuevoManifiesto(), nuevoCertificado: () => nuevoCertificado(),
   adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
@@ -720,6 +727,7 @@ document.addEventListener('change', e => {
   else if (t.dataset.chg === 'filtro') { FILTRO = t.value; consulta(); }
   else if (t.dataset.cm && C) { C[t.dataset.cm === 'm' ? 'mesM' : 'mesA'] = t.value; }
   else if (t.dataset.c && C) C[t.dataset.c] = t.value;
+  else if (t.dataset.l2 === 'recordar') LOG.recordar = t.checked;
   else if (t.dataset.l) LOG[t.dataset.l] = t.value;
   else if (t.hasAttribute('data-calm')) { CAL.m = Number(t.value); calendario(); }
   else if (t.hasAttribute('data-caly')) { CAL.y = Number(t.value); calendario(); }
