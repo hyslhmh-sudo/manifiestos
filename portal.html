@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portal HyS · Gestión</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --az:#0D313F; --pa:#5894A7; --tx:#1B2A31; --mu:#4F616B; --ln:#D5DEE2; --bg:#F4F7F8; --gr:#E4EAED;
+    --ok:#0D313F; --okt:#FFFFFF; --pa2:#BFD6DE; --er:#8A2B1F; --erbg:#F6DCD8; --wa:#7A5300; --wabg:#FBE9C6; color-scheme: light; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: var(--tx); background: var(--bg); font-size: 15px; line-height: 1.45; }
+  a { color: var(--az); } a:hover { color: var(--pa); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .app { display: flex; flex-wrap: wrap; min-height: 100vh; }
+  nav.lat { flex: 1 1 240px; max-width: 270px; background: var(--az); color: #fff; padding: 22px 14px; display: flex; flex-direction: column; gap: 2px; }
+  nav.lat .marca { padding: 0 8px 18px; border-bottom: 1px solid #2A5466; margin-bottom: 10px; }
+  nav.lat .marca b { display: block; font-size: 18px; } nav.lat .marca span { font-size: 13px; color: #C9DCE3; }
+  nav.lat .sec { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A9C6D1; padding: 14px 8px 4px; }
+  nav.lat a, nav.lat button.it { display: block; width: 100%; text-align: left; color: #fff; text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; background: none; border: 0; cursor: pointer; }
+  nav.lat a.on { background: #fff; color: var(--az); font-weight: 700; }
+  nav.lat a:hover:not(.on), nav.lat button.it:hover { background: #1E4A5C; }
+  nav.lat .pr { color: #9FB7C1; font-size: 13px; padding: 6px 10px; }
+  nav.lat .pie { margin-top: auto; border-top: 1px solid #2A5466; padding: 14px 8px 0; font-size: 13px; color: #C9DCE3; }
+  main { flex: 999 1 560px; min-width: 0; padding: 28px 36px 60px; display: flex; flex-direction: column; gap: 20px; }
+  h1 { margin: 0; font-size: 28px; color: var(--az); } h2 { margin: 0; font-size: 17px; color: var(--az); }
+  .mu { color: var(--mu); } .peq { font-size: 13px; }
+  .cab { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: flex-end; }
+  .card { background: #fff; border: 1px solid var(--ln); border-radius: 12px; padding: 18px 22px; }
+  .grid { display: grid; gap: 16px; } .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3, .g2 { grid-template-columns: minmax(0, 1fr); } }
+  .kpi span { font-size: 13px; color: var(--mu); font-weight: 600; display: block; } .kpi b { font-size: 30px; color: var(--az); display: block; } .kpi small { font-size: 13px; color: var(--mu); }
+  .filtros { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mu); font-weight: 600; }
+  input.c, select.c, textarea.c { border: 1px solid var(--ln); border-radius: 8px; padding: 9px 11px; background: #fff; min-height: 42px; font-size: 14px; }
+  textarea.c { min-height: 70px; }
+  .btn { border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer; min-height: 42px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  .pri { background: var(--az); color: #fff; } .sec { background: #fff; color: var(--az); border: 1px solid var(--az); } .peligro { background: #fff; color: var(--er); border: 1px solid var(--er); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .link { background: none; border: 0; padding: 0; color: var(--az); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 13px; }
+  .tabla { overflow-x: auto; padding: 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-size: 12px; color: var(--mu); padding: 10px 12px; border-bottom: 1px solid var(--ln); white-space: nowrap; background: #fff; position: sticky; top: 0; }
+  td { padding: 9px 12px; border-bottom: 1px solid #EEF2F4; font-size: 14px; vertical-align: top; }
+  tr.cl { cursor: pointer; } tr.cl:hover td { background: #F7FAFB; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 6px; white-space: nowrap; }
+  .ok { background: var(--ok); color: var(--okt); } .pa { background: var(--pa2); color: var(--az); } .er { background: var(--erbg); color: var(--er); } .wa { background: var(--wabg); color: var(--wa); } .gr { background: #EEF2F4; color: var(--mu); }
+  dl.datos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 14px; } dl.datos dt { color: var(--mu); font-weight: 600; font-size: 13px; } dl.datos dd { margin: 0; }
+  .item { border-top: 1px solid #EEF2F4; padding: 10px 0; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .item:first-of-type { border-top: 0; }
+  .aviso { background: #FFFFFF; border: 1px solid var(--pa); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
+  .error { border-color: var(--er); background: var(--erbg); color: var(--er); }
+  .vacio { padding: 40px; text-align: center; color: var(--mu); }
+  .ov { position: fixed; inset: 0; background: rgba(13,49,63,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 20; }
+  .modal { background: #fff; border-radius: 14px; width: min(760px, 100%); padding: 24px 26px; display: flex; flex-direction: column; gap: 14px; }
+  .modal .campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } @media (max-width: 640px) { .modal .campos { grid-template-columns: minmax(0, 1fr); } }
+  .modal .ancho { grid-column: 1 / -1; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; border-top: 1px solid #EEF2F4; padding-top: 14px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--az); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 30; }
+  .cargando { padding: 50px; text-align: center; color: var(--mu); }
+  .login { max-width: 420px; margin: 10vh auto; display: flex; flex-direction: column; gap: 14px; }
+</style>
+</head>
+<body>
+<div id="raiz"></div>
+<div id="ov" class="ov" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+// ==================================================================
+// PORTAL DE GESTIÓN HyS · uso personal con la clave de Higiene y Seguridad.
+// Lee y escribe en las planillas del Sistema HyS a través de Apps Script.
+// ==================================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const fechaTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
+const LS = { get: (k, d) => { try { const v = localStorage.getItem('portal_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('portal_' + k, JSON.stringify(v)); } catch (e) {} }, del: k => { try { localStorage.removeItem('portal_' + k); } catch (e) {} } };
+let CLAVE = LS.get('clave', ''), RES = null, FICHA = null, TRAB = { cod: '', q: '', datos: null };
+const CODS_EXTRA = [['NC', 'Nivel central (Secretaría de Salud y organismos)'], ['SIN_ASIGNAR', 'Sin establecimiento reconocido']];
+const TRAB_COLS = ['CUIL', 'DNI', 'APELLIDOS', 'NOMBRES', 'SITIO', 'FUNCION', 'FUNCION_DETALLE', 'SERVICIO', 'VINCULO', 'EMPRESA', 'CARGO_CONDUCCION', 'EMAIL', 'EMAIL_FECHA', 'TELEFONO', 'EN_NTEAR', 'FUENTES', 'ULTIMA_CONFIRMACION', 'REVISAR', 'MOTIVO_REVISION', 'ESTADO', 'FECHA_ALTA', 'ESTABLECIMIENTO'];
+
+async function api(accion, datos) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 90000);
+  try {
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, est: '', datos: datos || {} }), signal: ctl.signal });
+    const j = JSON.parse(await r.text());
+    if (j.error === 'clave') { salir('La clave no es correcta.'); throw new Error('clave'); }
+    return j;
+  } catch (e) { if (e.message !== 'clave') toast(e.name === 'AbortError' ? 'El sistema tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el sistema.'); throw e; }
+  finally { clearTimeout(t); }
+}
+function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3500); }
+
+// ------------------------------------------------------------------ Ingreso
+function ingreso(msg) {
+  $('raiz').innerHTML = '<div class="login card"><h1>Portal HyS</h1><p class="mu" style="margin:0">Gestión de la red provincial de Higiene y Seguridad. Ingresá con la clave de Higiene y Seguridad.</p>' +
+    (msg ? '<div class="aviso error">' + esc(msg) + '</div>' : '') +
+    '<label class="f">Clave<input class="c" id="clave" type="password" autocomplete="current-password"></label>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="recordar" checked> Recordar en este equipo (solo equipos personales)</label>' +
+    '<button class="btn pri" id="entrar">Ingresar</button></div>';
+  const ir = async () => {
+    const c = $('clave').value.trim(); if (!c) return;
+    $('entrar').disabled = true; $('entrar').textContent = 'Verificando…'; CLAVE = c;
+    try { const r = await api('p_resumen', {}); if (!r.ok) throw new Error(); RES = r; if ($('recordar').checked) LS.set('clave', c); if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
+    catch (e) { if (e.message !== 'clave') ingreso('No se pudo ingresar. Revisá la clave y la conexión.'); }
+  };
+  $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
+}
+function salir(msg) { CLAVE = ''; LS.del('clave'); RES = null; ingreso(msg); }
+
+// ------------------------------------------------------------------ Estructura
+function marco(activo, contenido) {
+  const it = (h, t) => '<a href="' + h + '" class="' + (activo === h ? 'on' : '') + '">' + t + '</a>';
+  const pr = t => '<div class="pr">' + t + ' · próximamente</div>';
+  const en = RES && RES.enlaces || {};
+  $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
+    it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + pr('Diagnóstico') + pr('Auditorías') +
+    '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
+    '<div class="sec">DOCUMENTAL</div>' + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
+    '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
+    '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>';
+  $('btnSalir').onclick = () => salir();
+}
+const cargando = (activo, t) => marco(activo, '<div class="cargando">' + esc(t || 'Cargando…') + '</div>');
+
+// ------------------------------------------------------------------ Inicio · matriz provincial
+let FILTRO = { area: '', q: '', soloApp: false };
+const chipEstado = e => /^activ/i.test(e || '') ? '<span class="chip ok">Habilitado</span>' : /maestra/i.test(e || '') ? '' : '<span class="chip gr">Pendiente</span>';
+function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
+async function inicio(fresco) {
+  if (!RES || fresco) { cargando('#inicio', 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }); } catch (e) { return; } }
+  const F = RES.filas, areas = Array.from(new Set(F.map(f => f.area))).sort();
+  const q = FILTRO.q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const vis = F.filter(f => (!FILTRO.area || f.area === FILTRO.area) && (!FILTRO.soloApp || /^activ/i.test(f.estado)) && (!q || (f.nombre + ' ' + f.cod).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) >= 0))
+    .sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
+  const hab = F.filter(f => /^activ/i.test(f.estado)), atras = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10);
+  const totTrab = F.reduce((a, f) => a + f.trabajadores, 0) + (RES.nc.total || 0) + (RES.sinAsignar || 0);
+  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio · matriz provincial</span><h1>Estado de los establecimientos</h1></div>' +
+    '<div class="filtros"><label class="f">Área programática<select class="c" id="fArea"><option value="">Todas</option>' + areas.map(a => '<option' + (a === FILTRO.area ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
+    '<label class="f">Buscar<input class="c" id="fQ" value="' + esc(FILTRO.q) + '" placeholder="Nombre o código"></label>' +
+    '<label style="display:flex;gap:6px;align-items:center;font-size:13px;min-height:42px"><input type="checkbox" id="fApp"' + (FILTRO.soloApp ? ' checked' : '') + '> Solo habilitados en la aplicación</label>' +
+    '<button class="btn sec" id="btnAct">Actualizar</button></div></div>' +
+    '<div class="grid g4">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
+    kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', (RES.sinAsignar ? RES.sinAsignar + ' sin asignar · ' : '') + 'nivel central: ' + (RES.nc.total || 0)) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
+    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
+    vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
+    '</tbody></table>' + (vis.length ? '' : '<div class="vacio">Ningún establecimiento con estos filtros.</div>') + '</section>' +
+    '<p class="mu peq">Datos al ' + new Date(RES.actualizado).toLocaleString('es-AR') + '. «Sin retiro»: días desde el último manifiesto registrado (verde hasta 10, amarillo hasta 30, rojo más de 30).</p>');
+  $('fArea').onchange = e => { FILTRO.area = e.target.value; inicio(); };
+  $('fQ').oninput = e => { FILTRO.q = e.target.value; clearTimeout(inicio.t); inicio.t = setTimeout(() => { inicio(); const i = $('fQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  $('fApp').onchange = e => { FILTRO.soloApp = e.target.checked; inicio(); };
+  $('btnAct').onclick = () => inicio(true);
+  document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#ficha/' + encodeURIComponent(tr.dataset.cod));
+}
+
+// ------------------------------------------------------------------ Ficha del establecimiento
+function selectorEst(sel, conExtra, conTodos) {
+  const F = (RES ? RES.filas : []).slice().sort((a, b) => (a.area + a.nombre).localeCompare(b.area + b.nombre));
+  return (conTodos ? '<option value="*"' + (sel === '*' ? ' selected' : '') + '>Todos los establecimientos</option>' : '<option value="">Elegí…</option>') +
+    F.map(f => '<option value="' + esc(f.cod) + '"' + (f.cod === sel ? ' selected' : '') + '>' + esc(f.nombre) + '</option>').join('') +
+    (conExtra ? CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('') : '');
+}
+async function ficha(cod) {
+  if (!RES) { cargando('#ficha'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!cod) {
+    marco('#ficha', '<div class="cab"><div><span class="mu peq">Establecimientos</span><h1>Ficha del establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="selEst">' + selectorEst('', false) + '</select></label></div>');
+    $('selEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
+    return;
+  }
+  cargando('#ficha', 'Abriendo la ficha…');
+  try { FICHA = await api('p_ficha', { cod: cod }); } catch (e) { return; }
+  if (!FICHA.ok) return marco('#ficha', '<div class="aviso error">' + esc(FICHA.mensaje) + '</div>');
+  const d = FICHA.datos, R = FICHA.residuos;
+  const fila = (k, v) => '<dt>' + k + '</dt><dd>' + esc(v || 's/d') + '</dd>';
+  const red = FICHA.red.map((r, i) => '<div class="item"><div><b>' + esc(r.v[1]) + '</b><div class="mu peq">' + esc(r.v[4]) + (r.v[5] ? ' · ' + esc(r.v[5]) : '') + '</div><div class="peq">' + esc([r.v[6], r.v[7]].filter(Boolean).join(' · ') || 'Sin contacto') + '</div></div><div style="display:flex;gap:8px;align-items:center"><span class="chip ' + (r.v[12] === 'Activo' ? 'ok' : 'gr') + '">' + esc(r.v[12] || 's/d') + '</span><button class="link" data-red="' + i + '">Editar</button></div></div>').join('');
+  const com = FICHA.comites.map((c, i) => '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.v[1]) + '</b><button class="link" data-com="' + i + '">Editar</button></div><dl class="datos" style="margin-top:8px">' +
+    fila('Responsable', c.v[2]) + fila('Contacto', [c.v[3], c.v[4]].filter(x => x && x !== 's/d').join(' · ')) + fila('Reuniones', c.v[5]) + fila('Última reunión', c.v[6] ? fechaTxt(c.v[6]) : '') + '</dl></div>').join('');
+  marco('#ficha', '<div class="cab"><div><a href="#inicio" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a la matriz</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
+    '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + '<a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
+    '<div class="grid g3">' +
+    '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + '</dl></section>' +
+    '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Red HyS</h2><button class="link" id="nuevaRed">Agregar persona</button></div><div style="margin-top:6px">' + (red || '<p class="mu">Sin personas cargadas.</p>') + '</div></section>' +
+    '<section class="card"><h2>Residuos</h2><dl class="datos" style="margin-top:10px">' + fila('Último retiro', fechaTxt(R.ultimo)) + fila('Manifiestos registrados', String(R.totalManifiestos)) + fila('Últimos certificados', R.certificados.map(c => c.mes).join(' · ') || 'Ninguno') + fila('Sitios', FICHA.sitios.map(s => s.v[1]).join(' · ')) + '</dl></section></div>' +
+    '<section style="display:flex;flex-direction:column;gap:10px"><h2>Comités y áreas</h2><div class="grid g3">' + (com || '<p class="mu">Sin comités cargados.</p>') + '</div></section>' +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimos manifiestos</h2></div><table><thead><tr><th>Fecha</th><th>Sitio</th><th>N.º</th><th>Corriente</th><th>Cantidad</th><th>Origen</th></tr></thead><tbody>' +
+    R.manifiestos.map(m => '<tr><td>' + fechaTxt(m.fecha) + '</td><td>' + esc(m.sitio) + '</td><td>' + esc(m.nro) + '</td><td>' + esc(m.corriente) + '</td><td>' + esc(m.cantidad) + ' ' + esc(m.unidad) + '</td><td class="peq">' + esc(m.origen) + '</td></tr>').join('') + '</tbody></table>' + (R.manifiestos.length ? '' : '<div class="vacio">Sin manifiestos registrados.</div>') + '</section>');
+  $('edDatos').onclick = () => modal('Datos de ' + d.CODIGO, [['LOCALIDAD', 'Localidad'], ['DIRECCION', 'Dirección'], ['TELEFONOS', 'Teléfonos'], ['CODIGO_SISA', 'Código SISA'], ['DIRECTOR', 'Director/a'], ['EMPRESA_RESIDUOS', 'Empresa de residuos'], ['SERVICIO_HYS', 'Servicio de HyS', ['Profesional propio', 'Técnico', 'Referente no técnico', 'Sin servicio', 's/d']]], d,
+    v => guardarFicha('est', null, v));
+  const camposRed = [['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['ROL', 'Rol', ['Profesional', 'Técnico', 'Referente no técnico', 'Referente de residuos']], ['CUIL', 'CUIL'], ['DNI', 'DNI'], ['TITULO_O_MATRICULA', 'Título o matrícula', null, 1], ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['HORAS_SEMANALES', 'Horas semanales'], ['DESDE', 'Desde (fecha)'], ['BLOQUES_QUE_REPORTA', 'Bloques que reporta'], ['FRECUENCIA', 'Frecuencia', ['Mensual', 'Trimestral', 'Semestral', 'Anual']], ['ESTADO', 'Estado', ['Activo', 'A confirmar', 'Baja']], ['OBSERVACIONES', 'Observaciones', null, 1]];
+  const colsRed = ['CODIGO', 'APELLIDO_Y_NOMBRE', 'CUIL', 'DNI', 'ROL', 'TITULO_O_MATRICULA', 'CORREO', 'TELEFONO', 'HORAS_SEMANALES', 'DESDE', 'BLOQUES_QUE_REPORTA', 'FRECUENCIA', 'ESTADO', 'OBSERVACIONES'];
+  $('nuevaRed').onclick = () => modal('Nueva persona en la red HyS', camposRed, { ESTADO: 'Activo' }, v => guardarFicha('red', null, v));
+  document.querySelectorAll('[data-red]').forEach(b => b.onclick = () => { const r = FICHA.red[b.dataset.red], o = {}; colsRed.forEach((c, i) => o[c] = r.v[i]); modal('Red HyS · ' + r.v[1], camposRed, o, v => guardarFicha('red', r.fila, v)); });
+  const colsCom = ['CODIGO', 'COMITE_O_AREA', 'RESPONSABLE', 'CORREO', 'TELEFONO', 'FRECUENCIA_REUNIONES', 'ULTIMA_REUNION', 'OBSERVACIONES'];
+  document.querySelectorAll('[data-com]').forEach(b => b.onclick = () => { const c = FICHA.comites[b.dataset.com], o = {}; colsCom.forEach((k, i) => o[k] = c.v[i]);
+    modal(c.v[1], [['RESPONSABLE', 'Responsable o coordinador/a'], ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['FRECUENCIA_REUNIONES', 'Frecuencia de reuniones'], ['ULTIMA_REUNION', 'Última reunión', 'date'], ['OBSERVACIONES', 'Observaciones', null, 1]], o, v => guardarFicha('comite', c.fila, Object.assign(o, v))); });
+}
+async function guardarFicha(tipo, fila, datos) {
+  const r = await api('p_ficha_guardar', { cod: FICHA.cod, tipo: tipo, fila: fila, datos: datos });
+  if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+  toast(r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.'); RES = null; ficha(FICHA.cod); return '';
+}
+
+// ------------------------------------------------------------------ Modal genérico
+// campos: [clave, etiqueta, opciones|'date'|null, ancho]
+function modal(titulo, campos, valores, guardar, extra) {
+  const v = valores || {};
+  const campo = c => { const [k, l, op, an] = c, val = v[k] == null ? '' : v[k];
+    const ctl = Array.isArray(op) ? '<select class="c" data-k="' + k + '"><option value=""></option>' + op.map(o => '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+      : op === 'date' ? '<input class="c" type="date" data-k="' + k + '" value="' + esc(String(val).slice(0, 10)) + '">'
+      : an ? '<textarea class="c" data-k="' + k + '">' + esc(val) + '</textarea>' : '<input class="c" data-k="' + k + '" value="' + esc(val) + '">';
+    return '<label class="f' + (an ? ' ancho' : '') + '">' + esc(l) + ctl + '</label>'; };
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(titulo) + '"><h2>' + esc(titulo) + '</h2><div class="aviso error" id="mErr" hidden></div><div class="campos">' + campos.map(campo).join('') + '</div>' + (extra || '') +
+    '<div class="acciones"><div style="display:flex;gap:8px;flex-wrap:wrap" id="mExtra"></div><div style="display:flex;gap:8px"><button class="btn sec" id="mCan">Cancelar</button><button class="btn pri" id="mOk">Guardar</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('mCan').onclick = cerrar;
+  $('mOk').onclick = async () => {
+    const out = {}; document.querySelectorAll('#ov [data-k]').forEach(el => out[el.dataset.k] = el.value);
+    $('mOk').disabled = true; $('mOk').textContent = 'Guardando…';
+    try { const err = await guardar(out); if (err) { $('mErr').textContent = err; $('mErr').hidden = false; $('mOk').disabled = false; $('mOk').textContent = 'Guardar'; } else cerrar(); }
+    catch (e) { $('mOk').disabled = false; $('mOk').textContent = 'Guardar'; }
+  };
+  return { cerrar: cerrar, extra: $('mExtra') };
+}
+
+// ------------------------------------------------------------------ Trabajadores
+async function trabajadores(cod) {
+  if (!RES) { cargando('#trab'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  TRAB.cod = cod || TRAB.cod || '';
+  const pintar = () => {
+    const D = TRAB.datos;
+    marco('#trab', '<div class="cab"><div><span class="mu peq">Documental · Trabajadores</span><h1>Trabajadores</h1></div>' +
+      '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + selectorEst(TRAB.cod || '*', true, true) + '</select></label>' +
+      '<label class="f">Buscar por CUIL, DNI, apellido, función o servicio<input class="c" id="tQ" value="' + esc(TRAB.q) + '" style="min-width:260px"></label><button class="btn sec" id="tBus">Buscar</button>' +
+      (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '</div></div>' +
+      (!D ? '<div class="card vacio">Elegí un establecimiento o buscá en todos.</div>' : D.aviso ? '<div class="aviso">' + esc(D.aviso) + '</div>' :
+      '<p class="mu peq" style="margin:0">' + D.total + ' persona(s)' + (D.total > D.filas.length ? ' · se muestran ' + D.filas.length : '') + '. Tocá una fila para ver o editar.</p>' +
+      '<section class="card tabla"><table><thead><tr><th>CUIL</th><th>DNI</th><th>Apellido y nombre</th>' + (TRAB.cod === '*' ? '<th>Establecimiento</th>' : '') + '<th>Sitio</th><th>Función</th><th>Servicio</th><th>Vínculo</th><th>Estado</th></tr></thead><tbody>' +
+      D.filas.map((f, i) => '<tr class="cl" data-i="' + i + '"><td class="peq">' + esc(f.v[0]) + '</td><td>' + esc(f.v[1]) + '</td><td><b>' + esc(f.v[2]) + '</b>, ' + esc(f.v[3]) + (f.v[17] === 'Sí' ? ' <span class="chip wa">Revisar</span>' : '') + '</td>' + (TRAB.cod === '*' ? '<td>' + esc(f.hoja) + '</td>' : '') +
+        '<td class="peq">' + esc(f.v[4]) + '</td><td class="peq">' + esc(f.v[5]) + '</td><td class="peq">' + esc(f.v[7]) + '</td><td class="peq">' + esc(f.v[8]) + '</td><td><span class="chip ' + (!f.v[19] || f.v[19] === 'Activo' ? 'ok' : /^(Baja|Traslado)/.test(f.v[19]) ? 'gr' : 'wa') + '">' + esc(f.v[19] || 'Activo') + '</span></td></tr>').join('') +
+      '</tbody></table>' + (D.filas.length ? '' : '<div class="vacio">Nadie coincide con la búsqueda.</div>') + '</section>'));
+    $('tEst').onchange = e => { location.hash = '#trab/' + encodeURIComponent(e.target.value); };
+    const buscar = () => { TRAB.q = $('tQ').value.trim(); cargar(); };
+    $('tBus').onclick = buscar; $('tQ').onkeydown = e => { if (e.key === 'Enter') buscar(); };
+    if ($('tNuevo')) $('tNuevo').onclick = () => fichaTrab(null);
+    document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => fichaTrab(TRAB.datos.filas[tr.dataset.i]));
+  };
+  const cargar = async () => {
+    if (!TRAB.cod) { TRAB.datos = null; return pintar(); }
+    cargando('#trab', 'Buscando…');
+    try { TRAB.datos = await api('p_trab', { cod: TRAB.cod, q: TRAB.q }); } catch (e) { return; }
+    pintar();
+  };
+  if (cod !== undefined && (TRAB.datos == null || TRAB.datos._cod !== TRAB.cod)) { await cargar(); if (TRAB.datos) TRAB.datos._cod = TRAB.cod; } else pintar();
+}
+function fichaTrab(f) {
+  const v = {}; TRAB_COLS.forEach((c, i) => v[c] = f ? f.v[i] : ''); if (!f) v.ESTADO = 'Activo';
+  const hoja = f ? f.hoja : TRAB.cod;
+  const campos = [['CUIL', 'CUIL'], ['DNI', 'DNI'], ['APELLIDOS', 'Apellidos'], ['NOMBRES', 'Nombres'], ['SITIO', 'Sitio (CAPS o dispositivo)'], ['FUNCION', 'Función'], ['FUNCION_DETALLE', 'Detalle de la función'], ['SERVICIO', 'Servicio'],
+    ['VINCULO', 'Vínculo', ['Planta', 'Contratado', 'Residente', 'Tercerizado', 'Otro']], ['EMPRESA', 'Empresa (tercerizados)'], ['CARGO_CONDUCCION', 'Cargo de conducción'], ['EMAIL', 'Correo'], ['TELEFONO', 'Teléfono'],
+    ['EN_NTEAR', 'En NTEAR', ['Sí', 'No']], ['ESTADO', 'Estado', ['Activo', 'Licencia', 'No figura en la última base', 'Revisar']], ['REVISAR', 'Revisar', ['Sí', 'No']], ['MOTIVO_REVISION', 'Motivo de revisión', null, 1]];
+  const info = f ? '<p class="mu peq" style="margin:0">Hoja ' + esc(hoja) + ', fila ' + f.fila + ' · Fuentes: ' + esc(v.FUENTES || 's/d') + ' · Alta: ' + fechaTxt(v.FECHA_ALTA) + (v.ULTIMA_CONFIRMACION ? ' · Última confirmación: ' + esc(v.ULTIMA_CONFIRMACION) : '') + '</p>' : '';
+  const m = modal(f ? v.APELLIDOS + ', ' + v.NOMBRES : 'Nuevo trabajador · ' + hoja, campos, v, async nuevos => {
+    if (nuevos.REVISAR === 'No') nuevos.REVISAR = '';
+    const datos = Object.assign({}, v, nuevos);
+    const r = await api('p_trab_guardar', { cod: hoja, fila: f ? f.fila : null, datos: datos });
+    if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    toast(f ? (r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') : 'Trabajador agregado.'); RES = null; TRAB.datos = null; trabajadores(TRAB.cod); return '';
+  }, info);
+  if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
+    m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
+    $('tBaja').onclick = async () => { if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
+      const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; RES = null; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+    $('tTras').onclick = () => {
+      m.extra.innerHTML = '<label class="f">Trasladar a<select class="c" id="tDest">' + selectorEst('', true) + '</select></label><button class="btn pri" id="tTrasOk" style="align-self:flex-end">Confirmar traslado</button>';
+      $('tTrasOk').onclick = async () => { const dest = $('tDest').value; if (!dest) return;
+        const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; RES = null; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+    };
+  }
+}
+
+// ------------------------------------------------------------------ Navegación
+function router() {
+  if (!CLAVE) return ingreso();
+  const [ruta, arg] = location.hash.replace(/^#/, '').split('/');
+  const a = arg ? decodeURIComponent(arg) : '';
+  if (ruta === 'ficha') return ficha(a);
+  if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
+  return inicio();
+}
+window.addEventListener('hashchange', router);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ov').hidden) { $('ov').hidden = true; $('ov').innerHTML = ''; } });
+router();
+</script>
+</body>
+</html>
