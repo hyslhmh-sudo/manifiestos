@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#343A40">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manifiestos · Carga de residuos peligrosos</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Paleta de la Secretaría de Salud de Chubut */
+    --gris:#343A40; --az:#21708C; --pa:#5894A7; --nar:#FF682C; --nar2:#FF8540; --am:#FFB109; --am2:#FFC815;
+    --cl:#EAF3F6; --tx:#343A40; --mu:#5F6B73; --bg:#FFFFFF; --card:#FFFFFF; --line:#D1D1D1;
+    --ok:#1E6B42; --okbg:#E3F4EA; --wa:#8A5200; --wabg:#FFF3D6; --er:#B4361F; --erbg:#FDE8E2;
+    color-scheme: light;
+  }
+  :root { box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  html { scroll-padding-top:env(safe-area-inset-top,0px); }
+  *, *::before, *::after { box-sizing:inherit; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--tx); font-family:'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; font-size:16px; line-height:1.45; }
+  .wrap { max-width:560px; margin:0 auto; padding:0 16px 120px; }
+  header.top { background:var(--gris); color:#fff; padding:12px 16px 14px; border-bottom:5px solid var(--nar); position:sticky; top:env(safe-area-inset-top,0px); z-index:5; }
+  header.top .in { max-width:560px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .marca { display:flex; align-items:center; gap:12px; min-width:0; } .marca img { width:46px; height:auto; flex:none; }
+  .hosp { font-weight:800; font-size:17px; line-height:1.2; }
+  .sub { font-size:12.5px; color:#D9DEE2; }
+  .net { font-size:12px; font-weight:700; padding:5px 10px; border-radius:20px; white-space:nowrap; border:0; cursor:pointer; font-family:inherit; }
+  .acc { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .salir { background:none; border:1px solid #8C969D; color:#fff; border-radius:16px; padding:3px 12px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+  .ficha { background:var(--card); border:2px solid var(--line); border-radius:14px; padding:16px; margin:14px 0; }
+  .ficha div { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); font-size:15px; } .ficha div:last-child { border-bottom:0; }
+  .ficha span { color:var(--mu); } .ficha b { text-align:right; }
+  .net.on { background:#DDF1E5; color:#1E6B42; } .net.off { background:#FFF1D6; color:#8A5A00; }
+  h1 { font-size:22px; margin:22px 0 4px; } h2 { font-size:17px; margin:22px 0 8px; }
+  p.mu, .mu { color:var(--mu); font-size:14px; }
+  .big { display:block; width:100%; text-align:left; background:var(--card); border:2px solid var(--line); border-radius:14px; padding:18px; margin:12px 0; cursor:pointer; color:var(--tx); font-family:inherit; }
+  .big b { display:block; font-size:18px; } .big span { color:var(--mu); font-size:14px; }
+  .big.main { background:var(--az); border-color:var(--az); color:#fff; } .big.main span { color:#D6EBF2; }
+  .big:hover { border-color:var(--pa); } .big.main:hover { background:#1A5D75; }
+  .big:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--nar); outline-offset:2px; }
+  .item { background:var(--card); border-radius:12px; padding:12px 14px; margin:8px 0; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; border:1px solid var(--line); }
+  .item b { font-size:15px; } .item small { display:block; color:var(--mu); font-size:13px; }
+  .tag { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:10px; white-space:nowrap; }
+  .tag.ok { background:var(--okbg); color:var(--ok); } .tag.wa { background:var(--wabg); color:var(--wa); } .tag.er { background:var(--erbg); color:var(--er); }
+  .steps { display:flex; gap:6px; margin:18px 0 6px; } .steps i { flex:1; height:6px; border-radius:3px; background:var(--line); } .steps i.on { background:var(--nar); }
+  .steplbl { font-size:13px; color:var(--mu); }
+  .field { margin:16px 0; }
+  .lab { display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:700; font-size:15px; margin-bottom:6px; }
+  .q { width:34px; height:34px; flex:none; border-radius:50%; border:2px solid var(--pa); background:var(--card); color:var(--pa); font-weight:800; font-size:17px; cursor:pointer; font-family:inherit; }
+  input, select, textarea { width:100%; font:inherit; font-size:16px; color:var(--tx); background:var(--card); border:2px solid var(--line); border-radius:10px; padding:12px; }
+  input.bad, select.bad { border-color:var(--er); }
+  .err { color:var(--er); font-size:13.5px; margin-top:4px; }
+  .seg { display:flex; gap:8px; } .seg button { flex:1; padding:12px; border-radius:10px; border:2px solid var(--line); background:var(--card); color:var(--tx); font:inherit; font-weight:700; cursor:pointer; }
+  .seg button.sel { border-color:var(--az); background:var(--az); color:#fff; }
+  .res { background:var(--card); border:2px solid var(--line); border-radius:12px; padding:12px; margin:12px 0; }
+  .res .hd { display:flex; justify-content:space-between; align-items:center; font-weight:800; }
+  .res.y1 { border-color:#D32F2F; background:#FDE4E4; } .res.y3 { border-color:#F2C200; background:#FFFBD1; }
+  .res .grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  .link { background:none; border:0; color:var(--pa); font:inherit; font-weight:700; cursor:pointer; padding:8px 0; }
+  .photo { border:2px dashed var(--pa); border-radius:12px; padding:18px; text-align:center; background:var(--card); cursor:pointer; display:block; }
+  .photo img { max-width:100%; border-radius:8px; margin-top:8px; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); }
+  .bar .in { max-width:560px; margin:0 auto; display:flex; gap:10px; }
+  .btn { flex:1; padding:15px; border-radius:12px; border:0; font:inherit; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn.pri { background:var(--az); color:#fff; } .btn.sec { background:var(--cl); color:var(--tx); }
+  .btn.pri:hover { background:#1A5D75; }
+  .rev { background:var(--card); border-radius:12px; padding:4px 14px; border:1px solid var(--line); }
+  .rev div { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); font-size:14.5px; }
+  .revh { display:flex; justify-content:space-between; align-items:baseline; margin-top:18px; } .revh h2 { margin:0 0 6px; font-size:16px; } .revh .link { padding:4px 0; }
+  .rev div:last-child { border-bottom:0; } .rev span { color:var(--mu); } .rev b { text-align:right; }
+  .notice { background:var(--wabg); color:var(--wa); padding:12px 14px; border-radius:12px; font-size:14px; margin:12px 0; }
+  .notice.ok { background:var(--okbg); color:var(--ok); }
+  /* Ayuda */
+  .ov { position:fixed; inset:0; background:rgba(52,58,64,.55); z-index:20; display:flex; align-items:flex-end; justify-content:center; }
+  .sheet { background:var(--card); width:100%; max-width:560px; border-radius:18px 18px 0 0; padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px)); max-height:88vh; overflow:auto; }
+  .sheet h3 { margin:0 0 6px; font-size:19px; } .sheet .k { font-weight:800; margin:14px 0 4px; font-size:14px; color:var(--az); }
+  .sheet p { margin:0 0 6px; } .ej { background:var(--cl); border-radius:8px; padding:8px 10px; font-weight:700; display:inline-block; }
+  .papel { width:100%; max-width:340px; height:auto; margin:6px auto 0; display:block; border-radius:6px; }
+  .papel .s rect { fill:#F4F7F8; stroke:#9DB6BF; } .papel .s text { fill:#56707A; font:600 9px 'Plus Jakarta Sans',Arial; }
+  .papel .s.hl rect { fill:#FFE3D6; stroke:var(--nar); stroke-width:2; } .papel .s.hl text { fill:#8A2E0A; font-weight:800; }
+  .anio { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:10px 0 4px; }
+  .mes { background:var(--card); border:2px solid var(--line); border-radius:10px; padding:9px 10px; font-size:13px; text-align:left; color:var(--tx); font-family:inherit; }
+  .mes b { display:block; font-size:14px; text-transform:capitalize; }
+  .mes.ok { border-color:var(--ok); background:var(--okbg); } .mes.wa { border-color:#D9A441; background:var(--wabg); }
+  .mes.vacio { cursor:pointer; border-style:dashed; }
+  .prog { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:6px; } .prog i { display:block; height:100%; background:var(--ok); }
+  .fecha { display:flex; gap:8px; } .fecha input { flex:1; }
+  .cal { flex:none; width:52px; border:2px solid var(--line); border-radius:10px; background:var(--card); cursor:pointer; display:grid; place-items:center; color:var(--az); }
+  .cal:hover { border-color:var(--pa); }
+  .calhd { display:flex; align-items:center; gap:8px; margin:6px 0 10px; } .calhd select { padding:9px; }
+  .calhd .nav { flex:none; width:42px; height:42px; border-radius:10px; border:2px solid var(--line); background:var(--card); font:inherit; font-size:20px; font-weight:800; color:var(--az); cursor:pointer; }
+  .dias { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; text-align:center; }
+  .dias .dn { font-size:12px; color:var(--mu); font-weight:700; padding:4px 0; }
+  .dias button { padding:10px 0; border-radius:8px; border:0; background:var(--cl); color:var(--tx); font:inherit; font-weight:700; cursor:pointer; }
+  .dias button:disabled { background:none; color:#B8BEC2; cursor:default; }
+  .dias button.sel { background:var(--az); color:#fff; } .dias button.hoy { outline:2px solid var(--nar); }
+  .grid2 { display:grid; grid-template-columns:1.4fr 1fr; gap:10px; }
+  .menu { display:grid; gap:12px; margin:12px 0; } .menu .big { margin:0; }
+  .lista { display:grid; gap:8px; } .lista .item { margin:0; }
+  /* Tablet */
+  @media (min-width: 720px) {
+    body { font-size:17px; }
+    .wrap, header.top .in, .bar .in { max-width:900px; }
+    .wrap[data-v="form"], .bar[data-v="form"] .in { max-width:720px; }
+    h1 { font-size:26px; margin-top:30px; }
+    .menu { grid-template-columns:1fr 1fr; }
+    .res .grid { grid-template-columns:repeat(4, 1fr); }
+    .anio { grid-template-columns:repeat(4, 1fr); }
+    .ov { align-items:center; } .sheet { border-radius:18px; max-width:520px; }
+    .bar .in { justify-content:flex-end; } .bar .btn { flex:0 0 220px; }
+    #f_anio { max-width:240px; } .wrap[data-v="wide"] .grid2 { max-width:520px; }
+  }
+  /* Computadora */
+  @media (min-width: 1100px) {
+    .wrap, header.top .in, .bar .in { max-width:1080px; }
+    .menu { grid-template-columns:repeat(4, 1fr); } .menu .big { min-height:128px; }
+    .anio { grid-template-columns:repeat(6, 1fr); }
+    .lista { grid-template-columns:1fr 1fr; }
+  }
+  .proto { font-size:12px; color:var(--mu); text-align:center; margin-top:28px; }
+  @media (prefers-reduced-motion: no-preference) { .sheet { animation:up .2s ease-out; } @keyframes up { from { transform:translateY(30px); opacity:.6; } } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div class="marca"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjxzdmcKICAgaWQ9IkNhcGFfMSIKICAgZGF0YS1uYW1lPSJDYXBhIDEiCiAgIHZpZXdCb3g9IjAgMCAzMTkuMjg2NDEgMjA3LjMyODM0IgogICB2ZXJzaW9uPSIxLjEiCiAgIHNvZGlwb2RpOmRvY25hbWU9ImNodWJ1dF9pc290aXBvLnN2ZyIKICAgd2lkdGg9IjMxOS4yODY0MSIKICAgaGVpZ2h0PSIyMDcuMzI4MzQiCiAgIGlua3NjYXBlOnZlcnNpb249IjEuMyAoMGUxNTBlZDZjNCwgMjAyMy0wNy0yMSkiCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIgogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHNvZGlwb2RpOm5hbWVkdmlldwogICAgIGlkPSJuYW1lZHZpZXc2IgogICAgIHBhZ2Vjb2xvcj0iI2ZmZmZmZiIKICAgICBib3JkZXJjb2xvcj0iIzAwMDAwMCIKICAgICBib3JkZXJvcGFjaXR5PSIwLjI1IgogICAgIGlua3NjYXBlOnNob3dwYWdlc2hhZG93PSIyIgogICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0iMCIKICAgICBpbmtzY2FwZTpkZXNrY29sb3I9IiNkMWQxZDEiCiAgICAgaW5rc2NhcGU6em9vbT0iMS45MjY4NjYiCiAgICAgaW5rc2NhcGU6Y3g9Ijg0LjA3NDM0OCIKICAgICBpbmtzY2FwZTpjeT0iMTI4LjQ0NjkyIgogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCIKICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzc3IgogICAgIGlua3NjYXBlOndpbmRvdy14PSItOCIKICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSIKICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJDYXBhXzEiIC8+CiAgPGRlZnMKICAgICBpZD0iZGVmczEiPgogICAgPHN0eWxlCiAgICAgICBpZD0ic3R5bGUxIj4mIzEwOyAgICAgIC5jbHMtMSB7JiMxMDsgICAgICAgIGZpbGw6ICM1ODk0YTc7JiMxMDsgICAgICB9JiMxMDsmIzEwOyAgICAgIC5jbHMtMSwgLmNscy0yLCAuY2xzLTMsIC5jbHMtNCwgLmNscy01LCAuY2xzLTYgeyYjMTA7ICAgICAgICBzdHJva2Utd2lkdGg6IDBweDsmIzEwOyAgICAgIH0mIzEwOyYjMTA7ICAgICAgLmNscy0yIHsmIzEwOyAgICAgICAgZmlsbDogIzIxNzA4YzsmIzEwOyAgICAgIH0mIzEwOyYjMTA7ICAgICAgLmNscy0zIHsmIzEwOyAgICAgICAgZmlsbDogI2ZmNjgyYzsmIzEwOyAgICAgIH0mIzEwOyYjMTA7ICAgICAgLmNscy00IHsmIzEwOyAgICAgICAgZmlsbDogI2ZmODU0MDsmIzEwOyAgICAgIH0mIzEwOyYjMTA7ICAgICAgLmNscy01IHsmIzEwOyAgICAgICAgZmlsbDogI2ZmYzgxNTsmIzEwOyAgICAgIH0mIzEwOyYjMTA7ICAgICAgLmNscy02IHsmIzEwOyAgICAgICAgZmlsbDogI2ZmYjEwOTsmIzEwOyAgICAgIH0mIzEwOyAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aAogICAgIGNsYXNzPSJjbHMtNSIKICAgICBkPSJtIDI3OC4wMDMzOSw1Mi4wMzI1OTkgYyAxLjAzLC0xLjU0IDAuMzYsLTMuMzcgLTEuMTIsLTQuMzUgLTEuMDksLTAuNzIgLTIuNCwtMSAtMy42MiwtMS40NyAtNC4yNCwtMS42MiAtNy40OCwtNS43NSAtOC4wMywtMTAuMjYgLTAuNTksLTQuODIgMy4xMiwtNy45MyA3LjE0LC05Ljc2IDMuNjEsLTEuNjQgNy42NywtMi41IDExLjY0LC0yLjQ4IDMuMTgsMC4wMiA2LjU1LDEuMzcgOC42OSwzLjc3IDMuMjgsMy42NyAxLjE5LDYuNzMgMi40LDEwLjkxIDMuMzIsMTEuNDUgMjAuNDMsLTIuMzUgMjIuNzYsLTguMDIgMi44NiwtNi45NyAxLjMxLC0xNS42MyAtMy43NiwtMjEuMDIwMDAwMyAtMy4xMiwtMy4zMiAtOS42MiwtNC42MiAtMTEuMjcsLTAuMjggLTAuNDYsMS4yMTAwMDAzIC0wLjM3LDIuNTUwMDAwMyAtMC40OSwzLjg0MDAwMDMgLTAuNDIsNC42NyAtMy44NSw4LjkgLTguMjEsMTAuMTEgLTEwLjg2LDMuMDEgLTEyLjE2LC04LjY0IC0xNy40LC0xNC41NDAwMDAzIC01LjQyLC02LjA5IC0xMi42NSwtNy4yMiAtMjAuMzgsLTcuODI5OTk5OTcgLTguOTYsLTAuNyAtMTcuOTgsLTAuNDkgLTI2Ljk2LC0wLjUyIC02Mi42MywtMC4xOCAtMTI0LjcxLC0wLjE4IC0xODYuOTQ5OTk3LDAuMDIgLTguNiwwLjAzIC0xNy4yLC0wLjAyIC0yNS45NCwtMC4wMiAtMS43NiwwIC0wLjU0LDIuNjM5OTk5OTcgLTAuMjIsMy40OTk5OTk5NyAwLjM4LDEuMDEgMC44NiwyLjU5IDAuNDUsMy42NiAtMC45NCwyLjQ1IC0zLjUxLDMuMDYwMDAwMyAtNS44OSwyLjkyMDAwMDMgLTIuOTY5OTk5OCwtMC4xOCAtNi4yMjk5OTk4LC00Ljc2MDAwMDMgLTkuMjE5OTk5OCwtMy40MjAwMDAzIC0xLjEwOTk5OTk2LDAuNSAtMS41Nzk5OTk5NiwxLjgzIC0xLjYxOTk5OTk2LDMuMDQgLTAuMSwzLjI2MDAwMDMgMi4wMjk5OTk5Niw3LjQzMDAwMDMgMy43Nzk5OTk5NiwxMC4xMjAwMDAzIDAuOTEsMS4zOSAyLjAzLDIuNjEgMi4yMyw0LjM0IDAuMTQsMS4xNiAtMC4yMSwyLjMzIC0wLjU0LDMuNDUgLTEuOTksNi42NCAtNi4zNDk5OTk5NiwxMC44OCAtMS45OCwxOS44OCAyLjMzLDQuOCA5LjM3OTk5OTgsOC4xIDExLjcxOTk5OTgsMTIuNjYgMy44Miw3LjQyIC0yLjY4LDYuODcgLTMuMjksMTMuODMgLTAuMzcsNC4yMiA1LjU5LDUuNzQgNi40NywxMC4zMyAwLjkxLDQuNzUgLTIuOTIsNS44MSAtMi43MiwxMC4xMyAwLjEzLDIuNjUgMS4wOCw1LjI1IDEuMDgsNy45MDAwMDEgMCwzLjQxIC0xLjY5LDUuNjYgLTIuNDgsOC45MiAtMC41NCwyLjIyIC0wLjU0LDQuNjYgMC40OSw2LjcgMy4wOCw2LjE4IDExLjY2LDUuMjggMTcuMjksNi41NyA1LjM3LDEuMjMgMTAuMDUsNC45MiA3Ljg4LDEwLjgxIC0yLjMsNi4yNyAtOS4xNCwxMC4zOCAtMTUuNzcsOS4zMSAtMy4yLC0wLjUyIC02LjMxLC0xLjUzIC05LjQsLTIuNTIgLTMuNTYsLTEuMTUgLTcuNjI5OTk5OCwwLjExIC03LjkyOTk5OTgsMy4xNSAtMC40Myw0LjM5IDcuODM5OTk5OCwzLjY0IDEwLjIwOTk5OTgsMy45MSAxMi41NSwxLjQ0IDE2LjM0LDE1LjkzIDkuNjksMjcuMzQgLTIuNDYsNC4yMyAtNi43NSw2Ljk1IC05LjIyLDExLjEyIC0yLjkxLDQuOTIgLTIuMTUsOC45OSAwLjE1LDEzLjI4IDIuOTIsNS40MyA4Ljg3LDYuMDMgMTQuMzQsNi4wNSA0MC4wMSwwLjE3IDc3LjcyOTk5NywtMC4wNCAxMjMuODk5OTk3LDAuMjEgMy42LDAuMDIgNy4zNCwwLjA3IDEwLjYyLC0xLjQ4IDAuNTYsLTAuMjYgMS4xLC0wLjU3IDEuNjEsLTAuOSA1LjU5LC0zLjY2IDgsLTExLjIgMTEuMTEsLTE3LjUgOC45MiwtMTguMDcgMzUuMDEsLTMyLjgzIDU0LjQzLC0zMS4zOSAyLjU4LDAuMTkgNS4yNSwwLjU4IDcuNjksLTAuMzQgMi42OSwtMS4wMiA0LjQ5LC0zLjggMy4zNSwtNi42MSAtMC42OCwtMS42NiAtMS45MiwtMy4wNSAtMi40NSwtNC43NiAtMC45NiwtMy4xIDAuNjgsLTYuNDggMi45NCwtOC44MSA0LjExLC00LjIyIDguODcsLTYuMzQgMTEuMjMsLTEyLjA4IDIuMTUsLTUuMjMgMi4xMywtMTEuMTQgMS44OCwtMTYuNjkgLTAuMjQsLTUuMzQgLTIuMTksLTEwLjQxMDAwMSAtMy4wNywtMTUuNjUwMDAxIC0wLjgsLTQuNzMgLTAuNCwtOS44OCAwLjc4LC0xNC41MyAyLjYyLC0xMC4zMiA5LjY1LC0xNy4wNCAxOC42OCwtMjIuMDEgMS4xNSwtMC42MyAyLjU0LC0xLjQ0IDMuMjgsLTIuNTUgeiIKICAgICBpZD0icGF0aDEiIC8+CiAgPHBhdGgKICAgICBjbGFzcz0iY2xzLTYiCiAgICAgZD0ibSA4My41ODMzOTMsNjMuNDkyNTk5IGMgMCwwIDAsMCAwLDAgNy43OSwtNS41MyAxNi45Njk5OTcsLTEzLjc1IDI3LjY0OTk5NywtMjEuODMgLTQuNTUsLTEyLjY3IC0xNi4zNDk5OTcsLTIyLjAyIC0zMC42Mzk5OTcsLTIyLjc2IC0xOSwtMC45OCAtMzUuMTksMTMuNjIgLTM2LjE3LDMyLjYxIC0wLjE4LDMuNTIgMC4xNyw2LjkzIDAuOTksMTAuMTggMTIuNjksLTAuODQgMjUuNDMsLTAuMDEgMzguMTgsMS44IHoiCiAgICAgaWQ9InBhdGgyIiAvPgogIDxwYXRoCiAgICAgY2xhc3M9ImNscy00IgogICAgIGQ9Im0gMjQxLjM3MzM5LDQwLjY1MjU5OSBjIC03Ny44NSwtNTkgLTEyNy45MywxLjY0IC0xNTcuNzg5OTk3LDIyLjg0IDU3LjcyOTk5Nyw4LjE5IDExNS43Mzk5OTcsMzYuMzkgMTcxLjM4OTk5NywxOS42IDAuMTcsLTIuMSAwLjUxLC00LjE4IDEsLTYuMTcgMC4wMywtMC4xMSAwLjA1LC0wLjIyIDAuMDgsLTAuMzMgMCwwIDAsMCAwLDAgMC4yNCwtMC45NiAwLjU0LC0xLjg3IDAuODUsLTIuNzcgMC4wNiwtMC4xNyAwLjEyLC0wLjM0IDAuMTgsLTAuNTEgMC4zMiwtMC44NiAwLjY3LC0xLjY5IDEuMDYsLTIuNDkgMC4wNywtMC4xNCAwLjE0LC0wLjI4IDAuMjEsLTAuNDIgMC40LC0wLjggMC44MiwtMS41OCAxLjI4LC0yLjMzIDAuMDIsLTAuMDMgMC4wMywtMC4wNiAwLjA1LC0wLjA4IDAuNDgsLTAuNzggMSwtMS41MiAxLjU0LC0yLjI0IDAuMDksLTAuMTIgMC4xNywtMC4yMyAwLjI2LC0wLjM1IDAuNTUsLTAuNzEgMS4xMiwtMS40IDEuNzMsLTIuMDYgMC4wNiwtMC4wNiAwLjEyLC0wLjEyIDAuMTgsLTAuMTkgMC42MywtMC42OCAxLjI4LC0xLjMzIDEuOTYsLTEuOTYgMC4wMSwtMC4wMSAwLjAyLC0wLjAyIDAuMDQsLTAuMDQgMC43LC0wLjY0IDEuNDIsLTEuMjUgMi4xNywtMS44NSAwLjA4LC0wLjA2IDAuMTYsLTAuMTIgMC4yMywtMC4xOSAwLjc2LC0wLjU5IDEuNTQsLTEuMTcgMi4zNCwtMS43MiAwLDAgMCwwIDAsMCAtOC45OCwtMy42OSAtMTguNDcsLTguOTcgLTI4Ljc1LC0xNi43NiB6IgogICAgIGlkPSJwYXRoMyIgLz4KICA8cGF0aAogICAgIGNsYXNzPSJjbHMtMSIKICAgICBkPSJtIDIyNS4xNDMzOSwxMTIuNjMyNiBjIC0yMi41NiwtNS4yMiAtNDYuMDcsMi4zMiAtNjcuMTUsMTEuOTEgLTIxLjA4LDkuNTkgLTQxLjU3LDIxLjQ1IC02NC4zNDk5OTcsMjUuNTkgLTE5LjgyLDMuNiAtNDAuNDIsMC4zNCAtNTguNjksLTguMDggLTMuMDUsMi4yNSAtNi45NCwzLjM2IC0xMC43NywyLjc0IC0zLjIsLTAuNTIgLTYuMzIsLTEuNTMgLTkuNCwtMi41MiAtMy41NiwtMS4xNSAtNy42Mjk5OTk4LDAuMTEgLTcuOTI5OTk5OCwzLjE1IC0wLjQzLDQuMzkgNy44Mzk5OTk4LDMuNjQgMTAuMjA5OTk5OCwzLjkxIDEyLjU1LDEuNDQgMTYuMzQsMTUuOTMgOS42OSwyNy4zNCAtMi40Niw0LjIzIC02Ljc1LDYuOTUgLTkuMjIsMTEuMTIgLTIuOTEsNC45MiAtMi4xNSw4Ljk5IDAuMTUsMTMuMjggMi45Miw1LjQzIDguODcsNi4wMyAxNC4zNCw2LjA1IDguOTMsMC4wNCA5Ljc1LDAuMDYgMTguNTcsMC4wNyAtMS43OCwwIDQuNDQsMCAyLjY2LDAgMTAuODQsLTEwLjEgMjAuMjksLTIyLjE4IDMyLjM1LC0zMC44NyAyNi4wMjk5OTcsLTE4Ljc2IDYxLjM4OTk5NywtMTkuNDEgOTIuNDk5OTk3LC0xMS41MiA1LjU5LDEuNDIgMTEuMDksMy4wOCAxNi41NCw0LjkyIDAsMCAwLDAgMCwwIDExLjYyLC04LjkgMjYuNywtMTQuNTcgMzkuMDcsLTEzLjY1IDIuNTgsMC4xOSA1LjI1LDAuNTggNy42OSwtMC4zNCAyLjY5LC0xLjAyIDQuNDksLTMuOCAzLjM1LC02LjYxIC0wLjY4LC0xLjY2IC0xLjkyLC0zLjA1IC0yLjQ1LC00Ljc2IC0wLjk2LC0zLjEgMC42OCwtNi40OCAyLjk0LC04LjgxIDMuMzgsLTMuNDggNy4yLC01LjUzIDkuNzYsLTkuMzQgLTkuMzksLTUuOSAtMTkuMSwtMTEuMDkgLTI5Ljg1LC0xMy41NyB6IgogICAgIGlkPSJwYXRoNCIgLz4KICA8cGF0aAogICAgIGNsYXNzPSJjbHMtMyIKICAgICBkPSJtIDI1OC4zMzMzOSwxMDYuNzcyNiBjIC0wLjI0LC01LjM0IC0yLjE5LC0xMC40MTAwMDEgLTMuMDcsLTE1LjY1MDAwMSAtMC40NCwtMi42IC0wLjUxLC01LjMzIC0wLjI5LC04LjAzIC03Mi4wNSwyMS43NDAwMDEgLTE0OC4wNywtMzEuOTUgLTIyMi4yODk5OTcsLTE5Ljk3IC01Ljk1LDAuOTYgLTExLjg4LDIuNTEgLTE3LjY3LDQuNTYgLTEuMiwxLjU2IC0yLjc4LDMuMTcgLTMuMDcsNi40NCAtMC4zNyw0LjIyIDUuNTksNS43NCA2LjQ3LDEwLjMzIDAuOTEsNC43NSAtMi45Miw1LjgxIC0yLjcyLDEwLjEzIDAuMTMsMi42NSAxLjA4LDUuMjUgMS4wOCw3LjkwMDAwMSAwLDMuNDEgLTEuNjksNS42NiAtMi40OCw4LjkyIC0wLjU0LDIuMjIgLTAuNTQsNC42NiAwLjQ5LDYuNyAzLjA4LDYuMTggMTEuNjYsNS4yOCAxNy4yOSw2LjU3IDUuMzcsMS4yMyAxMC4wNSw0LjkyIDcuODgsMTAuODEgLTAuOTcsMi42NSAtMi43Nyw0LjkxIC01LDYuNTcgMCwwIDAsMCAwLDAgMTguMjYsOC40MiAzOC44NiwxMS42OCA1OC42OSw4LjA4IDIyLjc3OTk5NywtNC4xNCA0My4yNjk5OTcsLTE2IDY0LjM0OTk5NywtMjUuNTkgMjEuMDgsLTkuNTkgNDQuNTksLTE3LjEzIDY3LjE1LC0xMS45MSAxMC43NSwyLjQ5IDIwLjQ1LDcuNjggMjkuODUsMTMuNTcgMC41NSwtMC44MiAxLjA1LC0xLjcyIDEuNDYsLTIuNzQgMi4xNSwtNS4yMyAyLjEzLC0xMS4xNCAxLjg4LC0xNi42OSB6IgogICAgIGlkPSJwYXRoNSIgLz4KICA8cGF0aAogICAgIGNsYXNzPSJjbHMtMiIKICAgICBkPSJtIDE1NS45MzMzOSwyMDcuMzIyNiBjIDMuNiwwLjAyIDcuMzQsMC4wNyAxMC42MiwtMS40OCAwLjU2LC0wLjI2IDEuMSwtMC41NyAxLjYxLC0wLjkgNS41OSwtMy42NiA4LC0xMS4yIDExLjExLC0xNy41IDMuMjQsLTYuNTYgOC43NCwtMTIuNjcgMTUuMzYsLTE3Ljc0IC01LjQ1LC0xLjgzIC0xMC45NSwtMy41IC0xNi41NCwtNC45MiAtMzEuMTEsLTcuODkgLTY2LjQ2LC03LjI1IC05Mi40OTk5OTcsMTEuNTIgLTEyLjA1LDguNjkgLTIxLjUxLDIwLjc3IC0zMi4zNSwzMC44NyAzMi40OSwwLjA1IDY0LjcyOTk5NywtMC4wNSAxMDIuNjc5OTk3LDAuMTUgeiIKICAgICBpZD0icGF0aDYiIC8+Cjwvc3ZnPgo=" alt="Gobierno del Chubut"><div><div class="hosp" id="hosp">Manifiestos de residuos peligrosos</div><div class="sub" id="quien">Ingresá con el hospital y su clave</div></div></div>
+  <div class="acc"><button class="net on" id="net" title="Tocar para enviar ahora">En línea</button><button class="salir" id="salir" data-act="salir" hidden>Salir</button></div>
+</div></header>
+<main class="wrap" id="app"></main>
+<div class="bar" id="bar" hidden><div class="in" id="barIn"></div></div>
+<div class="ov" id="ov" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+// ------------------------------------------------------------------ Fechas: se pueden escribir (dd/mm/aaaa) o elegir en el calendario
+const FMIN = '2025-01-01', hoyISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const isoATxt = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
+function txtAIso(t) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t || ''); if (!m) return '';
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return d.getDate() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 ? m[3] + '-' + m[2] + '-' + m[1] : '';
+}
+const objFecha = o => o === 'C' ? C : M;
+function campoFecha(k, o, bad) {
+  const ob = objFecha(o), txt = ob['_' + k] != null ? ob['_' + k] : isoATxt(ob[k]);
+  return '<div class="fecha"><input id="f_' + k + '" data-fecha="' + k + '" data-obj="' + o + '" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="dd/mm/aaaa" value="' + esc(txt) + '"' + (bad ? ' class="bad"' : '') + '>' +
+    '<button type="button" class="cal" data-act="cal" data-arg="' + k + '" data-obj="' + o + '" aria-label="Elegir la fecha en el calendario"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button></div>';
+}
+function escribirFecha(el) {   // agrega las barras solas mientras se escribe
+  const d = el.value.replace(/\D/g, '').slice(0, 8);
+  el.value = d.length > 4 ? d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4) : d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+  const ob = objFecha(el.dataset.obj), k = el.dataset.fecha;
+  ob['_' + k] = el.value; ob[k] = txtAIso(el.value);
+}
+let CAL = null;
+function calendario() {
+  const { y, m } = CAL, ob = objFecha(CAL.o), sel = ob[CAL.k], max = hoyISO();
+  const primero = (new Date(y, m, 1).getDay() + 6) % 7, nd = new Date(y, m + 1, 0).getDate();
+  let dias = ['lu', 'ma', 'mi', 'ju', 'vi', 'sá', 'do'].map(d => '<div class="dn">' + d + '</div>').join('') + '<div></div>'.repeat(primero);
+  for (let d = 1; d <= nd; d++) {
+    const iso = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    dias += '<button type="button" data-act="calDia" data-arg="' + iso + '"' + (iso < FMIN || iso > max ? ' disabled' : '') + ' class="' + (iso === sel ? 'sel' : '') + (iso === max ? ' hoy' : '') + '">' + d + '</button>';
+  }
+  $('ov').innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Calendario"><h3>Elegí la fecha</h3><div class="calhd">' +
+    '<button type="button" class="nav" data-act="calMes" data-arg="-1" aria-label="Mes anterior">‹</button>' +
+    '<select data-calm aria-label="Mes">' + MESES.map((n, i) => '<option value="' + i + '"' + (i === m ? ' selected' : '') + '>' + n.charAt(0).toUpperCase() + n.slice(1) + '</option>').join('') + '</select>' +
+    '<select data-caly aria-label="Año">' + ANIOS().map(a => '<option' + (Number(a) === y ? ' selected' : '') + '>' + a + '</option>').join('') + '</select>' +
+    '<button type="button" class="nav" data-act="calMes" data-arg="1" aria-label="Mes siguiente">›</button></div>' +
+    '<div class="dias">' + dias + '</div><button class="btn sec" style="width:100%;margin-top:16px" data-act="cerrarAyuda">Cerrar</button></div>';
+  $('ov').hidden = false;
+}
+
+// Ayuda de cada campo: qué es, dónde está en el papel (sección resaltada) y ejemplo
+const AYUDA = {
+  hospital: { t: 'Hospital', que: 'El hospital donde trabajás y para el que vas a cargar los manifiestos.', donde: 'Buscalo en la lista, ordenada por área programática.', ej: 'Hospital Rural Gan Gan', s: null },
+  clave: { t: 'Clave del hospital', que: 'La clave que te dio Higiene y Seguridad para tu hospital. Es la misma para todas las personas que cargan en ese hospital.', donde: 'Si no la tenés o no funciona, pedila a Higiene y Seguridad.', ej: '••••', s: null },
+  pnombre: { t: 'Nombre y apellido', que: 'El nombre de la persona que está cargando ahora.', donde: 'Como figura en el DNI.', ej: 'Laura Gómez', s: null },
+  pdni: { t: 'DNI', que: 'El número de documento de quien carga, sin puntos.', donde: 'En el frente del DNI.', ej: '30123456', s: null },
+  pfuncion: { t: 'Función', que: 'Qué tarea cumple en el hospital la persona que carga.', donde: 'Elegila de la lista. Si no está, elegí «Otra» y escribila.', ej: 'Mucama', s: null },
+  mdir: { t: 'Correo de Dirección o Administración', que: 'El correo de la Dirección o de la Administración del hospital, para enviar avisos sobre los manifiestos y certificados. No es obligatorio.', donde: 'Pedilo en la Dirección o en la Administración del hospital.', ej: 'direccion.hospital@gmail.com', s: null },
+  mcal: { t: 'Correo de Calidad', que: 'El correo del área o referente de Calidad del hospital. No es obligatorio: si el hospital no tiene, dejalo vacío.', donde: 'Pedilo en el área de Calidad o en la Dirección.', ej: 'calidad.hospital@gmail.com', s: null },
+  pmail: { t: 'Correo electrónico', que: 'Un correo de quien carga, por si hay que consultarle algo de una carga.', donde: 'Un correo que use habitualmente.', ej: 'laura.gomez@gmail.com', s: null },
+  nro: { t: 'Número de manifiesto', que: 'El número que viene impreso en el manifiesto (no está escrito a mano). Está formado por el número de registro de la empresa y un número de orden.', donde: 'Impreso en la parte de arriba de la hoja.', ej: '0123-000457', s: 'enc' },
+  sitio: { t: 'Sitio del retiro', que: 'Dónde retiró la empresa los residuos: el edificio del establecimiento o uno de sus CAPS. Aparece solo si el establecimiento tiene CAPS donde la empresa retira directamente.', donde: 'Sección 1, «Datos identificatorios», recuadro del generador: figura el nombre y la dirección del sitio.', ej: 'CAPS Villa Italia', s: 'id' },
+  fecha: { t: 'Fecha de recolección', que: 'El día en que la empresa retiró los residuos. Tiene que ser la fecha del día del retiro.', donde: 'Sección 6, «Certificaciones»: columna «Fecha», junto a las firmas.', ej: '14/05/2025', s: 'cert' },
+  empresa: { t: 'Empresa', que: 'La empresa que se llevó los residuos. Casi siempre es la misma que los trata (transportista y operador).', donde: 'Encabezado («Empresa») y sección 1, «Datos identificatorios».', ej: 'Impeesa', s: 'id' },
+  operador: { t: 'Operador (planta de tratamiento)', que: 'Solo si la planta que trata los residuos es otra empresa distinta de la que los transporta.', donde: 'Sección 1, «Datos identificatorios», recuadro «Operador».', ej: 'Nombre de la planta', s: 'id' },
+  corriente: { t: 'Corriente del residuo', que: 'El tipo de residuo, con su código: Y1 son los biopatogénicos (bolsa roja) e Y3 los medicamentos y productos farmacéuticos. Si una corriente no se retiró, dejala vacía.', donde: 'Sección 3, «Información de residuos», columna «Corriente».', ej: 'Y1', s: 'res' },
+  contenedor: { t: 'Tipo de contenedor', que: 'En qué se llevaron los residuos de esa corriente: bolsa, caja, bidón, tambor o descartador.', donde: 'Sección 3, «Información de residuos», columna «Contenedores», «Tipo».', ej: 'Bolsa', s: 'res' },
+  cant: { t: 'Cantidad de contenedores', que: 'Cuántos contenedores de esa corriente se llevaron (bolsas, cajas, bidones).', donde: 'Sección 3, «Información de residuos», columna «Contenedores», «Cant.».', ej: '12', s: 'res' },
+  vol: { t: 'Cantidad retirada', que: 'Cuánto se llevaron de esa corriente. Elegí la unidad: kg si el establecimiento tiene balanza; si no, dm³. Para dm³: cantidad de bolsas × capacidad de cada bolsa (1 dm³ = 1 litro). Ejemplo: 12 bolsas de 80 litros = 960 dm³.', donde: 'Sección 3, «Información de residuos», columna «Cant. real» (si está vacía, la «Cant. estimada»). La columna «U.M.» indica la unidad.', ej: '960 dm³ o 85 kg', s: 'res' },
+  estado: { t: 'Estado físico', que: 'Si el residuo es sólido, líquido o semisólido (pastoso).', donde: 'Sección 3, «Información de residuos», columna «Estado físico».', ej: 'Sólido', s: 'res' },
+  firma: { t: '¿Firmó el transportista?', que: 'Fijate si el conductor del camión firmó el manifiesto antes de irse.', donde: 'Sección 6, «Certificaciones», renglón «Transportista».', ej: 'Sí', s: 'cert' },
+  original: { t: '¿Quedó el original en el hospital?', que: 'El original es la hoja para el generador, es decir, para el hospital: tiene que quedar acá. El duplicado es para el transportista, el triplicado para el operador y el cuadruplicado para la autoridad ambiental.', donde: 'Al pie de cada hoja dice para quién es.', ej: 'Sí', s: 'pie' },
+  foto: { t: 'Foto del manifiesto', que: 'Una foto del original, la hoja completa y que se lea. Ahí quedan la patente del camión y el nombre del conductor, que no hace falta escribir. Apoyala sobre una mesa, con buena luz.', donde: 'Toda la hoja original.', ej: 'Foto de frente, sin sombras', s: 'todo' },
+  cfoto: { t: 'Foto del certificado', que: 'Una foto del certificado completo y que se lea. Apoyalo sobre una mesa, con buena luz.', donde: 'Toda la hoja del certificado.', ej: 'Foto de frente, sin sombras', s: null },
+  ncert: { t: 'Número de certificado', que: 'El número del certificado de tratamiento que entrega la empresa. Cada empresa tiene su propio modelo de certificado.', donde: 'En el certificado de tratamiento de la empresa.', ej: 'CT-2025-0193', s: null },
+  ftrat: { t: 'Fecha de tratamiento', que: 'La fecha de tratamiento que figura en el certificado. Cada empresa tiene su propio modelo de certificado.', donde: 'En el certificado de tratamiento de la empresa.', ej: '20/05/2025', s: null },
+  mes: { t: 'Mes y año del certificado', que: 'La empresa entrega un certificado por mes, que cubre todos los retiros de ese mes. Elegí el mes y el año que figuran en el certificado.', donde: 'En el certificado de tratamiento de la empresa, donde dice el período.', ej: 'Mayo de 2025', s: null },
+};
+
+// Esquema del manifiesto oficial de Chubut, para mostrar dónde está cada dato
+function papel(sec) {
+  const S = [['enc', 0, 0, 220, 26, 'Encabezado · N.º de manifiesto'], ['id', 0, 30, 220, 30, '1. Datos identificatorios (generador, operador)'],
+    ['tr', 0, 64, 220, 30, '2. Transportista (dominio, conductor)'], ['res', 0, 98, 220, 44, '3. Información de residuos'],
+    ['ins', 0, 146, 220, 22, '4 y 5. Instrucciones'], ['cert', 0, 172, 220, 22, '6. Certificaciones (firmas)'],
+    ['dj', 0, 198, 220, 22, '7. Declaración jurada (fechas)'], ['pie', 0, 224, 220, 14, 'Pie: Original / Duplicado…']];
+  return '<svg class="papel" viewBox="-4 -4 228 246" role="img" aria-label="Esquema del manifiesto con la parte a mirar resaltada">' +
+    S.map(([k, x, y, w, h, t]) => '<g class="s' + (sec === k || sec === 'todo' ? ' hl' : '') + '"><rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="3"/><text x="' + (x + 6) + '" y="' + (y + 13) + '">' + t + '</text></g>').join('') + '</svg>';
+}
+function ayuda(k) {
+  const a = AYUDA[k];
+  $('ov').innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(a.t) + '"><h3>' + esc(a.t) + '</h3>' +
+    '<div class="k">Qué es</div><p>' + esc(a.que) + '</p>' +
+    '<div class="k">Dónde está en el papel</div><p>' + esc(a.donde) + '</p>' + (a.s ? papel(a.s) : '') +
+    '<div class="k">Ejemplo</div><p><span class="ej">' + esc(a.ej) + '</span></p>' +
+    '<button class="btn pri" style="width:100%;margin-top:16px" data-act="cerrarAyuda">Entendido</button></div>';
+  $('ov').hidden = false;
+}
+function cerrarAyuda() { $('ov').hidden = true; }
+let PREG = null;
+function preguntar(texto, si, accion) {
+  PREG = accion;
+  $('ov').innerHTML = '<div class="sheet" role="dialog" aria-modal="true"><h3>' + esc(texto) + '</h3>' +
+    '<div class="seg" style="margin-top:18px"><button type="button" data-act="preguntaNo">No, volver</button><button type="button" class="sel" data-act="preguntaSi">' + esc(si) + '</button></div></div>';
+  $('ov').hidden = false;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarAyuda(); });
+
+const q = k => '<button type="button" class="q" aria-label="Ayuda: ' + esc(AYUDA[k].t) + '" data-act="ayuda" data-arg="' + k + '">?</button>';
+const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for="f_' + k + '">' + esc(AYUDA[k].t) + '</label>' + q(k) + '</div>' + inner + (err ? '<div class="err">' + esc(err) + '</div>' : '') + '</div>';
+
+
+// ==================================================================
+// APLICACIÓN DE CARGA · MANIFIESTOS DE RESIDUOS PELIGROSOS
+// Envía las cargas al sistema (Apps Script). Sin señal, las guarda en
+// este equipo y las envía solas cuando vuelve la conexión.
+// ==================================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
+const VERSION = 'piloto-1';
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
+const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
+const CONTENEDORES = ['Bolsa', 'Caja', 'Bidón', 'Tambor', 'Descartador'];
+const LISTA_BASE = [{ id: 'HZT', nombre: 'Hospital Zonal Trelew «Dr. Adolfo Margara»' }, { id: 'HMH', nombre: 'Hospital María Humphreys' }, { id: 'HSST', nombre: 'Hospital Subzonal Santa Teresita (Rawson)' }];
+
+// ------------------------------------------------------------------ Almacenamiento local
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem('mf_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set: (k, v) => { try { localStorage.setItem('mf_' + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del: k => { try { localStorage.removeItem('mf_' + k); } catch (e) {} },
+};
+let SES = LS.get('ses', null);            // { est, nombre, clave, persona }
+let CFG = SES ? LS.get('cfg_' + SES.est, null) : null;
+let COLA = LS.get('cola', []);            // cargas por enviar
+const guardarCola = () => LS.set('cola', COLA);
+const miCola = () => COLA.filter(c => SES && c.est === SES.est);
+async function hashTxt(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t).trim())); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
+
+// ------------------------------------------------------------------ Comunicación con el sistema
+async function api(accion, datos, ses) {
+  const s = ses || SES;
+  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: s.est, clave: s.clave, datos: datos, version: VERSION }) });
+  if (!r.ok) throw new Error('red');
+  return r.json();
+}
+let ENVIANDO = false;
+async function sincronizar() {
+  if (ENVIANDO || !navigator.onLine || !COLA.some(c => c.estado === 'pendiente')) { pintarRed(); return; }
+  ENVIANDO = true; pintarRed();
+  for (const c of COLA.filter(x => x.estado === 'pendiente')) {
+    try {
+      const res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave });
+      if (res.ok) { COLA = COLA.filter(x => x.datos.idLocal !== c.datos.idLocal); }
+      else if (res.error === 'interno') { /* se reintenta luego */ }
+      else { c.estado = 'error'; c.mensaje = res.mensaje || res.error; }
+      guardarCola();
+    } catch (e) { break; }   // sin conexión: se reintenta más tarde
+  }
+  ENVIANDO = false; pintarRed();
+  if (SES && navigator.onLine) actualizarConfig(true);
+}
+async function actualizarConfig(silencioso) {
+  if (!SES || !navigator.onLine) return;
+  try {
+    const r = await api('config');
+    if (r.ok) { CFG = r; LS.set('cfg_' + SES.est, r); if (!silencioso || ['inicio', 'consulta', 'avance'].indexOf(VISTA) >= 0) repintar(); }
+    else if (r.error === 'clave') { salirSesion('La clave cambió. Volvé a ingresar.'); }
+  } catch (e) {}
+}
+window.addEventListener('online', sincronizar);
+window.addEventListener('offline', pintarRed);
+setInterval(sincronizar, 60000);
+
+function pintarRed() {
+  const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
+  const on = navigator.onLine;
+  $('net').className = 'net ' + (on && !err ? 'on' : 'off');
+  $('net').textContent = !on ? 'Sin señal' + (pend ? ' · ' + pend + ' por enviar' : '') : ENVIANDO ? 'Enviando…' : err ? err + ' con error' : pend ? pend + ' por enviar' : 'En línea';
+}
+function pintarCab() {
+  $('hosp').textContent = SES ? SES.nombre : 'Manifiestos de residuos peligrosos';
+  $('quien').textContent = SES && SES.persona ? 'Carga: ' + SES.persona.nombre : SES ? 'Elegí quién carga' : 'Ingresá con el establecimiento y su clave';
+  $('salir').hidden = !SES;
+}
+
+// ------------------------------------------------------------------ Ayudas propias de esta versión
+AYUDA.hospital = { t: 'Establecimiento', que: 'El establecimiento para el que vas a cargar los manifiestos.', donde: 'Elegilo de la lista.', ej: 'Hospital María Humphreys', s: null };
+AYUDA.clave = { t: 'Clave del establecimiento', que: 'La clave que te dio Higiene y Seguridad. Es la misma para todas las personas que cargan en ese establecimiento.', donde: 'Si no la tenés o no funciona, pedila a Higiene y Seguridad.', ej: '••••', s: null };
+AYUDA.sitio = { t: 'Sitio del retiro', que: 'Dónde retiró la empresa los residuos: el edificio principal o uno de los CAPS o dispositivos.', donde: 'Sección 1, «Datos identificatorios»: figura el nombre y la dirección del lugar de retiro.', ej: 'Villa Italia', s: 'id' };
+AYUDA.tam = { t: 'Tamaño de la bolsa (dm³)', que: 'La capacidad de cada bolsa o recipiente, en litros (1 litro = 1 dm³). Queda guardado para la próxima carga de ese sitio.', donde: 'Figura en el envase de la bolsa. Las más comunes: 20, 50, 80, 120, 200 y 240.', ej: '200', s: null };
+AYUDA.vol = { t: 'Cantidad retirada', que: 'Se calcula sola: cantidad de bolsas × tamaño de la bolsa. Si el residuo se pesó, elegí «kg» y escribí el peso.', donde: 'Sección 3, «Información de residuos», columna «Cant. real».', ej: '10 bolsas × 200 = 2.000 dm³', s: 'res' };
+AYUDA.empresa = { t: 'Empresa', que: 'La empresa que emitió el certificado de tratamiento.', donde: 'Encabezado del certificado.', ej: 'Impeesa', s: null };
+
+// ------------------------------------------------------------------ Estado de pantalla
+let VISTA = 'ingreso', M = null, C = null, PASO = 0, ERR = {}, DESDE_REV = false, LOG = { est: '', clave: '' }, OTRA = null, ANIO_AV = String(new Date().getFullYear()), FILTRO = 'todos';
+function vista(v) { $('app').dataset.v = v; $('bar').dataset.v = v; }
+function bar(btns) { $('bar').hidden = !btns; $('barIn').innerHTML = btns || ''; }
+function repintar() { ({ inicio, consulta, avance })[VISTA] ? ({ inicio, consulta, avance })[VISTA]() : null; }
+const fechaTxt = f => f ? f.split('-').reverse().join('/') : '';
+const mesTxt = m => m ? MESES[Number(m.slice(5, 7)) - 1] + ' de ' + m.slice(0, 4) : '';
+const nf = n => Number(n || 0).toLocaleString('es-AR');
+const idNuevo = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+// ------------------------------------------------------------------ Ingreso
+function ingreso(msg) {
+  VISTA = 'ingreso'; vista('form'); pintarCab(); pintarRed();
+  const lista = LS.get('lista', LISTA_BASE);
+  $('app').innerHTML = '<h1>Ingresar</h1><p class="mu">Elegí el establecimiento y escribí la clave.</p>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
+    campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + lista.map(h => '<option value="' + h.id + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</select>', ERR.hospital) +
+    campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave);
+  bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0);
+  if (navigator.onLine && API_URL.indexOf('http') === 0) fetch(API_URL + '?accion=lista').then(r => r.json()).then(r => { if (r.ok) LS.set('lista', r.lista); }).catch(() => {});
+}
+async function entrar() {
+  ERR = {};
+  if (!LOG.est) ERR.hospital = 'Elegí el establecimiento.';
+  if (!LOG.clave) ERR.clave = 'Escribí la clave.';
+  if (Object.keys(ERR).length) return ingreso();
+  const nombre = (LS.get('lista', LISTA_BASE).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
+  const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, persona: null }, h = await hashTxt(LOG.est + '|' + LOG.clave);
+  if (navigator.onLine) {
+    bar('<button class="btn pri" disabled>Verificando…</button>');
+    try {
+      const r = await api('config', null, ses);
+      if (!r.ok) { ERR.clave = r.error === 'clave' ? 'La clave no es correcta. Si no la recordás, pedila a Higiene y Seguridad.' : (r.mensaje || 'No se pudo ingresar.'); return ingreso(); }
+      CFG = r; LS.set('cfg_' + ses.est, r); LS.set('h_' + ses.est, h);
+    } catch (e) { if (LS.get('h_' + ses.est) !== h) { ERR.clave = 'No hay conexión con el sistema. Para el primer ingreso se necesita señal.'; return ingreso(); } CFG = LS.get('cfg_' + ses.est, null); }
+  } else {
+    if (LS.get('h_' + ses.est) !== h) { ERR.clave = LS.get('h_' + ses.est) ? 'La clave no es correcta.' : 'Para el primer ingreso se necesita señal.'; return ingreso(); }
+    CFG = LS.get('cfg_' + ses.est, null);
+  }
+  SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; quienCarga();
+}
+function salirSesion(msg) { SES = null; CFG = null; LS.del('ses'); ingreso(msg); }
+
+// ------------------------------------------------------------------ Quién carga
+function quienCarga() {
+  VISTA = 'quien'; vista('form'); pintarCab();
+  const ref = CFG && CFG.referente && CFG.referente.nombre ? CFG.referente.nombre : '';
+  const ult = LS.get('personas_' + SES.est, []);
+  $('app').innerHTML = '<h1>¿Quién va a cargar?</h1><p class="mu">Queda registrado en cada carga.</p><div class="menu">' +
+    (ref ? '<button class="big main" data-act="soy" data-arg="ref"><b>' + esc(ref) + '</b><span>Referente de residuos</span></button>' : '') +
+    ult.filter(p => p.nombre !== ref).slice(0, 3).map((p, i) => '<button class="big" data-act="soy" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.funcion) + '</span></button>').join('') +
+    '<button class="big" data-act="otraPersona"><b>Carga otra persona</b><span>Escribí tu nombre y tu función</span></button></div>';
+  bar(null);
+}
+function otraPersona() {
+  VISTA = 'otra'; vista('form'); OTRA = OTRA || { nombre: '', funcion: '', otra: '' };
+  $('app').innerHTML = '<h1>Tus datos</h1>' +
+    '<div class="field"><div class="lab"><label for="f_pn">Nombre y apellido</label></div><input id="f_pn" data-o="nombre" value="' + esc(OTRA.nombre) + '"' + (ERR.pn ? ' class="bad"' : '') + '>' + (ERR.pn ? '<div class="err">' + ERR.pn + '</div>' : '') + '</div>' +
+    '<div class="field"><div class="lab"><label for="f_pf">Función</label></div><select id="f_pf" data-o="funcion" data-chg="repOtra"' + (ERR.pf ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + FUNCIONES.map(f => '<option' + (f === OTRA.funcion ? ' selected' : '') + '>' + f + '</option>').join('') + '</select>' +
+    (OTRA.funcion === 'Otra' ? '<input style="margin-top:8px" data-o="otra" placeholder="¿Cuál?" value="' + esc(OTRA.otra) + '">' : '') + (ERR.pf ? '<div class="err">' + ERR.pf + '</div>' : '') + '</div>';
+  bar('<button class="btn sec" data-act="quienCarga">Atrás</button><button class="btn pri" data-act="confirmarOtra">Continuar</button>');
+}
+function confirmarOtra() {
+  ERR = {};
+  if (!OTRA.nombre.trim() || OTRA.nombre.trim().split(/\s+/).length < 2) ERR.pn = 'Escribí nombre y apellido.';
+  if (!OTRA.funcion || (OTRA.funcion === 'Otra' && !OTRA.otra.trim())) ERR.pf = 'Elegí tu función.';
+  if (Object.keys(ERR).length) return otraPersona();
+  const p = { nombre: OTRA.nombre.trim(), funcion: OTRA.funcion === 'Otra' ? OTRA.otra.trim() : OTRA.funcion };
+  const ult = LS.get('personas_' + SES.est, []).filter(x => x.nombre !== p.nombre); ult.unshift(p); LS.set('personas_' + SES.est, ult.slice(0, 5));
+  OTRA = null; SES.persona = p; LS.set('ses', SES); inicio();
+}
+
+// ------------------------------------------------------------------ Inicio
+function inicio() {
+  if (!SES) return ingreso();
+  if (!SES.persona) return quienCarga();
+  VISTA = 'inicio'; vista('wide'); pintarCab(); pintarRed();
+  const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
+  const ult = CFG && CFG.ultimas && CFG.ultimas.length ? CFG.ultimas[CFG.ultimas.length - 1] : null;
+  $('app').innerHTML = '<h1>¿Qué querés cargar?</h1><p class="mu">Podés cargar sin señal: queda guardado en este equipo y se envía solo cuando vuelve la conexión.</p>' +
+    (err ? '<div class="notice" style="border-color:var(--er);background:var(--erbg)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Revisalas en «Consultar mis cargas».</div>' : '') +
+    '<p class="mu" style="margin-top:-4px">Carga: <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button>' + (ult ? ' · Último manifiesto registrado: ' + fechaTxt(ult.fecha) + ' (' + esc(ult.sitio) + ')' : '') + '</p>' +
+    '<div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar un manifiesto</b><span>Cuando la empresa retira los residuos</span></button>' +
+    '<button class="big" data-act="nuevoCertificado"><b>Cargar un certificado</b><span>Cuando llega el certificado de tratamiento</span></button>' +
+    '<button class="big" data-act="avance"><b>Ver avance por mes</b><span>Retiros y certificados registrados</span></button>' +
+    '<button class="big" data-act="consulta"><b>Consultar mis cargas</b><span>' + (pend ? pend + ' por enviar · ' : '') + 'Últimas registradas en el sistema</span></button></div>' +
+    '<p class="mu" style="font-size:13px">Datos del sistema al ' + (CFG ? fechaTxt(CFG.actualizado.slice(0, 10)) + ' ' + CFG.actualizado.slice(11, 16) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
+  bar(null); window.scrollTo(0, 0);
+}
+
+// ------------------------------------------------------------------ Manifiesto
+const PASOS = ['Retiro', 'Residuos', 'Control', 'Revisión'];
+const sitiosCfg = () => (CFG && CFG.sitios && CFG.sitios.length ? CFG.sitios : [{ sitio: SES.est }]);
+const corrCfg = () => (CFG && CFG.corrientes ? CFG.corrientes : [{ c: 'Y1', n: 'Y1 · Biopatogénicos (bolsa roja)' }, { c: 'Y3', n: 'Y3 · Medicamentos y productos farmacéuticos' }]);
+function tamGuardado(sitio, corr) { return (LS.get('tam_' + SES.est, {})[sitio + '|' + corr]) || ''; }
+function nuevoRes(c, sitio) { return { corriente: c, contenedor: c === 'Y3' ? 'Caja' : 'Bolsa', cant: '', tam: tamGuardado(sitio, c), vol: '', uni: 'dm³', estado: 'Sólido' }; }
+function nuevoManifiesto(prev) {
+  const s = sitiosCfg();
+  M = prev || { tipo: 'manifiesto', idLocal: idNuevo(), sitio: s.length === 1 ? s[0].sitio : '', nro: '', fecha: '', res: [], firma: '', original: '', foto: '', obs: '' };
+  if (!M.res.length) M.res = corrCfg().map(x => nuevoRes(x.c, M.sitio));
+  PASO = 0; ERR = {}; DESDE_REV = false; VISTA = 'man'; pasoMan();
+}
+const tieneDatos = r => String(r.cant).trim() !== '' || String(r.vol).trim() !== '';
+function calcVol(r) { if (r.uni === 'dm³' && Number(r.cant) > 0 && Number(r.tam) > 0) r.vol = String(Number(r.cant) * Number(r.tam)); }
+function leer() {
+  document.querySelectorAll('[data-k]').forEach(el => { const k = el.dataset.k, i = el.dataset.i; if (i != null) M.res[i][k] = el.value; else M[k] = el.value; });
+  M.res.forEach(calcVol);
+}
+function cab() { return '<div class="steps">' + PASOS.map((p, i) => '<i class="' + (i <= PASO ? 'on' : '') + '"></i>').join('') + '</div><div class="steplbl">Paso ' + (PASO + 1) + ' de ' + PASOS.length + ' · ' + PASOS[PASO] + '</div>'; }
+function inp(k, type, ph, extra) { return '<input id="f_' + k + '" data-k="' + k + '" type="' + type + '" value="' + esc(M[k]) + '" placeholder="' + esc(ph || '') + '"' + (ERR[k] ? ' class="bad"' : '') + (extra || '') + '>'; }
+function siNo(k) { return '<div class="seg" id="f_' + k + '">' + ['Sí', 'No'].map(v => '<button type="button" class="' + (M[k] === v ? 'sel' : '') + '" data-act="sino" data-k2="' + k + '" data-arg="' + v + '">' + v + '</button>').join('') + '</div>'; }
+function pasoMan() {
+  vista('form');
+  let h = cab();
+  if (PASO === 0) {
+    const s = sitiosCfg();
+    h += '<h1>Datos del retiro</h1>' +
+      (s.length > 1 ? campo('sitio', '<select id="f_sitio" data-k="sitio"' + (ERR.sitio ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + s.map(x => '<option value="' + esc(x.sitio) + '"' + (x.sitio === M.sitio ? ' selected' : '') + '>' + esc(x.sitio) + (x.oficial && x.oficial !== x.sitio ? ' · ' + esc(x.oficial) : '') + '</option>').join('') + '</select>', ERR.sitio) : '') +
+      campo('nro', inp('nro', 'text', 'Ej.: 128452', ' inputmode="numeric" autocomplete="off"'), ERR.nro) +
+      campo('fecha', campoFecha('fecha', 'M', ERR.fecha), ERR.fecha);
+  } else if (PASO === 1) {
+    h += '<h1>Residuos que se llevaron</h1><p class="mu">Completá las corrientes que figuran en el manifiesto. Si una no se retiró, dejala vacía.</p>' +
+      (ERR.res ? '<div class="err" style="font-size:15px;margin:10px 0">' + esc(ERR.res) + '</div>' : '') +
+      M.res.map((r, i) => '<div class="res ' + r.corriente.toLowerCase() + '"><div class="hd"><span>' + esc((corrCfg().find(x => x.c === r.corriente) || { n: r.corriente }).n) + '</span>' + q('corriente') + '</div>' +
+        '<div class="grid">' +
+        '<div class="field"><div class="lab"><label>Contenedor</label>' + q('contenedor') + '</div><select data-k="contenedor" data-i="' + i + '">' + CONTENEDORES.map(c => '<option' + (c === r.contenedor ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div>' +
+        '<div class="field"><div class="lab"><label>Cantidad</label>' + q('cant') + '</div><input data-k="cant" data-i="' + i + '" data-recalc="1" type="number" min="1" inputmode="numeric" value="' + esc(r.cant) + '"' + (ERR['cant' + i] || ERR.res ? ' class="bad"' : '') + '></div>' +
+        '<div class="field"><div class="lab"><label>Tamaño (dm³)</label>' + q('tam') + '</div><input data-k="tam" data-i="' + i + '" data-recalc="1" type="number" min="1" inputmode="numeric" value="' + esc(r.tam) + '"' + (ERR['tam' + i] ? ' class="bad"' : '') + (r.uni === 'kg' ? ' disabled' : '') + '></div>' +
+        '<div class="field"><div class="lab"><label>Cantidad retirada</label>' + q('vol') + '</div><div style="display:flex;gap:6px"><input data-k="vol" data-i="' + i + '" type="number" min="0" step="0.1" inputmode="decimal" value="' + esc(r.vol) + '"' + (r.uni === 'dm³' ? ' readonly style="background:var(--cl);min-width:0"' : ' style="min-width:0"') + (ERR['vol' + i] ? ' class="bad"' : '') + '>' +
+        '<select data-k="uni" data-i="' + i + '" data-chg="repMan" style="width:auto;flex:none">' + ['dm³', 'kg'].map(u => '<option' + (u === r.uni ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div></div>' +
+        '</div>' + (ERR['cant' + i] || ERR['tam' + i] || ERR['vol' + i] ? '<div class="err">' + esc(ERR['cant' + i] || ERR['tam' + i] || ERR['vol' + i]) + '</div>' : '') + '</div>').join('');
+  } else if (PASO === 2) {
+    h += '<h1>Control del papel</h1>' + campo('firma', siNo('firma'), ERR.firma) + campo('original', siNo('original'), ERR.original) +
+      (M.original === 'No' ? '<div class="notice">El original tiene que quedar en el establecimiento. Avisá a tu jefatura para recuperarlo.</div>' : '') +
+      campo('foto', '<label class="photo" for="f_foto">' + (M.foto ? 'Cambiar la foto<img src="' + M.foto + '" alt="Foto del manifiesto">' : '<b>Sacar foto del manifiesto</b><br><span class="mu">Toda la hoja, con buena luz</span>') + '</label><input id="f_foto" type="file" accept="image/*" capture="environment" hidden data-chg="foto">', ERR.foto) +
+      '<div class="field"><div class="lab"><label for="f_obs">Observaciones (opcional)</label></div><textarea id="f_obs" data-k="obs" rows="3" placeholder="Por ejemplo: quedaron bolsas sin retirar">' + esc(M.obs) + '</textarea></div>';
+  } else {
+    const fila = (k, v) => '<div><span>' + k + '</span><b>' + v + '</b></div>';
+    const bloque = (t, p, f) => '<div class="revh"><h2>' + t + '</h2><button class="link" data-act="irPaso" data-arg="' + p + '">Corregir</button></div><div class="rev">' + f + '</div>';
+    h += '<h1>Revisá antes de guardar</h1>' +
+      bloque('Retiro', 0, fila('Sitio', esc(M.sitio)) + fila('N.º de manifiesto', esc(M.nro)) + fila('Fecha de recolección', fechaTxt(M.fecha))) +
+      bloque('Residuos', 1, M.res.filter(tieneDatos).map(r => fila(esc(r.corriente) + ' · ' + esc(r.contenedor), esc(r.cant) + (r.uni === 'dm³' ? ' × ' + esc(r.tam) + ' = ' + nf(r.vol) + ' dm³' : ' · ' + esc(r.vol) + ' kg'))).join('')) +
+      bloque('Control del papel', 2, fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto', M.foto ? 'Cargada' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
+      (!navigator.onLine ? '<div class="notice">No hay señal: se guarda en este equipo y se envía solo cuando vuelva la conexión.</div>' : '');
+  }
+  $('app').innerHTML = h;
+  bar('<button class="btn sec" data-act="atras">' + (PASO ? 'Atrás' : 'Cancelar') + '</button><button class="btn pri" data-act="adelante">' + (PASO === 3 ? 'Guardar manifiesto' : DESDE_REV ? 'Volver a revisar' : 'Siguiente') + '</button>');
+  window.scrollTo(0, 0);
+}
+function validar() {
+  ERR = {}; leer();
+  if (PASO === 0) {
+    if (sitiosCfg().length > 1 && !M.sitio) ERR.sitio = 'Elegí dónde se hizo el retiro.';
+    if (!/^\d{3,}$/.test(String(M.nro).replace(/[\s.-]/g, ''))) ERR.nro = 'Escribí el número impreso en el manifiesto (solo números).';
+    else if (CFG && CFG.ultimas && CFG.ultimas.some(u => u.nro === String(M.nro).trim() && u.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está registrado en ' + M.sitio + '.';
+    else if (miCola().some(c => c.tipo === 'manifiesto' && c.datos.idLocal !== M.idLocal && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está cargado en este equipo, esperando envío.';
+    if (!M.fecha) ERR.fecha = !M._fecha ? 'Falta la fecha de recolección.' : M._fecha.length === 10 ? 'Esa fecha no existe: revisá el día y el mes.' : 'Completá la fecha como dd/mm/aaaa.';
+    else if (M.fecha < FMIN) ERR.fecha = 'La fecha tiene que ser desde el 01/01/2025.';
+    else if (M.fecha > hoyISO()) ERR.fecha = 'La fecha no puede ser posterior a hoy.';
+  } else if (PASO === 1) {
+    if (!M.res.some(tieneDatos)) ERR.res = 'Completá al menos una corriente.';
+    M.res.forEach((r, i) => {
+      if (!tieneDatos(r)) return;
+      if (!(Number(r.cant) > 0)) ERR['cant' + i] = 'Falta la cantidad de contenedores.';
+      else if (r.uni === 'dm³' && !(Number(r.tam) > 0)) ERR['tam' + i] = 'Falta el tamaño de la bolsa en dm³.';
+      else if (!(Number(r.vol) > 0)) ERR['vol' + i] = 'Falta el peso en kg.';
+      else if (Number(r.vol) > (r.uni === 'kg' ? 5000 : 30000)) ERR['vol' + i] = 'Revisá la cantidad: parece demasiado para un retiro.';
+    });
+  } else if (PASO === 2) {
+    if (!M.firma) ERR.firma = 'Respondé Sí o No.';
+    if (!M.original) ERR.original = 'Respondé Sí o No.';
+    if (!M.foto) ERR.foto = 'Falta la foto del manifiesto.';
+  }
+  return !Object.keys(ERR).length;
+}
+function adelante() {
+  if (!validar()) { pasoMan(); const e = document.querySelector('.bad, .err'); if (e) e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  if (PASO < 3) { PASO = DESDE_REV ? 3 : PASO + 1; DESDE_REV = false; pasoMan(); return; }
+  // Guardar: tamaños usados quedan como sugerencia para el próximo retiro del sitio
+  const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
+  const datos = { idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, persona: SES.persona,
+    res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
+  encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
+}
+function encolar(tipo, datos, txt) {
+  COLA = COLA.filter(c => c.datos.idLocal !== datos.idLocal);
+  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
+  if (!guardarCola()) { COLA.pop(); alertaEspacio(); return; }
+  listo(txt + ' guardado.', tipo); sincronizar();
+}
+function alertaEspacio() {
+  $('ov').innerHTML = '<div class="sheet"><h3>No hay espacio en el teléfono</h3><p>Hay muchas cargas con foto esperando envío. Conectate a una red para enviarlas y después volvé a intentar.</p><button class="btn pri" style="width:100%" data-act="cerrarAyuda">Entendido</button></div>'; $('ov').hidden = false;
+}
+function atras() { leer(); if (PASO === 0) return preguntar('¿Salir sin guardar este manifiesto?', 'Sí, salir', () => inicio()); PASO--; DESDE_REV = false; pasoMan(); }
+function foto(input, obj, repaint) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {   // se achica para que pese poco y se pueda enviar con mala señal
+    const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    if (obj === M) leer(); obj.foto = c.toDataURL('image/jpeg', 0.65); URL.revokeObjectURL(url); repaint();
+  };
+  img.src = url;
+}
+function listo(msg, tipo) {
+  vista('form');
+  $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(msg) + '</b><br>' + (navigator.onLine ? 'Se está enviando al sistema.' : 'Quedó guardado en este equipo: se envía solo cuando vuelva la señal.') + '</div>' +
+    '<div class="menu">' + (tipo === 'certificado' ? '<button class="big main" data-act="nuevoCertificado"><b>Cargar otro certificado</b></button>' : '<button class="big main" data-act="nuevoManifiesto"><b>Cargar otro manifiesto</b><span>Seguí con el próximo</span></button>') +
+    '<button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  bar(null); pintarRed();
+}
+
+// ------------------------------------------------------------------ Certificado
+function nuevoCertificado(prev) {
+  const emp = CFG && CFG.empresas ? CFG.empresas : ['Impeesa'];
+  C = prev || { tipo: 'certificado', idLocal: idNuevo(), empresa: emp.length === 1 ? emp[0] : '', mesM: '', mesA: '', mes: '', ncert: '', ftrat: '', foto: '' };
+  ERR = {}; VISTA = 'cert'; pasoCert();
+}
+function pasoCert() {
+  vista('form');
+  const emp = CFG && CFG.empresas ? CFG.empresas : ['Impeesa'], f = (k, inner) => campo(k, inner, ERR[k]);
+  $('app').innerHTML = '<h1>Certificado de tratamiento</h1><p class="mu">La empresa entrega un certificado por mes, que cubre todos los retiros de ese mes.</p>' +
+    f('empresa', '<select id="f_empresa" data-c="empresa"' + (ERR.empresa ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + emp.map(e => '<option' + (e === C.empresa ? ' selected' : '') + '>' + esc(e) + '</option>').join('') + '</select>') +
+    f('mes', '<div class="grid2"><select id="f_mes" data-cm="m"' + (ERR.mes ? ' class="bad"' : '') + '><option value="">Mes…</option>' + MESES.map((n, i) => { const v = String(i + 1).padStart(2, '0'); return '<option value="' + v + '"' + (C.mesM === v ? ' selected' : '') + '>' + n.charAt(0).toUpperCase() + n.slice(1) + '</option>'; }).join('') +
+      '</select><select data-cm="a"' + (ERR.mes ? ' class="bad"' : '') + '><option value="">Año…</option>' + ANIOS().map(y => '<option' + (C.mesA === y ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>') +
+    f('ncert', '<input id="f_ncert" value="' + esc(C.ncert) + '" data-c="ncert"' + (ERR.ncert ? ' class="bad"' : '') + '>') +
+    f('ftrat', campoFecha('ftrat', 'C', ERR.ftrat)) +
+    '<div class="field"><div class="lab"><label for="f_cfoto">Foto del certificado</label>' + q('cfoto') + '</div><label class="photo" for="f_cfoto">' + (C.foto ? 'Cambiar la foto<img src="' + C.foto + '" alt="Foto del certificado">' : '<b>Sacar foto del certificado</b>') + '</label><input id="f_cfoto" type="file" accept="image/*" capture="environment" hidden data-chg="fotoC">' + (ERR.foto ? '<div class="err">' + ERR.foto + '</div>' : '') + '</div>';
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarCert">Guardar certificado</button>');
+  window.scrollTo(0, 0);
+}
+function guardarCert() {
+  ERR = {}; C.mes = C.mesM && C.mesA ? C.mesA + '-' + C.mesM : '';
+  if (!C.empresa) ERR.empresa = 'Elegí la empresa.';
+  if (!C.mes) ERR.mes = 'Elegí el mes y el año.'; else if (C.mes > hoyISO().slice(0, 7)) ERR.mes = 'El mes no puede ser posterior al actual.';
+  if (!C.ncert.trim()) ERR.ncert = 'Falta el número de certificado.';
+  else if ((CFG && CFG.certificados || []).some(x => x.ncert === C.ncert.trim())) ERR.ncert = 'Ese certificado ya está registrado.';
+  if (!C.ftrat) ERR.ftrat = 'Falta la fecha de tratamiento.'; else if (C.ftrat > hoyISO()) ERR.ftrat = 'La fecha no puede ser posterior a hoy.';
+  if (!C.foto) ERR.foto = 'Falta la foto del certificado.';
+  if (Object.keys(ERR).length) return pasoCert();
+  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, foto: C.foto, persona: SES.persona }, 'Certificado ' + C.ncert.trim());
+}
+
+// ------------------------------------------------------------------ Consultar
+function consulta() {
+  VISTA = 'consulta'; vista('wide');
+  const loc = miCola().slice().reverse(), srv = (CFG && CFG.ultimas || []).slice().reverse(), cer = (CFG && CFG.certificados || []).slice().reverse();
+  const res = r => r.map(x => esc(x.corriente) + ' ' + nf(x.vol) + ' ' + esc(x.uni || 'dm³')).join(' · ');
+  const item = (t, s, tag, act) => '<div class="item"' + (act ? '' : '') + '><div><b>' + t + '</b><small>' + s + '</small></div>' + tag + '</div>';
+  let h = '<h1>Mis cargas</h1>';
+  if (loc.length) h += '<h2>En este equipo</h2><div class="lista">' + loc.map(c => {
+    const d = c.datos, t = c.tipo === 'manifiesto' ? 'Manifiesto ' + esc(d.nro) : 'Certificado ' + esc(d.ncert);
+    const s = c.tipo === 'manifiesto' ? fechaTxt(d.fecha) + ' · ' + esc(d.sitio) + ' · ' + res(d.res) : mesTxt(d.mes);
+    return '<div class="item"><div><b>' + t + '</b><small>' + s + (c.estado === 'error' ? '<br><span style="color:var(--er)">' + esc(c.mensaje) + '</span>' : '') + '</small>' +
+      (c.estado === 'error' ? '<div style="margin-top:6px"><button class="link" data-act="corregirLocal" data-arg="' + esc(d.idLocal) + '">Corregir</button> · <button class="link" data-act="descartar" data-arg="' + esc(d.idLocal) + '">Descartar</button></div>' : '') +
+      '</div>' + (c.estado === 'error' ? '<span class="tag er">No registrada</span>' : '<span class="tag wa">Por enviar</span>') + '</div>';
+  }).join('') + '</div>';
+  h += '<h2>Registradas en el sistema</h2><div class="grid2"><div class="field"><select data-chg="filtro"><option value="todos"' + (FILTRO === 'todos' ? ' selected' : '') + '>Manifiestos y certificados</option><option value="man"' + (FILTRO === 'man' ? ' selected' : '') + '>Solo manifiestos</option><option value="cert"' + (FILTRO === 'cert' ? ' selected' : '') + '>Solo certificados</option></select></div></div>';
+  const lst = [];
+  if (FILTRO !== 'cert') srv.forEach(u => lst.push({ f: u.fecha, h: item('Manifiesto ' + esc(u.nro), fechaTxt(u.fecha) + ' · ' + esc(u.sitio) + ' · ' + res(u.res), '<span class="tag ok">' + (u.origen === 'App' ? 'Registrado' : 'Histórico') + '</span>') }));
+  if (FILTRO !== 'man') cer.forEach(c => lst.push({ f: c.mes + '-28', h: item('Certificado ' + esc(c.ncert), mesTxt(c.mes) + ' · ' + esc(c.empresa), '<span class="tag ok">Registrado</span>') }));
+  lst.sort((a, b) => b.f.localeCompare(a.f));
+  h += lst.length ? '<div class="lista">' + lst.slice(0, 60).map(x => x.h).join('') + '</div><p class="mu" style="font-size:13px">Se muestran las últimas cargas registradas.</p>' : '<p class="mu">Todavía no hay cargas registradas' + (navigator.onLine ? '.' : ' (sin señal: se actualiza al volver la conexión).') + '</p>';
+  $('app').innerHTML = h;
+  bar('<button class="btn sec" data-act="inicio">Volver al inicio</button>'); window.scrollTo(0, 0);
+}
+
+// ------------------------------------------------------------------ Avance
+function avance() {
+  VISTA = 'avance'; vista('wide');
+  const av = CFG && CFG.avance || {}, hoy = hoyISO().slice(0, 7);
+  const loc = {}; miCola().forEach(c => { const k = c.tipo === 'manifiesto' ? c.datos.fecha.slice(0, 7) : c.datos.mes; loc[k] = (loc[k] || 0) + 1; });
+  const celdas = Array.from({ length: 12 }, (_, i) => {
+    const m = ANIO_AV + '-' + String(i + 1).padStart(2, '0'), nombre = MESES[i], a = av[m] || { retiros: 0, cert: 0 };
+    if (m > hoy) return '<div class="mes" style="opacity:.45"><b>' + nombre + '</b>Todavía no</div>';
+    if (!a.retiros && !loc[m]) return '<div class="mes vacio"><b>' + nombre + '</b>Sin cargas</div>';
+    return '<div class="mes ' + (a.cert ? 'ok' : 'wa') + '"><b>' + nombre + '</b>' + a.retiros + ' retiro' + (a.retiros === 1 ? '' : 's') + (loc[m] ? ' + ' + loc[m] + ' por enviar' : '') + '<br>' + (a.cert ? 'Certificado cargado' : 'Falta certificado') + '</div>';
+  }).join('');
+  $('app').innerHTML = '<h1>Avance por mes</h1><div class="field"><div class="lab"><label for="f_anio">Año</label></div><select id="f_anio" data-chg="anio">' + ANIOS().map(y => '<option' + (y === ANIO_AV ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>' +
+    '<div class="anio">' + celdas + '</div><p class="mu">Cuenta los retiros con Y1 de todos los sitios. Un mes está completo cuando tiene retiros y certificado.</p>';
+  bar('<button class="btn sec" data-act="inicio">Volver al inicio</button>'); window.scrollTo(0, 0);
+}
+
+// ------------------------------------------------------------------ Acciones
+const ACT = {
+  ayuda: b => ayuda(b.dataset.arg), cerrarAyuda: () => cerrarAyuda(),
+  preguntaSi: () => { cerrarAyuda(); const f = PREG; PREG = null; if (f) f(); }, preguntaNo: () => { cerrarAyuda(); PREG = null; },
+  entrar: () => entrar(), salir: () => preguntar('¿Salir del sistema?', 'Sí, salir', () => salirSesion()),
+  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas_' + SES.est, []).filter(p => p.nombre !== ref); SES.persona = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos' } : ult[Number(b.dataset.arg)]; LS.set('ses', SES); inicio(); },
+  otraPersona: () => { ERR = {}; otraPersona(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
+  inicio: () => inicio(), consulta: () => consulta(), avance: () => avance(), actualizar: () => { actualizarConfig(false); sincronizar(); },
+  nuevoManifiesto: () => nuevoManifiesto(), nuevoCertificado: () => nuevoCertificado(),
+  adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
+  sino: b => { leer(); M[b.dataset.k2] = b.dataset.arg; delete ERR[b.dataset.k2]; pasoMan(); },
+  guardarCert: () => guardarCert(),
+  cal: b => { const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
+  calMes: b => { let m = CAL.m + Number(b.dataset.arg), y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } if (y < 2025 || y > new Date().getFullYear()) return; CAL.m = m; CAL.y = y; calendario(); },
+  calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
+  corregirLocal: b => { const c = COLA.find(x => x.datos.idLocal === b.dataset.arg); if (!c) return; COLA = COLA.filter(x => x !== c); guardarCola();
+    if (c.tipo === 'manifiesto') { const d = c.datos; nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, firma: d.firma, original: d.original, foto: d.foto, obs: d.obs, res: corrCfg().map(x => Object.assign(nuevoRes(x.c, d.sitio), d.res.find(r => r.corriente === x.c) || {})) }); }
+    else { const d = c.datos; nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: d.mes.slice(5, 7), mesA: d.mes.slice(0, 4), ncert: d.ncert, ftrat: d.ftrat, foto: d.foto }); } },
+  descartar: b => preguntar('¿Descartar esta carga? No se va a registrar.', 'Sí, descartar', () => { COLA = COLA.filter(x => x.datos.idLocal !== b.dataset.arg); guardarCola(); consulta(); pintarRed(); }),
+};
+document.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && ACT[b.dataset.act] && !b.disabled) { e.preventDefault(); ACT[b.dataset.act](b); } });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.chg === 'foto') foto(t, M, pasoMan);
+  else if (t.dataset.chg === 'fotoC') foto(t, C, pasoCert);
+  else if (t.dataset.chg === 'repMan') { leer(); pasoMan(); }
+  else if (t.dataset.chg === 'repOtra') { OTRA.funcion = t.value; otraPersona(); }
+  else if (t.dataset.chg === 'anio') { ANIO_AV = t.value; avance(); }
+  else if (t.dataset.chg === 'filtro') { FILTRO = t.value; consulta(); }
+  else if (t.dataset.cm && C) { C[t.dataset.cm === 'm' ? 'mesM' : 'mesA'] = t.value; }
+  else if (t.dataset.c && C) C[t.dataset.c] = t.value;
+  else if (t.dataset.l) LOG[t.dataset.l] = t.value;
+  else if (t.hasAttribute('data-calm')) { CAL.m = Number(t.value); calendario(); }
+  else if (t.hasAttribute('data-caly')) { CAL.y = Number(t.value); calendario(); }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.fecha) escribirFecha(t);
+  if (t.dataset.c && C) C[t.dataset.c] = t.value;
+  if (t.dataset.l) LOG[t.dataset.l] = t.value;
+  if (t.dataset.o && OTRA) OTRA[t.dataset.o] = t.value;
+  if (t.dataset.recalc && M) {   // recalcula la cantidad retirada sin perder el foco
+    const i = Number(t.dataset.i); M.res[i][t.dataset.k] = t.value; calcVol(M.res[i]);
+    const v = document.querySelector('[data-k="vol"][data-i="' + i + '"]'); if (v && M.res[i].uni === 'dm³') v.value = M.res[i].vol;
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && VISTA === 'ingreso' && e.target.id === 'f_clave') { LOG.clave = e.target.value; entrar(); } });
+$('ov').addEventListener('click', e => { if (e.target.id === 'ov') cerrarAyuda(); });
+$('net').onclick = () => sincronizar();
+
+// ------------------------------------------------------------------ Arranque
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); } else if (SES) quienCarga(); else ingreso();
+
+</script>
+</body>
+</html>
