@@ -100,6 +100,20 @@ const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g,
 const fechaTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('portal_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('portal_' + k, JSON.stringify(v)); } catch (e) {} }, del: k => { try { localStorage.removeItem('portal_' + k); } catch (e) {} } };
 let FICHAS = {};
+const DIAG_URL = 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
+const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
+  ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
+function compartirDiag(nombre) {
+  return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + DIAG_URL + '" target="_blank" rel="noopener">' + DIAG_URL + '</a></div><div class="mu peq">Cada referente entra con la clave de su establecimiento (la misma de los manifiestos).</div></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-copiar="enlace">Copiar enlace</button><button class="btn sec" data-copiar="mensaje">Copiar mensaje</button><a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(diagMensaje(nombre)) + '">Enviar por WhatsApp</a></div></section>';
+}
+function activarCompartir(nombre) {
+  document.querySelectorAll('[data-copiar]').forEach(b => b.onclick = async () => {
+    const t = b.dataset.copiar === 'enlace' ? DIAG_URL : diagMensaje(nombre);
+    try { await navigator.clipboard.writeText(t); toast(b.dataset.copiar === 'enlace' ? 'Enlace copiado.' : 'Mensaje copiado: pegalo en el correo o el chat.'); }
+    catch (e) { prompt('Copiá el texto:', t); }
+  });
+}
 let CLAVE = LS.get('clave', ''), RES = null, FICHA = null, TRAB = { cod: '', q: '', datos: null };
 const TIPOS_CON = ['Dirección', 'Servicio', 'Jefatura', 'Comité', 'Área administrativa', 'Guardia / urgencias', 'Otro'];
 const CODS_EXTRA = [['NC', 'Nivel central (Secretaría de Salud y organismos)'], ['SIN_ASIGNAR', 'Sin establecimiento reconocido']];
@@ -141,7 +155,7 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + pr('Auditorías') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
@@ -471,6 +485,7 @@ const DCFG = {
   foto: p => api('p_diag_foto', p),
   pantalla: html => marco('#diag', html),
   volver: '<a href="#diag" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los diagnósticos</a>',
+  extra: () => compartirDiag(DG.nombre), alPintar: () => activarCompartir(DG.nombre),
   nombre: cod => ((RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
 };
@@ -482,11 +497,12 @@ async function diagLista() {
   const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
   marco('#diag', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Diagnóstico de residuos</h1><span class="mu">Todas las corrientes, salvo radiactivos y efluentes. Cumple = 1 · Parcial = 0,5 · No cumple = 0 · No aplica no cuenta.</span></div></div>' +
     '<div class="grid g4">' + kpi(con.length + ' de ' + F.length, 'Con diagnóstico', 'Establecimientos evaluados') + kpi(prom == null ? '—' : prom + ' %', 'Cumplimiento promedio', 'De los evaluados') +
-    kpi(con.filter(f => Number(f.diag.criticos) > 0).length, 'Con puntos críticos', 'Algún punto crítico «No cumple»') + kpi(F.filter(f => f.diag && f.diag.estado === 'Enviado').length, 'Enviados por referentes', 'Para revisar y cerrar') + '</div>' +
+    kpi(con.filter(f => Number(f.diag.criticos) > 0).length, 'Con puntos críticos', 'Algún punto crítico «No cumple»') + kpi(F.filter(f => f.diag && f.diag.estado === 'Enviado').length, 'Enviados por referentes', 'Para revisar y cerrar') + '</div>' + compartirDiag('') +
     '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Último diagnóstico</th><th>Resultado</th><th></th></tr></thead><tbody>' +
     F.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td>' + (f.diag ? fechaTxt(f.diag.fecha) : '—') + '</td><td>' + chipDiag(f.diag) + '</td><td><span class="link">' + (f.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
     '</tbody></table></section>');
   document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#diag/' + encodeURIComponent(tr.dataset.cod));
+  activarCompartir('');
 }
 // ------------------------------------------------------------------ Diagnóstico de residuos (núcleo común: portal y referentes)
 // DCFG lo define cada página: modo ('hys' | 'red'), abrir, guardar, foto, pantalla, volver.
@@ -545,6 +561,7 @@ function diagPintar() {
   DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
     '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
     (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
+    (DCFG.extra ? DCFG.extra() : '') +
     '<section class="card"><div class="grid g4">' +
       '<label class="f">Fecha<input class="c" type="date" data-cab="FECHA" value="' + esc(DG.cab.FECHA) + '"' + (ro ? ' disabled' : '') + '></label>' +
       (red ? '' : '<label class="f">Modalidad<select class="c" data-cab="MODALIDAD"' + (ro ? ' disabled' : '') + '>' + ['Visita', 'Entrevista', 'Referente (en línea)', 'Libro de la red'].map(o => '<option' + (DG.cab.MODALIDAD === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></label>') +
@@ -560,6 +577,7 @@ function diagPintar() {
           '<div class="ctl">' + ctl(i) + '</div>' +
           (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
     '<div class="barra">' + botones + '<span class="mu peq" id="dgEstado">' + (DG.subiendo ? 'Subiendo fotos…' : DG.sucio ? 'Hay cambios sin guardar.' : '') + '</span></div>');
+  if (DCFG.alPintar) DCFG.alPintar();
   const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
   const q = s => document.querySelectorAll(s);
   q('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, r = DG.R[k] = DG.R[k] || {}; r.resp = r.resp === b.dataset.v ? '' : b.dataset.v; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
