@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagnóstico de residuos · Higiene y Seguridad</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --az:#0D313F; --pa:#5894A7; --tx:#1B2A31; --mu:#4F616B; --ln:#D5DEE2; --bg:#F4F7F8; --gr:#E4EAED;
+    --ok:#0D313F; --okt:#FFFFFF; --pa2:#BFD6DE; --er:#8A2B1F; --erbg:#F6DCD8; --wa:#7A5300; --wabg:#FBE9C6; color-scheme: light; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: var(--tx); background: var(--bg); font-size: 15px; line-height: 1.45; }
+  a { color: var(--az); } a:hover { color: var(--pa); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .app { display: flex; flex-wrap: wrap; min-height: 100vh; }
+  nav.lat { flex: 1 1 240px; max-width: 270px; background: var(--az); color: #fff; padding: 22px 14px; display: flex; flex-direction: column; gap: 2px; }
+  nav.lat .marca { padding: 0 8px 18px; border-bottom: 1px solid #2A5466; margin-bottom: 10px; }
+  nav.lat .marca b { display: block; font-size: 18px; } nav.lat .marca span { font-size: 13px; color: #C9DCE3; }
+  nav.lat .sec { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A9C6D1; padding: 14px 8px 4px; }
+  nav.lat a, nav.lat button.it { display: block; width: 100%; text-align: left; color: #fff; text-decoration: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; background: none; border: 0; cursor: pointer; }
+  nav.lat a.on { background: #fff; color: var(--az); font-weight: 700; }
+  nav.lat a:hover:not(.on), nav.lat button.it:hover { background: #1E4A5C; }
+  nav.lat .pr { color: #9FB7C1; font-size: 13px; padding: 6px 10px; }
+  nav.lat .pie { margin-top: auto; border-top: 1px solid #2A5466; padding: 14px 8px 0; font-size: 13px; color: #C9DCE3; }
+  main { flex: 999 1 560px; min-width: 0; padding: 28px 36px 60px; display: flex; flex-direction: column; gap: 20px; }
+  h1 { margin: 0; font-size: 28px; color: var(--az); } h2 { margin: 0; font-size: 17px; color: var(--az); }
+  .mu { color: var(--mu); } .peq { font-size: 13px; }
+  .cab { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: flex-end; }
+  .card { background: #fff; border: 1px solid var(--ln); border-radius: 12px; padding: 18px 22px; }
+  .grid { display: grid; gap: 16px; } .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3, .g2 { grid-template-columns: minmax(0, 1fr); } }
+  .kpi span { font-size: 13px; color: var(--mu); font-weight: 600; display: block; } .kpi b { font-size: 30px; color: var(--az); display: block; } .kpi small { font-size: 13px; color: var(--mu); }
+  .filtros { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--mu); font-weight: 600; }
+  input.c, select.c, textarea.c { border: 1px solid var(--ln); border-radius: 8px; padding: 9px 11px; background: #fff; min-height: 42px; font-size: 14px; }
+  textarea.c { min-height: 70px; }
+  .btn { border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer; min-height: 42px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  .pri { background: var(--az); color: #fff; } .sec { background: #fff; color: var(--az); border: 1px solid var(--az); } .peligro { background: #fff; color: var(--er); border: 1px solid var(--er); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .link { background: none; border: 0; padding: 0; color: var(--az); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 13px; }
+  .tabla { overflow-x: auto; padding: 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-size: 12px; color: var(--mu); padding: 10px 12px; border-bottom: 1px solid var(--ln); white-space: nowrap; background: #fff; position: sticky; top: 0; }
+  td { padding: 9px 12px; border-bottom: 1px solid #EEF2F4; font-size: 14px; vertical-align: top; }
+  tr.cl { cursor: pointer; } tr.cl:hover td { background: #F7FAFB; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 6px; white-space: nowrap; }
+  .ok { background: var(--ok); color: var(--okt); } .pa { background: var(--pa2); color: var(--az); } .er { background: var(--erbg); color: var(--er); } .wa { background: var(--wabg); color: var(--wa); } .gr { background: #EEF2F4; color: var(--mu); }
+  dl.datos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 14px; } dl.datos dt { color: var(--mu); font-weight: 600; font-size: 13px; } dl.datos dd { margin: 0; }
+  .item { border-top: 1px solid #EEF2F4; padding: 10px 0; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .item:first-of-type { border-top: 0; }
+  .aviso { background: #FFFFFF; border: 1px solid var(--pa); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
+  .error { border-color: var(--er); background: var(--erbg); color: var(--er); }
+  .vacio { padding: 40px; text-align: center; color: var(--mu); }
+  .ov { position: fixed; inset: 0; background: rgba(13,49,63,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 20; }
+  .modal { background: #fff; border-radius: 14px; width: min(760px, 100%); padding: 24px 26px; display: flex; flex-direction: column; gap: 14px; }
+  .modal .campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } @media (max-width: 640px) { .modal .campos { grid-template-columns: minmax(0, 1fr); } }
+  .modal .ancho { grid-column: 1 / -1; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; border-top: 1px solid #EEF2F4; padding-top: 14px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--az); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 30; }
+  .cargando { padding: 50px; text-align: center; color: var(--mu); }
+  .login { max-width: 420px; margin: 10vh auto; display: flex; flex-direction: column; gap: 14px; }
+  .cpn { display: flex; gap: 6px; flex-wrap: wrap; } .cpn .btn { min-height: 38px; padding: 6px 14px; } .cpn .sel { border: 0; }
+  .multi { display: flex; flex-wrap: wrap; gap: 6px 14px; } .multi label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .punto { padding: 12px 18px; border-top: 1px solid #EEF2F4; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; }
+  .punto.ancho .ctl, .punto .obs, .punto .fotos { grid-column: 1 / -1; } .punto .obs { min-height: 34px; font-size: 13px; }
+  .punto b { font-weight: 600; } .c.ancho { max-width: 520px; width: 100%; }
+  .seccion { padding: 0; } .sec-tit { padding: 12px 18px; border-bottom: 1px solid var(--ln); }
+  .chip.mini { font-size: 11px; } .ref { font-size: 11px; }
+  .fotos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; } .fotos .quitar { text-decoration: none; font-size: 16px; color: var(--er); }
+  .btn.foto { min-height: 34px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .tabs .btn { min-height: 34px; padding: 6px 12px; }
+  .barra { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; z-index: 5; }
+  .resultado { min-width: 220px; }
+  .escala { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .escala select.c { max-width: 640px; width: 100%; }
+  .ctl select.c { min-width: 260px; } @media (max-width: 640px) { .ctl select.c { min-width: 0; width: 100%; } }
+  @media (max-width: 640px) { .punto { grid-template-columns: minmax(0, 1fr); } .resultado { min-width: 0; width: 100%; } }
+</style>
+<style>
+  .top { background: var(--az); color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .top b { font-size: 17px; } .top span { font-size: 13px; color: #C9DCE3; } .top .link { color: #fff; }
+  main.ref { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; display: flex; flex-direction: column; gap: 18px; }
+  @media (max-width: 640px) { main.ref { padding: 14px 10px 60px; } h1 { font-size: 22px; } .card { padding: 14px; } }
+</style>
+</head>
+<body>
+<div class="top"><div><b>Diagnóstico de residuos</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><button class="link" id="salir" hidden>Salir</button></div>
+<main class="ref" id="raiz"></main>
+<div id="ov" class="ov" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const fechaTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
+const LS = { get: (k, d) => { try { const v = localStorage.getItem('diag_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('diag_' + k, JSON.stringify(v)); } catch (e) {} }, del: k => { try { localStorage.removeItem('diag_' + k); } catch (e) {} } };
+function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 4500); }
+let SES = LS.get('ses', null), LISTA = [];
+async function post(accion, datos, sinSes) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 90000);
+  try {
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: sinSes ? '' : SES.est, clave: sinSes ? '' : SES.clave, datos: datos || {} }), signal: ctl.signal });
+    const j = JSON.parse(await r.text());
+    if (j.error === 'clave') { salir('La clave no es correcta.'); throw new Error('clave'); }
+    return j;
+  } catch (e) { if (e.message !== 'clave') toast(e.name === 'AbortError' ? 'El sistema tardó demasiado. Probá de nuevo.' : 'No se pudo conectar. Revisá la señal y probá de nuevo.'); throw e; }
+  finally { clearTimeout(t); }
+}
+const DCFG = {
+  modo: 'red',
+  abrir: () => post('d_abrir', {}),
+  guardar: p => post('d_guardar', p),
+  foto: p => post('d_foto', p),
+  pantalla: html => { $('raiz').innerHTML = html; },
+  volver: '',
+  nombre: () => SES.nombre
+};
+async function ingreso(msg) {
+  $('salir').hidden = true;
+  $('raiz').innerHTML = '<div class="card login" style="margin:6vh auto"><h1>Ingresar</h1><p class="mu" style="margin:0">Usá la misma clave del establecimiento que se usa para cargar los manifiestos.</p>' + (msg ? '<div class="aviso error">' + esc(msg) + '</div>' : '') +
+    '<label class="f">Establecimiento<select class="c" id="est"><option value="">Cargando…</option></select></label><label class="f">Clave<input class="c" id="clave" type="password" autocomplete="current-password"></label>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="rec" checked> Recordar en este equipo</label><button class="btn pri" id="entrar">Ingresar</button></div>';
+  try { if (!LISTA.length) { const r = await post('d_lista', {}, true); LISTA = (r && r.lista) || []; } } catch (e) {}
+  $('est').innerHTML = '<option value="">Elegí…</option>' + LISTA.map(x => '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>').join('');
+  const ir = async () => {
+    const est = $('est').value, clave = $('clave').value.trim(); if (!est || !clave) return;
+    SES = { est: est, clave: clave, nombre: (LISTA.find(x => x.id === est) || {}).nombre || est };
+    $('entrar').disabled = true; $('entrar').textContent = 'Verificando…';
+    try { const r = await post('d_abrir', {}); if (!r.ok) throw new Error(r.mensaje || ''); if ($('rec').checked) LS.set('ses', SES); empezar(); }
+    catch (e) { if (e.message !== 'clave') ingreso(e.message || 'No se pudo ingresar.'); }
+  };
+  $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); };
+}
+function salir(msg) { SES = null; LS.del('ses'); ingreso(msg); }
+function empezar() { $('salir').hidden = false; $('salir').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; salir(); }; diagForm(SES.est); }
+// ------------------------------------------------------------------ Diagnóstico de residuos (núcleo común: portal y referentes)
+// DCFG lo define cada página: modo ('hys' | 'red'), abrir, guardar, foto, pantalla, volver.
+const RESP_CPN = [['Cumple', 'C', 'ok'], ['Parcial', 'P', 'wa'], ['No cumple', 'N', 'er'], ['No aplica', 'NA', 'gr']];
+let DG = null;
+const hoyISO = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'); };
+async function diagForm(cod, id) {
+  DCFG.pantalla('<div class="cargando">Abriendo el diagnóstico…</div>');
+  let D; try { D = await DCFG.abrir(cod, id || ''); } catch (e) { return; }
+  if (!D || !D.ok) return DCFG.pantalla('<div class="aviso error">' + esc((D && D.mensaje) || 'No se pudo abrir.') + '</div>');
+  const R = {}; (D.respuestas || []).forEach(r => R[(r.sitio || '') + '|' + r.item] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: r.fotos || [] });
+  DG = { cod: cod, nombre: D.nombre || DCFG.nombre(cod), D: D, R: R, id: D.actual ? D.actual.ID_DIAG : '', estado: D.actual ? D.actual.ESTADO : 'Nuevo', tab: '', sucio: false, subiendo: 0,
+    cab: D.actual ? { FECHA: String(D.actual.FECHA).slice(0, 10), MODALIDAD: D.actual.MODALIDAD, RELEVADO_POR: D.actual.RELEVADO_POR, ENTREVISTADO: D.actual.ENTREVISTADO, OBSERVACIONES: D.actual.OBSERVACIONES }
+      : { FECHA: hoyISO(), MODALIDAD: DCFG.modo === 'red' ? 'Referente (en línea)' : 'Visita', RELEVADO_POR: DCFG.modo === 'red' ? '' : 'Belén Pellegrini', ENTREVISTADO: '', OBSERVACIONES: '' } };
+  diagPintar();
+}
+const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
+function diagCalc() {
+  const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
+  let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
+  Object.keys(DG.R).forEach(k => { const it = porId[k.split('|')[1]], r = DG.R[k]; if (!it) return;
+    let v = null;
+    if (it.TIPO === 'CPN') v = { 'Cumple': 1, 'Parcial': 0.5, 'No cumple': 0 }[r.resp];
+    else if (it.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')); if (m) { v = Number(m[1]) / 6; msn += Number(m[1]); nm++; } }
+    if (v == null) return; const w = Number(it.PESO) || 1; suma += w * v; pesos += w; n++; if (it.CRITICO === 'Sí' && v <= 1 / 3) crit++; });
+  return { pct: pesos ? Math.round(1000 * suma / pesos) / 10 : null, crit: crit, n: n, msn: nm ? Math.round(10 * msn / nm) / 10 : null };
+}
+function diagAvance(sitio) {
+  const its = DG.D.items.filter(i => (sitio === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S'));
+  const hechos = its.filter(i => { const r = DG.R[sitio + '|' + i.ID]; return r && (r.resp || r.valor); }).length;
+  return [hechos, its.length];
+}
+function diagPintar() {
+  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio)), ro = diagSoloLectura(), red = DCFG.modo === 'red';
+  const tabTxt = t => { const [h, n] = diagAvance(t); return (t === '' ? 'Establecimiento' : t) + ' · ' + h + '/' + n; };
+  const its = D.items.filter(i => DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S');
+  const secciones = Array.from(new Set(its.map(i => i.SECCION)));
+  const ctl = i => { const k = DG.tab + '|' + i.ID, r = DG.R[k] || {};
+    if (i.TIPO === 'CPN') return '<div class="cpn">' + RESP_CPN.map(([v, l, cl]) => '<button class="btn ' + (r.resp === v ? 'chip ' + cl + ' sel' : 'sec') + '" data-k="' + esc(k) + '" data-v="' + v + '"' + (ro ? ' disabled' : '') + ' title="' + v + '">' + l + '</button>').join('') + '</div>';
+    if (i.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')), nv = m ? Number(m[1]) : null;
+      return '<div class="escala"><select class="c" data-kv="' + esc(k) + '"' + (ro ? ' disabled' : '') + '><option value="">Elegí el nivel…</option>' + String(i.OPCIONES).split('|').map(o => '<option' + (r.valor === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>' +
+        (nv == null ? '' : '<span class="chip ' + (nv >= 5 ? 'ok' : nv >= 3 ? 'wa' : 'er') + '">' + nv + ' / 6</span>') + '</div>'; }
+    if (i.TIPO === 'LISTA') return '<select class="c" data-kv="' + esc(k) + '"' + (ro ? ' disabled' : '') + '><option value=""></option>' + String(i.OPCIONES).split('|').map(o => '<option' + (r.valor === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
+    if (i.TIPO === 'MULTI') { const sel = String(r.valor || '').split('|'); return '<div class="multi">' + String(i.OPCIONES).split('|').map(o => '<label><input type="checkbox" data-km="' + esc(k) + '" value="' + esc(o) + '"' + (sel.indexOf(o) >= 0 ? ' checked' : '') + (ro ? ' disabled' : '') + '>' + esc(o) + '</label>').join('') + '</div>'; }
+    return '<input class="c ancho" data-kv="' + esc(k) + '" value="' + esc(r.valor || '') + '"' + (i.TIPO === 'NUMERO' ? ' type="number"' : '') + (ro ? ' disabled' : '') + '>';
+  };
+  const fotos = i => { if (i.FOTO !== 'Sí') return ''; const k = DG.tab + '|' + i.ID, L = (DG.R[k] && DG.R[k].fotos) || [];
+    return '<div class="fotos">' + L.map((u, n) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (n + 1) + '</a>' + (ro ? '' : '<button class="link quitar" data-fq="' + esc(k) + '" data-fn="' + n + '" title="Quitar de la lista">×</button>')).join('') +
+      (ro ? '' : '<label class="btn sec foto">📷 Agregar foto<input type="file" accept="image/*" multiple hidden data-ff="' + esc(k) + '"></label>') + '</div>'; };
+  const estadoTxt = { Nuevo: 'nuevo', Borrador: 'borrador', Enviado: red ? 'enviado a Higiene y Seguridad' : 'enviado por el referente: revisar', Cerrado: 'cerrado' }[DG.estado] || DG.estado;
+  const hist = !red && (D.historial || []).length ? '<div class="peq" style="margin-top:4px">Anteriores: ' + D.historial.map(h => '<button class="link" data-hist="' + esc(h.id) + '">' + esc(fechaTxt(h.fecha)) + ' · ' + (h.pct === '' ? '—' : h.pct + ' %') + ' · ' + esc(h.estado) + '</button>').join(' · ') + '</div>' : '';
+  let botones = '';
+  if (red) botones = ro ? '<span class="mu">Ya se envió a Higiene y Seguridad. Si hay que corregir algo, Higiene y Seguridad lo devuelve.</span>' : '<button class="btn sec" id="dgGuardar">Guardar y seguir después</button><button class="btn pri" id="dgEnviar">Enviar a Higiene y Seguridad</button>';
+  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un diagnóstico nuevo</button>';
+  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar diagnóstico</button>';
+  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
+    '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
+    (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
+    '<section class="card"><div class="grid g4">' +
+      '<label class="f">Fecha<input class="c" type="date" data-cab="FECHA" value="' + esc(DG.cab.FECHA) + '"' + (ro ? ' disabled' : '') + '></label>' +
+      (red ? '' : '<label class="f">Modalidad<select class="c" data-cab="MODALIDAD"' + (ro ? ' disabled' : '') + '>' + ['Visita', 'Entrevista', 'Referente (en línea)', 'Libro de la red'].map(o => '<option' + (DG.cab.MODALIDAD === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></label>') +
+      '<label class="f">' + (red ? 'Quién lo completa (nombre y función)' : 'Relevado por') + '<input class="c" data-cab="RELEVADO_POR" value="' + esc(DG.cab.RELEVADO_POR) + '"' + (ro ? ' disabled' : '') + '></label>' +
+      '<label class="f">' + (red ? 'Otras personas que participaron' : 'Persona entrevistada') + '<input class="c" data-cab="ENTREVISTADO" value="' + esc(DG.cab.ENTREVISTADO) + '"' + (ro ? ' disabled' : '') + '></label></div>' +
+      '<label class="f" style="margin-top:12px">Observaciones generales<textarea class="c" data-cab="OBSERVACIONES"' + (ro ? ' disabled' : '') + '>' + esc(DG.cab.OBSERVACIONES) + '</textarea></label></section>' +
+    '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '">' + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
+    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.' + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
+    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un diagnóstico anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
+    secciones.map(sec => '<section class="card seccion"><div class="sec-tit"><h2>' + esc(sec) + '</h2></div>' +
+      its.filter(i => i.SECCION === sec).map(i => { const r = DG.R[DG.tab + '|' + i.ID] || {}, ancho = i.TIPO === 'MULTI' || i.TIPO === 'TEXTO' || i.TIPO === 'ESCALA';
+        return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div><b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
+          '<div class="ctl">' + ctl(i) + '</div>' +
+          (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
+    '<div class="barra">' + botones + '<span class="mu peq" id="dgEstado">' + (DG.subiendo ? 'Subiendo fotos…' : DG.sucio ? 'Hay cambios sin guardar.' : '') + '</span></div>');
+  const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
+  const q = s => document.querySelectorAll(s);
+  q('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, r = DG.R[k] = DG.R[k] || {}; r.resp = r.resp === b.dataset.v ? '' : b.dataset.v; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
+  q('[data-kv]').forEach(el => el.onchange = () => { (DG.R[el.dataset.kv] = DG.R[el.dataset.kv] || {}).valor = el.value; marcar(); if (el.closest('.escala')) { const y = window.scrollY; diagPintar(); window.scrollTo(0, y); } });
+  q('[data-km]').forEach(el => el.onchange = () => { const k = el.dataset.km; (DG.R[k] = DG.R[k] || {}).valor = [...q('[data-km]')].filter(x => x.dataset.km === k && x.checked).map(x => x.value).join('|'); marcar(); });
+  q('[data-ko]').forEach(el => el.onchange = () => { (DG.R[el.dataset.ko] = DG.R[el.dataset.ko] || {}).obs = el.value; marcar(); });
+  q('[data-cab]').forEach(el => el.onchange = () => { DG.cab[el.dataset.cab] = el.value; marcar(); });
+  q('[data-tab]').forEach(b => b.onclick = () => { DG.tab = b.dataset.tab; diagPintar(); window.scrollTo(0, 0); });
+  q('[data-hist]').forEach(b => b.onclick = () => { if (DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; diagForm(DG.cod, b.dataset.hist); });
+  q('[data-fq]').forEach(b => b.onclick = () => { const r = DG.R[b.dataset.fq]; r.fotos.splice(Number(b.dataset.fn), 1); DG.sucio = true; diagPintar(); });
+  q('[data-ff]').forEach(inp => inp.onchange = () => diagSubirFotos(inp.dataset.ff, [...inp.files]));
+  if ($('dgPrevio')) $('dgPrevio').onclick = () => { DG.D.respuestasPrevio.forEach(r => { const k = (r.sitio || '') + '|' + r.item; if (!DG.R[k] || !(DG.R[k].resp || DG.R[k].valor)) DG.R[k] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: [] }; }); DG.sucio = true; toast('Se trajeron las respuestas anteriores: revisalas una por una.'); diagPintar(); };
+  if ($('dgCopiar')) $('dgCopiar').onclick = () => {
+    const otros = DG.D.sitios.map(x => x.sitio).filter(x => x !== DG.tab && diagAvance(x)[0] > 0);
+    if (!otros.length) return toast('Todavía no hay otro lugar con respuestas.');
+    const o = prompt('¿De qué lugar copio las respuestas? (las fotos no se copian)\n' + otros.join(' · '), otros[0]); if (!o || otros.indexOf(o) < 0) return;
+    Object.keys(DG.R).filter(k => k.indexOf(o + '|') === 0).forEach(k => { const r = DG.R[k]; DG.R[DG.tab + '|' + k.slice(o.length + 1)] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: [] }; }); DG.sucio = true; diagPintar(); };
+  if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
+  if ($('dgCerrar')) $('dgCerrar').onclick = () => confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
+  if ($('dgEnviar')) $('dgEnviar').onclick = () => confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
+  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el diagnóstico al referente para que lo complete o corrija?') && diagGuardar('Borrador');
+  if ($('dgNuevo')) $('dgNuevo').onclick = () => { DG.D.previo = DG.D.actual || DG.D.previo; DG.D.respuestasPrevio = (DG.D.respuestas || []).length ? DG.D.respuestas : DG.D.respuestasPrevio; DG.D.actual = null; DG.D.respuestas = [];
+    DG.id = ''; DG.estado = 'Nuevo'; DG.R = {}; DG.cab.FECHA = hoyISO(); DG.sucio = true; diagPintar(); };
+}
+function diagPayload(estado) {
+  q2('[data-cab]').forEach(el => DG.cab[el.dataset.cab] = el.value);
+  const respuestas = Object.keys(DG.R).map(k => { const i = k.indexOf('|'), r = DG.R[k]; return { sitio: k.slice(0, i), item: k.slice(i + 1), resp: r.resp || '', valor: r.valor || '', obs: r.obs || '', fotos: r.fotos || [] }; })
+    .filter(r => r.resp || r.valor || r.obs || r.fotos.length);
+  return { cod: DG.cod, id: DG.id, cabecera: DG.cab, respuestas: respuestas, estado: estado };
+}
+const q2 = s => document.querySelectorAll(s);
+async function diagGuardar(estado, silencioso) {
+  if (DG.subiendo) { toast('Esperá a que terminen de subir las fotos.'); return false; }
+  const btn = q2('.barra .btn'); btn.forEach(b => b.disabled = true);
+  let r; try { r = await DCFG.guardar(diagPayload(estado)); } catch (e) { btn.forEach(b => b.disabled = false); return false; }
+  btn.forEach(b => b.disabled = false);
+  if (!r || !r.ok) { toast((r && r.mensaje) || 'No se pudo guardar.'); return false; }
+  DG.id = r.id; DG.estado = r.estado; DG.sucio = false;
+  if (DCFG.alGuardar) DCFG.alGuardar(r);
+  if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
+  return true;
+}
+// Fotos: se achican en el teléfono (máx. 1600 px) y se suben de a una
+function achicar(file) {
+  return new Promise((ok, mal) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const m = 1600, f = Math.min(1, m / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width * f); cv.height = Math.round(img.height * f);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', 0.75)); };
+    img.onerror = () => mal(new Error('No se pudo leer la imagen.')); img.src = url; });
+}
+async function diagSubirFotos(k, files) {
+  if (!files.length) return;
+  if (!DG.id) { const ok = await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); if (!ok) return; }
+  const i = k.indexOf('|'), r = DG.R[k] = DG.R[k] || {}; r.fotos = r.fotos || [];
+  DG.subiendo += files.length; diagPintar();
+  for (const f of files) {
+    try { const data = await achicar(f), res = await DCFG.foto({ cod: DG.cod, id: DG.id, sitio: k.slice(0, i), item: k.slice(i + 1), dataUrl: data });
+      if (res && res.ok) { r.fotos.push(res.url); DG.sucio = true; } else toast((res && res.mensaje) || 'No se pudo subir la foto.'); }
+    catch (e) { toast(e.message || 'No se pudo subir la foto.'); }
+    DG.subiendo--; diagPintar();
+  }
+  await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); diagPintar();
+}
+window.addEventListener('beforeunload', e => { if (DG && (DG.sucio || DG.subiendo)) { e.preventDefault(); e.returnValue = ''; } });
+
+SES ? empezar() : ingreso();
+</script>
+</body>
+</html>

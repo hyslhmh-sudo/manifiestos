@@ -61,6 +61,28 @@
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--az); color: #fff; padding: 12px 18px; border-radius: 10px; font-weight: 600; z-index: 30; }
   .cargando { padding: 50px; text-align: center; color: var(--mu); }
   .login { max-width: 420px; margin: 10vh auto; display: flex; flex-direction: column; gap: 14px; }
+  .cpn { display: flex; gap: 6px; flex-wrap: wrap; } .cpn .btn { min-height: 38px; padding: 6px 14px; } .cpn .sel { border: 0; }
+  .multi { display: flex; flex-wrap: wrap; gap: 6px 14px; } .multi label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .punto { padding: 12px 18px; border-top: 1px solid #EEF2F4; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; }
+  .punto.ancho .ctl, .punto .obs, .punto .fotos { grid-column: 1 / -1; } .punto .obs { min-height: 34px; font-size: 13px; }
+  .punto b { font-weight: 600; } .c.ancho { max-width: 520px; width: 100%; }
+  .seccion { padding: 0; } .sec-tit { padding: 12px 18px; border-bottom: 1px solid var(--ln); }
+  .chip.mini { font-size: 11px; } .ref { font-size: 11px; }
+  .fotos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; } .fotos .quitar { text-decoration: none; font-size: 16px; color: var(--er); }
+  .btn.foto { min-height: 34px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .tabs .btn { min-height: 34px; padding: 6px 12px; }
+  .barra { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; z-index: 5; }
+  .resultado { min-width: 220px; }
+  .escala { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .escala select.c { max-width: 640px; width: 100%; }
+  .ctl select.c { min-width: 260px; } @media (max-width: 640px) { .ctl select.c { min-width: 0; width: 100%; } }
+  @media (max-width: 640px) { .punto { grid-template-columns: minmax(0, 1fr); } .resultado { min-width: 0; width: 100%; } }
+  .cuad { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } @media (max-width: 900px) { .cuad { grid-template-columns: minmax(0, 1fr); } }
+  .q { border-radius: 12px; padding: 14px 16px; background: #fff; border: 1px solid var(--ln); border-top: 6px solid; display: flex; flex-direction: column; gap: 8px; min-height: 180px; }
+  .q.Q1 { border-top-color: #B42318; } .q.Q2 { border-top-color: #C98A00; } .q.Q3 { border-top-color: #5894A7; } .q.Q4 { border-top-color: #9AA8AF; }
+  .q h3 { margin: 0; font-size: 15px; color: var(--az); display: flex; justify-content: space-between; gap: 8px; } .q h3 small { color: var(--mu); font-weight: 500; font-size: 12px; }
+  .q .h { border-top: 1px solid #EEF2F4; padding-top: 7px; font-size: 13px; } .q .h b { font-weight: 600; } .q .cods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .q .cods button { border: 1px solid var(--ln); background: var(--bg); border-radius: 6px; font-size: 11px; padding: 2px 6px; cursor: pointer; }
+  .ejes { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--mu); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -119,7 +141,7 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + pr('Diagnóstico') + pr('Auditorías') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
@@ -136,6 +158,10 @@ let refrescando = false;
 async function refrescarRes() {
   if (refrescando) return; refrescando = true;
   try { const r = await api('p_resumen', {}); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if (cambio && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } catch (e) {} finally { refrescando = false; }
+}
+function chipDiag(d) {
+  if (!d || d.pct === '' || d.pct == null) return '<span class="chip gr">Sin diagnóstico</span>';
+  const p = Number(d.pct); return '<span class="chip ' + (p >= 80 ? 'ok' : p >= 50 ? 'wa' : 'er') + '" title="' + esc(fechaTxt(d.fecha) + ' · ' + d.estado) + '">' + p + ' %' + (Number(d.criticos) ? ' · ' + d.criticos + ' crítico(s)' : '') + (d.estado === 'Borrador' ? ' · borrador' : d.estado === 'Enviado' ? ' · enviado, revisar' : '') + '</span>';
 }
 function chipCap(c, a) { if (!a) return '<span class="chip gr">—</span>'; const p = Math.round(100 * (c || 0) / a); return '<span class="chip ' + (p >= 70 ? 'ok' : p >= 30 ? 'wa' : 'er') + '">' + (c || 0) + ' · ' + p + ' %</span>'; }
 function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
@@ -156,8 +182,8 @@ async function inicio(fresco) {
     '<button class="btn sec" id="btnAct">Actualizar</button></div></div>' +
     '<div class="grid g4">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
     kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', F.reduce((a, f) => a + (f.capacitados || 0), 0).toLocaleString('es-AR') + ' con al menos una capacitación' + (RES.sinAsignar ? ' · ' + RES.sinAsignar + ' sin asignar' : '')) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
-    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
-    vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + chipCap(f.capacitados, f.activos) + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
+    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Diagnóstico residuos</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
+    vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + chipCap(f.capacitados, f.activos) + '</td><td>' + chipDiag(f.diag) + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
     '</tbody></table>' + (vis.length ? '' : '<div class="vacio">Ningún establecimiento con estos filtros.</div>') + '</section>' +
     '<p class="mu peq">Datos al ' + new Date(RES.actualizado).toLocaleString('es-AR') + '. «Sin retiro»: días desde el último manifiesto registrado (verde hasta 10, amarillo hasta 30, rojo más de 30). «Capacitados»: trabajadores activos con al menos una capacitación registrada (verde desde 70 %, amarillo desde 30 %).</p>');
   $('fArea').onchange = e => { FILTRO.area = e.target.value; inicio(); };
@@ -190,7 +216,7 @@ async function ficha(cod) {
   const com = FICHA.comites.map((c, i) => '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.v[1]) + '</b><button class="link" data-com="' + i + '">Editar</button></div><dl class="datos" style="margin-top:8px">' +
     fila('Responsable', c.v[2]) + fila('Contacto', [c.v[3], c.v[4]].filter(x => x && x !== 's/d').join(' · ')) + fila('Reuniones', c.v[5]) + fila('Última reunión', c.v[6] ? fechaTxt(c.v[6]) : '') + '</dl></div>').join('');
   marco('#ficha', '<div class="cab"><div><a href="#inicio" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a la matriz</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
-    '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + '<a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
+    '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + '<a class="btn sec" href="#diag/' + encodeURIComponent(d.CODIGO) + '">Diagnóstico de residuos</a><a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
     '<div class="grid g3">' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + fila('Capacitados', FICHA.trabajadores.activos ? FICHA.trabajadores.capacitados + ' de ' + FICHA.trabajadores.activos + ' (' + Math.round(100 * FICHA.trabajadores.capacitados / FICHA.trabajadores.activos) + ' %)' : '') + '</dl></section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Red HyS</h2><button class="link" id="nuevaRed">Agregar persona</button></div><div style="margin-top:6px">' + (red || '<p class="mu">Sin personas cargadas.</p>') + '</div></section>' +
@@ -436,6 +462,209 @@ function pasoImp() {
   $('iOtra').onclick = () => importar();
 }
 
+
+// ------------------------------------------------------------------ Diagnóstico de residuos · portal
+const DCFG = {
+  modo: 'hys',
+  abrir: (cod, id) => api('p_diag_abrir', { cod: cod, id: id }),
+  guardar: p => api('p_diag_guardar', p),
+  foto: p => api('p_diag_foto', p),
+  pantalla: html => marco('#diag', html),
+  volver: '<a href="#diag" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los diagnósticos</a>',
+  nombre: cod => ((RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
+  alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
+};
+async function diagLista() {
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#diag'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  const F = RES.filas.slice().sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
+  const con = F.filter(f => f.diag && f.diag.pct !== '' && f.diag.pct != null);
+  const prom = con.length ? Math.round(con.reduce((a, f) => a + Number(f.diag.pct), 0) / con.length) : null;
+  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  marco('#diag', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Diagnóstico de residuos</h1><span class="mu">Todas las corrientes, salvo radiactivos y efluentes. Cumple = 1 · Parcial = 0,5 · No cumple = 0 · No aplica no cuenta.</span></div></div>' +
+    '<div class="grid g4">' + kpi(con.length + ' de ' + F.length, 'Con diagnóstico', 'Establecimientos evaluados') + kpi(prom == null ? '—' : prom + ' %', 'Cumplimiento promedio', 'De los evaluados') +
+    kpi(con.filter(f => Number(f.diag.criticos) > 0).length, 'Con puntos críticos', 'Algún punto crítico «No cumple»') + kpi(F.filter(f => f.diag && f.diag.estado === 'Enviado').length, 'Enviados por referentes', 'Para revisar y cerrar') + '</div>' +
+    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Último diagnóstico</th><th>Resultado</th><th></th></tr></thead><tbody>' +
+    F.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td>' + (f.diag ? fechaTxt(f.diag.fecha) : '—') + '</td><td>' + chipDiag(f.diag) + '</td><td><span class="link">' + (f.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
+    '</tbody></table></section>');
+  document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#diag/' + encodeURIComponent(tr.dataset.cod));
+}
+// ------------------------------------------------------------------ Diagnóstico de residuos (núcleo común: portal y referentes)
+// DCFG lo define cada página: modo ('hys' | 'red'), abrir, guardar, foto, pantalla, volver.
+const RESP_CPN = [['Cumple', 'C', 'ok'], ['Parcial', 'P', 'wa'], ['No cumple', 'N', 'er'], ['No aplica', 'NA', 'gr']];
+let DG = null;
+const hoyISO = () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'); };
+async function diagForm(cod, id) {
+  DCFG.pantalla('<div class="cargando">Abriendo el diagnóstico…</div>');
+  let D; try { D = await DCFG.abrir(cod, id || ''); } catch (e) { return; }
+  if (!D || !D.ok) return DCFG.pantalla('<div class="aviso error">' + esc((D && D.mensaje) || 'No se pudo abrir.') + '</div>');
+  const R = {}; (D.respuestas || []).forEach(r => R[(r.sitio || '') + '|' + r.item] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: r.fotos || [] });
+  DG = { cod: cod, nombre: D.nombre || DCFG.nombre(cod), D: D, R: R, id: D.actual ? D.actual.ID_DIAG : '', estado: D.actual ? D.actual.ESTADO : 'Nuevo', tab: '', sucio: false, subiendo: 0,
+    cab: D.actual ? { FECHA: String(D.actual.FECHA).slice(0, 10), MODALIDAD: D.actual.MODALIDAD, RELEVADO_POR: D.actual.RELEVADO_POR, ENTREVISTADO: D.actual.ENTREVISTADO, OBSERVACIONES: D.actual.OBSERVACIONES }
+      : { FECHA: hoyISO(), MODALIDAD: DCFG.modo === 'red' ? 'Referente (en línea)' : 'Visita', RELEVADO_POR: DCFG.modo === 'red' ? '' : 'Belén Pellegrini', ENTREVISTADO: '', OBSERVACIONES: '' } };
+  diagPintar();
+}
+const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
+function diagCalc() {
+  const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
+  let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
+  Object.keys(DG.R).forEach(k => { const it = porId[k.split('|')[1]], r = DG.R[k]; if (!it) return;
+    let v = null;
+    if (it.TIPO === 'CPN') v = { 'Cumple': 1, 'Parcial': 0.5, 'No cumple': 0 }[r.resp];
+    else if (it.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')); if (m) { v = Number(m[1]) / 6; msn += Number(m[1]); nm++; } }
+    if (v == null) return; const w = Number(it.PESO) || 1; suma += w * v; pesos += w; n++; if (it.CRITICO === 'Sí' && v <= 1 / 3) crit++; });
+  return { pct: pesos ? Math.round(1000 * suma / pesos) / 10 : null, crit: crit, n: n, msn: nm ? Math.round(10 * msn / nm) / 10 : null };
+}
+function diagAvance(sitio) {
+  const its = DG.D.items.filter(i => (sitio === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S'));
+  const hechos = its.filter(i => { const r = DG.R[sitio + '|' + i.ID]; return r && (r.resp || r.valor); }).length;
+  return [hechos, its.length];
+}
+function diagPintar() {
+  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio)), ro = diagSoloLectura(), red = DCFG.modo === 'red';
+  const tabTxt = t => { const [h, n] = diagAvance(t); return (t === '' ? 'Establecimiento' : t) + ' · ' + h + '/' + n; };
+  const its = D.items.filter(i => DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S');
+  const secciones = Array.from(new Set(its.map(i => i.SECCION)));
+  const ctl = i => { const k = DG.tab + '|' + i.ID, r = DG.R[k] || {};
+    if (i.TIPO === 'CPN') return '<div class="cpn">' + RESP_CPN.map(([v, l, cl]) => '<button class="btn ' + (r.resp === v ? 'chip ' + cl + ' sel' : 'sec') + '" data-k="' + esc(k) + '" data-v="' + v + '"' + (ro ? ' disabled' : '') + ' title="' + v + '">' + l + '</button>').join('') + '</div>';
+    if (i.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')), nv = m ? Number(m[1]) : null;
+      return '<div class="escala"><select class="c" data-kv="' + esc(k) + '"' + (ro ? ' disabled' : '') + '><option value="">Elegí el nivel…</option>' + String(i.OPCIONES).split('|').map(o => '<option' + (r.valor === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>' +
+        (nv == null ? '' : '<span class="chip ' + (nv >= 5 ? 'ok' : nv >= 3 ? 'wa' : 'er') + '">' + nv + ' / 6</span>') + '</div>'; }
+    if (i.TIPO === 'LISTA') return '<select class="c" data-kv="' + esc(k) + '"' + (ro ? ' disabled' : '') + '><option value=""></option>' + String(i.OPCIONES).split('|').map(o => '<option' + (r.valor === o ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
+    if (i.TIPO === 'MULTI') { const sel = String(r.valor || '').split('|'); return '<div class="multi">' + String(i.OPCIONES).split('|').map(o => '<label><input type="checkbox" data-km="' + esc(k) + '" value="' + esc(o) + '"' + (sel.indexOf(o) >= 0 ? ' checked' : '') + (ro ? ' disabled' : '') + '>' + esc(o) + '</label>').join('') + '</div>'; }
+    return '<input class="c ancho" data-kv="' + esc(k) + '" value="' + esc(r.valor || '') + '"' + (i.TIPO === 'NUMERO' ? ' type="number"' : '') + (ro ? ' disabled' : '') + '>';
+  };
+  const fotos = i => { if (i.FOTO !== 'Sí') return ''; const k = DG.tab + '|' + i.ID, L = (DG.R[k] && DG.R[k].fotos) || [];
+    return '<div class="fotos">' + L.map((u, n) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (n + 1) + '</a>' + (ro ? '' : '<button class="link quitar" data-fq="' + esc(k) + '" data-fn="' + n + '" title="Quitar de la lista">×</button>')).join('') +
+      (ro ? '' : '<label class="btn sec foto">📷 Agregar foto<input type="file" accept="image/*" multiple hidden data-ff="' + esc(k) + '"></label>') + '</div>'; };
+  const estadoTxt = { Nuevo: 'nuevo', Borrador: 'borrador', Enviado: red ? 'enviado a Higiene y Seguridad' : 'enviado por el referente: revisar', Cerrado: 'cerrado' }[DG.estado] || DG.estado;
+  const hist = !red && (D.historial || []).length ? '<div class="peq" style="margin-top:4px">Anteriores: ' + D.historial.map(h => '<button class="link" data-hist="' + esc(h.id) + '">' + esc(fechaTxt(h.fecha)) + ' · ' + (h.pct === '' ? '—' : h.pct + ' %') + ' · ' + esc(h.estado) + '</button>').join(' · ') + '</div>' : '';
+  let botones = '';
+  if (red) botones = ro ? '<span class="mu">Ya se envió a Higiene y Seguridad. Si hay que corregir algo, Higiene y Seguridad lo devuelve.</span>' : '<button class="btn sec" id="dgGuardar">Guardar y seguir después</button><button class="btn pri" id="dgEnviar">Enviar a Higiene y Seguridad</button>';
+  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un diagnóstico nuevo</button>';
+  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar diagnóstico</button>';
+  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
+    '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
+    (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
+    '<section class="card"><div class="grid g4">' +
+      '<label class="f">Fecha<input class="c" type="date" data-cab="FECHA" value="' + esc(DG.cab.FECHA) + '"' + (ro ? ' disabled' : '') + '></label>' +
+      (red ? '' : '<label class="f">Modalidad<select class="c" data-cab="MODALIDAD"' + (ro ? ' disabled' : '') + '>' + ['Visita', 'Entrevista', 'Referente (en línea)', 'Libro de la red'].map(o => '<option' + (DG.cab.MODALIDAD === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></label>') +
+      '<label class="f">' + (red ? 'Quién lo completa (nombre y función)' : 'Relevado por') + '<input class="c" data-cab="RELEVADO_POR" value="' + esc(DG.cab.RELEVADO_POR) + '"' + (ro ? ' disabled' : '') + '></label>' +
+      '<label class="f">' + (red ? 'Otras personas que participaron' : 'Persona entrevistada') + '<input class="c" data-cab="ENTREVISTADO" value="' + esc(DG.cab.ENTREVISTADO) + '"' + (ro ? ' disabled' : '') + '></label></div>' +
+      '<label class="f" style="margin-top:12px">Observaciones generales<textarea class="c" data-cab="OBSERVACIONES"' + (ro ? ' disabled' : '') + '>' + esc(DG.cab.OBSERVACIONES) + '</textarea></label></section>' +
+    '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '">' + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
+    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.' + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
+    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un diagnóstico anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
+    secciones.map(sec => '<section class="card seccion"><div class="sec-tit"><h2>' + esc(sec) + '</h2></div>' +
+      its.filter(i => i.SECCION === sec).map(i => { const r = DG.R[DG.tab + '|' + i.ID] || {}, ancho = i.TIPO === 'MULTI' || i.TIPO === 'TEXTO' || i.TIPO === 'ESCALA';
+        return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div><b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
+          '<div class="ctl">' + ctl(i) + '</div>' +
+          (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
+    '<div class="barra">' + botones + '<span class="mu peq" id="dgEstado">' + (DG.subiendo ? 'Subiendo fotos…' : DG.sucio ? 'Hay cambios sin guardar.' : '') + '</span></div>');
+  const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
+  const q = s => document.querySelectorAll(s);
+  q('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, r = DG.R[k] = DG.R[k] || {}; r.resp = r.resp === b.dataset.v ? '' : b.dataset.v; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
+  q('[data-kv]').forEach(el => el.onchange = () => { (DG.R[el.dataset.kv] = DG.R[el.dataset.kv] || {}).valor = el.value; marcar(); if (el.closest('.escala')) { const y = window.scrollY; diagPintar(); window.scrollTo(0, y); } });
+  q('[data-km]').forEach(el => el.onchange = () => { const k = el.dataset.km; (DG.R[k] = DG.R[k] || {}).valor = [...q('[data-km]')].filter(x => x.dataset.km === k && x.checked).map(x => x.value).join('|'); marcar(); });
+  q('[data-ko]').forEach(el => el.onchange = () => { (DG.R[el.dataset.ko] = DG.R[el.dataset.ko] || {}).obs = el.value; marcar(); });
+  q('[data-cab]').forEach(el => el.onchange = () => { DG.cab[el.dataset.cab] = el.value; marcar(); });
+  q('[data-tab]').forEach(b => b.onclick = () => { DG.tab = b.dataset.tab; diagPintar(); window.scrollTo(0, 0); });
+  q('[data-hist]').forEach(b => b.onclick = () => { if (DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; diagForm(DG.cod, b.dataset.hist); });
+  q('[data-fq]').forEach(b => b.onclick = () => { const r = DG.R[b.dataset.fq]; r.fotos.splice(Number(b.dataset.fn), 1); DG.sucio = true; diagPintar(); });
+  q('[data-ff]').forEach(inp => inp.onchange = () => diagSubirFotos(inp.dataset.ff, [...inp.files]));
+  if ($('dgPrevio')) $('dgPrevio').onclick = () => { DG.D.respuestasPrevio.forEach(r => { const k = (r.sitio || '') + '|' + r.item; if (!DG.R[k] || !(DG.R[k].resp || DG.R[k].valor)) DG.R[k] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: [] }; }); DG.sucio = true; toast('Se trajeron las respuestas anteriores: revisalas una por una.'); diagPintar(); };
+  if ($('dgCopiar')) $('dgCopiar').onclick = () => {
+    const otros = DG.D.sitios.map(x => x.sitio).filter(x => x !== DG.tab && diagAvance(x)[0] > 0);
+    if (!otros.length) return toast('Todavía no hay otro lugar con respuestas.');
+    const o = prompt('¿De qué lugar copio las respuestas? (las fotos no se copian)\n' + otros.join(' · '), otros[0]); if (!o || otros.indexOf(o) < 0) return;
+    Object.keys(DG.R).filter(k => k.indexOf(o + '|') === 0).forEach(k => { const r = DG.R[k]; DG.R[DG.tab + '|' + k.slice(o.length + 1)] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: [] }; }); DG.sucio = true; diagPintar(); };
+  if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
+  if ($('dgCerrar')) $('dgCerrar').onclick = () => confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
+  if ($('dgEnviar')) $('dgEnviar').onclick = () => confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
+  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el diagnóstico al referente para que lo complete o corrija?') && diagGuardar('Borrador');
+  if ($('dgNuevo')) $('dgNuevo').onclick = () => { DG.D.previo = DG.D.actual || DG.D.previo; DG.D.respuestasPrevio = (DG.D.respuestas || []).length ? DG.D.respuestas : DG.D.respuestasPrevio; DG.D.actual = null; DG.D.respuestas = [];
+    DG.id = ''; DG.estado = 'Nuevo'; DG.R = {}; DG.cab.FECHA = hoyISO(); DG.sucio = true; diagPintar(); };
+}
+function diagPayload(estado) {
+  q2('[data-cab]').forEach(el => DG.cab[el.dataset.cab] = el.value);
+  const respuestas = Object.keys(DG.R).map(k => { const i = k.indexOf('|'), r = DG.R[k]; return { sitio: k.slice(0, i), item: k.slice(i + 1), resp: r.resp || '', valor: r.valor || '', obs: r.obs || '', fotos: r.fotos || [] }; })
+    .filter(r => r.resp || r.valor || r.obs || r.fotos.length);
+  return { cod: DG.cod, id: DG.id, cabecera: DG.cab, respuestas: respuestas, estado: estado };
+}
+const q2 = s => document.querySelectorAll(s);
+async function diagGuardar(estado, silencioso) {
+  if (DG.subiendo) { toast('Esperá a que terminen de subir las fotos.'); return false; }
+  const btn = q2('.barra .btn'); btn.forEach(b => b.disabled = true);
+  let r; try { r = await DCFG.guardar(diagPayload(estado)); } catch (e) { btn.forEach(b => b.disabled = false); return false; }
+  btn.forEach(b => b.disabled = false);
+  if (!r || !r.ok) { toast((r && r.mensaje) || 'No se pudo guardar.'); return false; }
+  DG.id = r.id; DG.estado = r.estado; DG.sucio = false;
+  if (DCFG.alGuardar) DCFG.alGuardar(r);
+  if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
+  return true;
+}
+// Fotos: se achican en el teléfono (máx. 1600 px) y se suben de a una
+function achicar(file) {
+  return new Promise((ok, mal) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const m = 1600, f = Math.min(1, m / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width * f); cv.height = Math.round(img.height * f);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', 0.75)); };
+    img.onerror = () => mal(new Error('No se pudo leer la imagen.')); img.src = url; });
+}
+async function diagSubirFotos(k, files) {
+  if (!files.length) return;
+  if (!DG.id) { const ok = await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); if (!ok) return; }
+  const i = k.indexOf('|'), r = DG.R[k] = DG.R[k] || {}; r.fotos = r.fotos || [];
+  DG.subiendo += files.length; diagPintar();
+  for (const f of files) {
+    try { const data = await achicar(f), res = await DCFG.foto({ cod: DG.cod, id: DG.id, sitio: k.slice(0, i), item: k.slice(i + 1), dataUrl: data });
+      if (res && res.ok) { r.fotos.push(res.url); DG.sucio = true; } else toast((res && res.mensaje) || 'No se pudo subir la foto.'); }
+    catch (e) { toast(e.message || 'No se pudo subir la foto.'); }
+    DG.subiendo--; diagPintar();
+  }
+  await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); diagPintar();
+}
+window.addEventListener('beforeunload', e => { if (DG && (DG.sucio || DG.subiendo)) { e.preventDefault(); e.returnValue = ''; } });
+
+
+// ------------------------------------------------------------------ Tablero de problemáticas (matriz de 4 cuadrantes)
+const QDEF = { Q1: ['Actuar ya', 'Urgente e importante'], Q2: ['Planificar', 'Importante, no urgente'], Q3: ['Resolver rápido', 'Urgente, no importante'], Q4: ['Monitorear', 'Ni urgente ni importante'] };
+let TAB = null;
+async function tablero(cod, fresco) {
+  if (!TAB || fresco) { cargando('#tablero', 'Armando el tablero…'); try { TAB = await api('p_diag_tablero', { fresco: !!fresco }); } catch (e) { return; } }
+  if (!TAB.ok) return marco('#tablero', '<div class="aviso error">' + esc(TAB.mensaje || 'No se pudo armar el tablero.') + '</div>');
+  const E = TAB.establecimientos.slice(), H = cod ? TAB.hallazgos.filter(h => h.cod === cod) : TAB.hallazgos, est = cod ? E.find(e => e.cod === cod) : null;
+  const sel = '<label class="f">Ver<select class="c" id="tbSel"><option value="">Toda la red (general)</option>' + E.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label>';
+  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  const prom = (f) => { const v = E.map(f).filter(x => x !== '' && x != null).map(Number); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : '—'; };
+  const cuenta = q => H.filter(h => h.q === q).length;
+  let k = cod ? kpi(est.pct === '' ? '—' : est.pct + ' %', 'Resultado', fechaTxt(est.fecha) + ' · ' + esc(est.estado)) + kpi(est.msn === '' ? '—' : est.msn + ' / 6', 'Matriz nacional', 'Rojo hasta 2: gestión deficiente') + kpi(cuenta('Q1'), 'Actuar ya', 'Problemas urgentes e importantes') + kpi(H.length, 'Problemas', 'En total')
+    : kpi(E.length + ' de ' + TAB.totalEstablecimientos, 'Establecimientos evaluados', 'Último diagnóstico de cada uno') + kpi(prom(e => e.pct) + (prom(e => e.pct) === '—' ? '' : ' %'), 'Cumplimiento promedio', 'Matriz nacional promedio: ' + prom(e => e.msn) + ' / 6') + kpi(cuenta('Q1'), 'Para actuar ya', 'En ' + E.filter(e => e.q.Q1).length + ' establecimiento(s)') + kpi(H.filter(h => h.critico).length, 'Puntos críticos', 'No cumplidos en la red');
+  // Cuadrantes
+  const caja = q => {
+    const L = H.filter(h => h.q === q);
+    let cuerpo;
+    if (cod) cuerpo = L.sort((a, b) => b.grav - a.grav).map(h => '<div class="h"><b>' + esc(h.item) + '</b>' + (h.critico ? ' <span class="chip er mini">Crítico</span>' : '') + '<div class="mu">' + esc((h.sitio ? h.sitio + ' · ' : '') + h.resp) + (h.obs ? ' · ' + esc(h.obs) : '') + '</div>' + (h.fotos.length ? '<div>' + h.fotos.map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + '</a>').join(' · ') + '</div>' : '') + '</div>').join('');
+    else { const g = {}; L.forEach(h => { const x = g[h.id] = g[h.id] || { item: h.item, critico: h.critico, cods: new Set() }; x.cods.add(h.cod); });
+      cuerpo = Object.keys(g).sort((a, b) => g[b].cods.size - g[a].cods.size).slice(0, 12).map(id => '<div class="h"><b>' + esc(g[id].item) + '</b>' + (g[id].critico ? ' <span class="chip er mini">Crítico</span>' : '') + ' <span class="mu">· ' + g[id].cods.size + ' establecimiento(s)</span><div class="cods">' + [...g[id].cods].map(c => '<button data-tb="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div></div>').join('') + (Object.keys(g).length > 12 ? '<div class="mu peq">… y ' + (Object.keys(g).length - 12) + ' problema(s) más.</div>' : ''); }
+    return '<div class="q ' + q + '"><h3>' + QDEF[q][0] + ' <small>' + QDEF[q][1] + ' · ' + L.length + '</small></h3>' + (cuerpo || '<div class="mu peq">Sin problemas en este cuadrante.</div>') + '</div>';
+  };
+  const ejes = '<div class="ejes"><span></span><span style="display:flex;justify-content:space-between"><span>← más urgente</span><span>menos urgente →</span></span></div>';
+  const l8 = TAB.l8, fr = (a, b) => b ? a + ' de ' + b + ' (' + Math.round(100 * a / b) + ' %)' : '—';
+  const linea8 = cod ? '' : '<section class="card"><h2>Línea 8 · indicadores de base</h2><div class="grid g4" style="margin-top:10px">' +
+    kpi(fr(l8.poeTodos, l8.poeResp), 'POE marco de bioseguridad', 'Con todos los POE adoptados (meta 4)') + kpi(fr(l8.vacunaCompleta, l8.vacunaResp), 'Vacunación del personal', 'Cobertura completa en servicios de riesgo (meta 5)') +
+    kpi(fr(l8.capacitados, l8.capacResp), 'Personal de residuos capacitado', 'En el último año (meta 6)') + kpi(Object.keys(l8.formacion).length, 'Necesidades de formación', Object.keys(l8.formacion).sort((a, b) => l8.formacion[b] - l8.formacion[a]).slice(0, 3).map(x => x + ' (' + l8.formacion[x] + ')').join(' · ') || 'Sin datos (meta 7)') + '</div></section>';
+  const top = (id, tit) => { const m = (TAB.cierre || {})[id] || {}, L = Object.keys(m).sort((a, b) => m[b] - m[a]).slice(0, 6);
+    return '<div><h3 style="margin:0 0 6px;font-size:14px;color:var(--az)">' + tit + '</h3>' + (L.length ? L.map(x => '<div class="peq" style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid #EEF2F4;padding:5px 0"><span>' + esc(x) + '</span><b>' + m[x] + '</b></div>').join('') : '<div class="mu peq">Sin datos.</div>') + '</div>'; };
+  const cierre = cod ? '' : '<section class="card"><h2>Lo que más se señala en el cierre</h2><div class="grid g3" style="margin-top:10px">' + top('CIE01', 'Problemas') + top('CIE02', 'Propuestas de mejora') + top('CIE03', 'Necesidades') + '</div></section>';
+  const ranking = cod ? '' : '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Establecimientos por prioridad</h2></div><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Fecha</th><th>Resultado</th><th>Matriz</th><th>Actuar ya</th><th>Planificar</th><th>Resolver rápido</th><th>Monitorear</th></tr></thead><tbody>' +
+    TAB.establecimientos.slice().sort((a, b) => b.q.Q1 - a.q.Q1 || (a.pct || 0) - (b.pct || 0)).map(e => '<tr class="cl" data-tb="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.estado) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td>' + fechaTxt(e.fecha) + '</td><td>' + chipDiag({ pct: e.pct, fecha: e.fecha, estado: e.estado, criticos: e.criticos }) + '</td><td>' + (e.msn === '' ? '—' : e.msn) + '</td><td><b style="color:#B42318">' + e.q.Q1 + '</b></td><td>' + e.q.Q2 + '</td><td>' + e.q.Q3 + '</td><td>' + e.q.Q4 + '</td></tr>').join('') + '</tbody></table>' + (TAB.establecimientos.length ? '' : '<div class="vacio">Todavía no hay diagnósticos.</div>') + '</section>';
+  marco('#tablero', '<div class="cab"><div><span class="mu peq">Residuos · Línea 8</span><h1>' + (cod ? esc(est ? est.nombre : cod) : 'Tablero de problemáticas') + '</h1><span class="mu">Matriz de 4 cuadrantes según urgencia e importancia de cada problema detectado en el diagnóstico.</span></div><div class="filtros">' + sel + '<button class="btn sec" id="tbAct">Actualizar</button>' + (cod ? '<a class="btn pri" href="#diag/' + encodeURIComponent(cod) + '">Abrir el diagnóstico</a>' : '') + '</div></div>' +
+    '<div class="grid g4">' + k + '</div>' + ejes + '<div class="cuad">' + caja('Q1') + caja('Q2') + caja('Q3') + caja('Q4') + '</div>' + linea8 + cierre + ranking +
+    '<p class="mu peq">Datos al ' + new Date(TAB.actualizado).toLocaleString('es-AR') + '. Urgencia e importancia de cada punto: columnas URGENCIA e IMPORTANCIA de la hoja ITEMS (editables).</p>');
+  $('tbSel').onchange = e => location.hash = '#tablero' + (e.target.value ? '/' + encodeURIComponent(e.target.value) : '');
+  $('tbAct').onclick = () => tablero(cod, true);
+  document.querySelectorAll('[data-tb]').forEach(b => b.onclick = () => location.hash = '#tablero/' + encodeURIComponent(b.dataset.tb));
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -444,6 +673,8 @@ function router() {
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
   if (ruta === 'importar') return importar();
+  if (ruta === 'diag') return a ? diagForm(a) : diagLista();
+  if (ruta === 'tablero') return tablero(a);
   return inicio();
 }
 window.addEventListener('hashchange', router);
