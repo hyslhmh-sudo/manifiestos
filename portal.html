@@ -116,7 +116,7 @@ function marco(activo, contenido) {
   const pr = t => '<div class="pr">' + t + ' · próximamente</div>';
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
-    it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') +
+    it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
     '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + pr('Diagnóstico') + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
@@ -236,7 +236,7 @@ async function trabajadores(cod) {
     marco('#trab', '<div class="cab"><div><span class="mu peq">Documental · Trabajadores</span><h1>Trabajadores</h1></div>' +
       '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + selectorEst(TRAB.cod || '*', true, true) + '</select></label>' +
       '<label class="f">Buscar por CUIL, DNI, apellido, función o servicio<input class="c" id="tQ" value="' + esc(TRAB.q) + '" style="min-width:260px"></label><button class="btn sec" id="tBus">Buscar</button>' +
-      (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '</div></div>' +
+      (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '<a class="btn sec" href="#importar">Importar base de Personal</a></div></div>' +
       (!D ? '<div class="card vacio">Elegí un establecimiento o buscá en todos.</div>' : D.aviso ? '<div class="aviso">' + esc(D.aviso) + '</div>' :
       '<p class="mu peq" style="margin:0">' + D.total + ' persona(s)' + (D.total > D.filas.length ? ' · se muestran ' + D.filas.length : '') + '. Tocá una fila para ver o editar.</p>' +
       '<section class="card tabla"><table><thead><tr><th>CUIL</th><th>DNI</th><th>Apellido y nombre</th>' + (TRAB.cod === '*' ? '<th>Establecimiento</th>' : '') + '<th>Sitio</th><th>Función</th><th>Servicio</th><th>Vínculo</th><th>Estado</th></tr></thead><tbody>' +
@@ -283,6 +283,115 @@ function fichaTrab(f) {
   }
 }
 
+
+// ------------------------------------------------------------------ Importar base de Personal
+const IMP_CAMPOS = [['DNI', 'DNI', ['dni', 'documento', 'nro documento', 'n documento', 'nro doc', 'doc', 'num doc']], ['CUIL', 'CUIL', ['cuil', 'cuit']],
+  ['APELLIDOS', 'Apellido(s)', ['apellido', 'apellidos']], ['NOMBRES', 'Nombre(s)', ['nombre', 'nombres']],
+  ['APYNOM', 'Apellido y nombre (juntos)', ['apellido y nombre', 'apellido y nombres', 'apellidos y nombres', 'nombre y apellido', 'agente', 'apellido/s y nombre/s']],
+  ['ESTABLECIMIENTO', 'Establecimiento', ['establecimiento', 'hospital', 'institucion', 'efector', 'unidad']], ['SITIO', 'Sitio (CAPS o dispositivo)', ['sitio', 'lugar de trabajo', 'lugar', 'dependencia', 'caps']],
+  ['FUNCION', 'Función', ['funcion', 'cargo', 'puesto', 'profesion']], ['SERVICIO', 'Servicio', ['servicio', 'sector', 'area', 'departamento']],
+  ['VINCULO', 'Vínculo', ['vinculo', 'situacion de revista', 'revista', 'modalidad', 'tipo de contrato']], ['EMPRESA', 'Empresa', ['empresa']],
+  ['CARGO_CONDUCCION', 'Cargo de conducción', ['jefatura', 'cargo de conduccion', 'conduccion']], ['EMAIL', 'Correo', ['email', 'e-mail', 'mail', 'correo']], ['TELEFONO', 'Teléfono', ['telefono', 'celular', 'tel']]];
+let IMP = null;
+const normH = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[°º.:#]/g, ' ').replace(/\s+/g, ' ').trim();
+function cargarXLSX() { return window.XLSX ? Promise.resolve() : new Promise((ok, mal) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar el lector de Excel. Revisá la conexión.')); document.head.appendChild(s); }); }
+async function importar() {
+  if (!RES) { cargando('#importar'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  IMP = { paso: 1, cod: TRAB.cod && TRAB.cod !== '*' ? TRAB.cod : '', ntear: false };
+  pasoImp();
+}
+function pasoImp() {
+  const P = IMP; let h = '<div class="cab"><div><span class="mu peq">Trabajadores · Importar base de Personal</span><h1>Importar una base</h1></div></div>' +
+    '<p class="mu" style="margin:0">El sistema compara por DNI: agrega a quien no está, actualiza lo que cambió y marca a quien ya no figura. <b>Nunca borra.</b> Antes de escribir, muestra todo para que lo revises.</p>';
+  if (P.paso === 1) {
+    h += '<section class="card" style="display:flex;flex-direction:column;gap:14px"><h2>1 · Archivo y establecimiento</h2>' +
+      '<label class="f">Archivo de Excel o CSV<input class="c" type="file" id="iArch" accept=".xlsx,.xls,.csv"></label>' +
+      '<label class="f">¿De qué establecimiento es la base?<select class="c" id="iEst"><option value="">Elegí…</option><option value="*COL"' + (P.cod === '*COL' ? ' selected' : '') + '>Varios: según una columna del archivo</option>' + selectorEst(P.cod, false).replace('<option value="">Elegí…</option>', '') + '</select></label>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="iNtear"' + (P.ntear ? ' checked' : '') + '> Es la nómina NTEAR (marca «En NTEAR: Sí» a quienes figuran)</label>' +
+      '<div class="aviso error" id="iErr" hidden></div><div><button class="btn pri" id="iSig">Leer el archivo</button></div></section>';
+    marco('#importar', h);
+    $('iSig').onclick = async () => {
+      const f = $('iArch').files[0], cod = $('iEst').value, err = m => { $('iErr').textContent = m; $('iErr').hidden = false; };
+      if (!f) return err('Elegí el archivo.'); if (!cod) return err('Elegí el establecimiento.');
+      P.cod = cod; P.ntear = $('iNtear').checked; P.origen = f.name.replace(/\.[^.]+$/, '');
+      $('iSig').disabled = true; $('iSig').textContent = 'Leyendo…';
+      try {
+        await cargarXLSX();
+        const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true });
+        const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false });
+        // Fila de encabezados: la primera (de las 15 primeras) que tenga al menos 2 nombres reconocibles
+        let hi = 0, mejor = 0;
+        filas.slice(0, 15).forEach((r, i) => { const n = r.filter(c => IMP_CAMPOS.some(k => k[2].indexOf(normH(c)) >= 0)).length; if (n > mejor) { mejor = n; hi = i; } });
+        P.encab = filas[hi].map(c => String(c).trim()); P.datos = filas.slice(hi + 1).filter(r => r.some(c => String(c).trim() !== ''));
+        P.mapa = {};
+        const orden = ['APYNOM'].concat(IMP_CAMPOS.map(c => c[0]).filter(k => k !== 'APYNOM'));
+        orden.map(k => IMP_CAMPOS.find(c => c[0] === k)).forEach(([k, , sin]) => { let j = P.encab.findIndex(c => sin.indexOf(normH(c)) >= 0); if (j < 0) j = P.encab.findIndex(c => sin.some(s => s.length > 3 && normH(c).indexOf(s) >= 0)); if (j >= 0 && !Object.values(P.mapa).includes(j)) P.mapa[k] = j; });
+        if (P.mapa.APYNOM != null && (P.mapa.APELLIDOS === P.mapa.APYNOM || P.mapa.NOMBRES === P.mapa.APYNOM)) { delete P.mapa.APELLIDOS; delete P.mapa.NOMBRES; }
+        P.paso = 2; pasoImp();
+      } catch (e) { $('iSig').disabled = false; $('iSig').textContent = 'Leer el archivo'; err(e.message || 'No se pudo leer el archivo.'); }
+    };
+    return;
+  }
+  if (P.paso === 2) {
+    const opc = sel => '<option value="">— No está en el archivo —</option>' + P.encab.map((c, j) => '<option value="' + j + '"' + (sel === j ? ' selected' : '') + '>' + esc(c || 'Columna ' + (j + 1)) + '</option>').join('');
+    h += '<section class="card" style="display:flex;flex-direction:column;gap:14px"><h2>2 · Columnas del archivo</h2><p class="mu peq" style="margin:0">' + P.datos.length + ' fila(s) en «' + esc(P.origen) + '». Revisá qué columna corresponde a cada dato. DNI y apellido son obligatorios.</p>' +
+      '<div class="grid g3">' + IMP_CAMPOS.filter(c => c[0] !== 'ESTABLECIMIENTO' || P.cod === '*COL').map(([k, l]) => '<label class="f">' + esc(l) + '<select class="c" data-m="' + k + '">' + opc(P.mapa[k]) + '</select></label>').join('') + '</div>' +
+      '<label class="f">Nombre de la base (queda en el registro)<input class="c" id="iOrig" value="' + esc(P.origen) + '"></label>' +
+      '<div class="tabla" style="border:1px solid var(--ln);border-radius:8px"><table><thead><tr>' + P.encab.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' + P.datos.slice(0, 5).map(r => '<tr>' + P.encab.map((c, j) => '<td class="peq">' + esc(r[j]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' +
+      '<div class="aviso error" id="iErr" hidden></div><div style="display:flex;gap:10px"><button class="btn sec" id="iAtr">Volver</button><button class="btn pri" id="iSig">Revisar cambios</button></div></section>';
+    marco('#importar', h);
+    $('iAtr').onclick = () => { P.paso = 1; pasoImp(); };
+    $('iSig').onclick = async () => {
+      document.querySelectorAll('[data-m]').forEach(s => { if (s.value === '') delete P.mapa[s.dataset.m]; else P.mapa[s.dataset.m] = Number(s.value); });
+      P.origen = $('iOrig').value.trim() || P.origen;
+      const err = m => { $('iErr').textContent = m; $('iErr').hidden = false; };
+      if (P.mapa.DNI == null) return err('Elegí la columna del DNI.');
+      if (P.mapa.APELLIDOS == null && P.mapa.APYNOM == null) return err('Elegí la columna del apellido (o de apellido y nombre juntos).');
+      if (P.cod === '*COL' && P.mapa.ESTABLECIMIENTO == null) return err('Elegí la columna del establecimiento.');
+      P.filas = P.datos.map(r => { const o = {}; Object.keys(P.mapa).forEach(k => o[k] = String(r[P.mapa[k]] == null ? '' : r[P.mapa[k]]).trim());
+        if (o.APYNOM && !o.APELLIDOS) { const t = o.APYNOM; if (t.indexOf(',') >= 0) { o.APELLIDOS = t.split(',')[0].trim(); o.NOMBRES = t.split(',').slice(1).join(',').trim(); } else { const p = t.split(/\s+/); o.APELLIDOS = p[0]; o.NOMBRES = p.slice(1).join(' '); } }
+        delete o.APYNOM; return o; });
+      $('iSig').disabled = true; $('iSig').textContent = 'Comparando…';
+      try { P.previa = await api('p_imp_previa', { cod: P.cod, filas: P.filas, origen: P.origen, ntear: P.ntear }); } catch (e) { $('iSig').disabled = false; $('iSig').textContent = 'Revisar cambios'; return; }
+      if (!P.previa.ok) return err(P.previa.mensaje || 'No se pudo comparar.');
+      P.paso = 3; pasoImp();
+    };
+    return;
+  }
+  if (P.paso === 3) {
+    const R = P.previa, D = R.detalle;
+    const bloque = (k, titulo, desc, n, cols, fila, opcion) => '<details class="card" style="padding:14px 18px"' + (n && n <= 30 ? ' open' : '') + '><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>' + titulo + '</b> <span class="mu peq">' + desc + '</span></span><span style="display:flex;gap:12px;align-items:center">' +
+      (opcion ? '<label class="peq" style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-op="' + opcion + '"' + (n ? ' checked' : ' disabled') + '> Aplicar</label>' : '') + '<span class="chip ' + (n ? 'pa' : 'gr') + '">' + n + '</span></span></summary>' +
+      (n ? '<div class="tabla" style="margin-top:10px"><table><thead><tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>' + D[k].map(o => '<tr>' + fila(o).map(c => '<td class="peq">' + c + '</td>').join('') + '</tr>').join('') + '</tbody></table>' + (n > D[k].length ? '<p class="mu peq">Se muestran ' + D[k].length + ' de ' + n + '.</p>' : '') + '</div>' : '') + '</details>';
+    h += '<section style="display:flex;flex-direction:column;gap:10px"><h2>3 · Revisá antes de aplicar</h2><p class="mu peq" style="margin:0">«' + esc(P.origen) + '» · ' + P.filas.length + ' fila(s) · establecimiento(s): ' + esc(R.establecimientos.join(', ') || '—') + ' · sin cambios: ' + R.iguales + '</p>' +
+      bloque('altas', 'Altas', 'Personas nuevas que se agregan', R.altas, ['DNI', 'Apellido y nombre', 'Va a'], o => [esc(o.dni), esc(o.nombre), esc(o.hacia)], 'altas') +
+      bloque('mover', 'Salen de SIN_ASIGNAR', 'Estaban sin establecimiento y pasan al que indica la base', R.mover, ['DNI', 'Apellido y nombre', 'Va a'], o => [esc(o.dni), esc(o.nombre), esc(o.hacia)], 'mover') +
+      bloque('cambios', 'Datos que cambian', 'El dato anterior queda en el HISTORIAL', R.cambios, ['DNI', 'Persona', 'Cambios'], o => [esc(o.dni), esc(o.nombre), o.dif.map(d => '<b>' + esc(d.campo) + '</b>: ' + esc(d.antes || '—') + ' → ' + esc(d.despues)).join('<br>')], 'cambios') +
+      bloque('reaparecen', 'Vuelven a figurar', 'Estaban marcadas como «No figura» o «Revisar» y pasan a Activo', R.reaparecen, ['DNI', 'Persona', 'Hoja'], o => [esc(o.dni), esc(o.nombre), esc(o.hoja)], 'reaparecen') +
+      bloque('noFiguran', 'No figuran en esta base', 'Activos en la hoja que no aparecen en el archivo: se marcan, no se borran', R.noFiguran, ['DNI', 'Persona', 'Función', 'Hoja'], o => [esc(o.dni), esc(o.nombre), esc(o.funcion), esc(o.hoja)], 'noFiguran') +
+      bloque('conflictos', 'Están en otro establecimiento', 'No se cambian: si corresponde, hacé el traslado desde la ficha', R.conflictos, ['DNI', 'Persona', 'Hoy en', 'La base dice'], o => [esc(o.dni), esc(o.nombre), esc(o.en), esc(o.archivo)], null) +
+      bloque('errores', 'Filas con error', 'No se importan (salvo CUIL inválido: se importa sin CUIL)', R.errores, ['Fila', 'Persona', 'Motivo'], o => [o.n, esc(o.nombre), esc(o.motivo)], null) +
+      '<div style="display:flex;gap:10px;margin-top:6px"><button class="btn sec" id="iAtr">Volver</button><button class="btn pri" id="iApl">Aplicar los cambios marcados</button></div></section>';
+    marco('#importar', h);
+    $('iAtr').onclick = () => { P.paso = 2; pasoImp(); };
+    $('iApl').onclick = async () => {
+      const op = {}; document.querySelectorAll('[data-op]').forEach(c => op[c.dataset.op] = c.checked);
+      if (!confirm('¿Aplicar los cambios marcados en la base de trabajadores? Queda todo registrado en IMPORTACIONES e HISTORIAL.')) return;
+      $('iApl').disabled = true; $('iApl').textContent = 'Aplicando…';
+      try { P.final = await api('p_imp_aplicar', { cod: P.cod, filas: P.filas, origen: P.origen, ntear: P.ntear, opciones: op }); } catch (e) { $('iApl').disabled = false; $('iApl').textContent = 'Aplicar los cambios marcados'; return; }
+      if (!P.final.ok) { toast(P.final.mensaje || 'No se pudo aplicar.'); $('iApl').disabled = false; $('iApl').textContent = 'Aplicar los cambios marcados'; return; }
+      P.op = op; P.paso = 4; RES = null; TRAB.datos = null; pasoImp();
+    };
+    return;
+  }
+  const F = P.final, op = P.op;
+  h += '<section class="card"><h2>Listo</h2><p>Se importó «' + esc(P.origen) + '».</p><dl class="datos">' +
+    '<dt>Altas</dt><dd>' + (op.altas ? F.altas : 0) + '</dd><dt>Salieron de SIN_ASIGNAR</dt><dd>' + (op.mover ? F.mover : 0) + '</dd><dt>Personas con datos actualizados</dt><dd>' + (op.cambios ? F.cambios : 0) + '</dd><dt>Marcadas «No figura en la última base»</dt><dd>' + (op.noFiguran ? F.noFiguran : 0) + '</dd><dt>En otro establecimiento (sin cambios)</dt><dd>' + F.conflictos + '</dd><dt>Filas con error</dt><dd>' + F.errores + '</dd></dl>' +
+    '<p class="mu peq">Quedó registrado en las hojas IMPORTACIONES e HISTORIAL de la base de trabajadores.</p><div style="display:flex;gap:10px"><a class="btn pri" href="#trab/' + encodeURIComponent(P.cod === '*COL' ? '*' : P.cod) + '">Ver trabajadores</a><button class="btn sec" id="iOtra">Importar otra base</button></div></section>';
+  marco('#importar', h);
+  $('iOtra').onclick = () => importar();
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -290,6 +399,7 @@ function router() {
   const a = arg ? decodeURIComponent(arg) : '';
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
+  if (ruta === 'importar') return importar();
   return inicio();
 }
 window.addEventListener('hashchange', router);
