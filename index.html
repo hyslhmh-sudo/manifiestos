@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-8';
+const VERSION = 'piloto-9';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -403,7 +403,7 @@ async function entrar() {
       CFG = LS.get('cfg_' + ses.est, null);
     }
     if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = ses.clave; LS.set('recordados', r); }
-    if (PERSONA_PREV) { ses.persona = PERSONA_PREV; PERSONA_PREV = null; }
+    if (PERSONA_PREV) { const pp = personas().find(x => (x.dni && x.dni === PERSONA_PREV.dni) || x.nombre === PERSONA_PREV.nombre); if (pp && cargaEn(pp, ses.est)) ses.persona = pp; PERSONA_PREV = null; }
     SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; SES.persona ? inicio() : quienCarga();
   } catch (e) {
     ERR.clave = 'Ocurrió un error al ingresar. Probá de nuevo.'; ingreso();
@@ -412,15 +412,31 @@ async function entrar() {
 function salirSesion(msg) { SES = null; CFG = null; LS.del('ses'); ingreso(msg); }
 
 // ------------------------------------------------------------------ Quién carga
+// Personas guardadas en este equipo, cada una con los establecimientos donde carga.
+// En modo Higiene y Seguridad, la persona de HyS vale para todos los establecimientos.
+const enModoHys = () => !!LS.get('hys', null);
+const personas = () => LS.get('personas', []).map(p => Object.assign({ ests: [] }, p));
+const cargaEn = (p, est) => (p.ests || []).indexOf(est) >= 0 || (p.hys && enModoHys());
+function guardarPersona(p) {
+  const todas = personas(), prev = todas.find(x => (p.dni && x.dni === p.dni) || x.nombre === p.nombre);
+  const ests = Array.from(new Set([].concat(prev ? prev.ests : [], p.ests || [])));
+  const nueva = Object.assign({}, prev || {}, p, { ests: ests, hys: !!(p.hys || (prev && prev.hys)) });
+  LS.set('personas', [nueva].concat(todas.filter(x => x !== prev)).slice(0, 12));
+  return nueva;
+}
 function quienCarga() {
   VISTA = 'quien'; vista('form'); pintarCab();
   const ref = CFG && CFG.referente && CFG.referente.nombre ? CFG.referente.nombre : '';
-  const ult = LS.get('personas', []);
+  const todas = personas().filter(p => p.nombre !== ref);
+  const aca = todas.filter(p => cargaEn(p, SES.est)), otras = todas.filter(p => !cargaEn(p, SES.est));
+  const boton = (p, act, sub) => '<div style="position:relative"><button class="big" style="width:100%" data-act="' + act + '" data-arg="' + esc(p.dni || p.nombre) + '"><b>' + esc(p.nombre) + '</b><span>' + esc(sub) + '</span></button>' +
+    '<button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidar" data-arg="' + esc(p.nombre) + '" aria-label="Quitar a ' + esc(p.nombre) + ' de este equipo">Quitar</button></div>';
   $('app').innerHTML = '<h1>¿Quién va a cargar?</h1><p class="mu">Queda registrado en cada carga.</p><div class="menu">' +
     (ref ? '<button class="big main" data-act="soy" data-arg="ref"><b>' + esc(ref) + '</b><span>Referente de residuos</span></button>' : '') +
-    ult.filter(p => p.nombre !== ref).slice(0, 3).map((p, i) => '<div style="position:relative"><button class="big" style="width:100%" data-act="soy" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.funcion) + '</span></button>' +
-      '<button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidar" data-arg="' + esc(p.nombre) + '" aria-label="Quitar a ' + esc(p.nombre) + ' de este equipo">Quitar</button></div>').join('') +
-    '<button class="big" data-act="otraPersona"><b>Carga otra persona</b><span>Escribí tu nombre y tu función</span></button></div>';
+    aca.map(p => boton(p, 'soy', p.hys && enModoHys() ? 'Higiene y Seguridad · todos los establecimientos' : p.funcion)).join('') +
+    '<button class="big" data-act="otraPersona"><b>Carga otra persona</b><span>Escribí tus datos</span></button></div>' +
+    (otras.length ? '<h2 style="margin-top:22px">Personas de otros establecimientos</h2><p class="mu" style="margin-top:-4px">Guardadas en este equipo, pero no cargan en este establecimiento. Tocá una solo si también carga acá.</p><div class="menu">' +
+      otras.map(p => boton(p, 'sumarAca', p.funcion + ' · ' + (p.ests || []).join(', '))).join('') + '</div>' : '');
   bar(null);
 }
 function otraPersona() {
@@ -444,8 +460,8 @@ function confirmarOtra() {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(OTRA.mail || '').trim())) ERR.pmail = 'Escribí un correo válido (ejemplo: nombre@correo.com).';
   if (Object.keys(ERR).length) return otraPersona();
   const p = { nombre: OTRA.nombre.trim(), dni: dni, funcion: OTRA.funcion === 'Otra' ? OTRA.otra.trim() : OTRA.funcion, mail: OTRA.mail.trim().toLowerCase() };
-  const ult = LS.get('personas', []).filter(x => x.dni !== p.dni && x.nombre !== p.nombre); ult.unshift(p); LS.set('personas', ult.slice(0, 5));
-  OTRA = null; SES.persona = p; LS.set('ses', SES); inicio();
+  p.ests = [SES.est]; if (enModoHys() && /higiene/i.test(p.funcion)) p.hys = true;
+  OTRA = null; SES.persona = guardarPersona(p); LS.set('ses', SES); inicio();
 }
 
 // ------------------------------------------------------------------ Inicio
@@ -726,9 +742,14 @@ const ACT = {
   ayuda: b => ayuda(b.dataset.arg), cerrarAyuda: () => cerrarAyuda(),
   preguntaSi: () => { cerrarAyuda(); const f = PREG; PREG = null; if (f) f(); }, preguntaNo: () => { cerrarAyuda(); PREG = null; },
   entrar: () => entrar(), salir: () => preguntar('¿Salir del sistema?', 'Sí, salir', () => salirSesion()),
-  soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas', []).filter(p => p.nombre !== ref); const p = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos', mail: (CFG.referente && CFG.referente.mail) || '' } : ult[Number(b.dataset.arg)];
+  soy: b => {
+    const ref = CFG.referente.nombre;
+    const p = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos', mail: (CFG.referente && CFG.referente.mail) || '', ests: [SES.est] } : personas().find(x => (x.dni || x.nombre) === b.dataset.arg);
+    if (!p) return quienCarga();
     if (b.dataset.arg !== 'ref' && (!p.dni || !p.mail)) { OTRA = { nombre: p.nombre, dni: p.dni || '', funcion: FUNCIONES.indexOf(p.funcion) >= 0 ? p.funcion : 'Otra', otra: FUNCIONES.indexOf(p.funcion) >= 0 ? '' : p.funcion, mail: p.mail || '' }; ERR = {}; return otraPersona(); }
     SES.persona = p; LS.set('ses', SES); inicio(); },
+  sumarAca: b => { const p = personas().find(x => (x.dni || x.nombre) === b.dataset.arg); if (!p) return;
+    preguntar('¿' + p.nombre + ' también carga en ' + SES.nombre + '?', 'Sí, sumar', () => { p.ests = [SES.est]; const n = guardarPersona(p); if (!n.dni || !n.mail) { OTRA = { nombre: n.nombre, dni: n.dni || '', funcion: FUNCIONES.indexOf(n.funcion) >= 0 ? n.funcion : 'Otra', otra: FUNCIONES.indexOf(n.funcion) >= 0 ? '' : n.funcion, mail: n.mail || '' }; ERR = {}; return otraPersona(); } SES.persona = n; LS.set('ses', SES); inicio(); }); },
   olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas', LS.get('personas', []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
   otraPersona: () => { ERR = {}; otraPersona(); },
   modoHys: () => { ERR = {}; modoHys(); }, entrarHys: () => entrarHys(), volverIngreso: () => { ERR = {}; ingreso(); },
@@ -790,6 +811,7 @@ $('net').onclick = () => sincronizar();
 
 // ------------------------------------------------------------------ Arranque
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (SES && SES.persona && SES.persona.funcion !== 'Referente de residuos' && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
 if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); } else if (SES) quienCarga(); else ingreso();
 
 </script>
