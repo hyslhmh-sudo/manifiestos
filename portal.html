@@ -289,10 +289,18 @@ const IMP_CAMPOS = [['DNI', 'DNI', ['dni', 'documento', 'nro documento', 'n docu
   ['APELLIDOS', 'Apellido(s)', ['apellido', 'apellidos']], ['NOMBRES', 'Nombre(s)', ['nombre', 'nombres']],
   ['APYNOM', 'Apellido y nombre (juntos)', ['apellido y nombre', 'apellido y nombres', 'apellidos y nombres', 'nombre y apellido', 'agente', 'apellido/s y nombre/s']],
   ['ESTABLECIMIENTO', 'Establecimiento', ['establecimiento', 'hospital', 'institucion', 'efector', 'unidad']], ['SITIO', 'Sitio (CAPS o dispositivo)', ['sitio', 'lugar de trabajo', 'lugar', 'dependencia', 'caps']],
-  ['FUNCION', 'Función', ['funcion', 'cargo', 'puesto', 'profesion']], ['SERVICIO', 'Servicio', ['servicio', 'sector', 'area', 'departamento']],
+  ['FUNCION', 'Función', ['funcion', 'cargo', 'puesto', 'profesion']], ['SERVICIO', 'Servicio', ['servicio', 'sector', 'area', 'departamento', 'oficina fisica', 'oficina', 'lugar fisico']],
   ['VINCULO', 'Vínculo', ['vinculo', 'situacion de revista', 'revista', 'modalidad', 'tipo de contrato']], ['EMPRESA', 'Empresa', ['empresa']],
   ['CARGO_CONDUCCION', 'Cargo de conducción', ['jefatura', 'cargo de conduccion', 'conduccion']], ['EMAIL', 'Correo', ['email', 'e-mail', 'mail', 'correo']], ['TELEFONO', 'Teléfono', ['telefono', 'celular', 'tel']]];
 let IMP = null;
+// «De Los Santos Beatriz» → [De Los Santos, Beatriz] · «Borges De Los Santos Macarena» → [Borges De Los Santos, Macarena] · si no, la primera palabra es el apellido
+const PARTICULAS = ['de', 'del', 'della', 'do', 'di', 'da', 'dos', 'van', 'von', 'los', 'las', 'la', 'san'];
+function separarNombre(t) {
+  const p = String(t).trim().split(/\s+/), es = w => PARTICULAS.indexOf(String(w).toLowerCase()) >= 0; let i = 1;
+  if (es(p[0])) { while (i < p.length - 1 && es(p[i])) i++; i++; }
+  else if (p.length > 2 && es(p[1])) { i = 2; while (i < p.length - 1 && es(p[i])) i++; i++; }
+  return [p.slice(0, i).join(' '), p.slice(i).join(' ')];
+}
 const normH = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[°º.:#]/g, ' ').replace(/\s+/g, ' ').trim();
 function cargarXLSX() { return window.XLSX ? Promise.resolve() : new Promise((ok, mal) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar el lector de Excel. Revisá la conexión.')); document.head.appendChild(s); }); }
 async function importar() {
@@ -336,6 +344,7 @@ function pasoImp() {
     const opc = sel => '<option value="">— No está en el archivo —</option>' + P.encab.map((c, j) => '<option value="' + j + '"' + (sel === j ? ' selected' : '') + '>' + esc(c || 'Columna ' + (j + 1)) + '</option>').join('');
     h += '<section class="card" style="display:flex;flex-direction:column;gap:14px"><h2>2 · Columnas del archivo</h2><p class="mu peq" style="margin:0">' + P.datos.length + ' fila(s) en «' + esc(P.origen) + '». Revisá qué columna corresponde a cada dato. DNI y apellido son obligatorios.</p>' +
       '<div class="grid g3">' + IMP_CAMPOS.filter(c => c[0] !== 'ESTABLECIMIENTO' || P.cod === '*COL').map(([k, l]) => '<label class="f">' + esc(l) + '<select class="c" data-m="' + k + '">' + opc(P.mapa[k]) + '</select></label>').join('') + '</div>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="iPar"' + (P.parentesis !== false ? ' checked' : '') + '> Si el servicio trae algo entre paréntesis, tomarlo como función (ej.: «SERVICIOS GENERALES (MUCAMA)» → servicio Servicios Generales, función Mucama)</label>' +
       '<label class="f">Nombre de la base (queda en el registro)<input class="c" id="iOrig" value="' + esc(P.origen) + '"></label>' +
       '<div class="tabla" style="border:1px solid var(--ln);border-radius:8px"><table><thead><tr>' + P.encab.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' + P.datos.slice(0, 5).map(r => '<tr>' + P.encab.map((c, j) => '<td class="peq">' + esc(r[j]) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' +
       '<div class="aviso error" id="iErr" hidden></div><div style="display:flex;gap:10px"><button class="btn sec" id="iAtr">Volver</button><button class="btn pri" id="iSig">Revisar cambios</button></div></section>';
@@ -344,12 +353,15 @@ function pasoImp() {
     $('iSig').onclick = async () => {
       document.querySelectorAll('[data-m]').forEach(s => { if (s.value === '') delete P.mapa[s.dataset.m]; else P.mapa[s.dataset.m] = Number(s.value); });
       P.origen = $('iOrig').value.trim() || P.origen;
+      P.parentesis = $('iPar').checked;
       const err = m => { $('iErr').textContent = m; $('iErr').hidden = false; };
       if (P.mapa.DNI == null) return err('Elegí la columna del DNI.');
       if (P.mapa.APELLIDOS == null && P.mapa.APYNOM == null) return err('Elegí la columna del apellido (o de apellido y nombre juntos).');
       if (P.cod === '*COL' && P.mapa.ESTABLECIMIENTO == null) return err('Elegí la columna del establecimiento.');
       P.filas = P.datos.map(r => { const o = {}; Object.keys(P.mapa).forEach(k => o[k] = String(r[P.mapa[k]] == null ? '' : r[P.mapa[k]]).trim());
-        if (o.APYNOM && !o.APELLIDOS) { const t = o.APYNOM; if (t.indexOf(',') >= 0) { o.APELLIDOS = t.split(',')[0].trim(); o.NOMBRES = t.split(',').slice(1).join(',').trim(); } else { const p = t.split(/\s+/); o.APELLIDOS = p[0]; o.NOMBRES = p.slice(1).join(' '); } }
+        if (o.APYNOM && !o.APELLIDOS) { const t = o.APYNOM; if (t.indexOf(',') >= 0) { o.APELLIDOS = t.split(',')[0].trim(); o.NOMBRES = t.split(',').slice(1).join(',').trim(); } else { const sp = separarNombre(t); o.APELLIDOS = sp[0]; o.NOMBRES = sp[1]; o._junto = '1'; } }
+        if (P.parentesis !== false && o.SERVICIO) { const MAP = { 'SERV. GRALES': 'SERVICIOS GENERALES', 'S. MENTAL': 'SALUD MENTAL', 'MACAMA': 'MUCAMA' }; let sv = o.SERVICIO; Object.keys(MAP).forEach(k => sv = sv.split(k).join(MAP[k]));
+          const m = sv.match(/^(.*?)\s*\((.*?)\)\s*$/); if (m) { sv = m[1]; if (!o.FUNCION) o.FUNCION = m[2]; } o.SERVICIO = sv.trim(); }
         delete o.APYNOM; return o; });
       $('iSig').disabled = true; $('iSig').textContent = 'Comparando…';
       try { P.previa = await api('p_imp_previa', { cod: P.cod, filas: P.filas, origen: P.origen, ntear: P.ntear }); } catch (e) { $('iSig').disabled = false; $('iSig').textContent = 'Revisar cambios'; return; }
@@ -361,14 +373,14 @@ function pasoImp() {
   if (P.paso === 3) {
     const R = P.previa, D = R.detalle;
     const bloque = (k, titulo, desc, n, cols, fila, opcion) => '<details class="card" style="padding:14px 18px"' + (n && n <= 30 ? ' open' : '') + '><summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>' + titulo + '</b> <span class="mu peq">' + desc + '</span></span><span style="display:flex;gap:12px;align-items:center">' +
-      (opcion ? '<label class="peq" style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-op="' + opcion + '"' + (n ? ' checked' : ' disabled') + '> Aplicar</label>' : '') + '<span class="chip ' + (n ? 'pa' : 'gr') + '">' + n + '</span></span></summary>' +
+      (opcion ? '<label class="peq" style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-op="' + opcion + '"' + (n && opcion !== 'noFiguran' ? ' checked' : n ? '' : ' disabled') + '> Aplicar</label>' : '') + '<span class="chip ' + (n ? 'pa' : 'gr') + '">' + n + '</span></span></summary>' +
       (n ? '<div class="tabla" style="margin-top:10px"><table><thead><tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>' + D[k].map(o => '<tr>' + fila(o).map(c => '<td class="peq">' + c + '</td>').join('') + '</tr>').join('') + '</tbody></table>' + (n > D[k].length ? '<p class="mu peq">Se muestran ' + D[k].length + ' de ' + n + '.</p>' : '') + '</div>' : '') + '</details>';
     h += '<section style="display:flex;flex-direction:column;gap:10px"><h2>3 · Revisá antes de aplicar</h2><p class="mu peq" style="margin:0">«' + esc(P.origen) + '» · ' + P.filas.length + ' fila(s) · establecimiento(s): ' + esc(R.establecimientos.join(', ') || '—') + ' · sin cambios: ' + R.iguales + '</p>' +
       bloque('altas', 'Altas', 'Personas nuevas que se agregan', R.altas, ['DNI', 'Apellido y nombre', 'Va a'], o => [esc(o.dni), esc(o.nombre), esc(o.hacia)], 'altas') +
       bloque('mover', 'Salen de SIN_ASIGNAR', 'Estaban sin establecimiento y pasan al que indica la base', R.mover, ['DNI', 'Apellido y nombre', 'Va a'], o => [esc(o.dni), esc(o.nombre), esc(o.hacia)], 'mover') +
       bloque('cambios', 'Datos que cambian', 'El dato anterior queda en el HISTORIAL', R.cambios, ['DNI', 'Persona', 'Cambios'], o => [esc(o.dni), esc(o.nombre), o.dif.map(d => '<b>' + esc(d.campo) + '</b>: ' + esc(d.antes || '—') + ' → ' + esc(d.despues)).join('<br>')], 'cambios') +
       bloque('reaparecen', 'Vuelven a figurar', 'Estaban marcadas como «No figura» o «Revisar» y pasan a Activo', R.reaparecen, ['DNI', 'Persona', 'Hoja'], o => [esc(o.dni), esc(o.nombre), esc(o.hoja)], 'reaparecen') +
-      bloque('noFiguran', 'No figuran en esta base', 'Activos en la hoja que no aparecen en el archivo: se marcan, no se borran', R.noFiguran, ['DNI', 'Persona', 'Función', 'Hoja'], o => [esc(o.dni), esc(o.nombre), esc(o.funcion), esc(o.hoja)], 'noFiguran') +
+      bloque('noFiguran', 'No figuran en esta base', 'Activos en la hoja que no aparecen en el archivo. Marcá «Aplicar» solo si la base es COMPLETA (nómina total); si es un listado parcial, dejalo sin marcar', R.noFiguran, ['DNI', 'Persona', 'Función', 'Hoja'], o => [esc(o.dni), esc(o.nombre), esc(o.funcion), esc(o.hoja)], 'noFiguran') +
       bloque('conflictos', 'Están en otro establecimiento', 'No se cambian: si corresponde, hacé el traslado desde la ficha', R.conflictos, ['DNI', 'Persona', 'Hoy en', 'La base dice'], o => [esc(o.dni), esc(o.nombre), esc(o.en), esc(o.archivo)], null) +
       bloque('errores', 'Filas con error', 'No se importan (salvo CUIL inválido: se importa sin CUIL)', R.errores, ['Fila', 'Persona', 'Motivo'], o => [o.n, esc(o.nombre), esc(o.motivo)], null) +
       '<div style="display:flex;gap:10px;margin-top:6px"><button class="btn sec" id="iAtr">Volver</button><button class="btn pri" id="iApl">Aplicar los cambios marcados</button></div></section>';
