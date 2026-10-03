@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-4';
+const VERSION = 'piloto-5';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -386,7 +386,8 @@ function quienCarga() {
   const ult = LS.get('personas_' + SES.est, []);
   $('app').innerHTML = '<h1>¿Quién va a cargar?</h1><p class="mu">Queda registrado en cada carga.</p><div class="menu">' +
     (ref ? '<button class="big main" data-act="soy" data-arg="ref"><b>' + esc(ref) + '</b><span>Referente de residuos</span></button>' : '') +
-    ult.filter(p => p.nombre !== ref).slice(0, 3).map((p, i) => '<button class="big" data-act="soy" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.funcion) + '</span></button>').join('') +
+    ult.filter(p => p.nombre !== ref).slice(0, 3).map((p, i) => '<div style="position:relative"><button class="big" style="width:100%" data-act="soy" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.funcion) + '</span></button>' +
+      '<button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidar" data-arg="' + esc(p.nombre) + '" aria-label="Quitar a ' + esc(p.nombre) + ' de este equipo">Quitar</button></div>').join('') +
     '<button class="big" data-act="otraPersona"><b>Carga otra persona</b><span>Escribí tu nombre y tu función</span></button></div>';
   bar(null);
 }
@@ -687,6 +688,7 @@ const ACT = {
   preguntaSi: () => { cerrarAyuda(); const f = PREG; PREG = null; if (f) f(); }, preguntaNo: () => { cerrarAyuda(); PREG = null; },
   entrar: () => entrar(), salir: () => preguntar('¿Salir del sistema?', 'Sí, salir', () => salirSesion()),
   soy: b => { const ref = CFG.referente.nombre, ult = LS.get('personas_' + SES.est, []).filter(p => p.nombre !== ref); SES.persona = b.dataset.arg === 'ref' ? { nombre: ref, funcion: 'Referente de residuos' } : ult[Number(b.dataset.arg)]; LS.set('ses', SES); inicio(); },
+  olvidar: b => preguntar('¿Quitar a ' + b.dataset.arg + ' de la lista de este equipo? Sus cargas ya registradas no se borran.', 'Sí, quitar', () => { LS.set('personas_' + SES.est, LS.get('personas_' + SES.est, []).filter(p => p.nombre !== b.dataset.arg)); quienCarga(); }),
   otraPersona: () => { ERR = {}; otraPersona(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
   inicio: () => inicio(), consulta: () => consulta(), avance: () => avance(), actualizar: () => { actualizarConfig(false); sincronizar(); },
   nuevoManifiesto: () => nuevoManifiesto(), nuevoCertificado: () => nuevoCertificado(),
