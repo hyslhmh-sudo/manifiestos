@@ -77,6 +77,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const fechaTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('portal_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('portal_' + k, JSON.stringify(v)); } catch (e) {} }, del: k => { try { localStorage.removeItem('portal_' + k); } catch (e) {} } };
+let FICHAS = {};
 let CLAVE = LS.get('clave', ''), RES = null, FICHA = null, TRAB = { cod: '', q: '', datos: null };
 const CODS_EXTRA = [['NC', 'Nivel central (Secretaría de Salud y organismos)'], ['SIN_ASIGNAR', 'Sin establecimiento reconocido']];
 const TRAB_COLS = ['CUIL', 'DNI', 'APELLIDOS', 'NOMBRES', 'SITIO', 'FUNCION', 'FUNCION_DETALLE', 'SERVICIO', 'VINCULO', 'EMPRESA', 'CARGO_CONDUCCION', 'EMAIL', 'EMAIL_FECHA', 'TELEFONO', 'EN_NTEAR', 'FUENTES', 'ULTIMA_CONFIRMACION', 'REVISAR', 'MOTIVO_REVISION', 'ESTADO', 'FECHA_ALTA', 'ESTABLECIMIENTO'];
@@ -103,12 +104,12 @@ function ingreso(msg) {
   const ir = async () => {
     const c = $('clave').value.trim(); if (!c) return;
     $('entrar').disabled = true; $('entrar').textContent = 'Verificando…'; CLAVE = c;
-    try { const r = await api('p_resumen', {}); if (!r.ok) throw new Error(); RES = r; if ($('recordar').checked) LS.set('clave', c); if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
+    try { const r = await api('p_resumen', {}); if (!r.ok) throw new Error(); RES = r; LS.set('res', r); if ($('recordar').checked) LS.set('clave', c); if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
     catch (e) { if (e.message !== 'clave') ingreso('No se pudo ingresar. Revisá la clave y la conexión.'); }
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
 }
-function salir(msg) { CLAVE = ''; LS.del('clave'); RES = null; ingreso(msg); }
+function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); RES = null; FICHAS = {}; ingreso(msg); }
 
 // ------------------------------------------------------------------ Estructura
 function marco(activo, contenido) {
@@ -129,10 +130,17 @@ const cargando = (activo, t) => marco(activo, '<div class="cargando">' + esc(t |
 // ------------------------------------------------------------------ Inicio · matriz provincial
 let FILTRO = { area: '', q: '', soloApp: false };
 const chipEstado = e => /^activ/i.test(e || '') ? '<span class="chip ok">Habilitado</span>' : /maestra/i.test(e || '') ? '' : '<span class="chip gr">Pendiente</span>';
+// Trae la matriz más nueva sin hacer esperar: si cambió y se está mirando el inicio, la vuelve a dibujar
+let refrescando = false;
+async function refrescarRes() {
+  if (refrescando) return; refrescando = true;
+  try { const r = await api('p_resumen', {}); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if (cambio && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } catch (e) {} finally { refrescando = false; }
+}
 function chipCap(c, a) { if (!a) return '<span class="chip gr">—</span>'; const p = Math.round(100 * (c || 0) / a); return '<span class="chip ' + (p >= 70 ? 'ok' : p >= 30 ? 'wa' : 'er') + '">' + (c || 0) + ' · ' + p + ' %</span>'; }
 function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
 async function inicio(fresco) {
-  if (!RES || fresco) { cargando('#inicio', 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }); } catch (e) { return; } }
+  if (!RES && !fresco) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!RES || fresco) { cargando('#inicio', fresco ? 'Recalculando la matriz provincial…' : 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }); LS.set('res', RES); } catch (e) { return; } }
   const F = RES.filas, areas = Array.from(new Set(F.map(f => f.area))).sort();
   const q = FILTRO.q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const vis = F.filter(f => (!FILTRO.area || f.area === FILTRO.area) && (!FILTRO.soloApp || /^activ/i.test(f.estado)) && (!q || (f.nombre + ' ' + f.cod).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) >= 0))
@@ -166,14 +174,14 @@ function selectorEst(sel, conExtra, conTodos) {
     (conExtra ? CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('') : '');
 }
 async function ficha(cod) {
-  if (!RES) { cargando('#ficha'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#ficha'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
   if (!cod) {
     marco('#ficha', '<div class="cab"><div><span class="mu peq">Establecimientos</span><h1>Ficha del establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="selEst">' + selectorEst('', false) + '</select></label></div>');
     $('selEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
     return;
   }
-  cargando('#ficha', 'Abriendo la ficha…');
-  try { FICHA = await api('p_ficha', { cod: cod }); } catch (e) { return; }
+  if (FICHAS[cod]) FICHA = FICHAS[cod];
+  else { cargando('#ficha', 'Abriendo la ficha…'); try { FICHA = await api('p_ficha', { cod: cod }); } catch (e) { return; } FICHAS[cod] = FICHA; }
   if (!FICHA.ok) return marco('#ficha', '<div class="aviso error">' + esc(FICHA.mensaje) + '</div>');
   const d = FICHA.datos, R = FICHA.residuos;
   const fila = (k, v) => '<dt>' + k + '</dt><dd>' + esc(v || 's/d') + '</dd>';
@@ -202,7 +210,7 @@ async function ficha(cod) {
 async function guardarFicha(tipo, fila, datos) {
   const r = await api('p_ficha_guardar', { cod: FICHA.cod, tipo: tipo, fila: fila, datos: datos });
   if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-  toast(r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.'); RES = null; ficha(FICHA.cod); return '';
+  toast(r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.'); delete FICHAS[FICHA.cod]; ficha(FICHA.cod); return '';
 }
 
 // ------------------------------------------------------------------ Modal genérico
@@ -230,7 +238,7 @@ function modal(titulo, campos, valores, guardar, extra) {
 
 // ------------------------------------------------------------------ Trabajadores
 async function trabajadores(cod) {
-  if (!RES) { cargando('#trab'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#trab'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
   TRAB.cod = cod || TRAB.cod || '';
   const pintar = () => {
     const D = TRAB.datos;
@@ -270,7 +278,7 @@ function fichaTrab(f) {
     const datos = Object.assign({}, v, nuevos);
     const r = await api('p_trab_guardar', { cod: hoja, fila: f ? f.fila : null, datos: datos });
     if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-    toast(f ? (r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') : 'Trabajador agregado.'); RES = null; TRAB.datos = null; trabajadores(TRAB.cod); return '';
+    toast(f ? (r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') : 'Trabajador agregado.'); FICHAS = {}; TRAB.datos = null; trabajadores(TRAB.cod); return '';
   }, info);
   if (f) {
     const box = document.createElement('div'); box.className = 'card'; box.style.cssText = 'padding:12px 14px;background:var(--bg)'; box.innerHTML = '<b>Capacitaciones</b><p class="mu peq" style="margin:4px 0 0">Buscando…</p>';
@@ -285,11 +293,11 @@ function fichaTrab(f) {
   if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
     m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
     $('tBaja').onclick = async () => { if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
-      const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; RES = null; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+      const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
     $('tTras').onclick = () => {
       m.extra.innerHTML = '<label class="f">Trasladar a<select class="c" id="tDest">' + selectorEst('', true) + '</select></label><button class="btn pri" id="tTrasOk" style="align-self:flex-end">Confirmar traslado</button>';
       $('tTrasOk').onclick = async () => { const dest = $('tDest').value; if (!dest) return;
-        const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; RES = null; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+        const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
     };
   }
 }
@@ -315,7 +323,7 @@ function separarNombre(t) {
 const normH = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[°º.:#]/g, ' ').replace(/\s+/g, ' ').trim();
 function cargarXLSX() { return window.XLSX ? Promise.resolve() : new Promise((ok, mal) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar el lector de Excel. Revisá la conexión.')); document.head.appendChild(s); }); }
 async function importar() {
-  if (!RES) { cargando('#importar'); try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; } else { cargando('#importar'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
   IMP = { paso: 1, cod: TRAB.cod && TRAB.cod !== '*' ? TRAB.cod : '', ntear: false };
   pasoImp();
 }
@@ -403,7 +411,7 @@ function pasoImp() {
       $('iApl').disabled = true; $('iApl').textContent = 'Aplicando…';
       try { P.final = await api('p_imp_aplicar', { cod: P.cod, filas: P.filas, origen: P.origen, ntear: P.ntear, opciones: op }); } catch (e) { $('iApl').disabled = false; $('iApl').textContent = 'Aplicar los cambios marcados'; return; }
       if (!P.final.ok) { toast(P.final.mensaje || 'No se pudo aplicar.'); $('iApl').disabled = false; $('iApl').textContent = 'Aplicar los cambios marcados'; return; }
-      P.op = op; P.paso = 4; RES = null; TRAB.datos = null; pasoImp();
+      P.op = op; P.paso = 4; FICHAS = {}; TRAB.datos = null; pasoImp();
     };
     return;
   }
