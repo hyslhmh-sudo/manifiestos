@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-1';
+const VERSION = 'piloto-2';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -466,6 +466,7 @@ function pasoMan() {
 }
 function validar() {
   ERR = {}; leer();
+  const fe = document.getElementById('f_fecha'); if (fe && fe.value && fe.value !== M._fecha) escribirFecha(fe);
   if (PASO === 0) {
     if (sitiosCfg().length > 1 && !M.sitio) ERR.sitio = 'Elegí dónde se hizo el retiro.';
     if (!/^\d{3,}$/.test(String(M.nro).replace(/[\s.-]/g, ''))) ERR.nro = 'Escribí el número impreso en el manifiesto (solo números).';
@@ -547,7 +548,8 @@ function pasoCert() {
   window.scrollTo(0, 0);
 }
 function guardarCert() {
-  ERR = {}; C.mes = C.mesM && C.mesA ? C.mesA + '-' + C.mesM : '';
+  ERR = {}; const ft = document.getElementById('f_ftrat'); if (ft && ft.value && ft.value !== C._ftrat) escribirFecha(ft);
+  const nc = document.getElementById('f_ncert'); if (nc) C.ncert = nc.value; C.mes = C.mesM && C.mesA ? C.mesA + '-' + C.mesM : '';
   if (!C.empresa) ERR.empresa = 'Elegí la empresa.';
   if (!C.mes) ERR.mes = 'Elegí el mes y el año.'; else if (C.mes > hoyISO().slice(0, 7)) ERR.mes = 'El mes no puede ser posterior al actual.';
   if (!C.ncert.trim()) ERR.ncert = 'Falta el número de certificado.';
@@ -610,7 +612,7 @@ const ACT = {
   adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
   sino: b => { leer(); M[b.dataset.k2] = b.dataset.arg; delete ERR[b.dataset.k2]; pasoMan(); },
   guardarCert: () => guardarCert(),
-  cal: b => { const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
+  cal: b => { if (b.dataset.obj === 'M' && M) leer(); const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
   calMes: b => { let m = CAL.m + Number(b.dataset.arg), y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } if (y < 2025 || y > new Date().getFullYear()) return; CAL.m = m; CAL.y = y; calendario(); },
   calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
   corregirLocal: b => { const c = COLA.find(x => x.datos.idLocal === b.dataset.arg); if (!c) return; COLA = COLA.filter(x => x !== c); guardarCola();
@@ -624,6 +626,7 @@ document.addEventListener('change', e => {
   if (t.dataset.chg === 'foto') foto(t, M, pasoMan);
   else if (t.dataset.chg === 'fotoC') foto(t, C, pasoCert);
   else if (t.dataset.chg === 'repMan') { leer(); pasoMan(); }
+  else if (t.dataset.k && M && t.dataset.i == null) { M[t.dataset.k] = t.value; }
   else if (t.dataset.chg === 'repOtra') { OTRA.funcion = t.value; otraPersona(); }
   else if (t.dataset.chg === 'anio') { ANIO_AV = t.value; avance(); }
   else if (t.dataset.chg === 'filtro') { FILTRO = t.value; consulta(); }
@@ -639,6 +642,7 @@ document.addEventListener('input', e => {
   if (t.dataset.c && C) C[t.dataset.c] = t.value;
   if (t.dataset.l) LOG[t.dataset.l] = t.value;
   if (t.dataset.o && OTRA) OTRA[t.dataset.o] = t.value;
+  if (t.dataset.k && M && t.dataset.i == null && !t.dataset.recalc) M[t.dataset.k] = t.value;
   if (t.dataset.recalc && M) {   // recalcula la cantidad retirada sin perder el foco
     const i = Number(t.dataset.i); M.res[i][t.dataset.k] = t.value; calcVol(M.res[i]);
     const v = document.querySelector('[data-k="vol"][data-i="' + i + '"]'); if (v && M.res[i].uni === 'dm³') v.value = M.res[i].vol;
