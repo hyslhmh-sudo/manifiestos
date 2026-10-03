@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-2';
+const VERSION = 'piloto-3';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -262,11 +262,16 @@ const miCola = () => COLA.filter(c => SES && c.est === SES.est);
 async function hashTxt(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t).trim())); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
 
 // ------------------------------------------------------------------ Comunicación con el sistema
+let ESPERA_MS = 25000;   // si el sistema no responde en este tiempo, se corta y se avisa
 async function api(accion, datos, ses) {
-  const s = ses || SES;
-  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: s.est, clave: s.clave, datos: datos, version: VERSION }) });
-  if (!r.ok) throw new Error('red');
-  return r.json();
+  const s = ses || SES, ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ESPERA_MS);
+  try {
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: s.est, clave: s.clave, datos: datos, version: VERSION }), signal: ctl.signal });
+    if (!r.ok) throw new Error('red');
+    const txt = await r.text();
+    try { return JSON.parse(txt); } catch (e) { throw new Error('respuesta'); }
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'tiempo' : (e.message || 'red')); }
+  finally { clearTimeout(t); }
 }
 let ENVIANDO = false;
 async function sincronizar() {
@@ -314,6 +319,10 @@ AYUDA.clave = { t: 'Clave del establecimiento', que: 'La clave que te dio Higien
 AYUDA.sitio = { t: 'Sitio del retiro', que: 'Dónde retiró la empresa los residuos: el edificio principal o uno de los CAPS o dispositivos.', donde: 'Sección 1, «Datos identificatorios»: figura el nombre y la dirección del lugar de retiro.', ej: 'Villa Italia', s: 'id' };
 AYUDA.tam = { t: 'Tamaño de la bolsa (dm³)', que: 'La capacidad de cada bolsa o recipiente, en litros (1 litro = 1 dm³). Queda guardado para la próxima carga de ese sitio.', donde: 'Figura en el envase de la bolsa. Las más comunes: 20, 50, 80, 120, 200 y 240.', ej: '200', s: null };
 AYUDA.vol = { t: 'Cantidad retirada', que: 'Se calcula sola: cantidad de bolsas × tamaño de la bolsa. Si el residuo se pesó, elegí «kg» y escribí el peso.', donde: 'Sección 3, «Información de residuos», columna «Cant. real».', ej: '10 bolsas × 200 = 2.000 dm³', s: 'res' };
+AYUDA.foto = { t: 'Foto o escaneo del manifiesto', que: 'Sacá una foto del original, o elegí el archivo si ya está escaneado (imagen o PDF). Antes de 2027 es opcional; si el papel está en un lote escaneado que ya enviaste, marcá esa opción. Desde 2027 es obligatoria.', donde: 'Toda la hoja original.', ej: 'Foto de frente o PDF escaneado', s: null };
+AYUDA.ltipo = { t: 'Qué vas a enviar', que: 'Si los escaneados son manifiestos o certificados de tratamiento. Si tenés de los dos, hacé dos envíos.', donde: '', ej: 'Manifiestos', s: null };
+AYUDA.lperiodo = { t: 'Período', que: 'Los meses que cubren los papeles escaneados que vas a enviar.', donde: 'Mirá la fecha del primer y del último manifiesto de la carpeta.', ej: 'Desde enero 2025 hasta junio 2025', s: null };
+AYUDA.larch = { t: 'Archivos', que: 'Una carpeta comprimida (.zip) con los escaneos, o los PDF sueltos. Hasta 20 MB cada uno. Si el nombre de cada archivo tiene el número de manifiesto (por ejemplo 131500.pdf), el sistema lo enlaza solo.', donde: 'En la computadora: clic derecho sobre la carpeta › Enviar a › Carpeta comprimida.', ej: 'escaneados_2025.zip', s: null };
 AYUDA.empresa = { t: 'Empresa', que: 'La empresa que emitió el certificado de tratamiento.', donde: 'Encabezado del certificado.', ej: 'Impeesa', s: null };
 
 // ------------------------------------------------------------------ Estado de pantalla
@@ -336,25 +345,37 @@ function ingreso(msg) {
   bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0);
   if (navigator.onLine && API_URL.indexOf('http') === 0) fetch(API_URL + '?accion=lista').then(r => r.json()).then(r => { if (r.ok) LS.set('lista', r.lista); }).catch(() => {});
 }
+let ENTRANDO = false;
 async function entrar() {
+  if (ENTRANDO) return;
   ERR = {};
   if (!LOG.est) ERR.hospital = 'Elegí el establecimiento.';
   if (!LOG.clave) ERR.clave = 'Escribí la clave.';
   if (Object.keys(ERR).length) return ingreso();
-  const nombre = (LS.get('lista', LISTA_BASE).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
-  const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, persona: null }, h = await hashTxt(LOG.est + '|' + LOG.clave);
-  if (navigator.onLine) {
-    bar('<button class="btn pri" disabled>Verificando…</button>');
-    try {
-      const r = await api('config', null, ses);
-      if (!r.ok) { ERR.clave = r.error === 'clave' ? 'La clave no es correcta. Si no la recordás, pedila a Higiene y Seguridad.' : (r.mensaje || 'No se pudo ingresar.'); return ingreso(); }
-      CFG = r; LS.set('cfg_' + ses.est, r); LS.set('h_' + ses.est, h);
-    } catch (e) { if (LS.get('h_' + ses.est) !== h) { ERR.clave = 'No hay conexión con el sistema. Para el primer ingreso se necesita señal.'; return ingreso(); } CFG = LS.get('cfg_' + ses.est, null); }
-  } else {
-    if (LS.get('h_' + ses.est) !== h) { ERR.clave = LS.get('h_' + ses.est) ? 'La clave no es correcta.' : 'Para el primer ingreso se necesita señal.'; return ingreso(); }
-    CFG = LS.get('cfg_' + ses.est, null);
-  }
-  SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; quienCarga();
+  ENTRANDO = true;
+  try {
+    const nombre = (LS.get('lista', LISTA_BASE).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
+    const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, persona: null }, h = await hashTxt(LOG.est + '|' + LOG.clave.trim().toLowerCase());
+    const guardado = LS.get('h_' + ses.est);
+    if (navigator.onLine) {
+      bar('<button class="btn pri" disabled>Verificando la clave… puede tardar unos segundos</button>');
+      try {
+        const r = await api('config', null, ses);
+        if (!r.ok) { ERR.clave = r.error === 'clave' ? 'La clave no es correcta. Revisala (no importan las mayúsculas) o pedila a Higiene y Seguridad.' : (r.mensaje || 'No se pudo ingresar. Probá de nuevo.'); return ingreso(); }
+        CFG = r; LS.set('cfg_' + ses.est, r); LS.set('h_' + ses.est, h);
+      } catch (e) {
+        // Sin respuesta del sistema: si esta clave ya se usó en este equipo, se entra con los datos guardados
+        if (guardado && guardado === h) CFG = LS.get('cfg_' + ses.est, null);
+        else { ERR.clave = e.message === 'tiempo' ? 'El sistema tardó demasiado en responder. Probá de nuevo en un momento.' : guardado ? 'La clave no es correcta.' : 'No se pudo conectar con el sistema. Revisá la señal y probá de nuevo.'; return ingreso(); }
+      }
+    } else {
+      if (guardado !== h) { ERR.clave = guardado ? 'La clave no es correcta.' : 'Para el primer ingreso se necesita señal.'; return ingreso(); }
+      CFG = LS.get('cfg_' + ses.est, null);
+    }
+    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; quienCarga();
+  } catch (e) {
+    ERR.clave = 'Ocurrió un error al ingresar. Probá de nuevo.'; ingreso();
+  } finally { ENTRANDO = false; }
 }
 function salirSesion(msg) { SES = null; CFG = null; LS.del('ses'); ingreso(msg); }
 
@@ -400,6 +421,7 @@ function inicio() {
     '<div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar un manifiesto</b><span>Cuando la empresa retira los residuos</span></button>' +
     '<button class="big" data-act="nuevoCertificado"><b>Cargar un certificado</b><span>Cuando llega el certificado de tratamiento</span></button>' +
     '<button class="big" data-act="avance"><b>Ver avance por mes</b><span>Retiros y certificados registrados</span></button>' +
+    '<button class="big" data-act="lote"><b>Enviar escaneados (lote)</b><span>Manifiestos o certificados ya escaneados, en .zip o PDF' + (CFG && CFG.lotes && CFG.lotes.length ? ' · ' + CFG.lotes.length + ' enviado(s)' : '') + '</span></button>' +
     '<button class="big" data-act="consulta"><b>Consultar mis cargas</b><span>' + (pend ? pend + ' por enviar · ' : '') + 'Últimas registradas en el sistema</span></button></div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (CFG ? fechaTxt(CFG.actualizado.slice(0, 10)) + ' ' + CFG.actualizado.slice(11, 16) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
@@ -449,7 +471,7 @@ function pasoMan() {
   } else if (PASO === 2) {
     h += '<h1>Control del papel</h1>' + campo('firma', siNo('firma'), ERR.firma) + campo('original', siNo('original'), ERR.original) +
       (M.original === 'No' ? '<div class="notice">El original tiene que quedar en el establecimiento. Avisá a tu jefatura para recuperarlo.</div>' : '') +
-      campo('foto', '<label class="photo" for="f_foto">' + (M.foto ? 'Cambiar la foto<img src="' + M.foto + '" alt="Foto del manifiesto">' : '<b>Sacar foto del manifiesto</b><br><span class="mu">Toda la hoja, con buena luz</span>') + '</label><input id="f_foto" type="file" accept="image/*" capture="environment" hidden data-chg="foto">', ERR.foto) +
+      bloqueFoto(M, 'foto', M.fecha, 'foto', 'man') +
       '<div class="field"><div class="lab"><label for="f_obs">Observaciones (opcional)</label></div><textarea id="f_obs" data-k="obs" rows="3" placeholder="Por ejemplo: quedaron bolsas sin retirar">' + esc(M.obs) + '</textarea></div>';
   } else {
     const fila = (k, v) => '<div><span>' + k + '</span><b>' + v + '</b></div>';
@@ -457,7 +479,7 @@ function pasoMan() {
     h += '<h1>Revisá antes de guardar</h1>' +
       bloque('Retiro', 0, fila('Sitio', esc(M.sitio)) + fila('N.º de manifiesto', esc(M.nro)) + fila('Fecha de recolección', fechaTxt(M.fecha))) +
       bloque('Residuos', 1, M.res.filter(tieneDatos).map(r => fila(esc(r.corriente) + ' · ' + esc(r.contenedor), esc(r.cant) + (r.uni === 'dm³' ? ' × ' + esc(r.tam) + ' = ' + nf(r.vol) + ' dm³' : ' · ' + esc(r.vol) + ' kg'))).join('')) +
-      bloque('Control del papel', 2, fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto', M.foto ? 'Cargada' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
+      bloque('Control del papel', 2, fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto o escaneo', M.foto ? (/^data:application\/pdf/.test(M.foto) ? 'PDF cargado' : 'Foto cargada') : M.lote ? 'En lote escaneado' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
       (!navigator.onLine ? '<div class="notice">No hay señal: se guarda en este equipo y se envía solo cuando vuelva la conexión.</div>' : '');
   }
   $('app').innerHTML = h;
@@ -487,7 +509,7 @@ function validar() {
   } else if (PASO === 2) {
     if (!M.firma) ERR.firma = 'Respondé Sí o No.';
     if (!M.original) ERR.original = 'Respondé Sí o No.';
-    if (!M.foto) ERR.foto = 'Falta la foto del manifiesto.';
+    if (!M.foto && M.fecha >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del manifiesto es obligatorio.';
   }
   return !Object.keys(ERR).length;
 }
@@ -496,7 +518,7 @@ function adelante() {
   if (PASO < 3) { PASO = DESDE_REV ? 3 : PASO + 1; DESDE_REV = false; pasoMan(); return; }
   // Guardar: tamaños usados quedan como sugerencia para el próximo retiro del sitio
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
-  const datos = { idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, persona: SES.persona,
+  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
 }
@@ -510,13 +532,31 @@ function alertaEspacio() {
   $('ov').innerHTML = '<div class="sheet"><h3>No hay espacio en el teléfono</h3><p>Hay muchas cargas con foto esperando envío. Conectate a una red para enviarlas y después volvé a intentar.</p><button class="btn pri" style="width:100%" data-act="cerrarAyuda">Entendido</button></div>'; $('ov').hidden = false;
 }
 function atras() { leer(); if (PASO === 0) return preguntar('¿Salir sin guardar este manifiesto?', 'Sí, salir', () => inicio()); PASO--; DESDE_REV = false; pasoMan(); }
+const OBLIG = () => (CFG && CFG.fotoObligatoriaDesde) || '2027-01-01';
+const loteDe = fecha => { const m = (fecha || '').slice(0, 7); return (CFG && CFG.lotes || []).find(l => l.tipo !== 'certificados' && m && m >= l.desde && m <= l.hasta); };
+const txtLote = l => l ? mesTxt(l.desde + '-01') + ' a ' + mesTxt(l.hasta + '-01') : '';
+// Bloque de foto/escaneo: sacar foto, elegir archivo (imagen o PDF) o indicar que está en un lote escaneado
+function bloqueFoto(obj, k, fecha, chg, que) {
+  const oblig = fecha && fecha >= OBLIG(), lote = obj === M ? loteDe(fecha) : null, pdf = /^data:application\/pdf/.test(obj.foto || '');
+  let h = '<div class="field"><div class="lab"><label>' + (que === 'cert' ? 'Foto o escaneo del certificado' : 'Foto o escaneo del manifiesto') + (oblig ? '' : ' (opcional antes de 2027)') + '</label>' + q(k) + '</div>';
+  if (obj.foto) h += '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(obj.fotoNombre || '') + '</span>' : '<img src="' + obj.foto + '" alt="Foto">') + '</div>';
+  h += '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'c">' + (obj.foto ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'a">Elegir archivo</label></div>' +
+    '<input id="f_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-chg="' + chg + '"><input id="f_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-chg="' + chg + '">';
+  if (obj.foto) h += '<button class="link" data-act="quitarFoto" data-arg="' + (obj === M ? 'M' : 'C') + '">Quitar</button>';
+  if (!obj.foto && lote && !oblig) h += '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" data-chg="marcarLote"' + (obj.lote ? ' checked' : '') + ' style="width:22px;height:22px"> Está en el lote escaneado enviado (' + esc(txtLote(lote)) + ')</label>';
+  return h + (ERR.foto ? '<div class="err">' + esc(ERR.foto) + '</div>' : '') + '</div>';
+}
 function foto(input, obj, repaint) {
   const f = input.files && input.files[0]; if (!f) return;
+  if (f.type === 'application/pdf') {   // los PDF escaneados se guardan tal cual
+    if (f.size > 6 * 1024 * 1024) { ERR.foto = 'El PDF pesa más de 6 MB. Para archivos grandes usá «Enviar escaneados (lote)».'; return repaint(); }
+    const rd = new FileReader(); rd.onload = () => { if (obj === M) leer(); obj.foto = rd.result; obj.fotoNombre = f.name; obj.lote = ''; delete ERR.foto; repaint(); }; rd.readAsDataURL(f); return;
+  }
   const img = new Image(), url = URL.createObjectURL(f);
   img.onload = () => {   // se achica para que pese poco y se pueda enviar con mala señal
     const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas');
     c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    if (obj === M) leer(); obj.foto = c.toDataURL('image/jpeg', 0.65); URL.revokeObjectURL(url); repaint();
+    if (obj === M) leer(); obj.foto = c.toDataURL('image/jpeg', 0.65); obj.fotoNombre = ''; obj.lote = ''; delete ERR.foto; URL.revokeObjectURL(url); repaint();
   };
   img.src = url;
 }
@@ -543,7 +583,7 @@ function pasoCert() {
       '</select><select data-cm="a"' + (ERR.mes ? ' class="bad"' : '') + '><option value="">Año…</option>' + ANIOS().map(y => '<option' + (C.mesA === y ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>') +
     f('ncert', '<input id="f_ncert" value="' + esc(C.ncert) + '" data-c="ncert"' + (ERR.ncert ? ' class="bad"' : '') + '>') +
     f('ftrat', campoFecha('ftrat', 'C', ERR.ftrat)) +
-    '<div class="field"><div class="lab"><label for="f_cfoto">Foto del certificado</label>' + q('cfoto') + '</div><label class="photo" for="f_cfoto">' + (C.foto ? 'Cambiar la foto<img src="' + C.foto + '" alt="Foto del certificado">' : '<b>Sacar foto del certificado</b>') + '</label><input id="f_cfoto" type="file" accept="image/*" capture="environment" hidden data-chg="fotoC">' + (ERR.foto ? '<div class="err">' + ERR.foto + '</div>' : '') + '</div>';
+    bloqueFoto(C, 'cfoto', C.mesA && C.mesM ? C.mesA + '-' + C.mesM + '-01' : '', 'fotoC', 'cert');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarCert">Guardar certificado</button>');
   window.scrollTo(0, 0);
 }
@@ -555,9 +595,50 @@ function guardarCert() {
   if (!C.ncert.trim()) ERR.ncert = 'Falta el número de certificado.';
   else if ((CFG && CFG.certificados || []).some(x => x.ncert === C.ncert.trim())) ERR.ncert = 'Ese certificado ya está registrado.';
   if (!C.ftrat) ERR.ftrat = 'Falta la fecha de tratamiento.'; else if (C.ftrat > hoyISO()) ERR.ftrat = 'La fecha no puede ser posterior a hoy.';
-  if (!C.foto) ERR.foto = 'Falta la foto del certificado.';
+  if (!C.foto && C.mes && C.mes + '-01' >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del certificado es obligatorio.';
   if (Object.keys(ERR).length) return pasoCert();
   encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, foto: C.foto, persona: SES.persona }, 'Certificado ' + C.ncert.trim());
+}
+
+// ------------------------------------------------------------------ Lote de escaneados
+let L = null;
+const MAX_LOTE = 20 * 1024 * 1024;
+function lote() {
+  VISTA = 'lote'; vista('form'); L = L || { tipo: 'manifiestos', dM: '', dA: '', hM: '', hA: '', nota: '', archivos: [] };
+  const selMes = (k, v) => '<select data-lt="' + k + '"><option value="">Mes…</option>' + MESES.map((n, i) => { const x = String(i + 1).padStart(2, '0'); return '<option value="' + x + '"' + (v === x ? ' selected' : '') + '>' + n.charAt(0).toUpperCase() + n.slice(1) + '</option>'; }).join('') + '</select>';
+  const selAnio = (k, v) => '<select data-lt="' + k + '"><option value="">Año…</option>' + ['2023', '2024'].concat(ANIOS()).map(y => '<option' + (v === y ? ' selected' : '') + '>' + y + '</option>').join('') + '</select>';
+  const ya = (CFG && CFG.lotes || []);
+  $('app').innerHTML = '<h1>Enviar escaneados</h1><p class="mu">Para manifiestos o certificados que ya están escaneados. Mandá una carpeta comprimida (.zip) o los PDF, e indicá el período. Conviene hacerlo desde una computadora y con buena conexión.</p>' +
+    '<div class="field"><div class="lab"><label>Qué vas a enviar</label>' + q('ltipo') + '</div><select data-lt="tipo"><option value="manifiestos"' + (L.tipo === 'manifiestos' ? ' selected' : '') + '>Manifiestos</option><option value="certificados"' + (L.tipo === 'certificados' ? ' selected' : '') + '>Certificados de tratamiento</option></select></div>' +
+    '<div class="field"><div class="lab"><label>Desde</label>' + q('lperiodo') + '</div><div class="grid2">' + selMes('dM', L.dM) + selAnio('dA', L.dA) + '</div></div>' +
+    '<div class="field"><div class="lab"><label>Hasta</label></div><div class="grid2">' + selMes('hM', L.hM) + selAnio('hA', L.hA) + '</div>' + (ERR.periodo ? '<div class="err">' + esc(ERR.periodo) + '</div>' : '') + '</div>' +
+    '<div class="field"><div class="lab"><label>Archivos</label>' + q('larch') + '</div><label class="btn sec" style="display:block;text-align:center;cursor:pointer" for="f_lote">' + (L.archivos.length ? 'Cambiar archivos' : 'Elegir .zip o PDF') + '</label><input id="f_lote" type="file" accept=".zip,application/zip,application/pdf,image/*" multiple hidden data-chg="lote">' +
+    (L.archivos.length ? '<div class="lista" style="margin-top:8px">' + L.archivos.map(f => '<div class="item"><div><b>' + esc(f.name) + '</b><small>' + (f.size / 1048576).toFixed(1) + ' MB</small></div></div>').join('') + '</div>' : '') + (ERR.archivos ? '<div class="err">' + esc(ERR.archivos) + '</div>' : '') + '</div>' +
+    '<div class="field"><div class="lab"><label for="f_lnota">Nota (opcional)</label></div><textarea id="f_lnota" data-lt="nota" rows="2" placeholder="Por ejemplo: faltan los de marzo">' + esc(L.nota) + '</textarea></div>' +
+    (ya.length ? '<h2>Ya enviados</h2><div class="lista">' + ya.slice().reverse().map(l => '<div class="item"><div><b>' + (l.tipo === 'certificados' ? 'Certificados' : 'Manifiestos') + '</b><small>' + esc(txtLote(l)) + ' · ' + l.archivos + ' archivo(s)</small></div><span class="tag ok">Recibido</span></div>').join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px">Después cargá los datos de cada manifiesto en «Cargar un manifiesto» y marcá «Está en el lote escaneado enviado» en el paso de la foto.</p>';
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="enviarLote">Enviar</button>'); window.scrollTo(0, 0);
+}
+async function enviarLote() {
+  ERR = {}; const nota = document.getElementById('f_lnota'); if (nota) L.nota = nota.value;
+  const desde = L.dA && L.dM ? L.dA + '-' + L.dM : '', hasta = L.hA && L.hM ? L.hA + '-' + L.hM : '';
+  if (!desde || !hasta) ERR.periodo = 'Elegí el mes y el año de inicio y de fin.'; else if (desde > hasta) ERR.periodo = '«Desde» no puede ser posterior a «Hasta».'; else if (hasta > hoyISO().slice(0, 7)) ERR.periodo = 'El período no puede terminar en un mes futuro.';
+  if (!L.archivos.length) ERR.archivos = 'Elegí al menos un archivo.'; else if (L.archivos.some(f => f.size > MAX_LOTE)) ERR.archivos = 'Cada archivo puede pesar hasta 20 MB. Dividí la carpeta en partes más chicas.';
+  if (Object.keys(ERR).length) return lote();
+  if (!navigator.onLine) { ERR.archivos = 'Para enviar escaneados se necesita conexión.'; return lote(); }
+  const n = L.archivos.length, res = []; ESPERA_MS = 180000;
+  for (let i = 0; i < n; i++) {
+    const f = L.archivos[i];
+    bar('<button class="btn pri" disabled>Enviando ' + (i + 1) + ' de ' + n + '… no cierres la aplicación</button>');
+    try {
+      const data = await new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = mal; r.readAsDataURL(f); });
+      const r = await api('lote', { idLocal: idNuevo(), tipo: L.tipo, desde: desde, hasta: hasta, nombre: f.name, archivo: data, nota: L.nota, parte: n > 1 ? 'parte ' + (i + 1) + ' de ' + n : '', persona: SES.persona });
+      res.push(r.ok ? '✓ ' + f.name + ': ' + (r.archivos || 1) + ' archivo(s)' + (r.enlazados ? ', ' + r.enlazados + ' enlazado(s) a su manifiesto' : '') : '✗ ' + f.name + ': ' + (r.mensaje || 'no se pudo enviar'));
+    } catch (e) { res.push('✗ ' + f.name + ': ' + (e.message === 'tiempo' ? 'tardó demasiado; probá con un archivo más chico' : 'falló la conexión')); }
+  }
+  ESPERA_MS = 25000; L = null; actualizarConfig(true);
+  vista('form'); $('app').innerHTML = '<h1>Envío de escaneados</h1><div class="notice ok">' + res.map(esc).join('<br>') + '</div><div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar los datos de un manifiesto</b><span>Marcá «Está en el lote escaneado enviado»</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  bar(null);
 }
 
 // ------------------------------------------------------------------ Consultar
@@ -612,6 +693,8 @@ const ACT = {
   adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
   sino: b => { leer(); M[b.dataset.k2] = b.dataset.arg; delete ERR[b.dataset.k2]; pasoMan(); },
   guardarCert: () => guardarCert(),
+  lote: () => { ERR = {}; lote(); }, enviarLote: () => enviarLote(),
+  quitarFoto: b => { const o = b.dataset.arg === 'M' ? M : C; if (o === M) leer(); o.foto = ''; o.fotoNombre = ''; o === M ? pasoMan() : pasoCert(); },
   cal: b => { if (b.dataset.obj === 'M' && M) leer(); const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
   calMes: b => { let m = CAL.m + Number(b.dataset.arg), y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } if (y < 2025 || y > new Date().getFullYear()) return; CAL.m = m; CAL.y = y; calendario(); },
   calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
@@ -625,6 +708,9 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.chg === 'foto') foto(t, M, pasoMan);
   else if (t.dataset.chg === 'fotoC') foto(t, C, pasoCert);
+  else if (t.dataset.chg === 'marcarLote') { leer(); M.lote = t.checked ? txtLote(loteDe(M.fecha)) : ''; delete ERR.foto; }
+  else if (t.dataset.chg === 'lote') { L.archivos = Array.from(t.files || []); delete ERR.archivos; lote(); }
+  else if (t.dataset.lt && L) { L[t.dataset.lt] = t.value; }
   else if (t.dataset.chg === 'repMan') { leer(); pasoMan(); }
   else if (t.dataset.k && M && t.dataset.i == null) { M[t.dataset.k] = t.value; }
   else if (t.dataset.chg === 'repOtra') { OTRA.funcion = t.value; otraPersona(); }
