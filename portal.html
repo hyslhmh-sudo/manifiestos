@@ -520,6 +520,16 @@ async function diagForm(cod, id) {
   diagPintar();
 }
 const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
+// Cruce con el registro de capacitaciones (puntos MAT07 y PER06)
+function diagCapInfo(i, ro) {
+  const C = DG.D.capacitacion; if (!C || (i.ID !== 'MAT07' && i.ID !== 'PER06') || DG.tab !== '') return '';
+  const f = (a, b, p) => b ? a + ' de ' + b + ' (' + p + ' %)' : 'sin personal cargado';
+  return '<div class="aviso peq" style="grid-column:1/-1">Según el <b>registro de capacitaciones</b>, en los últimos 12 meses se capacitaron en residuos: ' +
+    '<b>' + f(C.capacitados, C.activos, C.pct) + '</b> del personal activo, y <b>' + f(C.limpiezaCap, C.limpieza, C.pctLimpieza) + '</b> del personal de limpieza, maestranza y servicios generales.' +
+    (C.alguna > C.capacitados ? ' Otras ' + (C.alguna - C.capacitados) + ' persona(s) se capacitaron hace más de un año.' : '') +
+    (i.ID === 'PER06' && C.sugerencia ? ' Sugerencia: <b>' + C.sugerencia + '</b>' + (ro ? '' : ' <button class="link" data-capsug="' + C.sugerencia + '">Usar</button>') : '') +
+    '<div class="mu" style="margin-top:4px">Cuenta solo a quienes figuran en la base de trabajadores de este establecimiento. Si alguien se capacitó y no aparece, revisá su DNI en la base.</div></div>';
+}
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
   let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
@@ -575,8 +585,10 @@ function diagPintar() {
       its.filter(i => i.SECCION === sec).map(i => { const r = DG.R[DG.tab + '|' + i.ID] || {}, ancho = i.TIPO === 'MULTI' || i.TIPO === 'TEXTO' || i.TIPO === 'ESCALA';
         return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div><b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
           '<div class="ctl">' + ctl(i) + '</div>' +
+          diagCapInfo(i, ro) +
           (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
     '<div class="barra">' + botones + '<span class="mu peq" id="dgEstado">' + (DG.subiendo ? 'Subiendo fotos…' : DG.sucio ? 'Hay cambios sin guardar.' : '') + '</span></div>');
+  q2('[data-capsug]').forEach(x => x.onclick = () => { const r = DG.R['|PER06'] = DG.R['|PER06'] || {}; r.resp = x.dataset.capsug; r.obs = r.obs || 'Según el registro de capacitaciones'; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
   if (DCFG.alPintar) DCFG.alPintar();
   const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
   const q = s => document.querySelectorAll(s);
@@ -669,12 +681,12 @@ async function tablero(cod, fresco) {
   const l8 = TAB.l8, fr = (a, b) => b ? a + ' de ' + b + ' (' + Math.round(100 * a / b) + ' %)' : '—';
   const linea8 = cod ? '' : '<section class="card"><h2>Línea 8 · indicadores de base</h2><div class="grid g4" style="margin-top:10px">' +
     kpi(fr(l8.poeTodos, l8.poeResp), 'POE marco de bioseguridad', 'Con todos los POE adoptados (meta 4)') + kpi(fr(l8.vacunaCompleta, l8.vacunaResp), 'Vacunación del personal', 'Cobertura completa en servicios de riesgo (meta 5)') +
-    kpi(fr(l8.capacitados, l8.capacResp), 'Personal de residuos capacitado', 'En el último año (meta 6)') + kpi(Object.keys(l8.formacion).length, 'Necesidades de formación', Object.keys(l8.formacion).sort((a, b) => l8.formacion[b] - l8.formacion[a]).slice(0, 3).map(x => x + ' (' + l8.formacion[x] + ')').join(' · ') || 'Sin datos (meta 7)') + '</div></section>';
+    kpi(l8.registro && l8.registro.limpieza ? fr(l8.registro.limpiezaCap, l8.registro.limpieza) : fr(l8.capacitados, l8.capacResp), 'Personal de residuos capacitado', 'Limpieza, maestranza y servicios generales, último año, según el registro (meta 6)' + (l8.registro ? ' · Todo el personal: ' + fr(l8.registro.capacitados, l8.registro.activos) : '')) + kpi(Object.keys(l8.formacion).length, 'Necesidades de formación', Object.keys(l8.formacion).sort((a, b) => l8.formacion[b] - l8.formacion[a]).slice(0, 3).map(x => x + ' (' + l8.formacion[x] + ')').join(' · ') || 'Sin datos (meta 7)') + '</div></section>';
   const top = (id, tit) => { const m = (TAB.cierre || {})[id] || {}, L = Object.keys(m).sort((a, b) => m[b] - m[a]).slice(0, 6);
     return '<div><h3 style="margin:0 0 6px;font-size:14px;color:var(--az)">' + tit + '</h3>' + (L.length ? L.map(x => '<div class="peq" style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid #EEF2F4;padding:5px 0"><span>' + esc(x) + '</span><b>' + m[x] + '</b></div>').join('') : '<div class="mu peq">Sin datos.</div>') + '</div>'; };
   const cierre = cod ? '' : '<section class="card"><h2>Lo que más se señala en el cierre</h2><div class="grid g3" style="margin-top:10px">' + top('CIE01', 'Problemas') + top('CIE02', 'Propuestas de mejora') + top('CIE03', 'Necesidades') + '</div></section>';
-  const ranking = cod ? '' : '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Establecimientos por prioridad</h2></div><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Fecha</th><th>Resultado</th><th>Matriz</th><th>Actuar ya</th><th>Planificar</th><th>Resolver rápido</th><th>Monitorear</th></tr></thead><tbody>' +
-    TAB.establecimientos.slice().sort((a, b) => b.q.Q1 - a.q.Q1 || (a.pct || 0) - (b.pct || 0)).map(e => '<tr class="cl" data-tb="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.estado) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td>' + fechaTxt(e.fecha) + '</td><td>' + chipDiag({ pct: e.pct, fecha: e.fecha, estado: e.estado, criticos: e.criticos }) + '</td><td>' + (e.msn === '' ? '—' : e.msn) + '</td><td><b style="color:#B42318">' + e.q.Q1 + '</b></td><td>' + e.q.Q2 + '</td><td>' + e.q.Q3 + '</td><td>' + e.q.Q4 + '</td></tr>').join('') + '</tbody></table>' + (TAB.establecimientos.length ? '' : '<div class="vacio">Todavía no hay diagnósticos.</div>') + '</section>';
+  const ranking = cod ? '' : '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Establecimientos por prioridad</h2></div><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Fecha</th><th>Resultado</th><th>Matriz</th><th>Capacitación residuos</th><th>Actuar ya</th><th>Planificar</th><th>Resolver rápido</th><th>Monitorear</th></tr></thead><tbody>' +
+    TAB.establecimientos.slice().sort((a, b) => b.q.Q1 - a.q.Q1 || (a.pct || 0) - (b.pct || 0)).map(e => '<tr class="cl" data-tb="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.estado) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td>' + fechaTxt(e.fecha) + '</td><td>' + chipDiag({ pct: e.pct, fecha: e.fecha, estado: e.estado, criticos: e.criticos }) + '</td><td>' + (e.msn === '' ? '—' : e.msn) + '</td><td class="peq">' + (e.cap && e.cap.activos ? e.cap.pct + ' %' + (e.cap.limpieza ? ' · limpieza ' + e.cap.pctLimpieza + ' %' : '') : '—') + '</td><td><b style="color:#B42318">' + e.q.Q1 + '</b></td><td>' + e.q.Q2 + '</td><td>' + e.q.Q3 + '</td><td>' + e.q.Q4 + '</td></tr>').join('') + '</tbody></table>' + (TAB.establecimientos.length ? '' : '<div class="vacio">Todavía no hay diagnósticos.</div>') + '</section>';
   marco('#tablero', '<div class="cab"><div><span class="mu peq">Residuos · Línea 8</span><h1>' + (cod ? esc(est ? est.nombre : cod) : 'Tablero de problemáticas') + '</h1><span class="mu">Matriz de 4 cuadrantes según urgencia e importancia de cada problema detectado en el diagnóstico.</span></div><div class="filtros">' + sel + '<button class="btn sec" id="tbAct">Actualizar</button>' + (cod ? '<a class="btn pri" href="#diag/' + encodeURIComponent(cod) + '">Abrir el diagnóstico</a>' : '') + '</div></div>' +
     '<div class="grid g4">' + k + '</div>' + ejes + '<div class="cuad">' + caja('Q1') + caja('Q2') + caja('Q3') + caja('Q4') + '</div>' + linea8 + cierre + ranking +
     '<p class="mu peq">Datos al ' + new Date(TAB.actualizado).toLocaleString('es-AR') + '. Urgencia e importancia de cada punto: columnas URGENCIA e IMPORTANCIA de la hoja ITEMS (editables).</p>');

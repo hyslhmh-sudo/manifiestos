@@ -150,6 +150,16 @@ async function diagForm(cod, id) {
   diagPintar();
 }
 const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
+// Cruce con el registro de capacitaciones (puntos MAT07 y PER06)
+function diagCapInfo(i, ro) {
+  const C = DG.D.capacitacion; if (!C || (i.ID !== 'MAT07' && i.ID !== 'PER06') || DG.tab !== '') return '';
+  const f = (a, b, p) => b ? a + ' de ' + b + ' (' + p + ' %)' : 'sin personal cargado';
+  return '<div class="aviso peq" style="grid-column:1/-1">Según el <b>registro de capacitaciones</b>, en los últimos 12 meses se capacitaron en residuos: ' +
+    '<b>' + f(C.capacitados, C.activos, C.pct) + '</b> del personal activo, y <b>' + f(C.limpiezaCap, C.limpieza, C.pctLimpieza) + '</b> del personal de limpieza, maestranza y servicios generales.' +
+    (C.alguna > C.capacitados ? ' Otras ' + (C.alguna - C.capacitados) + ' persona(s) se capacitaron hace más de un año.' : '') +
+    (i.ID === 'PER06' && C.sugerencia ? ' Sugerencia: <b>' + C.sugerencia + '</b>' + (ro ? '' : ' <button class="link" data-capsug="' + C.sugerencia + '">Usar</button>') : '') +
+    '<div class="mu" style="margin-top:4px">Cuenta solo a quienes figuran en la base de trabajadores de este establecimiento. Si alguien se capacitó y no aparece, revisá su DNI en la base.</div></div>';
+}
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
   let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
@@ -191,6 +201,7 @@ function diagPintar() {
   DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
     '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
     (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
+    (DCFG.extra ? DCFG.extra() : '') +
     '<section class="card"><div class="grid g4">' +
       '<label class="f">Fecha<input class="c" type="date" data-cab="FECHA" value="' + esc(DG.cab.FECHA) + '"' + (ro ? ' disabled' : '') + '></label>' +
       (red ? '' : '<label class="f">Modalidad<select class="c" data-cab="MODALIDAD"' + (ro ? ' disabled' : '') + '>' + ['Visita', 'Entrevista', 'Referente (en línea)', 'Libro de la red'].map(o => '<option' + (DG.cab.MODALIDAD === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></label>') +
@@ -204,8 +215,11 @@ function diagPintar() {
       its.filter(i => i.SECCION === sec).map(i => { const r = DG.R[DG.tab + '|' + i.ID] || {}, ancho = i.TIPO === 'MULTI' || i.TIPO === 'TEXTO' || i.TIPO === 'ESCALA';
         return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div><b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
           '<div class="ctl">' + ctl(i) + '</div>' +
+          diagCapInfo(i, ro) +
           (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
     '<div class="barra">' + botones + '<span class="mu peq" id="dgEstado">' + (DG.subiendo ? 'Subiendo fotos…' : DG.sucio ? 'Hay cambios sin guardar.' : '') + '</span></div>');
+  q2('[data-capsug]').forEach(x => x.onclick = () => { const r = DG.R['|PER06'] = DG.R['|PER06'] || {}; r.resp = x.dataset.capsug; r.obs = r.obs || 'Según el registro de capacitaciones'; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
+  if (DCFG.alPintar) DCFG.alPintar();
   const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
   const q = s => document.querySelectorAll(s);
   q('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, r = DG.R[k] = DG.R[k] || {}; r.resp = r.resp === b.dataset.v ? '' : b.dataset.v; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
