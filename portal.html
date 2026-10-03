@@ -129,6 +129,7 @@ const cargando = (activo, t) => marco(activo, '<div class="cargando">' + esc(t |
 // ------------------------------------------------------------------ Inicio · matriz provincial
 let FILTRO = { area: '', q: '', soloApp: false };
 const chipEstado = e => /^activ/i.test(e || '') ? '<span class="chip ok">Habilitado</span>' : /maestra/i.test(e || '') ? '' : '<span class="chip gr">Pendiente</span>';
+function chipCap(c, a) { if (!a) return '<span class="chip gr">—</span>'; const p = Math.round(100 * (c || 0) / a); return '<span class="chip ' + (p >= 70 ? 'ok' : p >= 30 ? 'wa' : 'er') + '">' + (c || 0) + ' · ' + p + ' %</span>'; }
 function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
 async function inicio(fresco) {
   if (!RES || fresco) { cargando('#inicio', 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }); } catch (e) { return; } }
@@ -145,11 +146,11 @@ async function inicio(fresco) {
     '<label style="display:flex;gap:6px;align-items:center;font-size:13px;min-height:42px"><input type="checkbox" id="fApp"' + (FILTRO.soloApp ? ' checked' : '') + '> Solo habilitados en la aplicación</label>' +
     '<button class="btn sec" id="btnAct">Actualizar</button></div></div>' +
     '<div class="grid g4">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
-    kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', (RES.sinAsignar ? RES.sinAsignar + ' sin asignar · ' : '') + 'nivel central: ' + (RES.nc.total || 0)) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
-    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
-    vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
+    kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', F.reduce((a, f) => a + (f.capacitados || 0), 0).toLocaleString('es-AR') + ' con al menos una capacitación' + (RES.sinAsignar ? ' · ' + RES.sinAsignar + ' sin asignar' : '')) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
+    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
+    vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + chipCap(f.capacitados, f.activos) + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
     '</tbody></table>' + (vis.length ? '' : '<div class="vacio">Ningún establecimiento con estos filtros.</div>') + '</section>' +
-    '<p class="mu peq">Datos al ' + new Date(RES.actualizado).toLocaleString('es-AR') + '. «Sin retiro»: días desde el último manifiesto registrado (verde hasta 10, amarillo hasta 30, rojo más de 30).</p>');
+    '<p class="mu peq">Datos al ' + new Date(RES.actualizado).toLocaleString('es-AR') + '. «Sin retiro»: días desde el último manifiesto registrado (verde hasta 10, amarillo hasta 30, rojo más de 30). «Capacitados»: trabajadores activos con al menos una capacitación registrada (verde desde 70 %, amarillo desde 30 %).</p>');
   $('fArea').onchange = e => { FILTRO.area = e.target.value; inicio(); };
   $('fQ').oninput = e => { FILTRO.q = e.target.value; clearTimeout(inicio.t); inicio.t = setTimeout(() => { inicio(); const i = $('fQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
   $('fApp').onchange = e => { FILTRO.soloApp = e.target.checked; inicio(); };
@@ -182,7 +183,7 @@ async function ficha(cod) {
   marco('#ficha', '<div class="cab"><div><a href="#inicio" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a la matriz</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
     '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + '<a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
     '<div class="grid g3">' +
-    '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + '</dl></section>' +
+    '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + fila('Capacitados', FICHA.trabajadores.activos ? FICHA.trabajadores.capacitados + ' de ' + FICHA.trabajadores.activos + ' (' + Math.round(100 * FICHA.trabajadores.capacitados / FICHA.trabajadores.activos) + ' %)' : '') + '</dl></section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Red HyS</h2><button class="link" id="nuevaRed">Agregar persona</button></div><div style="margin-top:6px">' + (red || '<p class="mu">Sin personas cargadas.</p>') + '</div></section>' +
     '<section class="card"><h2>Residuos</h2><dl class="datos" style="margin-top:10px">' + fila('Último retiro', fechaTxt(R.ultimo)) + fila('Manifiestos registrados', String(R.totalManifiestos)) + fila('Últimos certificados', R.certificados.map(c => c.mes).join(' · ') || 'Ninguno') + fila('Sitios', FICHA.sitios.map(s => s.v[1]).join(' · ')) + '</dl></section></div>' +
     '<section style="display:flex;flex-direction:column;gap:10px"><h2>Comités y áreas</h2><div class="grid g3">' + (com || '<p class="mu">Sin comités cargados.</p>') + '</div></section>' +
@@ -271,6 +272,16 @@ function fichaTrab(f) {
     if (!r.ok) return r.mensaje || 'No se pudo guardar.';
     toast(f ? (r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') : 'Trabajador agregado.'); RES = null; TRAB.datos = null; trabajadores(TRAB.cod); return '';
   }, info);
+  if (f) {
+    const box = document.createElement('div'); box.className = 'card'; box.style.cssText = 'padding:12px 14px;background:var(--bg)'; box.innerHTML = '<b>Capacitaciones</b><p class="mu peq" style="margin:4px 0 0">Buscando…</p>';
+    document.querySelector('#ov .acciones').before(box);
+    api('p_caps', { dni: v.DNI }).then(r => {
+      const L = (r && r.caps) || [];
+      box.innerHTML = '<b>Capacitaciones (' + L.length + ')</b>' + (L.length ? '<div class="tabla" style="margin-top:6px"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Resultado</th><th>Vence</th><th></th></tr></thead><tbody>' +
+        L.map(c => '<tr><td class="peq">' + esc(fechaTxt(c.fecha)) + '</td><td class="peq">' + esc(c.tema) + '<div class="mu" style="font-size:11px">' + esc(c.fuente + (c.tipo ? ' · ' + c.tipo : '')) + '</div></td><td class="peq">' + esc(c.aprobo || '—') + (c.nota ? ' · ' + esc(c.nota) : '') + '</td><td class="peq">' + esc(fechaTxt(c.vence)) + '</td><td class="peq">' + (c.link ? '<a href="' + esc(c.link) + '" target="_blank" rel="noopener">' + (c.cert ? esc(c.cert) : 'Ver') + '</a>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+        : '<p class="mu peq" style="margin:4px 0 0">Sin capacitaciones registradas con este DNI.</p>');
+    }).catch(() => { box.innerHTML = '<b>Capacitaciones</b><p class="mu peq">No se pudieron consultar.</p>'; });
+  }
   if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
     m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
     $('tBaja').onclick = async () => { if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
@@ -291,7 +302,7 @@ const IMP_CAMPOS = [['DNI', 'DNI', ['dni', 'documento', 'nro documento', 'n docu
   ['ESTABLECIMIENTO', 'Establecimiento', ['establecimiento', 'hospital', 'institucion', 'efector', 'unidad']], ['SITIO', 'Sitio (CAPS o dispositivo)', ['sitio', 'lugar de trabajo', 'lugar', 'dependencia', 'caps']],
   ['FUNCION', 'Función', ['funcion', 'cargo', 'puesto', 'profesion']], ['SERVICIO', 'Servicio', ['servicio', 'sector', 'area', 'departamento', 'oficina fisica', 'oficina', 'lugar fisico']],
   ['VINCULO', 'Vínculo', ['vinculo', 'situacion de revista', 'revista', 'modalidad', 'tipo de contrato']], ['EMPRESA', 'Empresa', ['empresa']],
-  ['CARGO_CONDUCCION', 'Cargo de conducción', ['jefatura', 'cargo de conduccion', 'conduccion']], ['EMAIL', 'Correo', ['email', 'e-mail', 'mail', 'correo']], ['TELEFONO', 'Teléfono', ['telefono', 'celular', 'tel']]];
+  ['CARGO_CONDUCCION', 'Cargo de conducción', ['jefatura', 'cargo de conduccion', 'conduccion']], ['EMAIL', 'Correo', ['email', 'e-mail', 'mail', 'correo']], ['TELEFONO', 'Teléfono', ['telefono', 'celular', 'tel']], ['MOTIVO', 'Motivo de revisión (solo altas)', ['motivo', 'motivo de revision', 'revisar']]];
 let IMP = null;
 // «De Los Santos Beatriz» → [De Los Santos, Beatriz] · «Borges De Los Santos Macarena» → [Borges De Los Santos, Macarena] · si no, la primera palabra es el apellido
 const PARTICULAS = ['de', 'del', 'della', 'do', 'di', 'da', 'dos', 'van', 'von', 'los', 'las', 'la', 'san'];
