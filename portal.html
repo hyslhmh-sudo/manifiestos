@@ -181,7 +181,7 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
@@ -771,6 +771,66 @@ async function documentos(est) {
   });
 }
 
+
+// ------------------------------------------------------------------ Plan de acción (respuesta de la Dirección y seguimiento)
+const PL_CHIP = { 'Cumplida': 'ok', 'En curso': 'pa', 'Pendiente': 'gr', 'Vencida': 'er', 'Sin respuesta': 'wa', 'Sin enviar': 'gr', 'Descartada': 'gr' };
+const plChip = e => '<span class="chip ' + (PL_CHIP[e] || 'gr') + '">' + esc(e) + '</span>';
+const plF = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
+async function planLista() {
+  cargando('#plan', 'Leyendo los planes de acción…');
+  let R; try { R = await api('p_plan_listar', {}); } catch (e) { return; }
+  const L = R.informes || [];
+  marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido. Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
+    '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Establecimiento</th><th>Informe</th><th>Enviado</th><th>Recom.</th><th>Cumplidas</th><th>En curso</th><th>Vencidas</th><th>Sin respuesta</th><th></th></tr></thead><tbody>' +
+      L.map(i => '<tr><td><b>' + esc(i.nombre) + '</b></td><td class="peq">' + esc(i.codigo) + '</td><td>' + (i.enviado ? plF(i.enviado) : '<span class="chip gr">Sin enviar</span>') + '</td><td>' + i.total + '</td><td>' + (i.c['Cumplida'] || 0) + '</td><td>' + (i.c['En curso'] || 0) + '</td><td>' + (i.c['Vencida'] ? '<b style="color:#9B2C22">' + i.c['Vencida'] + '</b>' : 0) + '</td><td>' + (i.c['Sin respuesta'] || 0) + '</td><td><a class="link" href="#plan/' + encodeURIComponent(i.codigo) + '">Abrir</a></td></tr>').join('') + '</tbody></table>'
+      : '<div class="vacio">Todavía no hay informes emitidos. El plan se crea solo al generar el informe de un diagnóstico cerrado.</div>') + '</section>');
+}
+let PL = null;
+async function planDetalle(codigo) {
+  cargando('#plan', 'Abriendo el plan…');
+  let R; try { R = await api('p_plan_abrir', { codigo: codigo }); } catch (e) { return; }
+  if (!R.ok) return toast(R.mensaje);
+  PL = R; planPintar();
+}
+function planPintar() {
+  const R = PL, F = R.filas, c = {}; F.forEach(o => c[o.EFECTIVO] = (c[o.EFECTIVO] || 0) + 1);
+  const kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  const env = R.enviado ? 'Enviado el ' + plF(R.enviado) + ' · respuesta hasta el ' + plF(R.limiteRespuesta) : 'Todavía no se marcó como enviado';
+  marco('#plan', '<div class="cab"><div><a class="link peq" href="#plan">‹ Todos los planes</a><h1>' + esc(R.nombre) + '</h1><span class="mu">Informe ' + esc(R.codigo) + ' · ' + env + '</span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (R.doc ? '<a class="btn" href="' + esc(R.doc) + '" target="_blank" rel="noopener">Documento</a>' : '') + (R.pdf ? '<a class="btn" href="' + esc(R.pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') + '<button class="btn" id="plCorreo">Copiar correo</button></div></div>' +
+    '<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px">' + kpi('RECOMENDACIONES', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('CUMPLIDAS', c['Cumplida'] || 0, 'con evidencia') + kpi('EN CURSO', c['En curso'] || 0, 'dentro del plazo') +
+      kpi('VENCIDAS', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('SIN RESPUESTA', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
+    '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f">Fecha de envío a la Dirección<input class="c" type="date" id="plEnvio" value="' + esc(R.enviado || '') + '"></label><button class="btn" id="plEnviar">' + (R.enviado ? 'Cambiar fecha de envío' : 'Marcar como enviado') + '</button>' +
+      '<label class="f">Fecha de la respuesta de la Dirección<input class="c" type="date" id="plResp"></label><span class="mu peq" style="max-width:420px">La fecha de envío fija los plazos técnicos. Al cargar un responsable o una fecha prevista, se registra la respuesta.</span></section>' +
+    '<section class="card tabla"><table><thead><tr><th>N.º</th><th>Recomendación</th><th>Prioridad</th><th>Plazo técnico</th><th>Responsable (Dirección)</th><th>Fecha prevista</th><th>Estado</th><th>Evidencia</th><th>Observaciones</th></tr></thead><tbody>' +
+    F.map((o, i) => '<tr data-n="' + esc(o.N_REC) + '"><td style="white-space:nowrap"><b>' + esc(o.N_REC) + '</b></td><td style="min-width:220px">' + esc(o.RECOMENDACION) + (o.LUGAR && o.LUGAR !== 'Establecimiento' ? '<div class="mu peq">' + esc(o.LUGAR) + '</div>' : '') + '<div class="mu peq">' + esc(o.A_CARGO) + ' · ' + esc(o.COSTO) + '</div></td>' +
+      '<td>' + esc(o.PRIORIDAD) + '</td><td class="peq">' + esc(o.PLAZO_TECNICO) + (o.FECHA_LIMITE ? '<div class="mu">hasta ' + plF(o.FECHA_LIMITE) + '</div>' : '') + '</td>' +
+      '<td><input class="c pl-resp" value="' + esc(o.RESPONSABLE_DIRECCION) + '" placeholder="Nombre y función"></td><td><input class="c pl-fecha" type="date" value="' + esc(o.FECHA_PREVISTA) + '"></td>' +
+      '<td>' + plChip(o.EFECTIVO) + '<select class="c pl-est" style="margin-top:4px">' + ['Pendiente', 'En curso', 'Cumplida', 'Descartada'].map(e => '<option' + ((o.ESTADO || 'Pendiente') === e ? ' selected' : '') + '>' + e + '</option>').join('') + '</select></td>' +
+      '<td class="peq"><input type="hidden" class="pl-ev" value="' + esc(o.EVIDENCIA) + '">' + (o.EVIDENCIA ? o.EVIDENCIA.split(' | ').map((u, j) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Ver ' + (j + 1) + '</a>').join(' · ') + '<br>' : '') +
+      '<label class="link" style="cursor:pointer">+ Subir<input type="file" accept="image/*,application/pdf" class="pl-sub" data-i="' + i + '" hidden></label><br><button class="link pl-link" data-i="' + i + '">+ Enlace</button></td>' +
+      '<td><input class="c pl-obs" value="' + esc(o.OBSERVACIONES) + '" placeholder="Motivo, avances…"></td></tr>').join('') + '</tbody></table></section>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn pri" id="plGuardar">Guardar cambios</button></div>' +
+    '<section class="card peq mu">«Vencida» y «Sin respuesta» se marcan solas. Cumplida solo con evidencia (foto, documento o remito); descartada con motivo. Las vencidas de «Actuar ya» se incluyen en la nota trimestral a la Secretaría.</section>');
+  $('plCorreo').onclick = async () => { try { const r = await api('p_informe_correo', { cod: R.cod, id: R.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
+  $('plEnviar').onclick = async () => { const f = $('plEnvio').value; if (!f) return toast('Elegí la fecha de envío.'); try { const r = await api('p_plan_enviado', { codigo: R.codigo, fecha: f }); if (!r.ok) return toast(r.mensaje); toast('Fecha de envío guardada.'); planDetalle(R.codigo); } catch (e) {} };
+  const filaEv = i => document.querySelectorAll('#main tbody tr[data-n]')[i].querySelector('.pl-ev');
+  document.querySelectorAll('.pl-link').forEach(b => b.onclick = () => { const u = prompt('Pegá el enlace de la evidencia (Drive, correo, etc.):'); if (!u) return; const h = filaEv(+b.dataset.i); h.value = h.value ? h.value + ' | ' + u.trim() : u.trim(); toast('Enlace agregado: guardá los cambios.'); });
+  document.querySelectorAll('.pl-sub').forEach(inp => inp.onchange = async () => {
+    const file = inp.files[0]; if (!file) return; const i = +inp.dataset.i, n = F[i].N_REC;
+    toast('Subiendo evidencia…');
+    try { const data = /pdf/.test(file.type) ? await new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = mal; r.readAsDataURL(file); }) : await achicar(file);
+      const r = await api('p_plan_evidencia', { cod: R.cod, codigo: R.codigo, n: n, dataUrl: data }, 120000); if (!r.ok) return toast(r.mensaje);
+      const h = filaEv(i); h.value = h.value ? h.value + ' | ' + r.url : r.url; toast('Evidencia subida: guardá los cambios.'); } catch (e) { toast('No se pudo subir el archivo.'); }
+  });
+  $('plGuardar').onclick = async () => {
+    const filas = [...document.querySelectorAll('#main tbody tr[data-n]')].map(tr => ({ n: tr.dataset.n, responsable: tr.querySelector('.pl-resp').value, fechaPrevista: tr.querySelector('.pl-fecha').value, estado: tr.querySelector('.pl-est').value, evidencia: tr.querySelector('.pl-ev').value, obs: tr.querySelector('.pl-obs').value }));
+    const b = $('plGuardar'); b.disabled = true; b.textContent = 'Guardando…';
+    try { const r = await api('p_plan_guardar', { codigo: R.codigo, filas: filas, fechaRespuesta: $('plResp').value }); b.disabled = false; b.textContent = 'Guardar cambios';
+      if (!r.ok) return toast(r.mensaje); toast('Plan de acción guardado.'); planDetalle(R.codigo); } catch (e) { b.disabled = false; b.textContent = 'Guardar cambios'; }
+  };
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -782,6 +842,7 @@ function router() {
   if (ruta === 'diag') return a ? diagForm(a) : diagLista();
   if (ruta === 'tablero') return tablero(a);
   if (ruta === 'docs') return documentos(a);
+  if (ruta === 'plan') return a ? planDetalle(decodeURIComponent(a)) : planLista();
   return inicio();
 }
 window.addEventListener('hashchange', router);
