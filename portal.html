@@ -105,23 +105,28 @@ const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') 
   ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
 // Informes del diagnóstico (Google Doc editable + PDF)
 function informesDiag() {
-  const L = DG.D.informes || [];
-  return '<section class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><div><h2>Informe con plan de acción</h2><div class="mu peq">Genera un documento de Google editable y una copia en PDF en la carpeta del establecimiento › Informes.</div></div>' +
-    '<button class="btn pri" id="dgInforme"' + (DG.id ? '' : ' disabled title="Guardá el diagnóstico primero"') + '>Generar informe</button></div>' +
-    (L.length ? '<div class="peq">' + L.map(i => '<div style="border-top:1px solid #EEF2F4;padding:6px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between"><span><b>' + esc(i.codigo) + '</b> · ' + esc(String(i.fecha).replace(/^(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')) + '</span><span><a href="' + esc(i.doc) + '" target="_blank" rel="noopener">Documento</a> · <a href="' + esc(i.pdf) + '" target="_blank" rel="noopener">PDF</a></span></div>').join('') + '</div>' : '<div class="mu peq">Todavía no se generaron informes de este establecimiento.</div>') + '</section>';
+  const L = DG.D.informes || [], cerrado = DG.estado === 'Cerrado';
+  return '<section class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><div><h2>Informe a la Dirección</h2><div class="mu peq">' +
+    (cerrado ? 'Genera el informe (Google Doc editable y PDF) con su número HYSL, en la carpeta del establecimiento › Informes.' : 'El informe se genera cuando el diagnóstico está cerrado.') + '</div></div>' +
+    '<button class="btn pri" id="dgInforme"' + (cerrado ? '' : ' disabled') + '>' + (L.length ? 'Generar nueva revisión' : 'Generar informe') + '</button></div>' +
+    (L.length ? '<div class="peq">' + L.map(i => '<div style="border-top:1px solid #EEF2F4;padding:8px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><span><b>' + esc(i.codigo) + '</b>' + (i.obs ? ' · ' + esc(i.obs) : '') + '</span><span><a href="' + esc(i.doc) + '" target="_blank" rel="noopener">Documento</a> · <a href="' + esc(i.pdf) + '" target="_blank" rel="noopener">PDF</a> · <button class="link" id="dgCorreo">Copiar correo de envío</button></span></div>').join('') + '</div>' : '') + '</section>';
+}
+async function copiarCorreo(c) {
+  const t = 'Asunto: ' + c.asunto + '\n' + (c.copia ? c.copia + '\n' : '') + '\n' + c.cuerpo;
+  try { await navigator.clipboard.writeText(t); toast('Correo copiado: pegalo en tu correo y adjuntá el PDF.'); } catch (e) { prompt('Copiá el texto del correo:', t); }
 }
 function activarInformes() {
+  const c = $('dgCorreo'); if (c) c.onclick = async () => { try { const r = await api('p_informe_correo', { cod: DG.cod, id: DG.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
   const b = $('dgInforme'); if (!b) return;
   b.onclick = async () => {
-    if (DG.sucio && !confirm('Hay cambios sin guardar. Se van a guardar antes de generar el informe. ¿Seguir?')) return;
-    if (DG.sucio) { const ok = await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); if (!ok) return; }
-    b.disabled = true; b.textContent = 'Generando… (puede tardar un minuto)';
-    let r; try { r = await api('p_informe_diag', { cod: DG.cod, id: DG.id }); } catch (e) { b.disabled = false; b.textContent = 'Generar informe'; return; }
+    if (DG.sucio) return toast('Guardá los cambios antes de generar el informe.');
+    b.disabled = true; b.textContent = 'Generando… (puede tardar uno o dos minutos)';
+    let r; try { r = await api('p_informe_diag', { cod: DG.cod, id: DG.id }, 330000); } catch (e) { b.disabled = false; b.textContent = 'Generar informe'; return; }
     if (!r.ok) { toast(r.mensaje || 'No se pudo generar el informe.'); b.disabled = false; b.textContent = 'Generar informe'; return; }
-    DG.D.informes = [r.informe].concat(DG.D.informes || []);
-    toast('Informe listo: ' + r.problemas + ' problema(s), ' + r.acciones + ' acción(es) en el plan.');
+    DG.D.informes = [{ codigo: r.codigo, doc: r.doc, pdf: r.pdf, obs: r.revision ? 'Revisión ' + r.revision : '' }];
+    toast('Informe ' + r.codigo + ' listo' + (r.notasAlPie ? '' : ' (referencias al final: falta activar el servicio Google Docs API)') + '.');
     const y = window.scrollY; diagPintar(); window.scrollTo(0, y);
-    window.open(r.informe.doc, '_blank');
+    window.open(r.doc, '_blank');
   };
 }
 function compartirDiag(nombre) {
@@ -140,8 +145,8 @@ const TIPOS_CON = ['Dirección', 'Servicio', 'Jefatura', 'Comité', 'Área admin
 const CODS_EXTRA = [['NC', 'Nivel central (Secretaría de Salud y organismos)'], ['SIN_ASIGNAR', 'Sin establecimiento reconocido']];
 const TRAB_COLS = ['CUIL', 'DNI', 'APELLIDOS', 'NOMBRES', 'SITIO', 'FUNCION', 'FUNCION_DETALLE', 'SERVICIO', 'VINCULO', 'EMPRESA', 'CARGO_CONDUCCION', 'EMAIL', 'EMAIL_FECHA', 'TELEFONO', 'EN_NTEAR', 'FUENTES', 'ULTIMA_CONFIRMACION', 'REVISAR', 'MOTIVO_REVISION', 'ESTADO', 'FECHA_ALTA', 'ESTABLECIMIENTO'];
 
-async function api(accion, datos) {
-  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 90000);
+async function api(accion, datos, ms) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 90000);
   try {
     const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, est: '', datos: datos || {} }), signal: ctl.signal });
     const j = JSON.parse(await r.text());
