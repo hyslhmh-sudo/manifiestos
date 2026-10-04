@@ -829,19 +829,24 @@ function planPintar() {
       kpi('VENCIDAS', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('SIN RESPUESTA', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f">Fecha de envío a la Dirección<input class="c" type="date" id="plEnvio" value="' + esc(R.enviado || '') + '"></label><button class="btn" id="plEnviar">' + (R.enviado ? 'Cambiar fecha de envío' : 'Marcar como enviado') + '</button>' +
       '<label class="f">Fecha de la respuesta de la Dirección<input class="c" type="date" id="plResp"></label><span class="mu peq" style="max-width:420px">La fecha de envío fija los plazos técnicos. Al cargar un responsable o una fecha prevista, se registra la respuesta.</span></section>' +
-    '<section class="card tabla"><table><thead><tr><th>N.º</th><th>Recomendación</th><th>Prioridad</th><th>Plazo técnico</th><th>Responsable (Dirección)</th><th>Fecha prevista</th><th>Estado</th><th>Evidencia</th><th>Observaciones</th></tr></thead><tbody>' +
-    F.map((o, i) => '<tr data-n="' + esc(o.N_REC) + '"><td style="white-space:nowrap"><b>' + esc(o.N_REC) + '</b></td><td style="min-width:220px">' + esc(o.RECOMENDACION) + (o.LUGAR && o.LUGAR !== 'Establecimiento' ? '<div class="mu peq">' + esc(o.LUGAR) + '</div>' : '') + '<div class="mu peq">' + esc(o.A_CARGO) + ' · ' + esc(o.COSTO) + '</div></td>' +
-      '<td>' + esc(o.PRIORIDAD) + '</td><td class="peq">' + esc(o.PLAZO_TECNICO) + (o.FECHA_LIMITE ? '<div class="mu">hasta ' + plF(o.FECHA_LIMITE) + '</div>' : '') + '</td>' +
-      '<td><input class="c pl-resp" value="' + esc(o.RESPONSABLE_DIRECCION) + '" placeholder="Nombre y función"></td><td><input class="c pl-fecha" type="date" value="' + esc(o.FECHA_PREVISTA) + '"></td>' +
-      '<td>' + plChip(o.EFECTIVO) + '<select class="c pl-est" style="margin-top:4px">' + ['Pendiente', 'En curso', 'Cumplida', 'Descartada'].map(e => '<option' + ((o.ESTADO || 'Pendiente') === e ? ' selected' : '') + '>' + e + '</option>').join('') + '</select></td>' +
-      '<td class="peq"><input type="hidden" class="pl-ev" value="' + esc(o.EVIDENCIA) + '">' + (o.EVIDENCIA ? o.EVIDENCIA.split(' | ').map((u, j) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Ver ' + (j + 1) + '</a>').join(' · ') + '<br>' : '') +
-      '<label class="link" style="cursor:pointer">+ Subir<input type="file" accept="image/*,application/pdf" class="pl-sub" data-i="' + i + '" hidden></label><br><button class="link pl-link" data-i="' + i + '">+ Enlace</button></td>' +
-      '<td><input class="c pl-obs" value="' + esc(o.OBSERVACIONES) + '" placeholder="Motivo, avances…"></td></tr>').join('') + '</tbody></table></section>' +
+    '<style>.plr{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(200px,1fr) minmax(200px,1fr);gap:14px;padding:14px 18px;border-top:1px solid #EEF2F4}.plr:first-child{border-top:0}.plr .c{width:100%;box-sizing:border-box}.plr label{display:block;font-size:12px;color:var(--mu);font-weight:600;margin:0 0 3px}.plr .blq{display:flex;flex-direction:column;gap:8px}@media(max-width:900px){.plr{grid-template-columns:1fr}}</style>' +
+    '<section class="card" style="padding:0">' + F.map((o, i) => '<div class="plr" data-n="' + esc(o.N_REC) + '">' +
+      '<div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>' + esc(o.N_REC) + '</b>' + plChip(o.EFECTIVO) + '<span class="chip gr">' + esc(o.PRIORIDAD) + '</span></div>' +
+        '<div style="margin-top:6px">' + esc(o.RECOMENDACION) + '</div>' +
+        '<div class="mu peq" style="margin-top:4px">' + (o.LUGAR && o.LUGAR !== 'Establecimiento' ? esc(o.LUGAR) + ' · ' : '') + esc(o.A_CARGO) + ' · ' + esc(o.COSTO) + '</div>' +
+        '<div class="mu peq">Plazo técnico: ' + esc(o.PLAZO_TECNICO) + (o.FECHA_LIMITE ? ' (hasta ' + plF(o.FECHA_LIMITE) + ')' : '') + '</div></div>' +
+      '<div class="blq"><div><label>Responsable (Dirección)</label><input class="c pl-resp" value="' + esc(o.RESPONSABLE_DIRECCION) + '" placeholder="Nombre y función"></div>' +
+        '<div><label>Fecha prevista</label><input class="c pl-fecha" type="date" value="' + esc(o.FECHA_PREVISTA) + '"></div></div>' +
+      '<div class="blq"><div><label>Estado</label><select class="c pl-est">' + ['Pendiente', 'En curso', 'Cumplida', 'Descartada'].map(e => '<option' + ((o.ESTADO || 'Pendiente') === e ? ' selected' : '') + '>' + e + '</option>').join('') + '</select></div>' +
+        '<div><label>Evidencia</label><input type="hidden" class="pl-ev" value="' + esc(o.EVIDENCIA) + '"><div class="peq">' + (o.EVIDENCIA ? o.EVIDENCIA.split(' | ').map((u, j) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Ver ' + (j + 1) + '</a>').join(' · ') + ' · ' : '') +
+          '<label class="link" style="cursor:pointer;display:inline;font-size:13px;color:var(--az)">+ Subir foto o PDF<input type="file" accept="image/*,application/pdf" class="pl-sub" data-i="' + i + '" hidden></label> · <button class="link pl-link" data-i="' + i + '">+ Pegar enlace</button></div></div>' +
+        '<div><label>Observaciones</label><input class="c pl-obs" value="' + esc(o.OBSERVACIONES) + '" placeholder="Motivo, avances…"></div></div>' +
+    '</div>').join('') + '</section>' +
     '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn pri" id="plGuardar">Guardar cambios</button></div>' +
     '<section class="card peq mu">«Vencida» y «Sin respuesta» se marcan solas. Cumplida solo con evidencia (foto, documento o remito); descartada con motivo. Las vencidas de «Actuar ya» se incluyen en la nota trimestral a la Secretaría.</section>');
   $('plCorreo').onclick = async () => { try { const r = await api('p_informe_correo', { cod: R.cod, id: R.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
   $('plEnviar').onclick = async () => { const f = $('plEnvio').value; if (!f) return toast('Elegí la fecha de envío.'); try { const r = await api('p_plan_enviado', { codigo: R.codigo, fecha: f }); if (!r.ok) return toast(r.mensaje); toast('Fecha de envío guardada.'); planDetalle(R.codigo); } catch (e) {} };
-  const filaEv = i => document.querySelectorAll('#main tbody tr[data-n]')[i].querySelector('.pl-ev');
+  const filaEv = i => document.querySelectorAll('#main .plr[data-n]')[i].querySelector('.pl-ev');
   document.querySelectorAll('.pl-link').forEach(b => b.onclick = () => { const u = prompt('Pegá el enlace de la evidencia (Drive, correo, etc.):'); if (!u) return; const h = filaEv(+b.dataset.i); h.value = h.value ? h.value + ' | ' + u.trim() : u.trim(); toast('Enlace agregado: guardá los cambios.'); });
   document.querySelectorAll('.pl-sub').forEach(inp => inp.onchange = async () => {
     const file = inp.files[0]; if (!file) return; const i = +inp.dataset.i, n = F[i].N_REC;
@@ -851,7 +856,7 @@ function planPintar() {
       const h = filaEv(i); h.value = h.value ? h.value + ' | ' + r.url : r.url; toast('Evidencia subida: guardá los cambios.'); } catch (e) { toast('No se pudo subir el archivo.'); }
   });
   $('plGuardar').onclick = async () => {
-    const filas = [...document.querySelectorAll('#main tbody tr[data-n]')].map(tr => ({ n: tr.dataset.n, responsable: tr.querySelector('.pl-resp').value, fechaPrevista: tr.querySelector('.pl-fecha').value, estado: tr.querySelector('.pl-est').value, evidencia: tr.querySelector('.pl-ev').value, obs: tr.querySelector('.pl-obs').value }));
+    const filas = [...document.querySelectorAll('#main .plr[data-n]')].map(tr => ({ n: tr.dataset.n, responsable: tr.querySelector('.pl-resp').value, fechaPrevista: tr.querySelector('.pl-fecha').value, estado: tr.querySelector('.pl-est').value, evidencia: tr.querySelector('.pl-ev').value, obs: tr.querySelector('.pl-obs').value }));
     const b = $('plGuardar'); b.disabled = true; b.textContent = 'Guardando…';
     try { const r = await api('p_plan_guardar', { codigo: R.codigo, filas: filas, fechaRespuesta: $('plResp').value }); b.disabled = false; b.textContent = 'Guardar cambios';
       if (!r.ok) return toast(r.mensaje); toast('Plan de acción guardado.'); planDetalle(R.codigo); } catch (e) { b.disabled = false; b.textContent = 'Guardar cambios'; }
