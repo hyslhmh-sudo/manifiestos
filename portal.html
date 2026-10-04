@@ -103,6 +103,27 @@ let FICHAS = {};
 const DIAG_URL = 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
 const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
   ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
+// Informes del diagnóstico (Google Doc editable + PDF)
+function informesDiag() {
+  const L = DG.D.informes || [];
+  return '<section class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><div><h2>Informe con plan de acción</h2><div class="mu peq">Genera un documento de Google editable y una copia en PDF en la carpeta del establecimiento › Informes.</div></div>' +
+    '<button class="btn pri" id="dgInforme"' + (DG.id ? '' : ' disabled title="Guardá el diagnóstico primero"') + '>Generar informe</button></div>' +
+    (L.length ? '<div class="peq">' + L.map(i => '<div style="border-top:1px solid #EEF2F4;padding:6px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between"><span><b>' + esc(i.codigo) + '</b> · ' + esc(String(i.fecha).replace(/^(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')) + '</span><span><a href="' + esc(i.doc) + '" target="_blank" rel="noopener">Documento</a> · <a href="' + esc(i.pdf) + '" target="_blank" rel="noopener">PDF</a></span></div>').join('') + '</div>' : '<div class="mu peq">Todavía no se generaron informes de este establecimiento.</div>') + '</section>';
+}
+function activarInformes() {
+  const b = $('dgInforme'); if (!b) return;
+  b.onclick = async () => {
+    if (DG.sucio && !confirm('Hay cambios sin guardar. Se van a guardar antes de generar el informe. ¿Seguir?')) return;
+    if (DG.sucio) { const ok = await diagGuardar(DG.estado === 'Nuevo' ? 'Borrador' : DG.estado, true); if (!ok) return; }
+    b.disabled = true; b.textContent = 'Generando… (puede tardar un minuto)';
+    let r; try { r = await api('p_informe_diag', { cod: DG.cod, id: DG.id }); } catch (e) { b.disabled = false; b.textContent = 'Generar informe'; return; }
+    if (!r.ok) { toast(r.mensaje || 'No se pudo generar el informe.'); b.disabled = false; b.textContent = 'Generar informe'; return; }
+    DG.D.informes = [r.informe].concat(DG.D.informes || []);
+    toast('Informe listo: ' + r.problemas + ' problema(s), ' + r.acciones + ' acción(es) en el plan.');
+    const y = window.scrollY; diagPintar(); window.scrollTo(0, y);
+    window.open(r.informe.doc, '_blank');
+  };
+}
 function compartirDiag(nombre) {
   return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + DIAG_URL + '" target="_blank" rel="noopener">' + DIAG_URL + '</a></div><div class="mu peq">Cada referente entra con la clave de su establecimiento (la misma de los manifiestos).</div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-copiar="enlace">Copiar enlace</button><button class="btn sec" data-copiar="mensaje">Copiar mensaje</button><a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(diagMensaje(nombre)) + '">Enviar por WhatsApp</a></div></section>';
@@ -157,7 +178,7 @@ function marco(activo, contenido) {
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
     '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
-    '<div class="sec">DOCUMENTAL</div>' + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
+    '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>';
   $('btnSalir').onclick = () => salir();
@@ -485,7 +506,7 @@ const DCFG = {
   foto: p => api('p_diag_foto', p),
   pantalla: html => marco('#diag', html),
   volver: '<a href="#diag" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los diagnósticos</a>',
-  extra: () => compartirDiag(DG.nombre), alPintar: () => activarCompartir(DG.nombre),
+  extra: () => informesDiag() + compartirDiag(DG.nombre), alPintar: () => { activarCompartir(DG.nombre); activarInformes(); },
   nombre: cod => ((RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
 };
@@ -695,6 +716,56 @@ async function tablero(cod, fresco) {
   document.querySelectorAll('[data-tb]').forEach(b => b.onclick = () => location.hash = '#tablero/' + encodeURIComponent(b.dataset.tb));
 }
 
+
+// ------------------------------------------------------------------ Registro de documentos HYSL (numeración)
+const DOC_BLOQUES = { RES: 'Residuos', RIE: 'Riesgos', DOC: 'Documental', CAP: 'Capacitación', GEN: 'General' };
+const DOC_TIPOS = { DG: 'Diagnóstico', SP: 'Seguimiento del plan de acción', IT: 'Informe técnico', AU: 'Auditoría o inspección', NT: 'Nota', AC: 'Acta', IR: 'Informe de la red' };
+let DOCS = { est: '', anio: new Date().getFullYear() };
+async function documentos(est) {
+  if (est != null) DOCS.est = est;
+  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  cargando('#docs', 'Leyendo el registro…');
+  let R; try { R = await api('p_registro', { est: DOCS.est, anio: DOCS.anio }); } catch (e) { return; }
+  const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (sel === e.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('');
+  const op = (o, sel) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + k + ' · ' + o[k] + '</option>').join('');
+  const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
+  const filas = (R.filas || []);
+  marco('#docs', '<div class="cab"><div><span class="mu peq">Documental</span><h1>Registro de documentos HYSL</h1><span class="mu">Número correlativo por establecimiento y por año, en todos los bloques. Un número mal pedido no se borra: se anula con motivo.</span></div></div>' +
+    '<section class="card"><h2>Pedir número</h2><p class="mu peq" style="margin:4px 0 10px">Para documentos hechos fuera del sistema (nota en Word, acta, informe puntual). Los informes que genera el sistema toman su número solos.</p>' +
+    '<div class="grid g4"><label class="f">Establecimiento<select class="c" id="dEst">' + opEst(DOCS.est && DOCS.est !== '' ? DOCS.est : 'RED') + '</select></label>' +
+    '<label class="f">Bloque<select class="c" id="dBl">' + op(DOC_BLOQUES, 'RES') + '</select></label><label class="f">Tipo<select class="c" id="dTi">' + op(DOC_TIPOS, 'NT') + '</select></label>' +
+    '<label class="f">Asunto<input class="c" id="dAs" placeholder="Ej.: Nota sobre el depósito final"></label></div>' +
+    '<div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="dPedir">Asignar número</button><span id="dRes" style="font-size:20px;font-weight:800;color:var(--az)"></span><button class="link" id="dCopiar" hidden>Copiar</button></div></section>' +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><h2>Registro</h2><div class="filtros"><label class="f">Establecimiento<select class="c" id="fEst">' + opEst(DOCS.est, true) + '</select></label><label class="f">Año<select class="c" id="fAn">' + [0, 1, 2].map(i => { const y = new Date().getFullYear() - i; return '<option' + (y === DOCS.anio ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div></div>' +
+    (filas.length ? '<table><thead><tr><th>Código</th><th>Fecha</th><th>Asunto</th><th>Origen</th><th>Estado</th><th>Archivo</th><th></th></tr></thead><tbody>' + filas.map(f => { const v = f.v;
+      return '<tr><td><b>' + esc(v[0]) + '</b></td><td>' + fechaTxt(v[8]) + '</td><td>' + esc(v[9]) + (v[15] ? '<div class="mu peq">' + esc(v[15]) + '</div>' : '') + '</td><td class="peq">' + esc(v[10]) + '</td><td>' + chipE(v[14]) + '</td><td class="peq">' +
+        (v[12] ? '<a href="' + esc(v[12]) + '" target="_blank" rel="noopener">Documento</a>' : '') + (v[13] ? ' · <a href="' + esc(v[13]) + '" target="_blank" rel="noopener">PDF</a>' : '') + (!v[12] && !v[13] ? '<span class="mu">—</span>' : '') + '</td>' +
+        '<td style="white-space:nowrap">' + (v[14] !== 'Anulado' ? '<button class="link" data-adj="' + esc(v[0]) + '">Adjuntar enlace</button> · <button class="link" data-anu="' + esc(v[0]) + '">Anular</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>'
+      : '<div class="vacio">No hay documentos registrados con estos filtros.</div>') + '</section>');
+  $('dPedir').onclick = async () => {
+    const as = $('dAs').value.trim(); if (!as) return toast('Escribí el asunto.');
+    const b = $('dPedir'); b.disabled = true; b.textContent = 'Asignando…';
+    let r; try { r = await api('p_numero', { est: $('dEst').value, bloque: $('dBl').value, tipo: $('dTi').value, asunto: as }); } catch (e) { b.disabled = false; b.textContent = 'Asignar número'; return; }
+    b.disabled = false; b.textContent = 'Asignar número';
+    if (!r.ok) return toast(r.mensaje || 'No se pudo asignar.');
+    $('dRes').textContent = r.codigo; $('dCopiar').hidden = false;
+    $('dCopiar').onclick = async () => { try { await navigator.clipboard.writeText(r.codigo); toast('Código copiado.'); } catch (e) { prompt('Copiá el código:', r.codigo); } };
+    toast('Número asignado: ' + r.codigo);
+    setTimeout(() => documentos(), 2500);
+  };
+  $('fEst').onchange = e => { DOCS.est = e.target.value; documentos(); };
+  $('fAn').onchange = e => { DOCS.anio = Number(e.target.value); documentos(); };
+  document.querySelectorAll('[data-adj]').forEach(b => b.onclick = async () => {
+    const u = prompt('Pegá el enlace del documento (Drive):'); if (!u) return;
+    try { const r = await api('p_doc_actualizar', { codigo: b.dataset.adj, documento: u, estado: 'Emitido' }); if (!r.ok) return toast(r.mensaje); toast('Enlace guardado.'); documentos(); } catch (e) {}
+  });
+  document.querySelectorAll('[data-anu]').forEach(b => b.onclick = async () => {
+    const m = prompt('Motivo de la anulación de ' + b.dataset.anu + ':'); if (!m) return;
+    try { const r = await api('p_doc_actualizar', { codigo: b.dataset.anu, estado: 'Anulado', motivo: m }); if (!r.ok) return toast(r.mensaje); toast('Número anulado.'); documentos(); } catch (e) {}
+  });
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -705,6 +776,7 @@ function router() {
   if (ruta === 'importar') return importar();
   if (ruta === 'diag') return a ? diagForm(a) : diagLista();
   if (ruta === 'tablero') return tablero(a);
+  if (ruta === 'docs') return documentos(a);
   return inicio();
 }
 window.addEventListener('hashchange', router);
