@@ -100,7 +100,9 @@ const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g,
 const fechaTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('portal_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('portal_' + k, JSON.stringify(v)); } catch (e) {} }, del: k => { try { localStorage.removeItem('portal_' + k); } catch (e) {} } };
 let FICHAS = {};
-const DIAG_URL = 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
+const RESPALDO = /googleusercontent\.com$/.test(location.hostname);   // portal servido por Google (sin GitHub)
+const DIAG_URL = RESPALDO ? API_URL + '?p=diagnostico' : 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
+const APP_URL = RESPALDO ? API_URL + '?p=app' : 'https://hyslhmh-sudo.github.io/manifiestos/';
 const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
   ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
 // Informes del diagnóstico (Google Doc editable + PDF)
@@ -181,10 +183,10 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="https://hyslhmh-sudo.github.io/manifiestos/" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="' + APP_URL + '" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
     '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
-    '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' +
+    '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' + (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : '<a href="' + API_URL + '?p=portal" target="_blank" rel="noopener">Portal de respaldo (sin GitHub) ↗</a>') +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>';
   $('btnSalir').onclick = () => salir();
 }
@@ -830,7 +832,9 @@ function planPintar() {
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f">Fecha de envío a la Dirección<input class="c" type="date" id="plEnvio" value="' + esc(R.enviado || '') + '"></label><button class="btn" id="plEnviar">' + (R.enviado ? 'Cambiar fecha de envío' : 'Marcar como enviado') + '</button>' +
       '<label class="f">Fecha de la respuesta de la Dirección<input class="c" type="date" id="plResp"></label><span class="mu peq" style="max-width:420px">La fecha de envío fija los plazos técnicos. Al cargar un responsable o una fecha prevista, se registra la respuesta.</span></section>' +
     '<style>.plr{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(200px,1fr) minmax(200px,1fr);gap:14px;padding:14px 18px;border-top:1px solid #EEF2F4}.plr:first-child{border-top:0}.plr .c{width:100%;box-sizing:border-box}.plr label{display:block;font-size:12px;color:var(--mu);font-weight:600;margin:0 0 3px}.plr .blq{display:flex;flex-direction:column;gap:8px}@media(max-width:900px){.plr{grid-template-columns:1fr}}</style>' +
-    '<section class="card" style="padding:0">' + F.map((o, i) => '<div class="plr" data-n="' + esc(o.N_REC) + '">' +
+    '<div class="filtros" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="mu peq" style="font-weight:700">Mostrar:</span>' +
+      [['', 'Todas'], ['Actuar ya', 'Actuar ya'], ['Vencida', 'Vencidas'], ['Sin respuesta', 'Sin respuesta'], ['Pendiente', 'Pendientes'], ['En curso', 'En curso'], ['Cumplida', 'Cumplidas']].map(([v, t]) => { const n = v === '' ? F.length : F.filter(o => o.EFECTIVO === v || o.PRIORIDAD === v || (v === 'Sin respuesta' && o.EFECTIVO === 'Sin enviar')).length; return '<button class="btn ' + ((PL.filtro || '') === v ? 'pri' : 'sec') + '" data-plf="' + esc(v) + '"' + (n || v === '' ? '' : ' disabled') + '>' + t + ' (' + n + ')</button>'; }).join('') + '</div>' +
+    '<section class="card" style="padding:0">' + F.map((o, i) => '<div class="plr" data-n="' + esc(o.N_REC) + '"' + (PL.filtro && !(o.EFECTIVO === PL.filtro || o.PRIORIDAD === PL.filtro || (PL.filtro === 'Sin respuesta' && o.EFECTIVO === 'Sin enviar')) ? ' hidden' : '') + '>' +
       '<div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>' + esc(o.N_REC) + '</b>' + plChip(o.EFECTIVO) + '<span class="chip gr">' + esc(o.PRIORIDAD) + '</span></div>' +
         '<div style="margin-top:6px">' + esc(o.RECOMENDACION) + '</div>' +
         '<div class="mu peq" style="margin-top:4px">' + (o.LUGAR && o.LUGAR !== 'Establecimiento' ? esc(o.LUGAR) + ' · ' : '') + esc(o.A_CARGO) + ' · ' + esc(o.COSTO) + '</div>' +
@@ -842,8 +846,13 @@ function planPintar() {
           '<label class="link" style="cursor:pointer;display:inline;font-size:13px;color:var(--az)">+ Subir foto o PDF<input type="file" accept="image/*,application/pdf" class="pl-sub" data-i="' + i + '" hidden></label> · <button class="link pl-link" data-i="' + i + '">+ Pegar enlace</button></div></div>' +
         '<div><label>Observaciones</label><input class="c pl-obs" value="' + esc(o.OBSERVACIONES) + '" placeholder="Motivo, avances…"></div></div>' +
     '</div>').join('') + '</section>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn pri" id="plGuardar">Guardar cambios</button></div>' +
+    '<div style="position:sticky;bottom:0;z-index:5;background:rgba(242,245,246,.96);border-top:1px solid var(--ln);padding:10px 0;display:flex;gap:10px;justify-content:flex-end;align-items:center"><span class="mu peq" id="plSucio"></span><button class="btn sec" id="plArriba">↑ Arriba</button><button class="btn pri" id="plGuardar">Guardar cambios</button></div>' +
     '<section class="card peq mu">«Vencida» y «Sin respuesta» se marcan solas. Cumplida solo con evidencia (foto, documento o remito); descartada con motivo. Las vencidas de «Actuar ya» se incluyen en la nota trimestral a la Secretaría.</section>');
+  document.querySelectorAll('[data-plf]').forEach(b => b.onclick = () => { const v = PL.filtro = b.dataset.plf;
+    document.querySelectorAll('[data-plf]').forEach(x => x.className = 'btn ' + (x.dataset.plf === v ? 'pri' : 'sec'));
+    document.querySelectorAll('#main .plr[data-n]').forEach((row, i) => { const o = F[i]; row.hidden = !!v && !(o.EFECTIVO === v || o.PRIORIDAD === v || (v === 'Sin respuesta' && o.EFECTIVO === 'Sin enviar')); }); });
+  $('plArriba').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.querySelectorAll('.pl-resp,.pl-fecha,.pl-est,.pl-obs').forEach(el => el.addEventListener('change', () => { $('plSucio').textContent = 'Hay cambios sin guardar.'; }));
   $('plCorreo').onclick = async () => { try { const r = await api('p_informe_correo', { cod: R.cod, id: R.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
   $('plEnviar').onclick = async () => { const f = $('plEnvio').value; if (!f) return toast('Elegí la fecha de envío.'); try { const r = await api('p_plan_enviado', { codigo: R.codigo, fecha: f }); if (!r.ok) return toast(r.mensaje); toast('Fecha de envío guardada.'); planDetalle(R.codigo); } catch (e) {} };
   const filaEv = i => document.querySelectorAll('#main .plr[data-n]')[i].querySelector('.pl-ev');
