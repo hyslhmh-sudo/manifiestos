@@ -184,7 +184,7 @@ function marco(activo, contenido) {
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
     '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="' + APP_URL + '" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
-    '<div class="sec">RIESGOS</div>' + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
+    '<div class="sec">RIESGOS</div>' + it('#nte', 'NTE · Nómina de expuestos') + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + it('#modelos', 'Modelos para completar') + it('#bandeja', 'Bandeja de entrada') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' + (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : '<a href="' + API_URL + '?p=portal" target="_blank" rel="noopener">Portal de respaldo (sin GitHub) ↗</a>') +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>';
@@ -948,6 +948,46 @@ async function bandeja(propuesta) {
   });
 }
 
+
+// ------------------------------------------------------------------ Riesgos › NTE (Nómina de Trabajadores Expuestos)
+let NTE = null;
+async function nte(cod) {
+  if (!RES) { try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const cabecera = '<div class="cab"><div><span class="mu peq">Riesgos</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
+    '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="min-width:320px">Establecimiento<select class="c" id="nEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label></section>';
+  if (!cod) { marco('#nte', cabecera); $('nEst').onchange = e => location.hash = '#nte/' + encodeURIComponent(e.target.value); return; }
+  cargando('#nte', 'Revisando la base de personal y la matriz de exposición…');
+  let R; try { R = await api('p_nte_revisar', { cod: cod }, 120000); } catch (e) { return; }
+  if (!R.ok) return toast(R.mensaje);
+  NTE = R; const P = R.controles, kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  const det = (t, L) => L.length ? '<details style="margin-top:6px"><summary class="peq"><b>' + t + ' (' + L.length + ')</b></summary><div class="peq mu" style="margin-top:4px">' + L.slice(0, 60).map(esc).join(' · ') + (L.length > 60 ? ' …' : '') + '</div></details>' : '';
+  const M = R.matriz.filter(m => m.personas > 0).sort((a, b) => (a.agentes ? 1 : 0) - (b.agentes ? 1 : 0) || b.personas - a.personas);
+  marco('#nte', cabecera +
+    (R.aviso ? '<div class="aviso">' + esc(R.aviso) + (R.ultima ? ' Última: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').' : '') + '</div>' : (R.ultima ? '<div class="aviso">La NTE está al día: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').</div>' : '')) +
+    '<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px">' + kpi('DOTACIÓN', R.total, 'personas activas') + kpi('EXPUESTOS', R.expuestos, 'con código ESOP') + kpi('PUESTOS SIN DEFINIR', R.sinDefinir, 'en la matriz', R.sinDefinir ? '#9B2C22' : '') + kpi('DATOS FALTANTES', P.sinCuil.length + P.sinIngreso.length + P.sinSector.length, 'CUIL, ingreso o puesto', (P.sinCuil.length + P.sinIngreso.length + P.sinSector.length) ? '#B7791F' : '') + '</div>' +
+    '<section class="card"><h2>1. Datos de las personas</h2><p class="mu peq">Lo que falta se completa en Trabajadores o con el modelo «Nómina de personal» (Documental › Modelos para completar).</p>' + (det('Sin CUIL válido', P.sinCuil) + det('Sin fecha de ingreso', P.sinIngreso) + det('Sin sector o puesto', P.sinSector) + det('Códigos ESOP que no están en el listado', P.invalidos) || '<div class="mu peq">Sin faltantes. ✅</div>') + '</section>' +
+    '<section class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2>2. Matriz de exposición por puesto</h2><button class="btn sec" id="nSug">Usar las sugerencias en los vacíos</button></div>' +
+      '<p class="mu peq">Una fila por servicio y función. Escribí los códigos ESOP separados por espacios (por ejemplo «60021 60022») o NO EXPUESTO. La sugerencia es solo orientativa: decide Higiene y Seguridad. En «Criterio» podés anotar el fundamento (medición, tarea, RGRL).</p>' +
+      '<div class="tabla"><table><thead><tr><th>Servicio</th><th>Función o puesto</th><th>Personas</th><th>Sugerencia</th><th style="min-width:190px">Códigos ESOP</th><th>Criterio</th></tr></thead><tbody>' +
+      M.map(m => '<tr data-f="' + m.fila + '"><td>' + esc(m.servicio) + '</td><td>' + esc(m.funcion) + '</td><td>' + m.personas + '</td><td class="peq mu">' + esc(m.sugerencia || '—') + '</td><td><input class="c n-ag" value="' + esc(m.agentes) + '" data-sug="' + esc(m.sugerencia) + '" placeholder="sin definir" style="' + (m.agentes ? '' : 'border-color:#E9B8B3') + '"></td><td><input class="c n-cr" value="' + esc(m.criterio) + '"></td></tr>').join('') + '</tbody></table></div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn pri" id="nGuardar">Guardar la matriz</button></div></section>' +
+    '<section class="card"><h2>3. Generar la NTE</h2><p class="mu peq">Crea la planilla con el formato del Autoseguro (más una hoja de controles que no se presenta), con número HYSL, en la carpeta del establecimiento › NTE. Después: imprimir o exportar, firmar la autoridad del establecimiento y enviar. El sistema no envía correos.</p><button class="btn pri" id="nGen">Generar la NTE</button><div id="nRes" style="margin-top:12px"></div></section>');
+  $('nEst').onchange = e => location.hash = '#nte/' + encodeURIComponent(e.target.value);
+  $('nSug').onclick = () => { let n = 0; document.querySelectorAll('.n-ag').forEach(i => { if (!i.value.trim() && i.dataset.sug) { i.value = i.dataset.sug; i.style.borderColor = ''; n++; } }); toast(n ? n + ' fila(s) completadas con la sugerencia: revisalas y guardá.' : 'No hay vacíos con sugerencia.'); };
+  $('nGuardar').onclick = async () => { const filas = [...document.querySelectorAll('tr[data-f]')].map(tr => ({ fila: Number(tr.dataset.f), servicio: tr.children[0].textContent, funcion: tr.children[1].textContent, agentes: tr.querySelector('.n-ag').value, criterio: tr.querySelector('.n-cr').value }));
+    const b = $('nGuardar'); b.disabled = true; b.textContent = 'Guardando…';
+    try { const r = await api('p_nte_matriz', { cod: cod, filas: filas }, 120000); b.disabled = false; b.textContent = 'Guardar la matriz'; if (!r.ok) return toast(r.mensaje); toast('Matriz guardada.'); nte(cod); } catch (e) { b.disabled = false; b.textContent = 'Guardar la matriz'; } };
+  $('nGen').onclick = async () => { const forzar = R.sinDefinir ? confirm('Hay ' + R.sinDefinir + ' puesto(s) sin definir: van a figurar como NO EXPUESTO. ¿Generar igual?') : false; if (R.sinDefinir && !forzar) return;
+    const b = $('nGen'); b.disabled = true; b.textContent = 'Generando…';
+    let r; try { r = await api('p_nte_generar', { cod: cod, forzar: forzar }, 300000); } catch (e) { b.disabled = false; b.textContent = 'Generar la NTE'; return; }
+    b.disabled = false; b.textContent = 'Generar la NTE'; if (!r.ok) return toast(r.mensaje);
+    const C = r.controles, falt = C.sinCuil + C.sinIngreso + C.sinSector + C.invalidos;
+    $('nRes').innerHTML = '<div class="aviso"><b>' + esc(r.codigo) + '</b> · ' + r.total + ' personas · ' + r.expuestos + ' expuestas' + (falt ? ' · <b style="color:#9B2C22">' + falt + ' dato(s) a revisar</b> (hoja CONTROLES)' : '') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir</a><a class="btn" href="' + esc(r.xlsx) + '" target="_blank" rel="noopener">Descargar Excel</a><a class="btn" href="' + esc(r.pdf) + '" target="_blank" rel="noopener">Descargar PDF</a><button class="btn" id="nMail">Copiar correo para el Autoseguro</button></div></div>';
+    $('nMail').onclick = () => copiarCorreo(r.correo); };
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -960,6 +1000,7 @@ function router() {
   if (ruta === 'tablero') return tablero(a);
   if (ruta === 'docs') return documentos(a);
   if (ruta === 'modelos') return modelos();
+  if (ruta === 'nte') return nte(a);
   if (ruta === 'bandeja') return bandeja();
   if (ruta === 'plan') return a ? planDetalle(decodeURIComponent(a)) : planLista();
   return inicio();
