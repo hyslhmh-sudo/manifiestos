@@ -291,7 +291,7 @@ async function ficha(cod) {
 async function guardarFicha(tipo, fila, datos) {
   const r = await api('p_ficha_guardar', { cod: FICHA.cod, tipo: tipo, fila: fila, datos: datos });
   if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-  toast(r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.'); delete FICHAS[FICHA.cod]; ficha(FICHA.cod); return '';
+  const vv = r.vinculo || {}; toast((r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') + (vv.vinculado ? ' Base de personal: ' + vv.persona + (vv.cambios ? ' actualizado/a.' : ' ya estaba al día.') : vv.aviso ? ' ⚠ ' + vv.aviso : '')); delete FICHAS[FICHA.cod]; ficha(FICHA.cod); return '';
 }
 
 // ------------------------------------------------------------------ Modal genérico
