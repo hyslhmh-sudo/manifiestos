@@ -160,10 +160,30 @@ function diagCapInfo(i, ro) {
     (i.ID === 'PER06' && C.sugerencia ? ' Sugerencia: <b>' + C.sugerencia + '</b>' + (ro ? '' : ' <button class="link" data-capsug="' + C.sugerencia + '">Usar</button>') : '') +
     '<div class="mu" style="margin-top:4px">Cuenta solo a quienes figuran en la base de trabajadores de este establecimiento. Si alguien se capacitó y no aparece, revisá su DNI en la base.</div></div>';
 }
+
+// ------------------------------------------------------------------ Reglas del diagnóstico (las mismas que en el sistema: hoja ITEMS › CONDICION y PREVIO)
+function diagAplica(it, sitio) {
+  const cond = String(it && it.CONDICION || '').trim(); if (!cond) return true;
+  const porId = DG.porId || (DG.porId = Object.fromEntries(DG.D.items.map(i => [i.ID, i])));
+  return cond.split(';').every(c => {
+    const m = /^\s*([A-Z]{3}\d{2})\s*(~|!=|=)\s*(.+?)\s*$/.exec(c); if (!m) return true;
+    const ref = porId[m[1]], s = ref && ref.NIVEL === 'S' ? (sitio || '') : '', r = DG.R[s + '|' + m[1]] || {}, v = String(r.valor || r.resp || '');
+    if (m[2] === '~') return m[3].split('|').some(o => v.split('|').indexOf(o.trim()) >= 0);
+    if (m[2] === '=') return v === m[3];
+    return v !== m[3];
+  });
+}
+const diagTiene = (s, id) => { const r = DG.R[s + '|' + id]; return !!(r && (r.resp || r.valor)); };
+function diagPrevioFalta() { return DG.D.items.filter(i => i.PREVIO === 'Sí' && i.NIVEL !== 'S' && !diagTiene('', i.ID)); }
+function diagFaltaCerrar() {
+  const est = DG.D.items.filter(i => i.NIVEL !== 'S' && (/^(CPN|ESCALA|LISTA)$/.test(i.TIPO) || i.PREVIO === 'Sí') && diagAplica(i, '') && !diagTiene('', i.ID));
+  const sitios = DG.D.sitios.filter(s => DG.D.items.some(i => i.NIVEL === 'S' && diagTiene(s.sitio, i.ID))).length;
+  return { est: est, sitios: sitios };
+}
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
   let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
-  Object.keys(DG.R).forEach(k => { const it = porId[k.split('|')[1]], r = DG.R[k]; if (!it) return;
+  Object.keys(DG.R).forEach(k => { const it = porId[k.split('|')[1]], r = DG.R[k]; if (!it || !diagAplica(it, k.split('|')[0])) return;
     let v = null;
     if (it.TIPO === 'CPN') v = { 'Cumple': 1, 'Parcial': 0.5, 'No cumple': 0 }[r.resp];
     else if (it.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')); if (m) { v = Number(m[1]) / 6; msn += Number(m[1]); nm++; } }
@@ -171,14 +191,15 @@ function diagCalc() {
   return { pct: pesos ? Math.round(1000 * suma / pesos) / 10 : null, crit: crit, n: n, msn: nm ? Math.round(10 * msn / nm) / 10 : null };
 }
 function diagAvance(sitio) {
-  const its = DG.D.items.filter(i => (sitio === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S'));
+  const its = DG.D.items.filter(i => (sitio === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S') && diagAplica(i, sitio));
   const hechos = its.filter(i => { const r = DG.R[sitio + '|' + i.ID]; return r && (r.resp || r.valor); }).length;
   return [hechos, its.length];
 }
 function diagPintar() {
   const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio)), ro = diagSoloLectura(), red = DCFG.modo === 'red';
   const tabTxt = t => { const [h, n] = diagAvance(t); return (t === '' ? 'Establecimiento' : t) + ' · ' + h + '/' + n; };
-  const its = D.items.filter(i => DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S');
+  DG.porId = null; const falta = diagPrevioFalta(), bloqueo = DG.tab !== '' && falta.length > 0;
+  const its = bloqueo ? [] : D.items.filter(i => (DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S') && diagAplica(i, DG.tab));
   const secciones = Array.from(new Set(its.map(i => i.SECCION)));
   const ctl = i => { const k = DG.tab + '|' + i.ID, r = DG.R[k] || {};
     if (i.TIPO === 'CPN') return '<div class="cpn">' + RESP_CPN.map(([v, l, cl]) => '<button class="btn ' + (r.resp === v ? 'chip ' + cl + ' sel' : 'sec') + '" data-k="' + esc(k) + '" data-v="' + v + '"' + (ro ? ' disabled' : '') + ' title="' + v + '">' + l + '</button>').join('') + '</div>';
@@ -208,12 +229,14 @@ function diagPintar() {
       '<label class="f">' + (red ? 'Quién lo completa (nombre y función)' : 'Relevado por') + '<input class="c" data-cab="RELEVADO_POR" value="' + esc(DG.cab.RELEVADO_POR) + '"' + (ro ? ' disabled' : '') + '></label>' +
       '<label class="f">' + (red ? 'Otras personas que participaron' : 'Persona entrevistada') + '<input class="c" data-cab="ENTREVISTADO" value="' + esc(DG.cab.ENTREVISTADO) + '"' + (ro ? ' disabled' : '') + '></label></div>' +
       '<label class="f" style="margin-top:12px">Observaciones generales<textarea class="c" data-cab="OBSERVACIONES"' + (ro ? ' disabled' : '') + '>' + esc(DG.cab.OBSERVACIONES) + '</textarea></label></section>' +
-    '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '">' + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
+    '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '"' + (t !== '' && falta.length ? ' title="Primero completá los datos del establecimiento" style="opacity:.55"' : '') + '>' + (t !== '' && falta.length ? '🔒 ' : '') + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
     (DG.tab !== '' ? '<p class="mu peq" style="margin:0">Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.' + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
     (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un diagnóstico anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
+    (bloqueo ? '<section class="card"><h2>Primero, los datos del establecimiento</h2><p class="mu">Para relevar cada lugar hace falta completar antes, en la pestaña <b>Establecimiento</b>: ' + falta.map(i => '<b>' + esc(i.ITEM) + '</b>').join(', ') + '. Esas respuestas definen qué se pregunta en cada lugar.</p><button class="btn pri" data-tab="">Ir a Establecimiento</button></section>' : '') +
+    (DG.tab === '' && falta.length ? '<div class="aviso peq">Empezá por los puntos marcados como <b>Primero</b>: definen qué se pregunta en cada lugar.</div>' : '') +
     secciones.map(sec => '<section class="card seccion"><div class="sec-tit"><h2>' + esc(sec) + '</h2></div>' +
       its.filter(i => i.SECCION === sec).map(i => { const r = DG.R[DG.tab + '|' + i.ID] || {}, ancho = i.TIPO === 'MULTI' || i.TIPO === 'TEXTO' || i.TIPO === 'ESCALA';
-        return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div><b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
+        return '<div class="punto' + (ancho ? ' ancho' : '') + '"><div>' + (i.PREVIO === 'Sí' && DG.tab === '' ? '<span class="chip pa mini">Primero</span> ' : '') + '<b>' + esc(i.ITEM) + '</b>' + (i.CRITICO === 'Sí' ? ' <span class="chip er mini">Crítico</span>' : '') + (i.AYUDA ? '<div class="mu peq">' + esc(i.AYUDA) + '</div>' : '') + (i.REFERENCIA && !red ? '<div class="mu ref">Ref.: ' + esc(i.REFERENCIA) + '</div>' : '') + '</div>' +
           '<div class="ctl">' + ctl(i) + '</div>' +
           diagCapInfo(i, ro) +
           (i.TIPO === 'CPN' ? '<input class="c obs" placeholder="Observación (opcional)" data-ko="' + esc(DG.tab + '|' + i.ID) + '" value="' + esc(r.obs || '') + '"' + (ro ? ' disabled' : '') + '>' : '') + fotos(i) + '</div>'; }).join('') + '</section>').join('') +
@@ -223,8 +246,8 @@ function diagPintar() {
   const marcar = () => { DG.sucio = true; const e = $('dgEstado'); if (e) e.textContent = 'Hay cambios sin guardar.'; };
   const q = s => document.querySelectorAll(s);
   q('[data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k, r = DG.R[k] = DG.R[k] || {}; r.resp = r.resp === b.dataset.v ? '' : b.dataset.v; DG.sucio = true; const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
-  q('[data-kv]').forEach(el => el.onchange = () => { (DG.R[el.dataset.kv] = DG.R[el.dataset.kv] || {}).valor = el.value; marcar(); if (el.closest('.escala')) { const y = window.scrollY; diagPintar(); window.scrollTo(0, y); } });
-  q('[data-km]').forEach(el => el.onchange = () => { const k = el.dataset.km; (DG.R[k] = DG.R[k] || {}).valor = [...q('[data-km]')].filter(x => x.dataset.km === k && x.checked).map(x => x.value).join('|'); marcar(); });
+  q('[data-kv]').forEach(el => el.onchange = () => { (DG.R[el.dataset.kv] = DG.R[el.dataset.kv] || {}).valor = el.value; marcar(); if (el.closest('.escala') || el.tagName === 'SELECT') { const y = window.scrollY; diagPintar(); window.scrollTo(0, y); } });
+  q('[data-km]').forEach(el => el.onchange = () => { const k = el.dataset.km; (DG.R[k] = DG.R[k] || {}).valor = [...q('[data-km]')].filter(x => x.dataset.km === k && x.checked).map(x => x.value).join('|'); marcar(); const y = window.scrollY; diagPintar(); window.scrollTo(0, y); });
   q('[data-ko]').forEach(el => el.onchange = () => { (DG.R[el.dataset.ko] = DG.R[el.dataset.ko] || {}).obs = el.value; marcar(); });
   q('[data-cab]').forEach(el => el.onchange = () => { DG.cab[el.dataset.cab] = el.value; marcar(); });
   q('[data-tab]').forEach(b => b.onclick = () => { DG.tab = b.dataset.tab; diagPintar(); window.scrollTo(0, 0); });
@@ -238,8 +261,12 @@ function diagPintar() {
     const o = prompt('¿De qué lugar copio las respuestas? (las fotos no se copian)\n' + otros.join(' · '), otros[0]); if (!o || otros.indexOf(o) < 0) return;
     Object.keys(DG.R).filter(k => k.indexOf(o + '|') === 0).forEach(k => { const r = DG.R[k]; DG.R[DG.tab + '|' + k.slice(o.length + 1)] = { resp: r.resp, valor: r.valor, obs: r.obs, fotos: [] }; }); DG.sucio = true; diagPintar(); };
   if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
-  if ($('dgCerrar')) $('dgCerrar').onclick = () => confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
-  if ($('dgEnviar')) $('dgEnviar').onclick = () => confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
+  const diagPuedeCerrar = () => { const f = diagFaltaCerrar();
+    if (f.est.length) { toast('Falta completar en Establecimiento ' + f.est.length + ' punto(s): ' + f.est.slice(0, 3).map(i => i.ITEM).join(' · ') + (f.est.length > 3 ? '…' : '')); DG.tab = ''; diagPintar(); window.scrollTo(0, 0); return false; }
+    if (!f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
+    return true; };
+  if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
+  if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
   if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el diagnóstico al referente para que lo complete o corrija?') && diagGuardar('Borrador');
   if ($('dgNuevo')) $('dgNuevo').onclick = () => { DG.D.previo = DG.D.actual || DG.D.previo; DG.D.respuestasPrevio = (DG.D.respuestas || []).length ? DG.D.respuestas : DG.D.respuestasPrevio; DG.D.actual = null; DG.D.respuestas = [];
     DG.id = ''; DG.estado = 'Nuevo'; DG.R = {}; DG.cab.FECHA = hoyISO(); DG.sucio = true; diagPintar(); };
