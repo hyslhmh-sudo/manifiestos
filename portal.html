@@ -169,7 +169,7 @@ function ingreso(msg) {
   const ir = async () => {
     const c = $('clave').value.trim(); if (!c) return;
     $('entrar').disabled = true; $('entrar').textContent = 'Verificando…'; CLAVE = c;
-    try { const r = await api('p_resumen', {}); if (!r.ok) throw new Error(); RES = r; LS.set('res', r); if ($('recordar').checked) LS.set('clave', c); if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
+    try { const r = await api('p_ping', {}, 30000); if (!r.ok) throw new Error(); if ($('recordar').checked) LS.set('clave', c); const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
     catch (e) { if (e.message !== 'clave') ingreso('No se pudo ingresar. Revisá la clave y la conexión.'); }
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
@@ -199,7 +199,7 @@ const chipEstado = e => /^activ/i.test(e || '') ? '<span class="chip ok">Habilit
 let refrescando = false;
 async function refrescarRes() {
   if (refrescando) return; refrescando = true;
-  try { const r = await api('p_resumen', {}); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if (cambio && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } catch (e) {} finally { refrescando = false; }
+  try { const r = await api('p_resumen', {}, 240000); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if (cambio && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } catch (e) {} finally { refrescando = false; }
 }
 function chipDiag(d) {
   if (!d || d.pct === '' || d.pct == null) return '<span class="chip gr">Sin diagnóstico</span>';
@@ -209,7 +209,8 @@ function chipCap(c, a) { if (!a) return '<span class="chip gr">—</span>'; cons
 function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
 async function inicio(fresco) {
   if (!RES && !fresco) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
-  if (!RES || fresco) { cargando('#inicio', fresco ? 'Recalculando la matriz provincial…' : 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }); LS.set('res', RES); } catch (e) { return; } }
+  if (!RES && !fresco) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!RES || fresco) { cargando('#inicio', fresco ? 'Recalculando la matriz provincial…' : 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }, 240000); LS.set('res', RES); } catch (e) { return; } }
   const F = RES.filas, areas = Array.from(new Set(F.map(f => f.area))).sort();
   const q = FILTRO.q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const vis = F.filter(f => (!FILTRO.area || f.area === FILTRO.area) && (!FILTRO.soloApp || /^activ/i.test(f.estado)) && (!q || (f.nombre + ' ' + f.cod).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) >= 0))
@@ -243,7 +244,7 @@ function selectorEst(sel, conExtra, conTodos) {
     (conExtra ? CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('') : '');
 }
 async function ficha(cod) {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#ficha'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#ficha'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   if (!cod) {
     marco('#ficha', '<div class="cab"><div><span class="mu peq">Establecimientos</span><h1>Ficha del establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="selEst">' + selectorEst('', false) + '</select></label></div>');
     $('selEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
@@ -270,8 +271,10 @@ async function ficha(cod) {
           [sd(c.v[9]), sd(c.v[10])].filter(Boolean).map(m => '<a href="mailto:' + esc(m) + '">' + esc(m) + '</a>').join('<br>') + '</td><td><button class="link" data-con="' + FICHA.contactos.indexOf(c) + '">Editar</button></td></tr>'; }).join('') + '</tbody></table>'
       : '<div class="vacio">Sin contactos cargados.</div>') + '</section>' +
     '<section style="display:flex;flex-direction:column;gap:10px"><h2>Comités y áreas</h2>' + (FICHA.comitesDe ? '<p class="mu peq">Compartidos con ' + esc(FICHA.comitesDe) + ' (mismo hospital): se cargan y se editan una sola vez.</p>' : '') + '<div class="grid g3">' + (com || '<p class="mu">Sin comités cargados.</p>') + '</div></section>' +
+    '<section class="card" id="fMi"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Agua, plagas y documentos</h2><button class="btn sec" id="fMiBtn">Ver</button></div><div class="mu peq">Tanques, canillas, análisis, casos de plagas y documentos propios, con sus pendientes.</div></section>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimos manifiestos</h2></div><table><thead><tr><th>Fecha</th><th>Sitio</th><th>N.º</th><th>Corriente</th><th>Cantidad</th><th>Origen</th></tr></thead><tbody>' +
     R.manifiestos.map(m => '<tr><td>' + fechaTxt(m.fecha) + '</td><td>' + esc(m.sitio) + '</td><td>' + esc(m.nro) + '</td><td>' + esc(m.corriente) + '</td><td>' + esc(m.cantidad) + ' ' + esc(m.unidad) + '</td><td class="peq">' + esc(m.origen) + '</td></tr>').join('') + '</tbody></table>' + (R.manifiestos.length ? '' : '<div class="vacio">Sin manifiestos registrados.</div>') + '</section>');
+  $('fMiBtn').onclick = () => fichaMi(d.CODIGO);
   $('edDatos').onclick = () => modal('Datos de ' + d.CODIGO, [['LOCALIDAD', 'Localidad'], ['DIRECCION', 'Dirección'], ['TELEFONOS', 'Teléfonos'], ['CODIGO_SISA', 'Código SISA'], ['DIRECTOR', 'Director/a'], ['EMPRESA_RESIDUOS', 'Empresa de residuos'], ['SERVICIO_HYS', 'Servicio de HyS', ['Profesional propio', 'Técnico', 'Referente no técnico', 'Sin servicio', 's/d']]], d,
     v => guardarFicha('est', null, v));
   const camposRed = [['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['ROL', 'Rol', ['Profesional', 'Técnico', 'Referente no técnico', 'Referente de residuos']], ['CUIL', 'CUIL'], ['DNI', 'DNI'], ['TITULO_O_MATRICULA', 'Título o matrícula', null, 1], ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['HORAS_SEMANALES', 'Horas semanales'], ['DESDE', 'Desde (fecha)'], ['BLOQUES_QUE_REPORTA', 'Bloques que reporta'], ['FRECUENCIA', 'Frecuencia', ['Mensual', 'Trimestral', 'Semestral', 'Anual']], ['ESTADO', 'Estado', ['Activo', 'A confirmar', 'Baja']], ['OBSERVACIONES', 'Observaciones', null, 1]];
@@ -319,7 +322,7 @@ function modal(titulo, campos, valores, guardar, extra) {
 
 // ------------------------------------------------------------------ Trabajadores
 async function trabajadores(cod) {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#trab'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#trab'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   TRAB.cod = cod || TRAB.cod || '';
   const pintar = () => {
     const D = TRAB.datos;
@@ -405,7 +408,7 @@ function separarNombre(t) {
 const normH = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[°º.:#]/g, ' ').replace(/\s+/g, ' ').trim();
 function cargarXLSX() { return window.XLSX ? Promise.resolve() : new Promise((ok, mal) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar el lector de Excel. Revisá la conexión.')); document.head.appendChild(s); }); }
 async function importar() {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; } else { cargando('#importar'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; } else { cargando('#importar'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   IMP = { paso: 1, cod: TRAB.cod && TRAB.cod !== '*' ? TRAB.cod : '', ntear: false };
   pasoImp();
 }
@@ -519,7 +522,7 @@ const DCFG = {
   alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
 };
 async function diagLista() {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#diag'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#diag'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   const F = RES.filas.slice().sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
   const con = F.filter(f => f.diag && f.diag.pct !== '' && f.diag.pct != null);
   const prom = con.length ? Math.round(con.reduce((a, f) => a + Number(f.diag.pct), 0) / con.length) : null;
@@ -758,7 +761,7 @@ const DOC_TIPOS = { DG: 'Diagnóstico', SP: 'Seguimiento del plan de acción', I
 let DOCS = { est: '', anio: new Date().getFullYear() };
 async function documentos(est) {
   if (est != null) DOCS.est = est;
-  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   cargando('#docs', 'Leyendo el registro…');
   let R; try { R = await api('p_registro', { est: DOCS.est, anio: DOCS.anio }); } catch (e) { return; }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
@@ -886,7 +889,7 @@ const BJ_CAMPOS = { FECHA_INGRESO: 'Fecha de ingreso', SITIO: 'Lugar', FUNCION: 
 const bjCampo = c => BJ_CAMPOS[c] || (c.charAt(0) + c.slice(1).toLowerCase()).replace(/_/g, ' ');
 let MOD = { tipo: 'RESPUESTA_INFORME', cod: '' };
 async function modelos() {
-  if (!RES) { try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!RES) { try { RES = await api('p_resumen', {}, 240000); } catch (e) { return; } }
   let planes = []; try { planes = (await api('p_plan_listar', {})).informes || []; } catch (e) {}
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const T = BJ_TIPOS_UI[MOD.tipo], infs = planes.filter(p => !MOD.cod || p.cod === MOD.cod);
@@ -953,7 +956,7 @@ async function bandeja(propuesta) {
 // ------------------------------------------------------------------ Riesgos › NTE (Nómina de Trabajadores Expuestos)
 let NTE = null;
 async function nte(cod) {
-  if (!RES) { try { RES = await api('p_resumen', {}); } catch (e) { return; } }
+  if (!RES) { try { RES = await api('p_resumen', {}, 240000); } catch (e) { return; } }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const cabecera = '<div class="cab"><div><span class="mu peq">Riesgos</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="min-width:320px">Establecimiento<select class="c" id="nEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label></section>';
@@ -997,7 +1000,7 @@ let AU = { cod: LS.get('audCod', 'HZT'), A: null, R: null };
 const audChip = e => '<span class="chip ' + (/cerrada|^conforme$/i.test(e) ? 'ok' : /mayor/i.test(e) ? 'er' : /para verificar|hallazgos|menor/i.test(e) ? 'wa' : 'gr') + '">' + esc(e) + '</span>';
 const AUD_OP = { C: ['Conforme', '#E3F0F4', '#0D4A63'], NC: ['No conforme', '#FBE3D3', '#8A3B0B'], Obs: ['Observación', '#ECE8F3', '#4A3A73'], NA: ['No aplica', '#EEF1F2', '#4F616B'] };
 async function audLista() {
-  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { cargando('#aud'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { cargando('#aud'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   cargando('#aud', 'Leyendo las auditorías…');
   let R; try { R = await api('p_aud_listar', { cod: AU.cod }); } catch (e) { return; }
   if (!R.ok) return toast(R.mensaje || 'No se pudieron leer las auditorías.');
@@ -1119,6 +1122,25 @@ async function audResultado(id) {
     const r = await api('p_aud_hallazgo_guardar', { id: id, datos: Object.assign({ CLASIFICACION: 'Oportunidad de mejora' }, v) }); if (!r.ok) return r.mensaje || 'No se pudo guardar.'; toast('Agregada.'); audResultado(id); return ''; });
   $('arPlan').onclick = async () => { try { if (H.length && !(await guardarH())) return; const r = await api('p_aud_al_plan', { id: id }); if (!r.ok) return toast(r.mensaje); toast(r.pasados ? r.pasados + ' hallazgo(s) pasados al plan de acción.' : (r.mensaje || 'Nada para pasar.')); if (r.pasados) location.hash = '#plan/' + encodeURIComponent(id); } catch (e) {} };
   if ($('arVerif')) $('arVerif').onclick = async () => { if (!confirm('¿Revisaste las respuestas y la evidencia del referente? Sus hallazgos pasan a «Propuesto».')) return; try { const r = await api('p_aud_verificar', { id: id }); if (!r.ok) return toast(r.mensaje); toast('Auditoría verificada.'); audResultado(id); } catch (e) {} };
+}
+
+// ------------------------------------------------------------------ Ficha › Agua, plagas y documentos (lo que ve el establecimiento en «Mi establecimiento»)
+async function fichaMi(cod) {
+  const box = $('fMi'); if (!box) return;
+  box.innerHTML = '<h2>Agua, plagas y documentos</h2><div class="mu">Leyendo…</div>';
+  let R; try { R = await api('p_mi', { cod: cod }, 120000); } catch (e) { box.innerHTML = '<h2>Agua, plagas y documentos</h2><div class="mu">No se pudo leer. <button class="link" id="fMiBtn">Reintentar</button></div>'; $('fMiBtn').onclick = () => fichaMi(cod); return; }
+  if (!R.ok) { box.innerHTML = '<h2>Agua, plagas y documentos</h2><div class="aviso error">' + esc(R.mensaje || R.error || 'Error') + '</div>'; return; }
+  const chip = e => '<span class="chip ' + ({ vencida: 'er', porvencer: 'wa', sin: 'wa', aldia: 'ok' }[e] || 'gr') + '">' + ({ vencida: 'Vencida', porvencer: 'Por vencer', sin: 'Sin registro', aldia: 'Al día' }[e] || e) + '</span>';
+  const tabla = (cab, filas) => filas.length ? '<div style="overflow-x:auto"><table><thead><tr>' + cab.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>' + filas.join('') + '</tbody></table></div>' : '<div class="mu peq">Sin datos cargados.</div>';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Agua, plagas y documentos</h2><button class="link" id="fMiBtn">Actualizar</button></div>' +
+    '<div class="mu peq">' + esc(R.grupo.length > 1 ? 'Incluye ' + R.grupo.join(' y ') + ' (mismo hospital). ' : '') + 'Limpieza de tanques: ' + esc(R.poe.limpieza) + ' · Toma de muestras: ' + esc(R.poe.muestra) + '</div>' +
+    '<h3 style="margin:14px 0 6px">Pendientes</h3>' + (R.pendientes.length ? '<div style="display:flex;flex-direction:column;gap:6px">' + R.pendientes.map(p => '<div style="display:flex;gap:8px;align-items:flex-start"><span class="chip ' + (p.nivel === 'er' ? 'er' : p.nivel === 'wa' ? 'wa' : 'gr') + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span><div><b>' + esc(p.texto) + '</b><div class="mu peq">' + esc(p.detalle) + '</div></div></div>').join('') + '</div>' : '<div class="mu peq">Sin pendientes.</div>') +
+    '<h3 style="margin:16px 0 6px">Tanques y cisternas</h3>' + tabla(['Código', 'Tipo', 'Ubicación', 'Litros', 'Acceso', 'Última limpieza', 'Próxima', 'Estado'], R.tanques.map(t => '<tr><td><b>' + esc(t.codigo) + '</b></td><td>' + esc(t.tipo) + '</td><td>' + esc(t.ubicacion) + '</td><td>' + esc(t.capacidad) + '</td><td>' + esc(t.acceso) + '</td><td>' + fechaTxt(t.ultima) + '</td><td>' + fechaTxt(t.proxima) + '</td><td>' + chip(t.estado) + '</td></tr>')) +
+    '<h3 style="margin:16px 0 6px">Canillas (puntos de muestreo)</h3>' + tabla(['Código', 'Ubicación', 'Bacteriológico', 'Vence', 'Físico-químico', 'Último resultado', 'Estado'], R.puntos.map(p => '<tr><td><b>' + esc(p.codigo) + '</b></td><td>' + esc(p.ubicacion) + '</td><td>' + fechaTxt(p.bact) + '</td><td>' + fechaTxt(p.venceBact) + '</td><td>' + fechaTxt(p.fq) + '</td><td>' + esc(p.ultimo) + '</td><td>' + (p.noApta ? '<span class="chip er">No apta</span>' : chip(p.estado)) + '</td></tr>')) +
+    '<h3 style="margin:16px 0 6px">Plagas: casos abiertos</h3>' + tabla(['Caso', 'Fecha', 'Plaga', 'Sector', 'Estado', 'Próxima revisión'], R.casos.map(c => '<tr><td><b>' + esc(c.caso) + '</b></td><td>' + fechaTxt(c.fecha) + '</td><td>' + esc(c.plaga) + '</td><td>' + esc(c.sector) + '</td><td>' + esc(c.estado) + '</td><td>' + fechaTxt(c.proxima) + '</td></tr>')) +
+    '<h3 style="margin:16px 0 6px">Documentos propios</h3>' + tabla(['Tema', 'Tipo', 'Documento', 'Versión', 'Cargado', ''], R.documentos.map(d => '<tr><td>' + esc(d.tema) + '</td><td>' + esc(d.tipo) + '</td><td>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</td><td>' + esc(d.version) + '</td><td>' + fechaTxt(d.cargado) + '</td><td><a href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></td></tr>')) +
+    '<div class="mu peq" style="margin-top:10px">Las fotos de cada carga están en la carpeta del establecimiento (Agua, Plagas, Documentos propios). Los registros completos, en la BASE COMÚN: AGUA_LIMPIEZAS, AGUA_ANALISIS, PLAGAS_CASOS, PLAGAS_REGISTROS y DOCUMENTOS_EST.</div>';
+  $('fMiBtn').onclick = () => fichaMi(cod);
 }
 
 // ------------------------------------------------------------------ Navegación
