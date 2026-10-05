@@ -102,7 +102,7 @@ nav.lat .titu { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color:
 .at:first-of-type { border-top: 0; }
 .at b { font-size: 14px; display: block; } .at small { font-size: 12.5px; color: var(--mu); }
 .tag { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
-.tag.er { background: #FBE6E1; color: #B4361F; } .tag.wa { background: #FFF1D6; color: #8A5200; } .tag.av { background: #E7F0F3; color: #2E5E70; }
+.tag.er { background: #FBE6E1; color: #B4361F; } .tag.ok { background: #E2F2E8; color: #1E6B42; } .tag.gr { background: #EEF2F4; color: #5B6B73; } .tag.wa { background: #FFF1D6; color: #8A5200; } .tag.av { background: #E7F0F3; color: #2E5E70; }
 .leyenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--mu); } .leyenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
 .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: #fff; z-index: 60; box-shadow: -8px 0 30px rgba(13,49,63,.18); padding: 22px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .panel h2 { margin: 0; } .panel p, .panel li { font-size: 14.5px; line-height: 1.5; }
@@ -364,6 +364,8 @@ async function inicio(fresco) {
   noApta.forEach(a => at.push(['er', a.cod + ': agua NO APTA en ' + a.punto, 'Limpiar y tomar nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod)]));
   const porEst = {}; venc.forEach(a => porEst[a.cod] = (porEst[a.cod] || 0) + 1);
   Object.keys(porEst).forEach(c => at.push(['er', porEst[c] + ' acción(es) vencida(s) · ' + c, nom(c), '#plan']));
+  Array.from(new Set(tanq.filter(t => t.estado === 'vencida').map(t => t.cod))).forEach(c => at.push(['er', c + ': limpieza de tanque vencida', 'Registrar la limpieza con el F-AGU-01', '#ficha/' + encodeURIComponent(c)]));
+  Array.from(new Set((TB.puntos || []).filter(p => enA(p.cod) && p.estado === 'vencida').map(p => p.cod))).forEach(c => at.push(['er', c + ': análisis bacteriológico vencido', 'Tomar muestra según el proceso provincial', '#ficha/' + encodeURIComponent(c)]));
   plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
   atr.forEach(f => at.push([f.diasSinRetiro > 30 ? 'er' : 'wa', f.cod + ': ' + f.diasSinRetiro + ' días sin retiro', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), '#ficha/' + encodeURIComponent(f.cod)]));
   pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
@@ -376,19 +378,43 @@ async function inicio(fresco) {
   const dias = [['Hasta 10 días', F.filter(f => f.diasSinRetiro != null && f.diasSinRetiro <= 10).length, '#1E6B42'], ['11 a 30 días', F.filter(f => f.diasSinRetiro > 10 && f.diasSinRetiro <= 30).length, '#B7791F'], ['Más de 30 días', F.filter(f => f.diasSinRetiro > 30).length, '#B4361F'], ['Sin datos', F.filter(f => f.diasSinRetiro == null).length, '#B8C4CA']];
   const orig = ['Diagnóstico', 'Auditorías', 'Agua', 'Plagas'].map(o => { const l = acc.filter(a => a.origen === o), v = l.filter(a => a.vencida).length; return [o, [[l.length - v, '#5894A7'], [v, '#B4361F']]]; });
   const diagA = areas.filter(a => !A || a === A).map(a => { const l = RES.filas.filter(f => f.area === a && f.diag && f.diag.pct !== '' && f.diag.pct != null); const p = l.length ? Math.round(l.reduce((s, f) => s + Number(f.diag.pct), 0) / l.length) : 0; return [a.replace('Área Programática ', 'Área '), p, '#0D313F', l.length ? p + ' %' : '—']; });
+  const ptos = (TB.puntos || []).filter(p => enA(p.cod)), cnt = (l, e) => l.filter(x => x.estado === e).length;
+  const tanV = tanq.filter(t => t.estado === 'vencida').length, ptoV = cnt(ptos, 'vencida'), plAtr = plagas.filter(p => p.revision && p.revision < hoy).length;
+  // Semáforo por establecimiento: habilitados y los que tienen algún dato
+  const conDato = c => tanq.some(t => t.cod === c) || ptos.some(t => t.cod === c) || plagas.some(t => t.cod === c) || acc.some(t => t.cod === c);
+  const filasS = F.filter(f => /^activ/i.test(f.estado) || conDato(f.cod) || (f.diag && f.diag.pct !== '' && f.diag.pct != null));
+  const ch = (n, t) => '<span class="tag ' + n + '" style="display:inline-block">' + esc(t) + '</span>';
+  const celRes = f => !/^activ/i.test(f.estado) ? ch('gr', 'No habilitado') : f.diasSinRetiro == null ? ch('gr', 'Sin datos') : ch(f.diasSinRetiro > 30 ? 'er' : f.diasSinRetiro > 10 ? 'wa' : 'ok', f.diasSinRetiro + ' días');
+  const celDiag = f => { const p = f.diag && f.diag.pct; return p === '' || p == null ? ch('gr', 'Sin diagnóstico') : ch(p >= 80 ? 'ok' : p >= 50 ? 'wa' : 'er', Math.round(p) + ' %'); };
+  const celAgua = c => { const t = tanq.filter(x => x.cod === c), p = ptos.filter(x => x.cod === c), na = noApta.filter(x => x.cod === c).length;
+    if (na) return ch('er', 'NO APTA'); if (!t.length && !p.length) return ch('gr', 'Sin inventario');
+    const v = cnt(t, 'vencida') + cnt(p, 'vencida'); if (v) return ch('er', v + ' vencido(s)');
+    const w = cnt(t, 'porvencer') + cnt(p, 'porvencer') + cnt(t, 'sin') + cnt(p, 'sin'); return w ? ch('wa', w + ' por revisar') : ch('ok', 'Al día'); };
+  const celPlag = c => { const l = plagas.filter(x => x.cod === c); if (!l.length) return ch('ok', 'Sin casos'); const a = l.filter(x => x.revision && x.revision < hoy).length; return ch(a ? 'er' : 'wa', l.length + ' abierto(s)'); };
+  const celAcc = c => { const l = acc.filter(x => x.cod === c), v = l.filter(x => x.vencida).length; return !l.length ? ch('ok', 'Ninguna') : ch(v ? 'er' : 'wa', v ? v + ' vencida(s)' : l.length + ' en plazo'); };
+  const semaforo = filasS.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">ESTABLECIMIENTO</th><th style="padding:6px 8px">RESIDUOS · SIN RETIRO</th><th style="padding:6px 8px">DIAGNÓSTICO</th><th style="padding:6px 8px">AGUA</th><th style="padding:6px 8px">PLAGAS</th><th style="padding:6px 8px">ACCIONES</th></tr></thead><tbody>' +
+    filasS.map(f => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><a href="#ficha/' + encodeURIComponent(f.cod) + '" style="font-weight:700;text-decoration:none">' + esc(f.cod) + '</a><div class="mu" style="font-size:12px">' + esc(f.nombre) + '</div></td><td style="padding:8px">' + celRes(f) + '</td><td style="padding:8px">' + celDiag(f) + '</td><td style="padding:8px">' + celAgua(f.cod) + '</td><td style="padding:8px">' + celPlag(f.cod) + '</td><td style="padding:8px">' + celAcc(f.cod) + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<span class="mu peq">Establecimientos habilitados en la aplicación y los que tienen algún dato cargado. Tocá el código para abrir la ficha.</span>'
+    : '<div class="mu">Todavía no hay establecimientos con datos en esta área.</div>';
+  const estadoBarra = (l) => [[cnt(l, 'aldia'), '#1E6B42'], [cnt(l, 'porvencer'), '#B7791F'], [cnt(l, 'vencida'), '#B4361F'], [cnt(l, 'sin'), '#B8C4CA']];
   marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
-    '<div class="tb5">' + kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + kpi('#est', 'RETIROS ATRASADOS', atr.length, 'más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
-      kpi('#plan', 'ACCIONES VENCIDAS', venc.length, 'de ' + acc.length + ' abiertas', venc.length ? '#B4361F' : '') + kpi('#agua', 'AGUA NO APTA', noApta.length, 'con plazo de 15 días hábiles', noApta.length ? '#B4361F' : '') + kpi('#bib', 'DOCUMENTOS A REVISAR', docs.length, 'en los próximos 60 días', docs.length ? '#8A5200' : '') + '</div>' +
-    '<div class="tb2">' + card('Retiros de residuos por mes', ['#est', 'Ver establecimientos'], grBarrasMes(TB.meses, serie) + leyenda([['Y1 biopatogénicos', '#0D313F'], ['Y3 medicamentos', '#5894A7']]) + '<span class="mu peq">Manifiestos registrados por corriente, últimos 12 meses.</span>') +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
+      kpi('#plan', 'ACCIONES VENCIDAS', venc.length, 'de ' + acc.length + ' abiertas (todos los temas)', venc.length ? '#B4361F' : '') +
+      kpi('#est', 'RESIDUOS', atr.length, 'con más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
+      kpi('#agua', 'AGUA', noApta.length + tanV + ptoV, noApta.length + ' NO APTA · ' + tanV + ' limpieza(s) · ' + ptoV + ' análisis vencidos', (noApta.length + tanV + ptoV) ? '#B4361F' : '') +
+      kpi('#agua', 'PLAGAS', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
+      kpi('#bib', 'DOCUMENTOS', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
+      kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
+    '<div class="tb2" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr)">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) +
       card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
-    '<div class="tb3">' + card('Días sin retiro', ['#est', 'Establecimientos'], grHoriz(dias, Math.max(...dias.map(d => d[1]))) + '<span class="mu peq">Según el último manifiesto de cada establecimiento.</span>') +
-      card('Acciones abiertas por origen', ['#plan', 'Plan de acción'], grHoriz(orig, Math.max(1, ...orig.map(o => o[1][0][0] + o[1][1][0]))) + leyenda([['En plazo', '#5894A7'], ['Vencidas', '#B4361F']])) +
-      card('Cumplimiento del diagnóstico', ['#diag', 'Diagnóstico'], grHoriz(diagA, 100) + '<span class="mu peq">Promedio del último diagnóstico de cada establecimiento, por área.</span>') + '</div>' +
-    '<div class="tb5">' + card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') +
-      card('Agua', ['#agua', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + tanq.filter(t => t.aldia).length + ' de ' + tanq.length + '</b><span class="mu peq">Tanques con limpieza al día · ' + noApta.length + ' NO APTA</span>') +
-      card('Plagas', ['#agua', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + plagas.length + '</b><span class="mu peq">Casos abiertos</span>') +
-      card('NTE', ['#nte', 'Ver'], '<span class="mu peq">Revisá en cada establecimiento si la nómina está al día (aviso de altas, bajas y 12 meses).</span>') + '</div>');
+    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">' +
+      card('Agua: tanques y canillas', ['#agua', 'Ver'], grHoriz([['Tanques y cisternas', estadoBarra(tanq)], ['Canillas (bacteriológico)', estadoBarra(ptos)]], Math.max(1, tanq.length, ptos.length)) + leyenda([['Al día', '#1E6B42'], ['Por vencer', '#B7791F'], ['Vencido', '#B4361F'], ['Sin registro', '#B8C4CA']])) +
+      card('Acciones abiertas por tema', ['#plan', 'Plan de acción'], grHoriz(orig, Math.max(1, ...orig.map(o => o[1][0][0] + o[1][1][0]))) + leyenda([['En plazo', '#5894A7'], ['Vencidas', '#B4361F']])) +
+      card('Residuos: retiros por mes', ['#est', 'Ver'], grBarrasMes(TB.meses, serie) + leyenda([['Y1', '#0D313F'], ['Y3', '#5894A7']])) +
+      card('Residuos: días sin retiro', ['#est', 'Ver'], grHoriz(dias, Math.max(...dias.map(d => d[1])))) +
+      card('Diagnóstico de residuos por área', ['#diag', 'Ver'], grHoriz(diagA, 100)) +
+      card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') + '</div>');
   $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
   $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
 }
