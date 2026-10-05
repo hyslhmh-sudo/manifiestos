@@ -1040,10 +1040,13 @@ function formularios() {
 const TEMAS = ['Residuos', 'Agua', 'Plagas', 'Seguridad', 'Otro'];
 function docs() {
   VISTA = 'mi'; MIV = { f: docs }; vista('wide'); if (miSinDatos()) return;
-  const D = MI.documentos || [];
-  $('app').innerHTML = miTit('Manuales, guías, POE, protocolos y PTS', 'Los documentos propios del establecimiento. Si se carga una versión nueva, la anterior queda guardada como reemplazada.') +
-    TEMAS.map(t => { const l = D.filter(d => d.tema === t); return l.length ? '<h2>' + t + '</h2><div class="lista">' + l.map(d => '<div class="item"><div><b>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</b><small>' + esc(d.tipo + (d.version ? ' · versión ' + d.version : '') + ' · cargado ' + fechaTxt(d.cargado)) + '</small></div><a class="btn sec" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></div>').join('') + '</div>' : ''; }).join('') +
-    (D.length ? '' : '<p class="mu">Todavía no hay documentos cargados.</p>') +
+  const D = MI.documentos || [], B = MI.biblioteca || [];
+  const item = (t, s, u) => '<div class="item"><div><b>' + esc(t) + '</b><small>' + esc(s) + '</small></div><a class="btn sec" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(u) + '" target="_blank" rel="noopener">Abrir</a></div>';
+  $('app').innerHTML = miTit('Manuales, guías, POE, protocolos y PTS', 'Arriba, los documentos de Higiene y Seguridad para el establecimiento. Abajo, los propios del establecimiento.') +
+    '<h2>De Higiene y Seguridad</h2>' + (B.length ? '<div class="lista">' + B.map(d => item(d.codigo + ' · ' + d.titulo, [d.tipo, d.tema, d.version ? 'versión ' + d.version : '', d.desde ? 'vigente desde ' + fechaTxt(d.desde) : ''].filter(Boolean).join(' · '), d.url)).join('') + '</div>' : '<p class="mu">Todavía no hay documentos de Higiene y Seguridad para este establecimiento.</p>') +
+    '<h2 style="margin-top:22px">Propios del establecimiento</h2>' +
+    TEMAS.map(t => { const l = D.filter(d => d.tema === t); return l.length ? '<h3 style="margin:14px 0 6px">' + t + '</h3><div class="lista">' + l.map(d => '<div class="item"><div><b>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</b><small>' + esc(d.tipo + (d.version ? ' · versión ' + d.version : '') + ' · cargado ' + fechaTxt(d.cargado)) + '</small></div><a class="btn sec" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></div>').join('') + '</div>' : ''; }).join('') +
+    (D.length ? '' : '<p class="mu">Todavía no hay documentos propios cargados.</p>') +
     '<div class="menu"><button class="big main" data-act="docNuevo"><b>+ Cargar un documento</b><span>Manual, guía, POE, protocolo o PTS (PDF o foto)</span></button></div>';
   miVolver(); window.scrollTo(0, 0);
 }
