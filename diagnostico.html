@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Diagnóstico de residuos · Higiene y Seguridad</title>
+<title>Residuos · Página para referentes · Higiene y Seguridad</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -85,7 +85,7 @@
 </style>
 </head>
 <body>
-<div class="top"><div><b>Diagnóstico de residuos</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><button class="link" id="salir" hidden>Salir</button></div>
+<div class="top"><div><b>Residuos · Página para referentes</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><div style="display:flex;gap:14px"><button class="link" id="inicio" hidden>Inicio</button><button class="link" id="salir" hidden>Salir</button></div></div>
 <main class="ref" id="raiz"></main>
 <div id="ov" class="ov" hidden></div>
 <div id="toast" class="toast" hidden></div>
@@ -132,8 +132,99 @@ async function ingreso(msg) {
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); };
 }
-function salir(msg) { SES = null; LS.del('ses'); ingreso(msg); }
-function empezar() { $('salir').hidden = false; $('salir').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; salir(); }; diagForm(SES.est); }
+function salir(msg) { SES = null; LS.del('ses'); $('inicio').hidden = true; ingreso(msg); }
+function empezar() { $('salir').hidden = false; $('salir').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; salir(); };
+  $('inicio').hidden = false; $('inicio').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Volver al inicio igual?')) return; inicioRef(); }; inicioRef(); }
+// ------------------------------------------------------------------ Inicio del referente y auditoría interna (Auditoria.gs › audRed_)
+function inicioRef() {
+  DG = null; AR = null;
+  $('raiz').innerHTML = '<div class="cab"><div><span class="mu peq">' + esc(SES.nombre) + '</span><h1>Página para referentes</h1><span class="mu">Elegí qué querés hacer.</span></div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">' +
+    '<button class="card" id="irDiag" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Diagnóstico de residuos</b><span class="mu">El relevamiento completo del establecimiento, punto por punto, con fotos.</span></button>' +
+    '<button class="card" id="irAud" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Auditoría interna</b><span class="mu">Una recorrida corta, cada tres meses: cestos, descartadores, bolsas, carros y depósito. Se completa desde el celular.</span></button></div>';
+  $('irDiag').onclick = () => diagForm(SES.est);
+  $('irAud').onclick = () => arLista();
+}
+let AR = null;
+const AR_OP = [['C', 'Sí, se cumple', 'ok'], ['NC', 'No se cumple', 'er'], ['NA', 'No aplica', 'gr']];
+async function arLista() {
+  $('raiz').innerHTML = '<div class="card vacio">Cargando…</div>';
+  let r; try { r = await post('a_listar', {}); } catch (e) { return inicioRef(); }
+  if (!r.ok) { toast(r.mensaje || 'No se pudo abrir.'); return inicioRef(); }
+  const L = r.auditorias || [], abierta = L.find(a => /planificada|en curso/i.test(a.estado));
+  $('raiz').innerHTML = '<div class="cab"><div><button class="link peq" id="arVolver">‹ Inicio</button><h1>Auditoría interna</h1><span class="mu">' + esc(SES.nombre) + ' · Preguntas simples sobre la gestión de residuos. Lo que marques como «No se cumple» necesita una foto.</span></div>' +
+    (abierta ? '' : '<button class="btn pri" id="arNueva">Empezar una auditoría</button>') + '</div>' +
+    (L.length ? '<section class="card" style="padding:0">' + L.map(a => '<div style="border-top:1px solid var(--gr);padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><div><b>' + fechaTxt(a.fecha) + '</b> · ' + esc(a.lugares) + '<div class="mu peq">' + esc(a.respondidos || 0) + ' de ' + esc(a.puntos || 0) + ' preguntas · ' + esc(a.auditor) + '</div></div>' +
+      (/planificada|en curso/i.test(a.estado) ? '<button class="btn pri" data-ar="' + esc(a.id) + '">Continuar</button>' : '<span class="chip ' + (/cerrada/i.test(a.estado) ? 'ok' : 'wa') + '">' + (/para verificar/i.test(a.estado) ? 'Enviada: la revisa Higiene y Seguridad' : esc(a.estado)) + '</span>') + '</div>').join('') + '</section>'
+      : '<div class="card vacio">Todavía no hay auditorías internas. Tocá «Empezar una auditoría».</div>');
+  $('arVolver').onclick = inicioRef;
+  if ($('arNueva')) $('arNueva').onclick = arNueva;
+  document.querySelectorAll('[data-ar]').forEach(b => b.onclick = () => arAbrir(b.dataset.ar));
+}
+async function arNueva() {
+  let r; try { r = await post('a_opciones', {}); } catch (e) { return; }
+  if (!r.ok) return toast(r.mensaje);
+  $('raiz').innerHTML = '<div class="cab"><div><button class="link peq" id="arVolver">‹ Volver</button><h1>Nueva auditoría interna</h1></div></div>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:14px"><label class="f">Tu nombre y apellido<input class="c" id="arNom" value="' + esc(LS.get('arNom', '')) + '" autocomplete="name"></label>' +
+    '<div><div class="peq" style="font-weight:700;margin-bottom:6px">¿Qué lugares vas a recorrer?</div>' + r.lugares.map(l => '<label style="display:flex;gap:10px;align-items:center;min-height:44px;font-size:15px"><input type="checkbox" class="arLug" value="' + esc(l) + '" style="width:22px;height:22px"> ' + esc(l) + '</label>').join('') + '</div>' +
+    '<button class="btn pri" id="arCrear" style="min-height:48px">Empezar</button></section>';
+  $('arVolver').onclick = arLista;
+  $('arCrear').onclick = async () => {
+    const lug = [...document.querySelectorAll('.arLug:checked')].map(c => c.value), nom = $('arNom').value.trim();
+    if (!nom) return toast('Escribí tu nombre.'); if (!lug.length) return toast('Elegí al menos un lugar.');
+    LS.set('arNom', nom); $('arCrear').disabled = true; $('arCrear').textContent = 'Preparando…';
+    try { const x = await post('a_crear', { auditor: nom, lugares: lug }); if (!x.ok) { toast(x.mensaje); $('arCrear').disabled = false; $('arCrear').textContent = 'Empezar'; return; } arAbrir(x.id); } catch (e) { $('arCrear').disabled = false; }
+  };
+}
+async function arAbrir(id) {
+  $('raiz').innerHTML = '<div class="card vacio">Abriendo…</div>';
+  let r; try { r = await post('a_abrir', { id: id }); } catch (e) { return; }
+  if (!r.ok) return toast(r.mensaje);
+  AR = { id: id, P: r.puntos, cambios: LS.get('ar_' + id, {}) }; arPintar();
+}
+const arResp = p => Object.assign({}, p.r || {}, AR.cambios[p.codigo + '|' + p.lugar] || {});
+function arPintar() {
+  const P = AR.P, hechos = P.filter(p => arResp(p).respuesta).length, ejes = [...new Set(P.map(p => p.eje))], pend = Object.keys(AR.cambios).length;
+  $('raiz').innerHTML = '<div class="cab"><div><button class="link peq" id="arVolver">‹ Mis auditorías</button><h1>Auditoría interna</h1><span class="mu">' + hechos + ' de ' + P.length + ' preguntas respondidas</span>' +
+    '<div style="height:8px;background:var(--gr);border-radius:999px;margin-top:6px"><div style="width:' + (P.length ? Math.round(hechos * 100 / P.length) : 0) + '%;height:8px;background:var(--az);border-radius:999px"></div></div></div></div>' +
+    ejes.map(e => '<h2 style="margin-top:6px">' + esc(e.replace(/^[A-Z] · /, '')) + '</h2>' + P.map((p, i) => p.eje !== e ? '' : (() => { const r = arResp(p);
+      return '<article class="card" style="display:flex;flex-direction:column;gap:10px"><b style="font-size:16px;line-height:1.35">' + esc(p.texto) + '</b><span class="mu peq">' + esc(p.lugar) + (p.ayuda ? ' · ' + esc(p.ayuda) : '') + '</span>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">' + AR_OP.map(([k, t, c]) => '<button class="btn ' + (r.respuesta === k ? 'pri' : 'sec') + ' ar-op" data-i="' + i + '" data-r="' + k + '" style="min-height:48px;padding:6px">' + t + '</button>').join('') + '</div>' +
+        (r.respuesta === 'NC' ? '<div style="display:flex;flex-direction:column;gap:8px;background:var(--wabg);border-radius:10px;padding:10px">' +
+          (r.foto ? '<a href="' + esc(r.foto) + '" target="_blank" rel="noopener">Foto cargada ✓</a>' : '<span class="peq" style="font-weight:700;color:var(--wa)">Falta la foto</span>') +
+          '<label class="btn sec" style="min-height:44px;cursor:pointer;text-align:center">' + (r.foto ? 'Cambiar foto' : 'Sacar foto') + '<input type="file" accept="image/*" capture="environment" class="ar-foto" data-i="' + i + '" hidden></label>' +
+          '<label class="f">Qué viste (opcional)<textarea class="c ar-nota" data-i="' + i + '">' + esc(r.nota || '') + '</textarea></label></div>' : '') + '</article>'; })()).join('')).join('') +
+    '<div style="position:sticky;bottom:0;background:rgba(244,247,248,.97);border-top:1px solid var(--ln);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center"><span class="mu peq">' + (pend ? 'Guardado en este celular; falta enviarlo.' : '') + '</span>' +
+      '<button class="btn sec" id="arGuardar" style="min-height:48px">Guardar</button><button class="btn pri" id="arEnviar" style="min-height:48px">Enviar a Higiene y Seguridad</button></div>';
+  const fija = (i, c) => { const p = P[i], k = p.codigo + '|' + p.lugar; AR.cambios[k] = Object.assign({ codigo: p.codigo, lugar: p.lugar }, arResp(p), c); LS.set('ar_' + AR.id, AR.cambios); };
+  $('arVolver').onclick = arLista;
+  document.querySelectorAll('.ar-op').forEach(b => b.onclick = () => { const y = window.scrollY; fija(+b.dataset.i, { respuesta: b.dataset.r }); arPintar(); window.scrollTo(0, y); });
+  document.querySelectorAll('.ar-nota').forEach(t => t.onchange = () => fija(+t.dataset.i, { nota: t.value }));
+  document.querySelectorAll('.ar-foto').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return; const i = +inp.dataset.i; toast('Subiendo la foto…');
+    try { const data = await achicar(f), x = await post('a_foto', { id: AR.id, codigo: P[i].codigo, base64: data }); if (!x.ok) return toast(x.mensaje);
+      const y = window.scrollY; fija(i, { foto: x.url }); arPintar(); window.scrollTo(0, y); toast('Foto cargada.'); } catch (e) { toast('No se pudo subir la foto. Probá cuando tengas señal.'); }
+  });
+  const subir = async () => {
+    const L = Object.values(AR.cambios).filter(c => c.respuesta).map(c => ({ codigo: c.codigo, lugar: c.lugar, respuesta: c.respuesta, nota: c.nota || '', foto: c.foto || '' }));
+    if (!L.length) return true;
+    const x = await post('a_responder', { id: AR.id, respuestas: L }); if (!x.ok) { toast(x.mensaje); return false; }
+    if (x.faltaEvidencia && x.faltaEvidencia.length) { toast('Falta la foto en ' + x.faltaEvidencia.length + ' pregunta(s) marcada(s) «No se cumple».'); return false; }
+    AR.cambios = {}; LS.del('ar_' + AR.id); return true;
+  };
+  $('arGuardar').onclick = async () => { $('arGuardar').disabled = true; try { if (await subir()) { toast('Guardado.'); arAbrir(AR.id); return; } } catch (e) { toast('Sin señal: queda guardado en este celular.'); } $('arGuardar').disabled = false; };
+  $('arEnviar').onclick = async () => {
+    const falt = P.filter(p => !arResp(p).respuesta).length, sinFoto = P.filter(p => arResp(p).respuesta === 'NC' && !arResp(p).foto).length;
+    if (sinFoto) return toast('Falta la foto en ' + sinFoto + ' pregunta(s) marcada(s) «No se cumple».');
+    if (falt && !confirm('Quedan ' + falt + ' preguntas sin responder. ¿Enviar igual?')) return;
+    $('arEnviar').disabled = true; $('arEnviar').textContent = 'Enviando…';
+    try { if (!(await subir())) { $('arEnviar').disabled = false; $('arEnviar').textContent = 'Enviar a Higiene y Seguridad'; return; }
+      const x = await post('a_enviar', { id: AR.id }); if (!x.ok) { toast(x.mensaje); $('arEnviar').disabled = false; return; }
+      toast('¡Listo! La auditoría se envió a Higiene y Seguridad.'); arLista(); } catch (e) { toast('Sin señal: queda guardado en este celular. Probá enviar más tarde.'); $('arEnviar').disabled = false; $('arEnviar').textContent = 'Enviar a Higiene y Seguridad'; }
+  };
+}
+
+
 // ------------------------------------------------------------------ Diagnóstico de residuos (núcleo común: portal y referentes)
 // DCFG lo define cada página: modo ('hys' | 'red'), abrir, guardar, foto, pantalla, volver.
 const RESP_CPN = [['Cumple', 'C', 'ok'], ['Parcial', 'P', 'wa'], ['No cumple', 'N', 'er'], ['No aplica', 'NA', 'gr']];
