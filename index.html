@@ -546,7 +546,7 @@ function validar() {
     if (sitiosCfg().length > 1 && !M.sitio) ERR.sitio = 'Elegí dónde se hizo el retiro.';
     if (!/^\d{3,}$/.test(String(M.nro).replace(/[\s.-]/g, ''))) ERR.nro = 'Escribí el número impreso en el manifiesto (solo números).';
     else if (!(M.reemplaza && String(M.nro).trim() === M._nroOrig && M.sitio === M._sitioOrig) && CFG && CFG.ultimas && CFG.ultimas.some(u => u.nro === String(M.nro).trim() && u.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está registrado en ' + M.sitio + '.';
-    else if (miCola().some(c => c.tipo === 'manifiesto' && c.datos.idLocal !== M.idLocal && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está cargado en este equipo, esperando envío.';
+    else if (miCola().some(c => c.tipo === 'manifiesto' && c.estado === 'pendiente' && c.datos.idLocal !== M.idLocal && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está cargado en este equipo, esperando envío.';
     if (!M.fecha) ERR.fecha = !M._fecha ? 'Falta la fecha de recolección.' : M._fecha.length === 10 ? 'Esa fecha no existe: revisá el día y el mes.' : 'Completá la fecha como dd/mm/aaaa.';
     else if (M.fecha < FMIN) ERR.fecha = 'La fecha tiene que ser desde el 01/01/2025.';
     else if (M.fecha > hoyISO()) ERR.fecha = 'La fecha no puede ser posterior a hoy.';
@@ -574,6 +574,7 @@ function adelante() {
   // Guardar: tamaños usados quedan como sugerencia para el próximo retiro del sitio
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
   if (!M.reemplaza) LS.set('ultman_' + SES.est, { sitio: M.sitio, fecha: M.fecha });
+  COLA = COLA.filter(c => !(c.est === SES.est && c.estado === 'error' && c.tipo === 'manifiesto' && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)); guardarCola();
   const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
@@ -809,7 +810,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && VISTA === 'ingreso' && e.target.id === 'f_clave') { LOG.clave = e.target.value; entrar(); } if (e.key === 'Enter' && VISTA === 'hys' && e.target.id === 'f_hclave') entrarHys(); });
 $('ov').addEventListener('click', e => { if (e.target.id === 'ov') cerrarAyuda(); });
-$('net').onclick = () => sincronizar();
+$('net').onclick = () => { if (SES && miCola().some(c => c.estado === 'error')) consulta(); else sincronizar(); };
 
 // ------------------------------------------------------------------ «MI ESTABLECIMIENTO»: tablero, agua, plagas y documentos (Establecimiento.gs › miRed_)
 let MI = null, F = null, MIV = null;   // MI: tablero del sistema · F: formulario abierto · MIV: pantalla actual del módulo
@@ -837,7 +838,7 @@ function inicio() {
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
-    (err ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Revisalas en «Mis cargas».</div>' : '') +
+    (err ? '<button class="notice" data-act="consulta" style="display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Tocá acá para verlas y corregirlas o descartarlas.</button>' : '') +
     '<h2>Lo que tenés pendiente</h2>' +
     (!MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
@@ -1092,7 +1093,7 @@ async function registros(fresco) {
   const porTema = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF);
   const lugares = {}; porTema.forEach(r => { if (r.lugar) lugares[r.lugar] = (lugares[r.lugar] || 0) + 1; });
   if (REGL && !lugares[REGL]) REGL = '';
-  const L = porTema.filter(r => !REGL || r.lugar === REGL), sinFoto = L.filter(r => r.sinFoto && !r.anulado).length;
+  const L = porTema.filter(r => !REGL || r.lugar === REGL), sinFoto = L.filter(r => r.sinFoto && !r.anulado && !r.historico).length;
   const selPer = '<select data-chg="regM" style="max-width:220px">' + [[1, 'Último mes'], [3, 'Últimos 3 meses'], [6, 'Últimos 6 meses'], [12, 'Últimos 12 meses']].map(([v, t]) => '<option value="' + v + '"' + (v === REGM ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>';
   const selLug = Object.keys(lugares).length > 1 ? '<select data-chg="regL" style="max-width:320px"><option value="">Todos los lugares (' + porTema.filter(r => r.lugar).length + ')</option>' + Object.keys(lugares).sort((a, b) => a.localeCompare(b, 'es')).map(l => '<option value="' + esc(l) + '"' + (l === REGL ? ' selected' : '') + '>' + esc(l) + ' (' + lugares[l] + ')</option>').join('') + '</select>' : '';
   const chip = t => '<button class="btn ' + (REGF === t ? 'pri' : 'sec') + '" style="padding:8px 14px;font-size:14px" data-act="regF" data-arg="' + t + '">' + t + '</button>';
@@ -1103,7 +1104,7 @@ async function registros(fresco) {
     (L.length ? '<div class="lista">' + L.map(r => '<div class="item" style="flex-direction:column;align-items:stretch;gap:8px' + (r.anulado ? ';opacity:.6' : '') + '"><div><b>' + esc(r.titulo) + '</b><small>' + esc([fechaTxt(r.fecha), r.detalle, r.cargo ? 'cargó ' + r.cargo : ''].filter(Boolean).join(' · ')) + '</small>' +
       (r.anulado ? '<small style="color:var(--er)">' + esc(r.motivo || 'Anulado') + '</small>' : !r.editable ? '<small>Ya no se puede corregir desde acá (más de ' + REG.dias + ' días).</small>' : '') + '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.url ? '<a class="btn sec" style="padding:8px 12px;text-decoration:none" href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver</a>' : '') +
-      (r.sinFoto && !r.anulado ? '<label class="btn pri" style="padding:8px 12px;cursor:pointer;flex:0 0 auto">Subir foto<input type="file" accept="image/*,application/pdf" hidden data-chg="regFoto" data-i="' + r.i + '"></label>' : '') +
+      (r.sinFoto && !r.anulado ? '<label class="btn ' + (r.historico ? 'sec' : 'pri') + '" style="padding:8px 12px;cursor:pointer;flex:0 0 auto">Subir foto<input type="file" accept="image/*,application/pdf" hidden data-chg="regFoto" data-i="' + r.i + '"></label>' : '') +
       (r.editable && !r.anulado ? '<button class="btn sec" style="padding:8px 12px" data-act="regCorregir" data-arg="' + r.i + '">Corregir</button><button class="btn sec" style="padding:8px 12px" data-act="regAnular" data-arg="' + r.i + '">Anular</button>' : '') + '</div></div>').join('') + '</div>'
       : '<p class="mu">No hay registros' + (REGF === 'Todos' ? '' : ' de ' + REGF.toLowerCase()) + ' en ' + regPeriodo() + (REGL ? ' en ' + esc(REGL) : '') + '.</p>') +
     ((REGF === 'Todos' || REGF === 'Residuos') && (REG.anuladosResiduos || []).length ? '<h2>Manifiestos y certificados anulados</h2><div class="lista">' + REG.anuladosResiduos.map(a => '<div class="item"><div><b>' + esc(a.texto) + '</b><small>' + esc('Anulado el ' + fechaTxt(a.fecha) + ' · ' + a.quien + ' · ' + a.motivo) + '</small></div></div>').join('') + '</div>' : '');
