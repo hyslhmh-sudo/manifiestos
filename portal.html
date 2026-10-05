@@ -347,8 +347,11 @@ async function inicio(fresco) {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   if (!TB) TB = LS.get('tab', null);
   if (!RES) { cargando('#inicio', 'Armando el tablero…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } }
-  if (!TB || fresco) { if (!TB) cargando('#inicio', 'Armando el tablero…'); try { const r = await api('p_tablero', { fresco: !!fresco }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) { if (!TB) return; } }
-  else if (!inicio.pidio) { inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }
+  if (fresco) { toast('Actualizando el tablero…'); api('p_tablero', { fresco: true }, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }
+  if (!TB) {   // sin datos guardados: se muestra el tablero con lo que hay y se completa cuando llegan
+    TB = { meses: [], retiros: {}, acciones: [], noApta: [], plagas: [], tanques: [], auditorias: { ultima: '', paraVerificar: [] }, docsRevisar: [], areaDe: {}, actualizado: new Date().toISOString(), vacio: true };
+    inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {});
+  } else if (!inicio.pidio) { inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }
   const A = FILTRO.area, enA = cod => !A || (TB.areaDe[cod] || '') === A || (RES.filas.find(f => f.cod === cod) || {}).area === A;
   const F = RES.filas.filter(f => !A || f.area === A), hab = F.filter(f => /^activ/i.test(f.estado));
   const atr = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10).sort((a, b) => b.diasSinRetiro - a.diasSinRetiro);
@@ -373,7 +376,7 @@ async function inicio(fresco) {
   const dias = [['Hasta 10 días', F.filter(f => f.diasSinRetiro != null && f.diasSinRetiro <= 10).length, '#1E6B42'], ['11 a 30 días', F.filter(f => f.diasSinRetiro > 10 && f.diasSinRetiro <= 30).length, '#B7791F'], ['Más de 30 días', F.filter(f => f.diasSinRetiro > 30).length, '#B4361F'], ['Sin datos', F.filter(f => f.diasSinRetiro == null).length, '#B8C4CA']];
   const orig = ['Diagnóstico', 'Auditorías', 'Agua', 'Plagas'].map(o => { const l = acc.filter(a => a.origen === o), v = l.filter(a => a.vencida).length; return [o, [[l.length - v, '#5894A7'], [v, '#B4361F']]]; });
   const diagA = areas.filter(a => !A || a === A).map(a => { const l = RES.filas.filter(f => f.area === a && f.diag && f.diag.pct !== '' && f.diag.pct != null); const p = l.length ? Math.round(l.reduce((s, f) => s + Number(f.diag.pct), 0) / l.length) : 0; return [a.replace('Área Programática ', 'Área '), p, '#0D313F', l.length ? p + ' %' : '—']; });
-  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR') + '</span></div>' +
+  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + kpi('#est', 'RETIROS ATRASADOS', atr.length, 'más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
       kpi('#plan', 'ACCIONES VENCIDAS', venc.length, 'de ' + acc.length + ' abiertas', venc.length ? '#B4361F' : '') + kpi('#agua', 'AGUA NO APTA', noApta.length, 'con plazo de 15 días hábiles', noApta.length ? '#B4361F' : '') + kpi('#bib', 'DOCUMENTOS A REVISAR', docs.length, 'en los próximos 60 días', docs.length ? '#8A5200' : '') + '</div>' +
@@ -387,14 +390,14 @@ async function inicio(fresco) {
       card('Plagas', ['#agua', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + plagas.length + '</b><span class="mu peq">Casos abiertos</span>') +
       card('NTE', ['#nte', 'Ver'], '<span class="mu peq">Revisá en cada establecimiento si la nómina está al día (aviso de altas, bajas y 12 meses).</span>') + '</div>');
   $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
-  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };
+  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
 }
 let CAMBIO_RES = false;
 
 // ------------------------------------------------------------------ Agua y plagas (toda la red)
 async function agua() {
   if (!TB) TB = LS.get('tab', null);
-  if (!TB) { cargando('#agua'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
+  if (!TB || TB.vacio) { cargando('#agua', 'Leyendo agua y plagas…'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
   const nom = c => ((RES && RES.filas.find(f => f.cod === c)) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
   const porEst = {}; TB.tanques.forEach(t => { const x = porEst[t.cod] = porEst[t.cod] || { t: 0, ok: 0 }; x.t++; if (t.aldia) x.ok++; });
   const fila = (a, b, c) => '<a class="at" href="' + c + '"><span><b>' + a + '</b><small>' + b + '</small></span></a>';
