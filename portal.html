@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Portal HyS · Gestión</title>
 <meta name="robots" content="noindex">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0&display=block" rel="stylesheet">
 <style>
   :root { --az:#0D313F; --pa:#5894A7; --tx:#1B2A31; --mu:#4F616B; --ln:#D5DEE2; --bg:#F4F7F8; --gr:#E4EAED;
     --ok:#0D313F; --okt:#FFFFFF; --pa2:#BFD6DE; --er:#8A2B1F; --erbg:#F6DCD8; --wa:#7A5300; --wabg:#FBE9C6; color-scheme: light; }
@@ -83,6 +84,51 @@
   .q .h { border-top: 1px solid #EEF2F4; padding-top: 7px; font-size: 13px; } .q .h b { font-weight: 600; } .q .cods { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .q .cods button { border: 1px solid var(--ln); background: var(--bg); border-radius: 6px; font-size: 11px; padding: 2px 6px; cursor: pointer; }
   .ejes { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--mu); font-weight: 700; }
+/* ---- Fase 1: menú por tareas, tablero, ayuda y celular ---- */
+nav.lat .ms { font-size: 19px; vertical-align: -4px; margin-right: 8px; }
+nav.lat a.sub { padding: 6px 10px 6px 38px; font-size: 13.5px; color: #DCE8EC; }
+nav.lat .herr { margin-top: 18px; }
+nav.lat .titu { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #A9C6D1; padding: 14px 8px 4px; }
+.ms { width: 1em; height: 1em; overflow: hidden; font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; line-height: 1; display: inline-block; white-space: nowrap; font-feature-settings: 'liga'; -webkit-font-feature-settings: 'liga'; }
+.ayudaBtn { position: fixed; bottom: 18px; right: 18px; z-index: 30; display: flex; gap: 6px; align-items: center; background: #fff; border: 1px solid var(--ln); color: var(--az); border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer; min-height: 40px; box-shadow: 0 2px 8px rgba(13,49,63,.08); }
+.tb2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+.tb3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+.tb5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi2 { text-decoration: none; background: #fff; border: 1px solid var(--ln); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; color: inherit; }
+.kpi2 span { font-size: 11.5px; font-weight: 800; letter-spacing: .6px; color: var(--mu); }
+.kpi2 b { font-size: 28px; line-height: 1.15; color: var(--az); }
+.kpi2 small { font-size: 12.5px; color: var(--mu); }
+.at { display: flex; gap: 10px; align-items: flex-start; text-decoration: none; padding: 9px 0; border-top: 1px solid #EEF2F4; color: inherit; }
+.at:first-of-type { border-top: 0; }
+.at b { font-size: 14px; display: block; } .at small { font-size: 12.5px; color: var(--mu); }
+.tag { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
+.tag.er { background: #FBE6E1; color: #B4361F; } .tag.wa { background: #FFF1D6; color: #8A5200; } .tag.av { background: #E7F0F3; color: #2E5E70; }
+.leyenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--mu); } .leyenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: #fff; z-index: 60; box-shadow: -8px 0 30px rgba(13,49,63,.18); padding: 22px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { margin: 0; } .panel p, .panel li { font-size: 14.5px; line-height: 1.5; }
+.fchip { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--ln); background: #fff; color: var(--tx); cursor: pointer; min-height: 36px; }
+.fchip.on { background: var(--az); border-color: var(--az); color: #fff; }
+.tarjetas { display: none; flex-direction: column; gap: 10px; }
+.tarj { background: #fff; border: 1px solid var(--ln); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; }
+.inf { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: #fff; border-top: 1px solid var(--ln); display: none; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)); }
+.inf a, .inf button { display: flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none; font: inherit; font-size: 11px; font-weight: 700; color: var(--mu); background: none; border: 0; min-height: 46px; justify-content: center; cursor: pointer; }
+.inf a.on { color: var(--az); } .inf .ms { font-size: 23px; }
+@media (max-width: 1000px) { .tb2 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  nav.lat { display: none; }
+  nav.lat.abierto { display: flex; position: fixed; inset: 0 0 0 0; max-width: none; z-index: 50; overflow-y: auto; padding-bottom: 90px; }
+  main { padding: 16px 12px 96px; gap: 14px; }
+  .inf { display: grid; }
+  .ayudaBtn { bottom: 74px; right: 12px; border-radius: 999px; padding: 10px 12px; }
+  .ayudaBtn .txt { display: none; }
+  .tb5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi2 b { font-size: 23px; }
+  .soloEsc { display: none !important; }
+  .tarjetas { display: flex; }
+  h1 { font-size: 22px; }
+}
+
+nav.lat .grp { color: #fff; padding: 10px 10px 4px; font-size: 14px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -174,21 +220,30 @@ function ingreso(msg) {
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
 }
-function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); RES = null; FICHAS = {}; ingreso(msg); }
+function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); LS.del('tab'); RES = null; FICHAS = {}; ingreso(msg); }
 
 // ------------------------------------------------------------------ Estructura
 function marco(activo, contenido) {
-  const it = (h, t) => '<a href="' + h + '" class="' + (activo === h ? 'on' : '') + '">' + t + '</a>';
-  const pr = t => '<div class="pr">' + t + ' · próximamente</div>';
+  const ruta = activo.split('/')[0] === '#ficha' ? '#est' : activo.split('/')[0];
+  const it = (h, ico, t, sub) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + (sub ? ' sub' : '') + '">' + (ico ? '<span class="ms" aria-hidden="true">' + ico + '</span>' : '') + t + '</a>';
+  const grp = (ico, t) => '<div class="grp"><span class="ms" aria-hidden="true">' + ico + '</span>' + t + '</div>';
+  const ext = (h, t) => '<a href="' + esc(h || '#') + '" target="_blank" rel="noopener" class="sub">' + t + ' ↗</a>';
   const en = RES && RES.enlaces || {};
-  $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
-    it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="' + APP_URL + '" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + it('#aud', 'Auditorías') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' +
-    '<div class="sec">RIESGOS</div>' + it('#nte', 'NTE · Nómina de expuestos') + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
-    '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + it('#modelos', 'Modelos para completar') + it('#bandeja', 'Bandeja de entrada') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
-    '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' + (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : '<a href="' + API_URL + '?p=portal" target="_blank" rel="noopener">Portal de respaldo (sin GitHub) ↗</a>') +
-    '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>';
+  const inf = (h, ico, t) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + '"><span class="ms" aria-hidden="true">' + ico + '</span>' + t + '</a>';
+  $('raiz').innerHTML = '<div class="app"><nav class="lat" id="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
+    it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') + it('#trab', 'groups', 'Personas') + it('#importar', '', 'Importar base de Personal', 1) +
+    grp('recycling', 'Residuos') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1) +
+    it('#agua', 'water_drop', 'Agua y plagas') + grp('health_and_safety', 'Riesgos') + it('#nte', '', 'NTE · nómina de expuestos', 1) +
+    grp('folder_open', 'Documentos') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
+    it('#ayuda', 'help', 'Ayuda') +
+    '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
+    (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
+    '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>' +
+    '<nav class="inf" aria-label="Menú">' + inf('#inicio', 'dashboard', 'Tablero') + inf('#est', 'apartment', 'Establec.') + inf('#plan', 'task_alt', 'Acciones') + inf('#bib', 'folder_open', 'Documentos') + '<button id="btnMas"><span class="ms" aria-hidden="true">menu</span>Más</button></nav>' +
+    '<button class="ayudaBtn" id="btnAyuda" aria-label="Ayuda de esta pantalla"><span class="ms" aria-hidden="true">help</span><span class="txt">Ayuda</span></button>';
   $('btnSalir').onclick = () => salir();
+  $('btnMas').onclick = () => $('lat').classList.toggle('abierto');
+  $('btnAyuda').onclick = () => abrirAyuda(ruta === '#est' && activo.indexOf('#ficha') === 0 ? '#ficha' : ruta);
 }
 const cargando = (activo, t) => marco(activo, '<div class="cargando">' + esc(t || 'Cargando…') + '</div>');
 
@@ -199,7 +254,7 @@ const chipEstado = e => /^activ/i.test(e || '') ? '<span class="chip ok">Habilit
 let refrescando = false;
 async function refrescarRes() {
   if (refrescando) return; refrescando = true;
-  try { const r = await api('p_resumen', {}, 240000); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if (cambio && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } catch (e) {} finally { refrescando = false; }
+  try { const r = await api('p_resumen', {}, 240000); if (r && r.ok) { const cambio = !RES || r.actualizado !== RES.actualizado; RES = r; LS.set('res', r); if ((cambio || CAMBIO_RES) && $('ov').hidden) { CAMBIO_RES = false; if (/^#?(inicio)?$/.test(location.hash)) inicio(); else if (location.hash === '#est') matriz(); } } } catch (e) {} finally { refrescando = false; }
 }
 function chipDiag(d) {
   if (!d || d.pct === '' || d.pct == null) return '<span class="chip gr">Sin diagnóstico</span>';
@@ -207,10 +262,9 @@ function chipDiag(d) {
 }
 function chipCap(c, a) { if (!a) return '<span class="chip gr">—</span>'; const p = Math.round(100 * (c || 0) / a); return '<span class="chip ' + (p >= 70 ? 'ok' : p >= 30 ? 'wa' : 'er') + '">' + (c || 0) + ' · ' + p + ' %</span>'; }
 function chipDias(d) { if (d == null) return '<span class="chip gr">Sin datos</span>'; return '<span class="chip ' + (d <= 10 ? 'ok' : d <= 30 ? 'wa' : 'er') + '">' + d + ' días</span>'; }
-async function inicio(fresco) {
+async function matriz(fresco) {
   if (!RES && !fresco) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
-  if (!RES && !fresco) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
-  if (!RES || fresco) { cargando('#inicio', fresco ? 'Recalculando la matriz provincial…' : 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }, 240000); LS.set('res', RES); } catch (e) { return; } }
+  if (!RES || fresco) { cargando('#est', fresco ? 'Recalculando la matriz provincial…' : 'Armando la matriz provincial…'); try { RES = await api('p_resumen', { fresco: !!fresco }, 240000); LS.set('res', RES); } catch (e) { return; } }
   const F = RES.filas, areas = Array.from(new Set(F.map(f => f.area))).sort();
   const q = FILTRO.q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const vis = F.filter(f => (!FILTRO.area || f.area === FILTRO.area) && (!FILTRO.soloApp || /^activ/i.test(f.estado)) && (!q || (f.nombre + ' ' + f.cod).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').indexOf(q) >= 0))
@@ -218,22 +272,189 @@ async function inicio(fresco) {
   const hab = F.filter(f => /^activ/i.test(f.estado)), atras = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10);
   const totTrab = F.reduce((a, f) => a + f.trabajadores, 0) + (RES.nc.total || 0) + (RES.sinAsignar || 0);
   const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
-  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio · matriz provincial</span><h1>Estado de los establecimientos</h1></div>' +
+  marco('#est', '<div class="cab"><div><span class="mu peq">Establecimientos · matriz provincial</span><h1>Estado de los establecimientos</h1></div>' +
     '<div class="filtros"><label class="f">Área programática<select class="c" id="fArea"><option value="">Todas</option>' + areas.map(a => '<option' + (a === FILTRO.area ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
     '<label class="f">Buscar<input class="c" id="fQ" value="' + esc(FILTRO.q) + '" placeholder="Nombre o código"></label>' +
     '<label style="display:flex;gap:6px;align-items:center;font-size:13px;min-height:42px"><input type="checkbox" id="fApp"' + (FILTRO.soloApp ? ' checked' : '') + '> Solo habilitados en la aplicación</label>' +
     '<button class="btn sec" id="btnAct">Actualizar</button></div></div>' +
     '<div class="grid g4">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
     kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', F.reduce((a, f) => a + (f.capacitados || 0), 0).toLocaleString('es-AR') + ' con al menos una capacitación' + (RES.sinAsignar ? ' · ' + RES.sinAsignar + ' sin asignar' : '')) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
-    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Diagnóstico residuos</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
+    '<section class="card tabla soloEsc"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Diagnóstico residuos</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
     vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + chipCap(f.capacitados, f.activos) + '</td><td>' + chipDiag(f.diag) + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
     '</tbody></table>' + (vis.length ? '' : '<div class="vacio">Ningún establecimiento con estos filtros.</div>') + '</section>' +
+    '<div class="tarjetas">' + vis.map(f => '<a class="tarj" href="#ficha/' + encodeURIComponent(f.cod) + '"><b>' + esc(f.nombre) + '</b><span class="mu peq">' + esc(f.cod) + ' · ' + esc(String(f.area).replace('Área Programática ', 'Área ')) + '</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + chipEstado(f.estado) + chipDias(f.diasSinRetiro) + '<span class="mu peq">Último retiro ' + fechaTxt(f.ultimoRetiro) + '</span></div></a>').join('') + '</div>' +
     '<p class="mu peq">Datos al ' + new Date(RES.actualizado).toLocaleString('es-AR') + '. «Sin retiro»: días desde el último manifiesto registrado (verde hasta 10, amarillo hasta 30, rojo más de 30). «Capacitados»: trabajadores activos con al menos una capacitación registrada (verde desde 70 %, amarillo desde 30 %).</p>');
-  $('fArea').onchange = e => { FILTRO.area = e.target.value; inicio(); };
-  $('fQ').oninput = e => { FILTRO.q = e.target.value; clearTimeout(inicio.t); inicio.t = setTimeout(() => { inicio(); const i = $('fQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
-  $('fApp').onchange = e => { FILTRO.soloApp = e.target.checked; inicio(); };
-  $('btnAct').onclick = () => inicio(true);
+  $('fArea').onchange = e => { FILTRO.area = e.target.value; matriz(); };
+  $('fQ').oninput = e => { FILTRO.q = e.target.value; clearTimeout(inicio.t); inicio.t = setTimeout(() => { matriz(); const i = $('fQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  $('fApp').onchange = e => { FILTRO.soloApp = e.target.checked; matriz(); };
+  $('btnAct').onclick = () => matriz(true);
   document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#ficha/' + encodeURIComponent(tr.dataset.cod));
+}
+
+// ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
+let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
+const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
+const AYUDA = {
+  '#inicio': ['Tablero de control', ['Muestra el estado de toda la red. Cada número, gráfico y aviso se toca y lleva al detalle.', '«Requiere atención»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
+  '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
+  '#ficha': ['Ficha del establecimiento', ['Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento».', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.']],
+  '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
+  '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa y al menos un lugar.', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
+  '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
+  '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
+  '#agua': ['Agua y plagas', ['Agua NO APTA abierta, tanques y casos de plagas de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
+  '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
+  '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
+  '#docs': ['Registro de documentos HYSL', ['Pedir número, ver y anular con motivo.']],
+  '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
+  '#bandeja': ['Bandeja de entrada', ['Sube planillas completas, muestra «Ahora › Queda» y aplica lo aprobado.']]
+};
+function abrirAyuda(ruta) {
+  const a = AYUDA[ruta] || ['Ayuda', ['Esta pantalla todavía no tiene ayuda propia. El manual del sistema explica cada parte.']];
+  $('ov').innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-label="Ayuda"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Ayuda · ' + esc(a[0]) + '</h2><button class="btn sec" id="ayCer" aria-label="Cerrar">Cerrar</button></div>' +
+    '<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px">' + a[1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' +
+    '<a class="btn sec" href="#ayuda">Ver toda la ayuda</a><a class="btn pri" href="' + MANUAL_URL + '" target="_blank" rel="noopener">Abrir el manual del sistema ↗</a></div>';
+  $('ov').hidden = false; $('ayCer').onclick = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('ov').querySelectorAll('a').forEach(x => x.addEventListener('click', () => { $('ov').hidden = true; $('ov').innerHTML = ''; }));
+}
+function ayuda() {
+  marco('#ayuda', '<div class="cab"><div><span class="mu peq">Ayuda</span><h1>Cómo se usa el portal</h1></div><a class="btn pri" href="' + MANUAL_URL + '" target="_blank" rel="noopener">Manual del sistema ↗</a></div>' +
+    '<div class="tb3">' + Object.keys(AYUDA).map(k => '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2 style="margin:0"><a href="' + k + '" style="text-decoration:none">' + esc(AYUDA[k][0]) + '</a></h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px">' + AYUDA[k][1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></section>').join('') + '</div>' +
+    '<section class="card peq mu">Si algo no funciona: manual › Plan de contingencia. Si GitHub no abre, usá el portal de respaldo (Herramientas). Las planillas son el sistema: todo se puede ver y corregir ahí.</section>');
+}
+
+// ------------------------------------------------------------------ Gráficos (SVG simples, sin bibliotecas)
+function grBarrasMes(meses, serie) {
+  const W = 640, H = 220, x0 = 36, b = 188, max = Math.max(4, ...meses.map(m => (serie[m] || {}).Y1 + (serie[m] || {}).Y3 || 0)), k = 160 / max, bw = Math.min(34, (W - x0 - 20) / meses.length - 14);
+  let s = ''; [0, .5, 1].forEach(f => { const v = Math.round(max * f), y = b - v * k; s += '<line x1="' + x0 + '" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="#D6DEE2"/><text x="' + (x0 - 8) + '" y="' + (y + 4) + '" font-size="11" fill="#5B6B73" text-anchor="end">' + v + '</text>'; });
+  const nom = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  meses.forEach((m, i) => { const d = serie[m] || { Y1: 0, Y3: 0 }, x = x0 + 12 + i * ((W - x0 - 12) / meses.length);
+    s += '<g><title>' + nom[Number(m.slice(5, 7)) - 1] + ' ' + m.slice(0, 4) + ': Y1 ' + d.Y1 + ' · Y3 ' + d.Y3 + '</title><rect x="' + x + '" y="' + (b - d.Y1 * k) + '" width="' + bw + '" height="' + d.Y1 * k + '" rx="3" fill="#0D313F"/><rect x="' + x + '" y="' + (b - (d.Y1 + d.Y3) * k) + '" width="' + bw + '" height="' + d.Y3 * k + '" rx="2" fill="#5894A7"/></g><text x="' + (x + bw / 2) + '" y="' + (b + 16) + '" font-size="11" fill="#5B6B73" text-anchor="middle">' + nom[Number(m.slice(5, 7)) - 1] + '</text>'; });
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Retiros por mes, Y1 e Y3">' + s + '</svg>';
+}
+function grHoriz(items, max, apilado) {   // items: [texto, valor, color] o [texto, [[v,color],[v,color]]]
+  const W = 420; let s = '', y = 4; max = Math.max(max, 1);
+  items.forEach(it => { const partes = Array.isArray(it[1]) ? it[1] : [[it[1], it[2]]], tot = partes.reduce((a, p) => a + p[0], 0); let x = 160;
+    s += '<text x="0" y="' + (y + 14) + '" font-size="12.5" fill="#33424A">' + esc(it[0]) + '</text>';
+    partes.forEach(p => { const w = (W - 200) * p[0] / max; if (w > 0) s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="20" rx="3" fill="' + p[1] + '"/>'; x += w; });
+    s += '<text x="' + (x + 6) + '" y="' + (y + 15) + '" font-size="12.5" font-weight="700" fill="#33424A">' + (it[3] != null ? it[3] : tot) + '</text>'; y += 30; });
+  return '<svg viewBox="0 0 ' + W + ' ' + y + '" width="100%" role="img">' + s + '</svg>';
+}
+const leyenda = items => '<div class="leyenda">' + items.map(([t, c]) => '<span><i style="background:' + c + '"></i>' + esc(t) + '</span>').join('') + '</div>';
+
+// ------------------------------------------------------------------ Tablero de control (inicio)
+async function inicio(fresco) {
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!TB) TB = LS.get('tab', null);
+  if (!RES) { cargando('#inicio', 'Armando el tablero…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } }
+  if (!TB || fresco) { if (!TB) cargando('#inicio', 'Armando el tablero…'); try { const r = await api('p_tablero', { fresco: !!fresco }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) { if (!TB) return; } }
+  else if (!inicio.pidio) { inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }
+  const A = FILTRO.area, enA = cod => !A || (TB.areaDe[cod] || '') === A || (RES.filas.find(f => f.cod === cod) || {}).area === A;
+  const F = RES.filas.filter(f => !A || f.area === A), hab = F.filter(f => /^activ/i.test(f.estado));
+  const atr = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10).sort((a, b) => b.diasSinRetiro - a.diasSinRetiro);
+  const acc = TB.acciones.filter(a => enA(a.cod)), venc = acc.filter(a => a.vencida), noApta = TB.noApta.filter(a => enA(a.cod)), plagas = TB.plagas.filter(p => enA(p.cod));
+  const tanq = TB.tanques.filter(t => enA(t.cod)), pv = TB.auditorias.paraVerificar.filter(a => enA(a.cod)), docs = TB.docsRevisar;
+  const serie = {}; Object.keys(TB.retiros).filter(a => !A || a === A).forEach(a => Object.keys(TB.retiros[a]).forEach(m => { const x = serie[m] = serie[m] || { Y1: 0, Y3: 0 }; x.Y1 += TB.retiros[a][m].Y1; x.Y3 += TB.retiros[a][m].Y3; }));
+  const nom = c => (RES.filas.find(f => f.cod === c) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
+  // Requiere atención
+  const at = [];
+  noApta.forEach(a => at.push(['er', a.cod + ': agua NO APTA en ' + a.punto, 'Limpiar y tomar nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod)]));
+  const porEst = {}; venc.forEach(a => porEst[a.cod] = (porEst[a.cod] || 0) + 1);
+  Object.keys(porEst).forEach(c => at.push(['er', porEst[c] + ' acción(es) vencida(s) · ' + c, nom(c), '#plan']));
+  plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
+  atr.forEach(f => at.push([f.diasSinRetiro > 30 ? 'er' : 'wa', f.cod + ': ' + f.diasSinRetiro + ' días sin retiro', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), '#ficha/' + encodeURIComponent(f.cod)]));
+  pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
+  docs.forEach(d => at.push([d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), d.titulo + ' · ' + fechaTxt(d.revision), '#bib']));
+  plagas.filter(p => p.revision === hoy).forEach(p => at.push(['av', p.cod + ': revisión de plagas hoy', p.caso, '#agua']));
+  const ord = { er: 0, wa: 1, av: 2 }; at.sort((a, b) => ord[a[0]] - ord[b[0]]);
+  const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
+  const card = (titulo, link, cuerpo, extra) => '<section class="card" style="display:flex;flex-direction:column;gap:10px;min-width:0' + (extra || '') + '"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">' + titulo + '</h2>' + (link ? '<a href="' + link[0] + '" class="peq" style="font-weight:700">' + link[1] + '</a>' : '') + '</div>' + cuerpo + '</section>';
+  const areas = Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort();
+  const dias = [['Hasta 10 días', F.filter(f => f.diasSinRetiro != null && f.diasSinRetiro <= 10).length, '#1E6B42'], ['11 a 30 días', F.filter(f => f.diasSinRetiro > 10 && f.diasSinRetiro <= 30).length, '#B7791F'], ['Más de 30 días', F.filter(f => f.diasSinRetiro > 30).length, '#B4361F'], ['Sin datos', F.filter(f => f.diasSinRetiro == null).length, '#B8C4CA']];
+  const orig = ['Diagnóstico', 'Auditorías', 'Agua', 'Plagas'].map(o => { const l = acc.filter(a => a.origen === o), v = l.filter(a => a.vencida).length; return [o, [[l.length - v, '#5894A7'], [v, '#B4361F']]]; });
+  const diagA = areas.filter(a => !A || a === A).map(a => { const l = RES.filas.filter(f => f.area === a && f.diag && f.diag.pct !== '' && f.diag.pct != null); const p = l.length ? Math.round(l.reduce((s, f) => s + Number(f.diag.pct), 0) / l.length) : 0; return [a.replace('Área Programática ', 'Área '), p, '#0D313F', l.length ? p + ' %' : '—']; });
+  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR') + '</span></div>' +
+    '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
+    '<div class="tb5">' + kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + kpi('#est', 'RETIROS ATRASADOS', atr.length, 'más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
+      kpi('#plan', 'ACCIONES VENCIDAS', venc.length, 'de ' + acc.length + ' abiertas', venc.length ? '#B4361F' : '') + kpi('#agua', 'AGUA NO APTA', noApta.length, 'con plazo de 15 días hábiles', noApta.length ? '#B4361F' : '') + kpi('#bib', 'DOCUMENTOS A REVISAR', docs.length, 'en los próximos 60 días', docs.length ? '#8A5200' : '') + '</div>' +
+    '<div class="tb2">' + card('Retiros de residuos por mes', ['#est', 'Ver establecimientos'], grBarrasMes(TB.meses, serie) + leyenda([['Y1 biopatogénicos', '#0D313F'], ['Y3 medicamentos', '#5894A7']]) + '<span class="mu peq">Manifiestos registrados por corriente, últimos 12 meses.</span>') +
+      card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
+    '<div class="tb3">' + card('Días sin retiro', ['#est', 'Establecimientos'], grHoriz(dias, Math.max(...dias.map(d => d[1]))) + '<span class="mu peq">Según el último manifiesto de cada establecimiento.</span>') +
+      card('Acciones abiertas por origen', ['#plan', 'Plan de acción'], grHoriz(orig, Math.max(1, ...orig.map(o => o[1][0][0] + o[1][1][0]))) + leyenda([['En plazo', '#5894A7'], ['Vencidas', '#B4361F']])) +
+      card('Cumplimiento del diagnóstico', ['#diag', 'Diagnóstico'], grHoriz(diagA, 100) + '<span class="mu peq">Promedio del último diagnóstico de cada establecimiento, por área.</span>') + '</div>' +
+    '<div class="tb5">' + card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') +
+      card('Agua', ['#agua', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + tanq.filter(t => t.aldia).length + ' de ' + tanq.length + '</b><span class="mu peq">Tanques con limpieza al día · ' + noApta.length + ' NO APTA</span>') +
+      card('Plagas', ['#agua', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + plagas.length + '</b><span class="mu peq">Casos abiertos</span>') +
+      card('NTE', ['#nte', 'Ver'], '<span class="mu peq">Revisá en cada establecimiento si la nómina está al día (aviso de altas, bajas y 12 meses).</span>') + '</div>');
+  $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
+  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };
+}
+let CAMBIO_RES = false;
+
+// ------------------------------------------------------------------ Agua y plagas (toda la red)
+async function agua() {
+  if (!TB) TB = LS.get('tab', null);
+  if (!TB) { cargando('#agua'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
+  const nom = c => ((RES && RES.filas.find(f => f.cod === c)) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
+  const porEst = {}; TB.tanques.forEach(t => { const x = porEst[t.cod] = porEst[t.cod] || { t: 0, ok: 0 }; x.t++; if (t.aldia) x.ok++; });
+  const fila = (a, b, c) => '<a class="at" href="' + c + '"><span><b>' + a + '</b><small>' + b + '</small></span></a>';
+  marco('#agua', '<div class="cab"><div><span class="mu peq">Agua y plagas</span><h1>Agua y plagas en la red</h1><span class="mu peq">Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.</span></div></div>' +
+    '<div class="tb3"><section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (TB.noApta.length ? TB.noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod))).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2>' + (Object.keys(porEst).length ? Object.keys(porEst).map(c => fila(esc(nom(c)), porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día', '#ficha/' + encodeURIComponent(c))).join('') : '<div class="mu">Todavía ningún establecimiento cargó sus tanques.</div>') + '</section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Casos de plagas abiertos</h2>' + (TB.plagas.length ? TB.plagas.map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod))).join('') : '<div class="mu">Ninguno.</div>') + '</section></div>');
+}
+
+// ------------------------------------------------------------------ Biblioteca HyS
+async function biblioteca(fresco) {
+  if (!BIB || fresco) { cargando('#bib', 'Abriendo la biblioteca…'); try { BIB = await api('p_bib_listar', {}); } catch (e) { return; } if (!BIB.ok) return marco('#bib', '<div class="aviso error">' + esc(BIB.mensaje || 'No se pudo abrir.') + '</div>'); }
+  const pref = Array.from(new Set(BIB.documentos.map(d => d.CODIGO.split('-')[0]))).sort(), q = BIBF.q.toLowerCase();
+  const L = BIB.documentos.filter(d => (!BIBF.tipo || d.CODIGO.indexOf(BIBF.tipo + '-') === 0) && (!BIBF.revisar || d.estadoVer === 'A revisar') && (BIBF.viejos || d.ESTADO !== 'Reemplazado') && (!q || (d.CODIGO + ' ' + d.TITULO + ' ' + d.TEMA).toLowerCase().indexOf(q) >= 0));
+  const chip = e => '<span class="chip ' + (e === 'Vigente' ? 'ok' : e === 'A revisar' ? 'wa' : 'gr') + '">' + esc(e) + '</span>';
+  const fmt = f => f ? f.slice(5, 7) + '/' + f.slice(0, 4) : '—';
+  marco('#bib', '<div class="cab"><div><span class="mu peq">Documentos</span><h1>Biblioteca HyS</h1><span class="mu peq">Guías, POE, protocolos, PTS y manuales. Los visibles aparecen en «Mi establecimiento» según su alcance.</span></div><div class="filtros"><button class="btn pri" id="bibNuevo">Subir documento</button></div></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="fchip' + (!BIBF.tipo && !BIBF.revisar ? ' on' : '') + '" data-bt="">Todos</button>' + pref.map(p => '<button class="fchip' + (BIBF.tipo === p ? ' on' : '') + '" data-bt="' + esc(p) + '">' + esc(p) + '</button>').join('') +
+      '<button class="fchip' + (BIBF.revisar ? ' on' : '') + '" id="bibRev">A revisar (' + BIB.documentos.filter(d => d.estadoVer === 'A revisar').length + ')</button><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="bibViejos"' + (BIBF.viejos ? ' checked' : '') + '> Ver reemplazados</label><input class="c" id="bibQ" placeholder="Buscar" value="' + esc(BIBF.q) + '" style="max-width:220px"></div>' +
+    '<section class="card tabla soloEsc">' + (L.length ? '<table><thead><tr><th>Código</th><th>Documento</th><th>Versión</th><th>Vigente desde</th><th>Revisión</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      L.map(d => '<tr><td><b>' + esc(d.CODIGO) + '</b></td><td>' + esc(d.TITULO) + '<div class="mu peq">' + esc([d.TIPO, d.TEMA].filter(Boolean).join(' · ')) + (d.VISIBLE === 'No' ? ' · no visible' : '') + '</div></td><td>v' + esc(d.VERSION) + '</td><td>' + fmt(d.VIGENTE_DESDE) + '</td><td>' + fmt(d.PROXIMA_REVISION) + '</td><td class="peq">' + esc(d.ALCANCE) + '</td><td>' + chip(d.estadoVer) + '</td>' +
+        '<td style="white-space:nowrap"><a class="link" href="' + esc(d.ARCHIVO) + '" target="_blank" rel="noopener">Abrir</a> · <button class="link" data-bv="' + esc(d.ID) + '">Nueva versión</button> · <button class="link" data-bc="' + esc(d.ID) + '">Cambiar</button></td></tr>').join('') + '</tbody></table>'
+      : '<div class="vacio">' + (BIB.documentos.length ? 'Ningún documento con estos filtros.' : 'Todavía no hay documentos. Empezá con «Subir documento».') + '</div>') + '</section>' +
+    '<div class="tarjetas">' + L.map(d => '<a class="tarj" href="' + esc(d.ARCHIVO) + '" target="_blank" rel="noopener"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(d.CODIGO) + '</b>' + chip(d.estadoVer) + '</div><span>' + esc(d.TITULO) + '</span><span class="mu peq">v' + esc(d.VERSION) + ' · revisión ' + fmt(d.PROXIMA_REVISION) + ' · ' + esc(d.ALCANCE) + '</span></a>').join('') + '</div>');
+  document.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { BIBF.tipo = b.dataset.bt; BIBF.revisar = false; biblioteca(); });
+  $('bibRev').onclick = () => { BIBF.revisar = !BIBF.revisar; BIBF.tipo = ''; biblioteca(); };
+  $('bibViejos').onchange = e => { BIBF.viejos = e.target.checked; biblioteca(); };
+  $('bibQ').oninput = e => { BIBF.q = e.target.value; clearTimeout(biblioteca.t); biblioteca.t = setTimeout(() => { biblioteca(); const i = $('bibQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 300); };
+  $('bibNuevo').onclick = () => bibForm({});
+  document.querySelectorAll('[data-bv]').forEach(b => b.onclick = () => { const d = BIB.documentos.find(x => x.ID === b.dataset.bv); bibForm({ CODIGO: d.CODIGO, TIPO: d.TIPO, TITULO: d.TITULO, TEMA: d.TEMA, VERSION: String((Number(d.VERSION) || 1) + 1), REVISION_MESES: d.REVISION_MESES, ALCANCE: d.ALCANCE, VISIBLE: d.VISIBLE }, true); });
+  document.querySelectorAll('[data-bc]').forEach(b => b.onclick = () => { const d = BIB.documentos.find(x => x.ID === b.dataset.bc);
+    modal('Cambiar ' + d.CODIGO, [['TITULO', 'Título'], ['TEMA', 'Tema'], ['ALCANCE', 'Alcance («Toda la red», un área o códigos separados por coma)'], ['VISIBLE', 'Visible en «Mi establecimiento»', ['Sí', 'No']], ['ESTADO', 'Estado', ['Vigente', 'Borrador', 'Reemplazado', 'Anulado']], ['REVISION_MESES', 'Revisar cada (meses)'], ['OBSERVACIONES', 'Observaciones', null, 1]], d,
+      async v => { const r = await api('p_bib_cambiar', { datos: Object.assign({ ID: d.ID }, v) }); if (!r.ok) return r.mensaje || 'No se pudo guardar.'; toast('Cambios guardados.'); biblioteca(true); return ''; }); });
+}
+function bibForm(v, version) {
+  const tipos = BIB.tipos, sug = BIB.sugeridos || {};
+  $('ov').innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-label="Subir documento"><div style="display:flex;justify-content:space-between;align-items:center"><h2>' + (version ? 'Nueva versión de ' + esc(v.CODIGO) : 'Subir documento') + '</h2><button class="btn sec" id="bfCer">Cerrar</button></div><div class="aviso error" id="bfErr" hidden></div>' +
+    '<label class="f">Tipo<select class="c" id="bfTipo">' + Object.keys(tipos).map(k => '<option value="' + k + '"' + ((v.CODIGO || '').indexOf(k + '-') === 0 ? ' selected' : '') + '>' + k + ' · ' + esc(tipos[k]) + '</option>').join('') + '</select></label>' +
+    '<label class="f">Código<input class="c" id="bfCod" value="' + esc(v.CODIGO || '') + '" placeholder="Ej.: PTS-ELE-001"' + (version ? ' readonly' : '') + '></label><span class="mu peq" id="bfSug" style="margin-top:-6px"></span>' +
+    '<label class="f">Título<input class="c" id="bfTit" value="' + esc(v.TITULO || '') + '"></label><label class="f">Tema<input class="c" id="bfTema" value="' + esc(v.TEMA || '') + '" placeholder="Residuos, Agua, Bioseguridad, Seguridad…"></label>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Versión<input class="c" id="bfVer" value="' + esc(v.VERSION || '1') + '"></label><label class="f">Vigente desde<input class="c" type="date" id="bfDesde" value="' + new Date().toISOString().slice(0, 10) + '"></label></div>' +
+    '<label class="f">Revisar cada<select class="c" id="bfRev">' + [6, 12, 24, 36].map(m => '<option value="' + m + '"' + (String(v.REVISION_MESES || 12) === String(m) ? ' selected' : '') + '>' + m + ' meses</option>').join('') + '</select></label>' +
+    '<label class="f">Alcance<input class="c" id="bfAlc" value="' + esc(v.ALCANCE || 'Toda la red') + '" list="bfAreas"><datalist id="bfAreas"><option>Toda la red</option>' + BIB.areas.map(a => '<option>' + esc(a) + '</option>').join('') + '</datalist></label><span class="mu peq" style="margin-top:-6px">«Toda la red», un área o códigos de establecimiento separados por coma (ej.: HZT, HMH).</span>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="bfVis"' + (v.VISIBLE === 'No' ? '' : ' checked') + '> Visible en «Mi establecimiento»</label>' +
+    '<label class="btn sec" style="cursor:pointer;flex-direction:column;padding:14px;border:2px dashed var(--pa)">Elegir archivo (PDF o Word)<input type="file" id="bfArch" accept=".pdf,.doc,.docx,application/pdf" hidden></label><span class="peq" id="bfArchN"></span>' +
+    '<button class="btn pri" id="bfOk">Guardar en la biblioteca</button></div>';
+  $('ov').hidden = false;
+  const cer = () => { $('ov').hidden = true; $('ov').innerHTML = ''; }; $('bfCer').onclick = cer;
+  const sugerir = () => { if (version) return; const t = $('bfTipo').value, ks = Object.keys(sug).filter(k => k.indexOf(t + '-') === 0); $('bfSug').textContent = ks.length ? 'Siguientes libres: ' + ks.map(k => sug[k]).join(' · ') : 'Formato: ' + t + '-TEMA-001 (ej.: ' + t + '-RES-001).'; };
+  $('bfTipo').onchange = sugerir; sugerir();
+  let archivo = null;
+  $('bfArch').onchange = e => { const f = e.target.files[0]; if (!f) return; if (f.size > 20 * 1024 * 1024) { $('bfErr').textContent = 'El archivo pesa más de 20 MB.'; $('bfErr').hidden = false; return; }
+    const rd = new FileReader(); rd.onload = () => { archivo = { base64: rd.result, tipo: f.type || 'application/pdf', nombre: f.name }; $('bfArchN').textContent = 'Archivo: ' + f.name; }; rd.readAsDataURL(f); };
+  $('bfOk').onclick = async () => {
+    const d = { CODIGO: $('bfCod').value.trim().toUpperCase(), TIPO: BIB.tipos[$('bfTipo').value] || '', TITULO: $('bfTit').value.trim(), TEMA: $('bfTema').value.trim(), VERSION: $('bfVer').value.trim(), VIGENTE_DESDE: $('bfDesde').value, REVISION_MESES: $('bfRev').value, ALCANCE: $('bfAlc').value.trim() || 'Toda la red', VISIBLE: $('bfVis').checked ? 'Sí' : 'No', archivo: archivo };
+    const err = !d.CODIGO ? 'Falta el código.' : !d.TITULO ? 'Falta el título.' : !archivo ? 'Falta el archivo.' : ''; if (err) { $('bfErr').textContent = err; $('bfErr').hidden = false; return; }
+    $('bfOk').disabled = true; $('bfOk').textContent = 'Subiendo…';
+    try { const r = await api('p_bib_guardar', { datos: d }, 180000); if (!r.ok) { $('bfErr').textContent = r.mensaje || 'No se pudo guardar.'; $('bfErr').hidden = false; $('bfOk').disabled = false; $('bfOk').textContent = 'Guardar en la biblioteca'; return; }
+      cer(); toast('Documento guardado en la biblioteca.'); biblioteca(true); } catch (e) { $('bfOk').disabled = false; $('bfOk').textContent = 'Guardar en la biblioteca'; }
+  };
 }
 
 // ------------------------------------------------------------------ Ficha del establecimiento
@@ -258,7 +479,7 @@ async function ficha(cod) {
   const red = FICHA.red.map((r, i) => '<div class="item"><div><b>' + esc(r.v[1]) + '</b><div class="mu peq">' + esc(r.v[4]) + (r.v[5] ? ' · ' + esc(r.v[5]) : '') + '</div><div class="peq">' + esc([r.v[6], r.v[7]].filter(Boolean).join(' · ') || 'Sin contacto') + '</div></div><div style="display:flex;gap:8px;align-items:center"><span class="chip ' + (r.v[12] === 'Activo' ? 'ok' : 'gr') + '">' + esc(r.v[12] || 's/d') + '</span><button class="link" data-red="' + i + '">Editar</button></div></div>').join('');
   const com = FICHA.comites.map((c, i) => '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.v[1]) + '</b><button class="link" data-com="' + i + '">Editar</button></div><dl class="datos" style="margin-top:8px">' +
     fila('Responsable', c.v[2]) + fila('Contacto', [c.v[3], c.v[4]].filter(x => x && x !== 's/d').join(' · ')) + fila('Reuniones', c.v[5]) + fila('Última reunión', c.v[6] ? fechaTxt(c.v[6]) : '') + '</dl></div>').join('');
-  marco('#ficha', '<div class="cab"><div><a href="#inicio" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a la matriz</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
+  marco('#ficha', '<div class="cab"><div><a href="#est" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a establecimientos</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
     '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + (d.CARPETA && d.CARPETA !== 's/d' ? '<a class="btn sec" href="' + esc(d.CARPETA) + '" target="_blank" rel="noopener" title="Carpeta en Drive: DDJJ, informes, NTE, fotos y documentos del establecimiento">Carpeta y documentos ↗</a>' : '') + '<a class="btn sec" href="#diag/' + encodeURIComponent(d.CODIGO) + '">Diagnóstico de residuos</a><a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
     '<div class="grid g3">' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + fila('Capacitados', FICHA.trabajadores.activos ? FICHA.trabajadores.capacitados + ' de ' + FICHA.trabajadores.activos + ' (' + Math.round(100 * FICHA.trabajadores.capacitados / FICHA.trabajadores.activos) + ' %)' : '') + '</dl></section>' +
@@ -1148,6 +1369,10 @@ function router() {
   if (!CLAVE) return ingreso();
   const [ruta, arg] = location.hash.replace(/^#/, '').split('/');
   const a = arg ? decodeURIComponent(arg) : '';
+  if (ruta === 'est') return matriz();
+  if (ruta === 'agua') return agua();
+  if (ruta === 'bib') return biblioteca();
+  if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
   if (ruta === 'importar') return importar();
