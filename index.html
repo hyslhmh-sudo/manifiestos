@@ -903,9 +903,9 @@ function formTanque() {
   VISTA = 'mi'; vista('form'); const g = miEstOps();
   $('app').innerHTML = miTit(F.CODIGO_TANQUE ? 'Cambiar datos de ' + F.CODIGO_TANQUE : 'Agregar tanque o cisterna') + fErr +
     (g && !F.CODIGO_TANQUE ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('UBICACION', 'Ubicación', 'text', 'Ej.: azotea, sobre cocina') +
-    fSeg('TIPO', 'Tipo', ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']) + fInp('CAPACIDAD_L', 'Capacidad (litros)', 'number', 'Ej.: 40000') + fSeg('USO', 'Uso', ['Consumo humano', 'Incendio', 'Mixto']) +
+    fSeg('TIPO', 'Tipo', ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']) + fInp('CAPACIDAD_L', 'Capacidad (litros)', 'number', 'Ej.: 40000') + fSeg('USO', 'Uso', ['Consumo humano', 'Reserva de incendio', 'Mixto']) +
     fSeg('TAPA', 'Tapa', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSel('ACCESO', 'Acceso', ['Escalera fija', 'Escalera móvil', 'Espacio confinado', 'A nivel', 'Otro']) +
-    fSel('QUIEN_LIMPIA', 'Quién lo limpia', ['Personal propio', 'Mantenimiento tercerizado', 'Empresa contratada', 's/d (revisar)']) + fSel('FRECUENCIA_LIMPIEZA_MESES', 'Frecuencia de limpieza', [['12', 'Una vez al año'], ['6', 'Cada 6 meses']]) +
+    fSel('QUIEN_LIMPIA', 'Quién lo limpia', ['Personal propio', 'Personal propio y empresa (trabajo en altura)', 'Empresa de mantenimiento', 'Empresa contratada', 's/d (revisar)']) + fSel('FRECUENCIA_LIMPIEZA_MESES', 'Frecuencia de limpieza', [['12', 'Una vez al año'], ['6', 'Cada 6 meses']]) +
     (F.CODIGO_TANQUE ? fSeg('ESTADO', 'Estado', ['Activo', 'Fuera de uso']) : '') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
   bar('<button class="btn sec" data-act="aguaInv">Cancelar</button><button class="btn pri" data-act="guardarInv" data-arg="m_reservorio">Guardar</button>');
 }
