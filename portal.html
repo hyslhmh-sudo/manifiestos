@@ -183,7 +183,7 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   $('raiz').innerHTML = '<div class="app"><nav class="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     it('#inicio', 'Inicio · matriz provincial') + it('#ficha', 'Establecimientos') + it('#trab', 'Trabajadores') + it('#importar', 'Importar base de Personal') +
-    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="' + APP_URL + '" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' + pr('Auditorías') +
+    '<div class="sec">RESIDUOS</div>' + '<a href="' + esc(en.general || '#') + '" target="_blank" rel="noopener">Libro general de residuos ↗</a>' + '<a href="' + APP_URL + '" target="_blank" rel="noopener">Aplicación de manifiestos ↗</a>' + it('#diag', 'Diagnóstico de residuos') + it('#tablero', 'Tablero de problemáticas') + it('#plan', 'Plan de acción') + it('#aud', 'Auditorías') + '<a href="' + DIAG_URL + '" target="_blank" rel="noopener">Página para referentes ↗</a>' +
     '<div class="sec">RIESGOS</div>' + it('#nte', 'NTE · Nómina de expuestos') + pr('RGRL · RAR · Laboratorios · Radiaciones · Agua · Plagas · Incendio · EPP · Siniestralidad') +
     '<div class="sec">DOCUMENTAL</div>' + it('#docs', 'Registro de documentos HYSL') + it('#modelos', 'Modelos para completar') + it('#bandeja', 'Bandeja de entrada') + pr('Libro de actuaciones · Programa · Cumplimiento · Contratistas · Agendas · Capacitación') +
     '<div class="sec">PLANILLAS</div>' + '<a href="' + esc(en.baseComun || '#') + '" target="_blank" rel="noopener">Base común ↗</a>' + '<a href="' + esc(en.baseTrabajadores || '#') + '" target="_blank" rel="noopener">Base de trabajadores ↗</a>' + (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : '<a href="' + API_URL + '?p=portal" target="_blank" rel="noopener">Portal de respaldo (sin GitHub) ↗</a>') +
@@ -992,6 +992,135 @@ async function nte(cod) {
     $('nMail').onclick = () => copiarCorreo(r.correo); };
 }
 
+// ------------------------------------------------------------------ Auditorías de residuos (Auditoria.gs)
+let AU = { cod: LS.get('audCod', 'HZT'), A: null, R: null };
+const audChip = e => '<span class="chip ' + (/cerrada|^conforme$/i.test(e) ? 'ok' : /mayor/i.test(e) ? 'er' : /para verificar|hallazgos|menor/i.test(e) ? 'wa' : 'gr') + '">' + esc(e) + '</span>';
+const AUD_OP = { C: ['Conforme', '#E3F0F4', '#0D4A63'], NC: ['No conforme', '#FBE3D3', '#8A3B0B'], Obs: ['Observación', '#ECE8F3', '#4A3A73'], NA: ['No aplica', '#EEF1F2', '#4F616B'] };
+async function audLista() {
+  if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { cargando('#aud'); try { RES = await api('p_resumen', {}); LS.set('res', RES); } catch (e) { return; } } }
+  cargando('#aud', 'Leyendo las auditorías…');
+  let R; try { R = await api('p_aud_listar', { cod: AU.cod }); } catch (e) { return; }
+  if (!R.ok) return toast(R.mensaje || 'No se pudieron leer las auditorías.');
+  const K = R.kpis, L = R.auditorias, kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  marco('#aud', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Auditorías de gestión de residuos</h1><span class="mu">Verificación periódica con evidencia. Criterios: Ley XI N.º 35 (Código Ambiental del Chubut) y Ley 24.051 por adhesión.</span></div>' +
+    '<div class="filtros"><label class="f">Establecimiento<select class="c" id="auEst">' + selectorEst(AU.cod, false) + '</select></label><a class="btn pri" href="#aud/nueva">Nueva auditoría</a></div></div>' +
+    '<div class="grid g4">' + kpi('AUDITORÍAS DEL AÑO', K.realizadas + ' / ' + K.programadas, 'realizadas / programadas') + kpi('CUMPLIMIENTO', K.cumplimiento || '—', 'última de campo o verificación') +
+      kpi('NO CONFORMIDADES ABIERTAS', K.ncAbiertas, K.ncMayores + ' mayores', K.ncMayores ? '#9B2C22' : '') + kpi('PARA VERIFICAR', K.paraVerificar, 'auditorías internas de referentes') + '</div>' +
+    '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Auditoría</th><th>Tipo</th><th>Fecha</th><th>Lugares</th><th>Avance</th><th>Resultado</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      L.map(a => '<tr><td class="peq"><b>' + esc(a.ID_AUD) + '</b><div class="mu">' + esc(a.ORIGEN) + (a.AUDITOR ? ' · ' + esc(a.AUDITOR) : '') + '</div></td><td>' + esc(a.TIPO) + '</td><td>' + fechaTxt(a.FECHA) + '</td><td class="peq" style="max-width:260px">' + esc(a.LUGARES) + '</td>' +
+        '<td>' + esc(a.RESPONDIDOS || 0) + ' / ' + esc(a.PUNTOS || 0) + '</td><td class="peq">' + (a.CUMPLIMIENTO ? '<b>' + esc(a.CUMPLIMIENTO) + '</b> · ' : '') + esc(a.RESULTADO) + '</td><td>' + audChip(a.ESTADO) + '</td>' +
+        '<td style="white-space:nowrap">' + (/planificada|en curso/i.test(a.ESTADO) ? '<a class="link" href="#aud/' + encodeURIComponent(a.ID_AUD) + '">Continuar</a>' : '<a class="link" href="#audr/' + encodeURIComponent(a.ID_AUD) + '">Ver resultado</a>') + '</td></tr>').join('') + '</tbody></table>'
+      : '<div class="vacio">Todavía no hay auditorías de este establecimiento. Empezá con «Nueva auditoría».</div>') + '</section>' +
+    '<section class="card peq mu">Programa sugerido: documental cada trimestre (AUD-RES-DOC-001); interna del referente cada trimestre; verificación de HyS cada semestre; seguimiento al vencer una acción. El catálogo de puntos se edita en el LIBRO DIAGNÓSTICO › AUD_ITEMS.</section>');
+  $('auEst').onchange = e => { AU.cod = e.target.value; LS.set('audCod', AU.cod); audLista(); };
+}
+async function audNueva() {
+  cargando('#aud', 'Preparando el plan…');
+  let O; try { O = await api('p_aud_opciones', { cod: AU.cod }); } catch (e) { return; }
+  if (!O.ok) return toast(O.mensaje);
+  const hoy = new Date().toISOString().slice(0, 10);
+  marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>Planificar una auditoría</h1><span class="mu">' + esc(AU.cod) + ' · El plan fija alcance, criterios y fecha antes de ir al terreno.</span></div></div>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:14px"><div class="grid g3">' +
+      '<label class="f">Tipo<select class="c" id="anTipo">' + O.tipos.map(t => '<option' + (t === 'De campo' ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>' +
+      '<label class="f">Fecha<input class="c" type="date" id="anFecha" value="' + hoy + '"></label>' +
+      '<label class="f">Auditor/a<input class="c" id="anAud" value="Belén Pellegrini"></label></div>' +
+      '<label class="f">Personas auditadas<input class="c" id="anAudit" placeholder="Coordinación de Servicios Generales, jefaturas, referente de residuos…"></label>' +
+      '<fieldset class="card" style="margin:0"><legend class="peq" style="font-weight:700">Lugares</legend><div class="grid g3 peq">' + O.lugares.map(l => '<label style="display:flex;gap:8px;align-items:center;min-height:32px"><input type="checkbox" class="anLug" value="' + esc(l) + '"' + (l === 'Establecimiento' ? '' : ' checked') + '>' + esc(l) + '</label>').join('') + '</div>' +
+        '<div class="mu peq">«Establecimiento» es para los puntos documentales (inscripción, DDJJ, manifiestos, registros).</div></fieldset>' +
+      '<fieldset class="card" style="margin:0"><legend class="peq" style="font-weight:700">Ejes</legend><div class="grid g3 peq">' + O.ejes.map(e => '<label style="display:flex;gap:8px;align-items:center;min-height:32px"><input type="checkbox" class="anEje" value="' + esc(e.eje) + '" checked>' + esc(e.eje) + ' <span class="mu">(' + e.puntos + ')</span></label>').join('') + '</div></fieldset>' +
+      '<label style="display:flex;gap:8px;align-items:center" class="peq"><input type="checkbox" id="anCorta"> Usar solo la lista corta (siempre en la auditoría interna del referente)</label>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px"><a class="btn sec" href="#aud">Cancelar</a><button class="btn pri" id="anOk">Guardar plan y empezar</button></div></section>');
+  $('anTipo').onchange = () => { if ($('anTipo').value === 'Documental') document.querySelectorAll('.anLug').forEach(c => c.checked = c.value === 'Establecimiento'); };
+  $('anOk').onclick = async () => {
+    const lug = [...document.querySelectorAll('.anLug:checked')].map(c => c.value), ejes = [...document.querySelectorAll('.anEje:checked')].map(c => c.value);
+    if (!lug.length) return toast('Elegí al menos un lugar.');
+    $('anOk').disabled = true; $('anOk').textContent = 'Guardando…';
+    try { const r = await api('p_aud_crear', { cod: AU.cod, tipo: $('anTipo').value, fecha: $('anFecha').value, auditor: $('anAud').value, auditados: $('anAudit').value, lugares: lug, ejes: ejes, soloCorta: $('anCorta').checked });
+      if (!r.ok) { toast(r.mensaje); $('anOk').disabled = false; $('anOk').textContent = 'Guardar plan y empezar'; return; }
+      toast('Plan guardado: ' + r.puntos + ' puntos.'); location.hash = '#aud/' + encodeURIComponent(r.id); } catch (e) { $('anOk').disabled = false; }
+  };
+}
+async function audEjecutar(id) {
+  cargando('#aud', 'Abriendo la lista de verificación…');
+  let R; try { R = await api('p_aud_abrir', { id: id }); } catch (e) { return; }
+  if (!R.ok) return toast(R.mensaje);
+  AU.A = R; AU.cambios = {}; AU.eje = AU.eje && R.puntos.some(p => p.eje === AU.eje) ? AU.eje : (R.puntos[0] || {}).eje; audPintar();
+}
+function audPintar() {
+  const R = AU.A, A = R.auditoria, P = R.puntos, ejes = [...new Set(P.map(p => p.eje))], resp = p => (AU.cambios[p.codigo + '|' + p.lugar] || p.r || {});
+  const hechos = P.filter(p => resp(p).respuesta).length;
+  marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>' + esc(A.TIPO) + ' · ' + esc(A.ESTABLECIMIENTO) + '</h1><span class="mu">' + esc(A.ID_AUD) + ' · ' + fechaTxt(A.FECHA) + ' · ' + hechos + ' de ' + P.length + ' puntos</span></div>' +
+    '<div style="min-width:240px"><div style="height:10px;background:var(--gr);border-radius:999px"><div style="width:' + (P.length ? Math.round(hechos * 100 / P.length) : 0) + '%;height:10px;background:var(--az);border-radius:999px"></div></div></div></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><nav class="card" style="flex:1 1 240px;padding:8px;display:flex;flex-direction:column;gap:2px" aria-label="Ejes">' +
+      ejes.map(e => { const pe = P.filter(p => p.eje === e), h = pe.filter(p => resp(p).respuesta).length; return '<button class="btn ' + (e === AU.eje ? 'pri' : 'sec') + '" data-eje="' + esc(e) + '" style="justify-content:space-between;display:flex;text-align:left;border:0">' + esc(e) + '<span class="peq">' + h + '/' + pe.length + '</span></button>'; }).join('') + '</nav>' +
+    '<section style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px">' +
+      P.map((p, i) => p.eje !== AU.eje ? '' : (() => { const r = resp(p), sel = r.respuesta || '';
+        return '<article class="card" data-i="' + i + '" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>' + esc(p.codigo) + ' · ' + esc(p.texto) + '</b>' + (p.critico ? '<span class="chip er">Crítico</span>' : '') + '</div>' +
+          '<div class="mu peq">' + esc(p.lugar) + (p.criterio ? ' · Criterio: ' + esc(p.criterio) : '') + (p.ayuda ? ' · ' + esc(p.ayuda) : '') + (p.evidencia ? ' · Evidencia: ' + esc(p.evidencia) : '') + '</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + R.opciones.map(k => { const o = AUD_OP[k], on = sel === k; return '<button class="btn au-op" data-i="' + i + '" data-r="' + k + '" aria-pressed="' + on + '" style="min-height:44px;border:1px solid ' + (on ? o[2] : 'var(--ln)') + ';background:' + (on ? o[1] : '#fff') + ';color:' + (on ? o[2] : 'var(--tx)') + '">' + o[0] + '</button>'; }).join('') + '</div>' +
+          (sel === 'NC' || sel === 'Obs' || r.nota || r.foto ? '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start"><label class="f" style="flex:1 1 300px">Qué se observó<textarea class="c au-nota" data-i="' + i + '">' + esc(r.nota || '') + '</textarea></label>' +
+            '<div class="peq">' + (r.foto ? '<a href="' + esc(r.foto) + '" target="_blank" rel="noopener">Ver foto</a> · ' : '') + '<label class="link" style="cursor:pointer">' + (r.foto ? 'Cambiar foto' : '+ Agregar foto') + '<input type="file" accept="image/*" capture="environment" class="au-foto" data-i="' + i + '" hidden></label></div></div>' : '') + '</article>'; })()).join('') +
+      '<div style="position:sticky;bottom:0;background:rgba(244,247,248,.96);border-top:1px solid var(--ln);padding:10px 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;align-items:center"><span class="mu peq" id="auSucio">' + (Object.keys(AU.cambios).length ? 'Hay respuestas sin guardar.' : '') + '</span>' +
+        '<button class="btn sec" id="auGuardar">Guardar</button><button class="btn pri" id="auCerrar">Terminar y ver resultado</button></div></section></div>');
+  const fija = (i, cambio) => { const p = P[i], k = p.codigo + '|' + p.lugar; AU.cambios[k] = Object.assign({ codigo: p.codigo, lugar: p.lugar }, p.r || {}, AU.cambios[k] || {}, cambio); };
+  document.querySelectorAll('[data-eje]').forEach(b => b.onclick = () => { AU.eje = b.dataset.eje; audPintar(); window.scrollTo(0, 0); });
+  document.querySelectorAll('.au-op').forEach(b => b.onclick = () => { const y = window.scrollY; fija(+b.dataset.i, { respuesta: b.dataset.r }); audPintar(); window.scrollTo(0, y); });
+  document.querySelectorAll('.au-nota').forEach(t => t.onchange = () => { fija(+t.dataset.i, { nota: t.value }); $('auSucio').textContent = 'Hay respuestas sin guardar.'; });
+  document.querySelectorAll('.au-foto').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return; const i = +inp.dataset.i; toast('Subiendo la foto…');
+    try { const data = await achicar(f), r = await api('p_aud_foto', { id: AU.A.auditoria.ID_AUD, codigo: P[i].codigo, base64: data }, 120000);
+      if (!r.ok) return toast(r.mensaje); const y = window.scrollY; fija(i, { foto: r.url }); audPintar(); window.scrollTo(0, y); toast('Foto agregada: guardá las respuestas.'); } catch (e) { toast('No se pudo subir la foto.'); }
+  });
+  const guardar = async () => {
+    const L = Object.values(AU.cambios).filter(c => c.respuesta).map(c => ({ codigo: c.codigo, lugar: c.lugar, respuesta: c.respuesta, nota: c.nota || '', foto: c.foto || '' }));
+    if (!L.length) return true;
+    const r = await api('p_aud_responder', { id: AU.A.auditoria.ID_AUD, respuestas: L }, 120000);
+    if (!r.ok) { toast(r.mensaje); return false; }
+    if (r.faltaEvidencia && r.faltaEvidencia.length) { toast('Faltan nota o foto en: ' + r.faltaEvidencia.join(', ')); return false; }
+    AU.cambios = {}; return true;
+  };
+  $('auGuardar').onclick = async () => { $('auGuardar').disabled = true; try { if (await guardar()) { toast('Respuestas guardadas.'); audEjecutar(AU.A.auditoria.ID_AUD); } } catch (e) {} $('auGuardar').disabled = false; };
+  $('auCerrar').onclick = async () => {
+    const falt = P.filter(p => !resp(p).respuesta).length;
+    if (falt && !confirm('Quedan ' + falt + ' puntos sin responder. ¿Terminar igual? Los que falten no cuentan en el resultado.')) return;
+    $('auCerrar').disabled = true; $('auCerrar').textContent = 'Calculando…';
+    try { if (!(await guardar())) { $('auCerrar').disabled = false; $('auCerrar').textContent = 'Terminar y ver resultado'; return; }
+      const r = await api('p_aud_cerrar', { id: AU.A.auditoria.ID_AUD }, 120000); if (!r.ok) { toast(r.mensaje); $('auCerrar').disabled = false; return; }
+      location.hash = '#audr/' + encodeURIComponent(AU.A.auditoria.ID_AUD); } catch (e) { $('auCerrar').disabled = false; }
+  };
+}
+async function audResultado(id) {
+  cargando('#aud', 'Calculando el resultado…');
+  let R; try { R = await api('p_aud_resultado', { id: id }); } catch (e) { return; }
+  if (!R.ok) return toast(R.mensaje);
+  const A = R.auditoria, H = R.hallazgos, clases = ['No conformidad mayor', 'No conformidad menor', 'Observación', 'Oportunidad de mejora'];
+  const colorClase = c => /mayor/.test(c) ? 'er' : /menor/.test(c) ? 'wa' : /bservaci/.test(c) ? 'pa' : 'gr';
+  marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>Resultado · ' + esc(A.TIPO) + ' · ' + esc(A.ESTABLECIMIENTO) + '</h1><span class="mu">' + esc(A.ID_AUD) + ' · ' + fechaTxt(A.FECHA) + ' · ' + esc(A.ORIGEN) + (R.anterior ? ' · comparada con ' + esc(R.anterior) : '') + '</span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sec" href="#aud/' + encodeURIComponent(A.ID_AUD) + '">Ver respuestas</a>' + (A.ESTADO === 'Para verificar' ? '<button class="btn pri" id="arVerif">Verificar (HyS)</button>' : '') + '<button class="btn pri" id="arPlan">Pasar al plan de acción</button></div></div>' +
+    '<div class="grid g4"><div class="card kpi"><span>RESULTADO</span><b style="font-size:20px">' + esc(A.RESULTADO || '—') + '</b><small class="mu">' + audChip(A.ESTADO) + '</small></div><div class="card kpi"><span>CUMPLIMIENTO</span><b>' + esc(A.CUMPLIMIENTO || '—') + '</b><small class="mu">conformes sobre los que aplican</small></div>' +
+      '<div class="card kpi"><span>NO CONFORMIDADES</span><b' + (+A.NC_MAYOR ? ' style="color:#9B2C22"' : '') + '>' + ((+A.NC_MAYOR || 0) + (+A.NC_MENOR || 0)) + '</b><small class="mu">' + (A.NC_MAYOR || 0) + ' mayores · ' + (A.NC_MENOR || 0) + ' menores</small></div><div class="card kpi"><span>OBSERVACIONES</span><b>' + (A.OBSERVACIONES_N || 0) + '</b><small class="mu">' + (A.MEJORAS_N || 0) + ' oportunidades de mejora</small></div></div>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2>Cumplimiento por eje</h2>' + R.ejes.map(e => '<div style="display:grid;grid-template-columns:minmax(160px,240px) minmax(0,1fr) 60px;gap:12px;align-items:center" class="peq"><span>' + esc(e.eje) + '</span>' +
+      '<div style="position:relative;height:12px;background:var(--gr);border-radius:999px"><div style="position:absolute;left:0;top:0;height:12px;width:' + e.pct + '%;background:' + (e.pct < 70 ? '#B45309' : 'var(--az)') + ';border-radius:999px"></div>' + (e.anterior != null ? '<div title="Anterior: ' + e.anterior + ' %" style="position:absolute;top:-3px;left:calc(' + e.anterior + '% - 1px);width:2px;height:18px;background:var(--pa)"></div>' : '') + '</div><b style="text-align:right">' + e.pct + ' %</b></div>').join('') +
+      '<span class="mu peq">' + (R.anterior ? 'La marca celeste es la auditoría anterior del mismo tipo.' : 'Es la primera auditoría de este tipo: no hay comparación.') + '</span></section>' +
+    '<section class="card" style="padding:0"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Hallazgos</h2><button class="btn sec" id="arNuevo">+ Oportunidad de mejora</button></div>' +
+      (H.length ? H.map((h, i) => '<div class="ar-h" data-i="' + i + '" style="border-top:1px solid #EEF2F4;padding:14px 18px;display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(220px,1fr) minmax(200px,1fr);gap:12px">' +
+        '<div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><b>' + esc(h.ID_HALLAZGO) + '</b><span class="chip ' + colorClase(h.CLASIFICACION) + '">' + esc(h.CLASIFICACION) + '</span><span class="chip gr">' + esc(h.ESTADO) + '</span></div>' +
+          '<div style="margin-top:6px">' + esc(h.DESCRIPCION) + '</div><div class="mu peq">' + esc(h.LUGAR) + (h.CRITERIO ? ' · ' + esc(h.CRITERIO) : '') + (/^https?:/.test(h.EVIDENCIA) ? ' · <a href="' + esc(h.EVIDENCIA) + '" target="_blank" rel="noopener">evidencia</a>' : '') + '</div></div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px"><label class="f">Clasificación<select class="c ar-cl">' + clases.map(c => '<option' + (c === h.CLASIFICACION ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></label><label class="f">Acción propuesta<textarea class="c ar-ac">' + esc(h.ACCION) + '</textarea></label></div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px"><label class="f">Responsable<input class="c ar-re" value="' + esc(h.RESPONSABLE) + '"></label><label class="f">Plazo<input class="c ar-pl" value="' + esc(h.PLAZO) + '"></label>' + (h.EN_PLAN === 'Sí' ? '<span class="mu peq">Ya está en el plan de acción.</span>' : '') + '</div></div>').join('')
+        : '<div class="vacio">Sin hallazgos: todos los puntos que aplican resultaron conformes.</div>') + '</section>' +
+    (H.length ? '<div style="position:sticky;bottom:0;background:rgba(244,247,248,.96);border-top:1px solid var(--ln);padding:10px 0;display:flex;justify-content:flex-end"><button class="btn pri" id="arGuardar">Guardar hallazgos</button></div>' : '') +
+    '<section class="card peq mu">Un «No conforme» en un punto crítico es no conformidad mayor (acción en 30 días); en un punto no crítico, menor (90 días). Solo pasan al plan los hallazgos con acción definida; los de auditorías internas, después de la verificación de HyS.</section>');
+  const guardarH = async () => { for (const el of document.querySelectorAll('.ar-h')) { const h = H[+el.dataset.i];
+      const d = { ID_HALLAZGO: h.ID_HALLAZGO, CLASIFICACION: el.querySelector('.ar-cl').value, ACCION: el.querySelector('.ar-ac').value, RESPONSABLE: el.querySelector('.ar-re').value, PLAZO: el.querySelector('.ar-pl').value };
+      if (d.CLASIFICACION !== h.CLASIFICACION || d.ACCION !== h.ACCION || d.RESPONSABLE !== h.RESPONSABLE || d.PLAZO !== h.PLAZO) { const r = await api('p_aud_hallazgo_guardar', { datos: d }); if (!r.ok) { toast(r.mensaje); return false; } } } return true; };
+  if ($('arGuardar')) $('arGuardar').onclick = async () => { $('arGuardar').disabled = true; try { if (await guardarH()) { toast('Hallazgos guardados.'); audResultado(id); } } catch (e) {} $('arGuardar').disabled = false; };
+  $('arNuevo').onclick = () => modal('Oportunidad de mejora', [['DESCRIPCION', 'Qué se puede mejorar', null, 1], ['LUGAR', 'Lugar'], ['ACCION', 'Acción propuesta', null, 1], ['RESPONSABLE', 'Responsable'], ['PLAZO', 'Plazo']], {}, async v => {
+    const r = await api('p_aud_hallazgo_guardar', { id: id, datos: Object.assign({ CLASIFICACION: 'Oportunidad de mejora' }, v) }); if (!r.ok) return r.mensaje || 'No se pudo guardar.'; toast('Agregada.'); audResultado(id); return ''; });
+  $('arPlan').onclick = async () => { try { if (H.length && !(await guardarH())) return; const r = await api('p_aud_al_plan', { id: id }); if (!r.ok) return toast(r.mensaje); toast(r.pasados ? r.pasados + ' hallazgo(s) pasados al plan de acción.' : (r.mensaje || 'Nada para pasar.')); if (r.pasados) location.hash = '#plan/' + encodeURIComponent(id); } catch (e) {} };
+  if ($('arVerif')) $('arVerif').onclick = async () => { if (!confirm('¿Revisaste las respuestas y la evidencia del referente? Sus hallazgos pasan a «Propuesto».')) return; try { const r = await api('p_aud_verificar', { id: id }); if (!r.ok) return toast(r.mensaje); toast('Auditoría verificada.'); audResultado(id); } catch (e) {} };
+}
+
 // ------------------------------------------------------------------ Navegación
 function router() {
   if (!CLAVE) return ingreso();
@@ -1007,6 +1136,8 @@ function router() {
   if (ruta === 'nte') return nte(a);
   if (ruta === 'bandeja') return bandeja();
   if (ruta === 'plan') return a ? planDetalle(decodeURIComponent(a)) : planLista();
+  if (ruta === 'aud') return a === 'nueva' ? audNueva() : a ? audEjecutar(decodeURIComponent(a)) : audLista();
+  if (ruta === 'audr') return audResultado(decodeURIComponent(a));
   return inicio();
 }
 window.addEventListener('hashchange', router);
