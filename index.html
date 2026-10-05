@@ -319,10 +319,10 @@ AYUDA.clave = { t: 'Clave del establecimiento', que: 'La clave que te dio Higien
 AYUDA.sitio = { t: 'Sitio del retiro', que: 'Dónde retiró la empresa los residuos: el edificio principal o uno de los CAPS o dispositivos.', donde: 'Sección 1, «Datos identificatorios»: figura el nombre y la dirección del lugar de retiro.', ej: 'Villa Italia', s: 'id' };
 AYUDA.tam = { t: 'Tamaño de la bolsa (dm³)', que: 'La capacidad de cada bolsa o recipiente, en litros (1 litro = 1 dm³). Queda guardado para la próxima carga de ese sitio.', donde: 'Figura en el envase de la bolsa. Las más comunes: 20, 50, 80, 120, 200 y 240.', ej: '200', s: null };
 AYUDA.vol = { t: 'Cantidad retirada', que: 'Se calcula sola: cantidad de bolsas × tamaño de la bolsa. Si el residuo se pesó, elegí «kg» y escribí el peso.', donde: 'Sección 3, «Información de residuos», columna «Cant. real».', ej: '10 bolsas × 200 = 2.000 dm³', s: 'res' };
-AYUDA.foto = { t: 'Foto o escaneo del manifiesto', que: 'Sacá una foto del original, o elegí el archivo si ya está escaneado (imagen o PDF). Antes de 2027 es opcional; si el papel está en un lote escaneado que ya enviaste, marcá esa opción. Desde 2027 es obligatoria.', donde: 'Toda la hoja original.', ej: 'Foto de frente o PDF escaneado', s: null };
+AYUDA.foto = { t: 'Foto o escaneo del manifiesto', que: 'Sacá una foto del original o elegí el archivo (imagen o PDF). No es obligatoria en el momento: si no la tenés, guardá el manifiesto igual y subila después desde «Mis registros» (botón «Subir foto») o en el lote .zip del mes, antes del día 10 del mes siguiente.', donde: 'Toda la hoja original.', ej: 'Foto de frente o PDF escaneado', s: null };
 AYUDA.ltipo = { t: 'Qué vas a enviar', que: 'Si los escaneados son manifiestos o certificados de tratamiento. Si tenés de los dos, hacé dos envíos.', donde: '', ej: 'Manifiestos', s: null };
-AYUDA.lperiodo = { t: 'Período', que: 'Los meses que cubren los papeles escaneados que vas a enviar.', donde: 'Mirá la fecha del primer y del último manifiesto de la carpeta.', ej: 'Desde enero 2025 hasta junio 2025', s: null };
-AYUDA.larch = { t: 'Archivos', que: 'Una carpeta comprimida (.zip) con los escaneos, o los PDF sueltos. Hasta 20 MB cada uno. Si el nombre de cada archivo tiene el número de manifiesto (por ejemplo 131500.pdf), el sistema lo enlaza solo.', donde: 'En la computadora: clic derecho sobre la carpeta › Enviar a › Carpeta comprimida.', ej: 'escaneados_2025.zip', s: null };
+AYUDA.lperiodo = { t: 'Mes', que: 'El mes al que corresponden los manifiestos escaneados de la carpeta. Un envío por mes: si tenés varios meses, hacé un envío para cada uno.', donde: 'Mirá la fecha de los manifiestos de la carpeta.', ej: 'Septiembre 2026', s: null };
+AYUDA.larch = { t: 'Carpeta comprimida (.zip)', que: 'Solo carpetas comprimidas (.zip), hasta 20 MB cada una; si pesa más, dividila en partes. No se suben fotos sueltas: esas van en cada manifiesto o desde «Mis registros». Si el nombre de cada archivo tiene el número de manifiesto (por ejemplo 131500.pdf), el sistema lo enlaza solo.', donde: 'En la computadora: clic derecho sobre la carpeta › Enviar a › Carpeta comprimida.', ej: 'manifiestos_septiembre_2026.zip', s: null };
 AYUDA.empresa = { t: 'Empresa', que: 'La empresa que emitió el certificado de tratamiento.', donde: 'Encabezado del certificado.', ej: 'Impeesa', s: null };
 
 // ------------------------------------------------------------------ Estado de pantalla
@@ -474,11 +474,21 @@ const sitiosCfg = () => (CFG && CFG.sitios && CFG.sitios.length ? CFG.sitios : [
 const corrCfg = () => (CFG && CFG.corrientes ? CFG.corrientes : [{ c: 'Y1', n: 'Y1 · Biopatogénicos (bolsa roja)' }, { c: 'Y3', n: 'Y3 · Medicamentos y productos farmacéuticos' }]);
 function tamGuardado(sitio, corr) { return (LS.get('tam_' + SES.est, {})[sitio + '|' + corr]) || ''; }
 function nuevoRes(c, sitio) { return { corriente: c, contenedor: c === 'Y3' ? 'Caja' : 'Bolsa', cant: '', tam: tamGuardado(sitio, c), vol: '', uni: 'dm³', estado: 'Sólido' }; }
-function nuevoManifiesto(prev) {
+// Lugar y fecha del último manifiesto cargado en este equipo: el formulario arranca con ellos y se pueden cambiar
+const ultimoMan = () => LS.get('ultman_' + SES.est, {});
+function nuevoManifiesto(prev, soloLugar) {
   const s = sitiosCfg();
-  M = prev || { tipo: 'manifiesto', idLocal: idNuevo(), sitio: s.length === 1 ? s[0].sitio : '', nro: '', fecha: '', res: [], firma: '', original: '', foto: '', obs: '' };
+  if (!prev && CFG && CFG.bloqueo && !enModoHys()) return bloqueado();
+  const u = ultimoMan(), sitioU = s.some(x => x.sitio === u.sitio) ? u.sitio : '', fechaU = soloLugar ? '' : (u.fecha || '');
+  M = prev || { tipo: 'manifiesto', idLocal: idNuevo(), sitio: soloLugar || (s.length === 1 ? s[0].sitio : sitioU), nro: '', fecha: fechaU, _fecha: fechaU ? isoATxt(fechaU) : '', res: [], firma: '', original: '', foto: '', obs: '', _recordado: !soloLugar && !!(sitioU || fechaU) };
   if (!M.res.length) M.res = corrCfg().map(x => nuevoRes(x.c, M.sitio));
   PASO = 0; ERR = {}; DESDE_REV = false; VISTA = 'man'; pasoMan();
+}
+function bloqueado() {
+  VISTA = 'mi'; MIV = { f: bloqueado }; vista('form');
+  $('app').innerHTML = '<h1>No se pueden cargar manifiestos nuevos</h1><div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(CFG.bloqueo) + '</div>' +
+    '<div class="menu"><button class="big main" data-act="registrosRes"><b>Subir las fotos que faltan</b><span>Mis registros › Residuos › «Subir foto»</span></button><button class="big" data-act="lote"><b>Enviar el lote .zip del mes</b><span>Si los manifiestos ya están escaneados</span></button></div>';
+  miVolver();
 }
 const tieneDatos = r => String(r.cant).trim() !== '' || String(r.vol).trim() !== '';
 function calcVol(r) { if (r.uni === 'dm³' && Number(r.cant) > 0 && Number(r.tam) > 0) r.vol = String(Number(r.cant) * Number(r.tam)); }
@@ -495,7 +505,7 @@ function pasoMan0() {
   let h = cab();
   if (PASO === 0) {
     const s = sitiosCfg();
-    h += '<h1>Datos del retiro</h1>' +
+    h += '<h1>Datos del retiro</h1>' + (M._recordado ? '<div class="notice" style="background:var(--cl);color:var(--tx)">Se completaron el lugar y la fecha del último manifiesto que cargaste en este equipo. <b>Revisalos</b> y cambialos si no corresponden.</div>' : '') +
       (s.length > 1 ? campo('sitio', '<select id="f_sitio" data-k="sitio"' + (ERR.sitio ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + s.map(x => '<option value="' + esc(x.sitio) + '"' + (x.sitio === M.sitio ? ' selected' : '') + '>' + esc(x.sitio) + (x.oficial && x.oficial !== x.sitio ? ' · ' + esc(x.oficial) : '') + '</option>').join('') + '</select>', ERR.sitio) : '') +
       campo('nro', inp('nro', 'text', 'Ej.: 128452', ' inputmode="numeric" autocomplete="off"'), ERR.nro) +
       campo('fecha', campoFecha('fecha', 'M', ERR.fecha), ERR.fecha);
@@ -522,6 +532,7 @@ function pasoMan0() {
       bloque('Retiro', 0, fila('Sitio', esc(M.sitio)) + fila('N.º de manifiesto', esc(M.nro)) + fila('Fecha de recolección', fechaTxt(M.fecha))) +
       bloque('Residuos', 1, M.res.filter(tieneDatos).map(r => fila(esc(r.corriente) + ' · ' + esc(r.contenedor), esc(r.cant) + (r.uni === 'dm³' ? ' × ' + esc(r.tam) + ' = ' + nf(r.vol) + ' dm³' : ' · ' + esc(r.vol) + ' kg'))).join('')) +
       bloque('Control del papel', 2, fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto o escaneo', M.foto ? (/^data:application\/pdf/.test(M.foto) ? 'PDF cargado' : 'Foto cargada') : M.lote ? 'En lote escaneado' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
+      (sinFotoMan() ? '<div class="notice"><b>Falta la foto del manifiesto.</b> Podés guardarlo igual, pero tenés que subirla antes del ' + limiteFoto(M.fecha) + ': desde «Mis registros» (botón «Subir foto») o en el lote .zip de ' + mesTxt(M.fecha) + '.' + (M.fecha >= '2027-01' ? ' Si no se regulariza, después de esa fecha no se pueden cargar manifiestos nuevos.' : '') + '</div>' : '') +
       (!navigator.onLine ? '<div class="notice">No hay señal: se guarda en este equipo y se envía solo cuando vuelva la conexión.</div>' : '');
   }
   $('app').innerHTML = h;
@@ -551,15 +562,18 @@ function validar() {
   } else if (PASO === 2) {
     if (!M.firma) ERR.firma = 'Respondé Sí o No.';
     if (!M.original) ERR.original = 'Respondé Sí o No.';
-    if (!M.foto && !M.fotoUrl && M.fecha >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del manifiesto es obligatorio.';
   }
   return !Object.keys(ERR).length;
 }
+const sinFotoMan = () => M && !M.foto && !M.fotoUrl && !M.lote && !loteDe(M.fecha);
+function limiteFoto(f) { const y = Number(f.slice(0, 4)), m = Number(f.slice(5, 7)); return String((CFG && CFG.diaLimite) || 10).padStart(2, '0') + '/' + String(m === 12 ? 1 : m + 1).padStart(2, '0') + '/' + (m === 12 ? y + 1 : y); }
 function adelante() {
+  if (PASO === 3 && sinFotoMan() && !M._sinFotoOk) return preguntar('Falta la foto del manifiesto. ¿Lo guardás igual? Acordate de subirla antes del ' + limiteFoto(M.fecha) + '.', 'Sí, guardar sin foto', () => { M._sinFotoOk = true; adelante(); });
   if (!validar()) { pasoMan(); const e = document.querySelector('.bad, .err'); if (e) e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if (PASO < 3) { PASO = DESDE_REV ? 3 : PASO + 1; DESDE_REV = false; pasoMan(); return; }
   // Guardar: tamaños usados quedan como sugerencia para el próximo retiro del sitio
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
+  if (!M.reemplaza) LS.set('ultman_' + SES.est, { sitio: M.sitio, fecha: M.fecha });
   const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
@@ -580,12 +594,12 @@ const txtLote = l => l ? mesTxt(l.desde + '-01') + ' a ' + mesTxt(l.hasta + '-01
 // Bloque de foto/escaneo: sacar foto, elegir archivo (imagen o PDF) o indicar que está en un lote escaneado
 function bloqueFoto(obj, k, fecha, chg, que) {
   const oblig = fecha && fecha >= OBLIG(), lote = obj === M ? loteDe(fecha) : null, pdf = /^data:application\/pdf/.test(obj.foto || '');
-  let h = '<div class="field"><div class="lab"><label>' + (que === 'cert' ? 'Foto o escaneo del certificado' : 'Foto o escaneo del manifiesto') + (oblig ? '' : ' (opcional antes de 2027)') + '</label>' + q(k) + '</div>';
+  let h = '<div class="field"><div class="lab"><label>' + (que === 'cert' ? 'Foto o escaneo del certificado' + (oblig ? '' : ' (opcional antes de 2027)') : 'Foto o escaneo del manifiesto (si no la tenés ahora, la subís después)') + '</label>' + q(k) + '</div>';
   if (obj.foto) h += '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(obj.fotoNombre || '') + '</span>' : '<img src="' + obj.foto + '" alt="Foto">') + '</div>';
   h += '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'c">' + (obj.foto ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'a">Elegir archivo</label></div>' +
     '<input id="f_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-chg="' + chg + '"><input id="f_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-chg="' + chg + '">';
   if (obj.foto) h += '<button class="link" data-act="quitarFoto" data-arg="' + (obj === M ? 'M' : 'C') + '">Quitar</button>';
-  if (!obj.foto && lote && !oblig) h += '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" data-chg="marcarLote"' + (obj.lote ? ' checked' : '') + ' style="width:22px;height:22px"> Está en el lote escaneado enviado (' + esc(txtLote(lote)) + ')</label>';
+  if (!obj.foto && lote && (obj === M || !oblig)) h += '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" data-chg="marcarLote"' + (obj.lote ? ' checked' : '') + ' style="width:22px;height:22px"> Está en el lote escaneado enviado (' + esc(txtLote(lote)) + ')</label>';
   return h + (ERR.foto ? '<div class="err">' + esc(ERR.foto) + '</div>' : '') + '</div>';
 }
 function foto(input, obj, repaint) {
@@ -605,7 +619,7 @@ function foto(input, obj, repaint) {
 function listo(msg, tipo) {
   vista('form');
   $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(msg) + '</b><br>' + (navigator.onLine ? 'Se está enviando al sistema.' : 'Quedó guardado en este equipo: se envía solo cuando vuelva la señal.') + '</div>' +
-    '<div class="menu">' + (tipo === 'certificado' ? '<button class="big main" data-act="nuevoCertificado"><b>Cargar otro certificado</b></button>' : '<button class="big main" data-act="nuevoManifiesto"><b>Cargar otro manifiesto</b><span>Seguí con el próximo</span></button>') +
+    '<div class="menu">' + (tipo === 'certificado' ? '<button class="big main" data-act="nuevoCertificado"><b>Cargar otro certificado</b></button>' : ((ultimoMan().sitio && sitiosCfg().length > 1 ? '<button class="big main" data-act="otroMismoLugar"><b>Cargar otro manifiesto de ' + esc(ultimoMan().sitio) + '</b><span>Mismo lugar; la fecha se escribe de nuevo</span></button>' : '') + '<button class="big' + (ultimoMan().sitio && sitiosCfg().length > 1 ? '' : ' main') + '" data-act="nuevoManifiesto"><b>Cargar otro manifiesto</b><span>Seguí con el próximo</span></button>')) +
     '<button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
   bar(null); pintarRed();
 }
@@ -646,26 +660,25 @@ function guardarCert() {
 let L = null;
 const MAX_LOTE = 20 * 1024 * 1024;
 function lote() {
-  VISTA = 'lote'; vista('form'); L = L || { tipo: 'manifiestos', dM: '', dA: '', hM: '', hA: '', nota: '', archivos: [] };
+  VISTA = 'lote'; vista('form'); L = L || { tipo: 'manifiestos', dM: '', dA: '', nota: '', archivos: [] };
   const selMes = (k, v) => '<select data-lt="' + k + '"><option value="">Mes…</option>' + MESES.map((n, i) => { const x = String(i + 1).padStart(2, '0'); return '<option value="' + x + '"' + (v === x ? ' selected' : '') + '>' + n.charAt(0).toUpperCase() + n.slice(1) + '</option>'; }).join('') + '</select>';
   const selAnio = (k, v) => '<select data-lt="' + k + '"><option value="">Año…</option>' + ['2023', '2024'].concat(ANIOS()).map(y => '<option' + (v === y ? ' selected' : '') + '>' + y + '</option>').join('') + '</select>';
   const ya = (CFG && CFG.lotes || []);
-  $('app').innerHTML = '<h1>Enviar escaneados</h1><p class="mu">Para manifiestos o certificados que ya están escaneados. Mandá una carpeta comprimida (.zip) o los PDF, e indicá el período. Conviene hacerlo desde una computadora y con buena conexión.</p>' +
+  $('app').innerHTML = '<h1>Enviar escaneados (lote del mes)</h1><p class="mu">Para los manifiestos o certificados de <b>un mes</b> que ya están escaneados. <b>Solo carpetas comprimidas (.zip)</b>: no se suben fotos sueltas (esas van en cada manifiesto o desde «Mis registros»). Conviene hacerlo desde una computadora y con buena conexión.</p>' +
     '<div class="field"><div class="lab"><label>Qué vas a enviar</label>' + q('ltipo') + '</div><select data-lt="tipo"><option value="manifiestos"' + (L.tipo === 'manifiestos' ? ' selected' : '') + '>Manifiestos</option><option value="certificados"' + (L.tipo === 'certificados' ? ' selected' : '') + '>Certificados de tratamiento</option></select></div>' +
-    '<div class="field"><div class="lab"><label>Desde</label>' + q('lperiodo') + '</div><div class="grid2">' + selMes('dM', L.dM) + selAnio('dA', L.dA) + '</div></div>' +
-    '<div class="field"><div class="lab"><label>Hasta</label></div><div class="grid2">' + selMes('hM', L.hM) + selAnio('hA', L.hA) + '</div>' + (ERR.periodo ? '<div class="err">' + esc(ERR.periodo) + '</div>' : '') + '</div>' +
-    '<div class="field"><div class="lab"><label>Archivos</label>' + q('larch') + '</div><label class="btn sec" style="display:block;text-align:center;cursor:pointer" for="f_lote">' + (L.archivos.length ? 'Cambiar archivos' : 'Elegir .zip o PDF') + '</label><input id="f_lote" type="file" accept=".zip,application/zip,application/pdf,image/*" multiple hidden data-chg="lote">' +
+    '<div class="field"><div class="lab"><label>Mes de los manifiestos (obligatorio)</label>' + q('lperiodo') + '</div><div class="grid2">' + selMes('dM', L.dM) + selAnio('dA', L.dA) + '</div>' + (ERR.periodo ? '<div class="err">' + esc(ERR.periodo) + '</div>' : '') + '</div>' +
+    '<div class="field"><div class="lab"><label>Archivos</label>' + q('larch') + '</div><label class="btn sec" style="display:block;text-align:center;cursor:pointer" for="f_lote">' + (L.archivos.length ? 'Cambiar carpetas' : 'Elegir la carpeta .zip') + '</label><input id="f_lote" type="file" accept=".zip,application/zip,application/x-zip-compressed" multiple hidden data-chg="lote">' +
     (L.archivos.length ? '<div class="lista" style="margin-top:8px">' + L.archivos.map(f => '<div class="item"><div><b>' + esc(f.name) + '</b><small>' + (f.size / 1048576).toFixed(1) + ' MB</small></div></div>').join('') + '</div>' : '') + (ERR.archivos ? '<div class="err">' + esc(ERR.archivos) + '</div>' : '') + '</div>' +
     '<div class="field"><div class="lab"><label for="f_lnota">Nota (opcional)</label></div><textarea id="f_lnota" data-lt="nota" rows="2" placeholder="Por ejemplo: faltan los de marzo">' + esc(L.nota) + '</textarea></div>' +
     (ya.length ? '<h2>Ya enviados</h2><div class="lista">' + ya.slice().reverse().map(l => '<div class="item"><div><b>' + (l.tipo === 'certificados' ? 'Certificados' : 'Manifiestos') + '</b><small>' + esc(txtLote(l)) + ' · ' + l.archivos + ' archivo(s)</small></div><span class="tag ok">Recibido</span></div>').join('') + '</div>' : '') +
-    '<p class="mu" style="font-size:13px">Después cargá los datos de cada manifiesto en «Cargar un manifiesto» y marcá «Está en el lote escaneado enviado» en el paso de la foto.</p>';
+    '<p class="mu" style="font-size:13px">Con el lote del mes enviado, los manifiestos de ese mes ya no figuran como «sin foto». Los datos de cada manifiesto se cargan igual, uno por uno, en «Cargar un manifiesto».</p>';
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="enviarLote">Enviar</button>'); window.scrollTo(0, 0);
 }
 async function enviarLote() {
   ERR = {}; const nota = document.getElementById('f_lnota'); if (nota) L.nota = nota.value;
-  const desde = L.dA && L.dM ? L.dA + '-' + L.dM : '', hasta = L.hA && L.hM ? L.hA + '-' + L.hM : '';
-  if (!desde || !hasta) ERR.periodo = 'Elegí el mes y el año de inicio y de fin.'; else if (desde > hasta) ERR.periodo = '«Desde» no puede ser posterior a «Hasta».'; else if (hasta > hoyISO().slice(0, 7)) ERR.periodo = 'El período no puede terminar en un mes futuro.';
-  if (!L.archivos.length) ERR.archivos = 'Elegí al menos un archivo.'; else if (L.archivos.some(f => f.size > MAX_LOTE)) ERR.archivos = 'Cada archivo puede pesar hasta 20 MB. Dividí la carpeta en partes más chicas.';
+  const desde = L.dA && L.dM ? L.dA + '-' + L.dM : '', hasta = desde;
+  if (!desde) ERR.periodo = 'Elegí el mes y el año de los manifiestos.'; else if (desde > hoyISO().slice(0, 7)) ERR.periodo = 'El mes no puede ser posterior al actual.';
+  if (!L.archivos.length) ERR.archivos = 'Elegí la carpeta comprimida (.zip).'; else if (L.archivos.some(f => !/\.zip$/i.test(f.name))) ERR.archivos = 'Solo se aceptan carpetas comprimidas (.zip). Las fotos sueltas se suben en cada manifiesto o desde «Mis registros».'; else if (L.archivos.some(f => f.size > MAX_LOTE)) ERR.archivos = 'Cada archivo puede pesar hasta 20 MB. Dividí la carpeta en partes más chicas.';
   if (Object.keys(ERR).length) return lote();
   if (!navigator.onLine) { ERR.archivos = 'Para enviar escaneados se necesita conexión.'; return lote(); }
   const n = L.archivos.length, res = []; ESPERA_MS = 180000;
@@ -679,7 +692,7 @@ async function enviarLote() {
     } catch (e) { res.push('✗ ' + f.name + ': ' + (e.message === 'tiempo' ? 'tardó demasiado; probá con un archivo más chico' : 'falló la conexión')); }
   }
   ESPERA_MS = 25000; L = null; actualizarConfig(true);
-  vista('form'); $('app').innerHTML = '<h1>Envío de escaneados</h1><div class="notice ok">' + res.map(esc).join('<br>') + '</div><div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar los datos de un manifiesto</b><span>Marcá «Está en el lote escaneado enviado»</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  vista('form'); $('app').innerHTML = '<h1>Envío de escaneados</h1><div class="notice ok">' + res.map(esc).join('<br>') + '</div><div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar los datos de un manifiesto</b><span>Uno por uno, con su número y sus bolsas</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
   bar(null);
 }
 
@@ -772,6 +785,9 @@ document.addEventListener('change', e => {
   else if (t.dataset.chg === 'repOtra') { OTRA.funcion = t.value; otraPersona(); }
   else if (t.dataset.chg === 'anio') { ANIO_AV = t.value; avance(); }
   else if (t.dataset.chg === 'filtro') { FILTRO = t.value; consulta(); }
+  else if (t.dataset.chg === 'regM') { REGM = Number(t.value); registros(true); }
+  else if (t.dataset.chg === 'regL') { REGL = t.value; registros(); }
+  else if (t.dataset.chg === 'regFoto') regFoto(t);
   else if (t.dataset.cm && C) { C[t.dataset.cm === 'm' ? 'mesM' : 'mesA'] = t.value; }
   else if (t.dataset.c && C) C[t.dataset.c] = t.value;
   else if (t.dataset.l2 === 'recordar') LOG.recordar = t.checked;
@@ -817,7 +833,7 @@ function inicio() {
   if (!SES.persona) return quienCarga();
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
-  const P = MI ? MI.pendientes : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag' };
+  const P = MI ? MI.pendientes : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
@@ -828,7 +844,7 @@ function inicio() {
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
     '<h2>Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
-      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('lote', 'Enviar escaneados (lote)', 'Manifiestos o certificados en .zip o PDF') + '</div>' +
+      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' +
     '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' +
     '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' +
     '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
@@ -1065,22 +1081,31 @@ function guardarDoc() {
 }
 
 // ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
-let REG = null, REGF = 'Todos';
+let REG = null, REGF = 'Todos', REGM = 1, REGL = '';
+const regPeriodo = () => REGM === 1 ? 'el último mes' : 'los últimos ' + REGM + ' meses';
 async function registros(fresco) {
   VISTA = 'mi'; MIV = { f: registros }; vista('wide');
-  const tit = miTit('Mis registros', 'Lo cargado en los últimos 12 meses.');
+  const tit = miTit('Mis registros', 'Lo cargado en ' + regPeriodo() + '.');
   if (!navigator.onLine) { $('app').innerHTML = tit + '<p class="mu">Necesitás señal para ver lo registrado en el sistema.</p>'; return miVolver(); }
-  if (fresco || !REG || REG._est !== SES.est) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
-    try { const r = await api('m_registros'); if (!r.ok) throw new Error(); REG = r; REG._est = SES.est; } catch (e) { $('app').innerHTML = tit + '<p class="mu">No se pudo leer. Probá de nuevo en un rato.</p>'; return miVolver(); } }
-  const L = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF);
+  if (fresco || !REG || REG._est !== SES.est || REG._m !== REGM) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
+    try { const r = await api('m_registros', { meses: REGM }); if (!r.ok) throw new Error(); REG = r; REG._est = SES.est; REG._m = REGM; } catch (e) { $('app').innerHTML = tit + '<p class="mu">No se pudo leer. Probá de nuevo en un rato.</p>'; return miVolver(); } }
+  const porTema = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF);
+  const lugares = {}; porTema.forEach(r => { if (r.lugar) lugares[r.lugar] = (lugares[r.lugar] || 0) + 1; });
+  if (REGL && !lugares[REGL]) REGL = '';
+  const L = porTema.filter(r => !REGL || r.lugar === REGL), sinFoto = L.filter(r => r.sinFoto && !r.anulado).length;
+  const selPer = '<select data-chg="regM" style="max-width:220px">' + [[1, 'Último mes'], [3, 'Últimos 3 meses'], [6, 'Últimos 6 meses'], [12, 'Últimos 12 meses']].map(([v, t]) => '<option value="' + v + '"' + (v === REGM ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>';
+  const selLug = Object.keys(lugares).length > 1 ? '<select data-chg="regL" style="max-width:320px"><option value="">Todos los lugares (' + porTema.filter(r => r.lugar).length + ')</option>' + Object.keys(lugares).sort((a, b) => a.localeCompare(b, 'es')).map(l => '<option value="' + esc(l) + '"' + (l === REGL ? ' selected' : '') + '>' + esc(l) + ' (' + lugares[l] + ')</option>').join('') + '</select>' : '';
   const chip = t => '<button class="btn ' + (REGF === t ? 'pri' : 'sec') + '" style="padding:8px 14px;font-size:14px" data-act="regF" data-arg="' + t + '">' + t + '</button>';
-  $('app').innerHTML = miTit('Mis registros', 'Lo cargado en los últimos 12 meses. ' + (REG.maestra ? 'Con la clave de Higiene y Seguridad se puede corregir o anular cualquier registro.' : 'Se puede corregir o anular hasta ' + REG.dias + ' días después de la carga; después lo corrige Higiene y Seguridad.') + ' Anular no borra: el registro queda guardado como anulado, con el motivo.') +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px">' + ['Todos', 'Residuos', 'Agua', 'Plagas', 'Documentos'].map(chip).join('') + '</div>' +
+  $('app').innerHTML = miTit('Mis registros', 'Lo cargado en ' + regPeriodo() + '. ' + (REG.maestra ? 'Con la clave de Higiene y Seguridad se puede corregir o anular cualquier registro.' : 'Se puede corregir o anular hasta ' + REG.dias + ' días después de la carga; después lo corrige Higiene y Seguridad.') + ' Anular no borra: el registro queda guardado como anulado, con el motivo.') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px">' + ['Todos', 'Residuos', 'Agua', 'Plagas', 'Documentos'].map(chip).join('') + '</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px">' + selPer + selLug + '</div>' +
+    (sinFoto ? '<div class="notice"><b>' + sinFoto + ' manifiesto(s) sin foto.</b> Tocá «Subir foto» en cada uno, o enviá el lote .zip del mes. Hay tiempo hasta el día ' + ((CFG && CFG.diaLimite) || 10) + ' del mes siguiente.</div>' : '') +
     (L.length ? '<div class="lista">' + L.map(r => '<div class="item" style="flex-direction:column;align-items:stretch;gap:8px' + (r.anulado ? ';opacity:.6' : '') + '"><div><b>' + esc(r.titulo) + '</b><small>' + esc([fechaTxt(r.fecha), r.detalle, r.cargo ? 'cargó ' + r.cargo : ''].filter(Boolean).join(' · ')) + '</small>' +
       (r.anulado ? '<small style="color:var(--er)">' + esc(r.motivo || 'Anulado') + '</small>' : !r.editable ? '<small>Ya no se puede corregir desde acá (más de ' + REG.dias + ' días).</small>' : '') + '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.url ? '<a class="btn sec" style="padding:8px 12px;text-decoration:none" href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver</a>' : '') +
+      (r.sinFoto && !r.anulado ? '<label class="btn pri" style="padding:8px 12px;cursor:pointer;flex:0 0 auto">Subir foto<input type="file" accept="image/*,application/pdf" hidden data-chg="regFoto" data-i="' + r.i + '"></label>' : '') +
       (r.editable && !r.anulado ? '<button class="btn sec" style="padding:8px 12px" data-act="regCorregir" data-arg="' + r.i + '">Corregir</button><button class="btn sec" style="padding:8px 12px" data-act="regAnular" data-arg="' + r.i + '">Anular</button>' : '') + '</div></div>').join('') + '</div>'
-      : '<p class="mu">No hay registros' + (REGF === 'Todos' ? '' : ' de ' + REGF.toLowerCase()) + ' en los últimos 12 meses.</p>') +
+      : '<p class="mu">No hay registros' + (REGF === 'Todos' ? '' : ' de ' + REGF.toLowerCase()) + ' en ' + regPeriodo() + (REGL ? ' en ' + esc(REGL) : '') + '.</p>') +
     ((REGF === 'Todos' || REGF === 'Residuos') && (REG.anuladosResiduos || []).length ? '<h2>Manifiestos y certificados anulados</h2><div class="lista">' + REG.anuladosResiduos.map(a => '<div class="item"><div><b>' + esc(a.texto) + '</b><small>' + esc('Anulado el ' + fechaTxt(a.fecha) + ' · ' + a.quien + ' · ' + a.motivo) + '</small></div></div>').join('') + '</div>' : '');
   miVolver(); window.scrollTo(0, 0);
 }
@@ -1114,7 +1139,23 @@ function regCorregir(i) {
   if (r.tipo === 'caso') { F = Object.assign({ _f: 'avi' }, toma(['ESTABLECIMIENTO', 'SITIO', 'SECTOR', 'FECHA', 'PLAGA', 'EVIDENCIA', 'CANTIDAD', 'OBSERVACIONES']), { _corr: true, fotoUrl: r.url || '', CASO_EDITAR: r.id }); return plagaAviso(); }
   if (r.tipo === 'documento') { F = Object.assign({ _f: 'doc' }, toma(['TEMA', 'TIPO', 'CODIGO', 'TITULO', 'VERSION', 'FECHA_VIGENCIA', 'OBSERVACIONES']), { _corr: true, fotoUrl: r.url || '', ID_EDITAR: r.id }); return docNuevo(); }
 }
-Object.assign(ACT, { registros: () => { F = null; registros(true); }, regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
+// Subir la foto o el PDF de un manifiesto que se cargó sin ella
+async function regFoto(input) {
+  const f = input.files && input.files[0], r = REG && REG.registros[Number(input.dataset.i)]; if (!f || !r) return;
+  if (!navigator.onLine) return alert('Para subir la foto hace falta señal.');
+  const lab = input.closest('label'); if (lab) lab.firstChild.textContent = 'Subiendo…';
+  try {
+    let data;
+    if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) throw new Error('El PDF pesa más de 6 MB.'); data = await new Promise((ok, mal) => { const rd = new FileReader(); rd.onload = () => ok(rd.result); rd.onerror = mal; rd.readAsDataURL(f); }); }
+    else data = await new Promise((ok, mal) => { const img = new Image(), u = URL.createObjectURL(f); img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL('image/jpeg', 0.65)); }; img.onerror = mal; img.src = u; });
+    ESPERA_MS = 120000;
+    const x = await api('m_foto_man', { id: r.id, archivo: { base64: data, tipo: (data.match(/^data:([^;]+)/) || [])[1], nombre: f.name }, quien: SES.persona.nombre });
+    ESPERA_MS = 25000;
+    if (!x.ok) throw new Error(x.mensaje || 'No se pudo subir.');
+    REG = null; actualizarConfig(true); miCargar(true); registros(true);
+  } catch (e) { ESPERA_MS = 25000; if (lab) lab.firstChild.textContent = 'Subir foto'; alert(e.message === 'tiempo' ? 'Tardó demasiado. Probá de nuevo.' : (e.message || 'No se pudo subir.')); }
+}
+Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosRes: () => { F = null; REGF = 'Residuos'; registros(true); }, otroMismoLugar: () => nuevoManifiesto(null, ultimoMan().sitio), regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
 
 // ------------------------------------------------------------------ Acciones y campos
 Object.assign(ACT, {
