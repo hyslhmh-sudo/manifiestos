@@ -215,7 +215,7 @@ function ingreso(msg) {
   const ir = async () => {
     const c = $('clave').value.trim(); if (!c) return;
     $('entrar').disabled = true; $('entrar').textContent = 'Verificando…'; CLAVE = c;
-    try { const r = await api('p_ping', {}, 30000); if (!r.ok) throw new Error(); LS.set('verSrv', r.version || 'anterior a la 8'); if ($('recordar').checked) LS.set('clave', c); const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
+    try { const r = await api('p_ping', {}, 30000); if (!r.ok) throw new Error(); LS.set('verSrv', r.version || 'anterior a la 9'); if ($('recordar').checked) LS.set('clave', c); const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
     catch (e) { if (e.message !== 'clave') ingreso('No se pudo ingresar. Revisá la clave y la conexión.'); }
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
@@ -312,7 +312,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-05 · 8';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-05 · 9';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -365,7 +365,7 @@ const leyenda = items => '<div class="leyenda">' + items.map(([t, c]) => '<span>
 
 // ------------------------------------------------------------------ Tablero de control (inicio)
 async function inicio(fresco) {
-  if (!inicio.ver) { inicio.ver = true; api('p_ping', {}, 30000).then(r => { if (r && r.ok) { const v = r.version || 'anterior a la 8'; if (v !== LS.get('verSrv', '')) { LS.set('verSrv', v); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } }).catch(() => {}); }
+  if (!inicio.ver) { inicio.ver = true; api('p_ping', {}, 30000).then(r => { if (r && r.ok) { const v = r.version || 'anterior a la 9'; if (v !== LS.get('verSrv', '')) { LS.set('verSrv', v); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } }).catch(() => {}); }
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   if (!TB) TB = LS.get('tab', null);
   if (!RES) { cargando('#inicio', 'Armando el tablero…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } }
