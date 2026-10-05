@@ -856,6 +856,7 @@ function inicio() {
 // Diagnóstico y auditoría interna: abre la página para referentes con la misma sesión
 function irDiag() {
   try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, nombre: SES.nombre })); localStorage.setItem('diag_arNom', JSON.stringify(SES.persona.nombre)); } catch (e) {}
+  if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico', '_blank');   // aplicación de respaldo (sin GitHub)
   location.href = /github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH;
 }
 
