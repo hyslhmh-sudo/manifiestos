@@ -6,7 +6,7 @@
 <link rel="apple-touch-icon" href="icono-192.png">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Manifiestos · Carga de residuos peligrosos</title>
+<title>Mi establecimiento · Higiene y Seguridad</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -241,7 +241,7 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 // este equipo y las envía solas cuando vuelve la conexión.
 // ==================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
-const VERSION = 'piloto-9';
+const VERSION = 'piloto-10';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
@@ -287,7 +287,7 @@ async function sincronizar() {
     } catch (e) { break; }   // sin conexión: se reintenta más tarde
   }
   ENVIANDO = false; pintarRed();
-  if (SES && navigator.onLine) actualizarConfig(true);
+  if (SES && navigator.onLine) { actualizarConfig(true); miCargar(true); }
 }
 async function actualizarConfig(silencioso) {
   if (!SES || !navigator.onLine) return;
@@ -308,7 +308,7 @@ function pintarRed() {
   $('net').textContent = !on ? 'Sin señal' + (pend ? ' · ' + pend + ' por enviar' : '') : ENVIANDO ? 'Enviando…' : err ? err + ' con error' : pend ? pend + ' por enviar' : 'En línea';
 }
 function pintarCab() {
-  $('hosp').textContent = SES ? SES.nombre : 'Manifiestos de residuos peligrosos';
+  $('hosp').textContent = SES ? SES.nombre : 'Mi establecimiento';
   $('quien').textContent = SES && SES.persona ? 'Carga: ' + SES.persona.nombre : SES ? 'Elegí quién carga' : 'Ingresá con el establecimiento y su clave';
   $('salir').hidden = !SES;
 }
@@ -404,7 +404,7 @@ async function entrar() {
     }
     if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = ses.clave; LS.set('recordados', r); }
     if (PERSONA_PREV) { const pp = personas().find(x => (x.dni && x.dni === PERSONA_PREV.dni) || x.nombre === PERSONA_PREV.nombre); if (pp && cargaEn(pp, ses.est)) ses.persona = pp; PERSONA_PREV = null; }
-    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; SES.persona ? inicio() : quienCarga();
+    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; MI = null; miCargar(true); SES.persona ? inicio() : quienCarga();
   } catch (e) {
     ERR.clave = 'Ocurrió un error al ingresar. Probá de nuevo.'; ingreso();
   } finally { ENTRANDO = false; }
@@ -429,12 +429,15 @@ function quienCarga() {
   const ref = CFG && CFG.referente && CFG.referente.nombre ? CFG.referente.nombre : '';
   const todas = personas().filter(p => p.nombre !== ref);
   const aca = todas.filter(p => cargaEn(p, SES.est)), otras = todas.filter(p => !cargaEn(p, SES.est));
+  if (!miAct() && navigator.onLine && !quienCarga.pedido) { quienCarga.pedido = true; miCargar(true).then(() => { quienCarga.pedido = false; if (VISTA === 'quien' && MI) quienCarga(); }); }
+  const red = MI && MI.red ? MI.red.map((p, i) => [p, i]).filter(([p]) => p.nombre !== ref && !aca.some(a => a.nombre === p.nombre)) : [];
   const boton = (p, act, sub) => '<div style="position:relative"><button class="big" style="width:100%" data-act="' + act + '" data-arg="' + esc(p.dni || p.nombre) + '"><b>' + esc(p.nombre) + '</b><span>' + esc(sub) + '</span></button>' +
     '<button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidar" data-arg="' + esc(p.nombre) + '" aria-label="Quitar a ' + esc(p.nombre) + ' de este equipo">Quitar</button></div>';
-  $('app').innerHTML = '<h1>¿Quién va a cargar?</h1><p class="mu">Queda registrado en cada carga.</p><div class="menu">' +
+  $('app').innerHTML = '<h1>¿Quién sos?</h1><p class="mu">Elegí tu nombre. Queda registrado en cada carga y se pregunta una sola vez en este equipo.</p><div class="menu">' +
     (ref ? '<button class="big main" data-act="soy" data-arg="ref"><b>' + esc(ref) + '</b><span>Referente de residuos</span></button>' : '') +
+    red.map(([p, i]) => '<button class="big" data-act="soyRed" data-arg="' + i + '"><b>' + esc(p.nombre) + '</b><span>' + esc(p.rol || 'Red de Higiene y Seguridad') + '</span></button>').join('') +
     aca.map(p => boton(p, 'soy', p.hys && enModoHys() ? 'Higiene y Seguridad · todos los establecimientos' : p.funcion)).join('') +
-    '<button class="big" data-act="otraPersona"><b>Carga otra persona</b><span>Escribí tus datos</span></button></div>' +
+    '<button class="big" data-act="otraPersona"><b>No estoy en la lista</b><span>Escribí tus datos: podés cargar igual y HyS te suma a la red</span></button></div>' +
     (otras.length ? '<h2 style="margin-top:22px">Personas de otros establecimientos</h2><p class="mu" style="margin-top:-4px">Guardadas en este equipo, pero no cargan en este establecimiento. Tocá una solo si también carga acá.</p><div class="menu">' +
       otras.map(p => boton(p, 'sumarAca', p.funcion + ' · ' + (p.ests || []).join(', '))).join('') + '</div>' : '');
   bar(null);
@@ -465,24 +468,6 @@ function confirmarOtra() {
 }
 
 // ------------------------------------------------------------------ Inicio
-function inicio() {
-  if (!SES) return ingreso();
-  if (!SES.persona) return quienCarga();
-  VISTA = 'inicio'; vista('wide'); pintarCab(); pintarRed();
-  const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
-  const ult = CFG && CFG.ultimas && CFG.ultimas.length ? CFG.ultimas[CFG.ultimas.length - 1] : null;
-  $('app').innerHTML = '<h1>¿Qué querés cargar?</h1><p class="mu">Podés cargar sin señal: queda guardado en este equipo y se envía solo cuando vuelve la conexión.</p>' +
-    (err ? '<div class="notice" style="border-color:var(--er);background:var(--erbg)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Revisalas en «Consultar mis cargas».</div>' : '') +
-    '<p class="mu" style="margin-top:-4px">Carga: <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button>' + (ult ? ' · Último manifiesto registrado: ' + fechaTxt(ult.fecha) + ' (' + esc(ult.sitio) + ')' : '') + '</p>' +
-    '<div class="menu"><button class="big main" data-act="nuevoManifiesto"><b>Cargar un manifiesto</b><span>Cuando la empresa retira los residuos</span></button>' +
-    '<button class="big" data-act="nuevoCertificado"><b>Cargar un certificado</b><span>Cuando llega el certificado de tratamiento</span></button>' +
-    '<button class="big" data-act="avance"><b>Ver avance por mes</b><span>Retiros y certificados registrados</span></button>' +
-    '<button class="big" data-act="lote"><b>Enviar escaneados (lote)</b><span>Manifiestos o certificados ya escaneados, en .zip o PDF' + (CFG && CFG.lotes && CFG.lotes.length ? ' · ' + CFG.lotes.length + ' enviado(s)' : '') + '</span></button>' +
-    '<button class="big" data-act="consulta"><b>Consultar mis cargas</b><span>' + (pend ? pend + ' por enviar · ' : '') + 'Últimas registradas en el sistema</span></button></div>' +
-    '<p class="mu" style="font-size:13px">Datos del sistema al ' + (CFG ? fechaTxt(CFG.actualizado.slice(0, 10)) + ' ' + CFG.actualizado.slice(11, 16) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
-  bar(null); window.scrollTo(0, 0);
-}
-
 // ------------------------------------------------------------------ Manifiesto
 const PASOS = ['Retiro', 'Residuos', 'Control', 'Revisión'];
 const sitiosCfg = () => (CFG && CFG.sitios && CFG.sitios.length ? CFG.sitios : [{ sitio: SES.est }]);
@@ -705,10 +690,10 @@ function consulta() {
   const item = (t, s, tag, act) => '<div class="item"' + (act ? '' : '') + '><div><b>' + t + '</b><small>' + s + '</small></div>' + tag + '</div>';
   let h = '<h1>Mis cargas</h1>';
   if (loc.length) h += '<h2>En este equipo</h2><div class="lista">' + loc.map(c => {
-    const d = c.datos, t = c.tipo === 'manifiesto' ? 'Manifiesto ' + esc(d.nro) : 'Certificado ' + esc(d.ncert);
-    const s = c.tipo === 'manifiesto' ? fechaTxt(d.fecha) + ' · ' + esc(d.sitio) + ' · ' + res(d.res) : mesTxt(d.mes);
+    const d = c.datos, mi = c.tipo.indexOf('m_') === 0, t = mi ? esc(d._txt) : c.tipo === 'manifiesto' ? 'Manifiesto ' + esc(d.nro) : 'Certificado ' + esc(d.ncert);
+    const s = mi ? 'Cargado el ' + fechaTxt(c.creado.slice(0, 10)) : c.tipo === 'manifiesto' ? fechaTxt(d.fecha) + ' · ' + esc(d.sitio) + ' · ' + res(d.res) : mesTxt(d.mes);
     return '<div class="item"><div><b>' + t + '</b><small>' + s + (c.estado === 'error' ? '<br><span style="color:var(--er)">' + esc(c.mensaje) + '</span>' : '') + '</small>' +
-      (c.estado === 'error' ? '<div style="margin-top:6px"><button class="link" data-act="corregirLocal" data-arg="' + esc(d.idLocal) + '">Corregir</button> · <button class="link" data-act="descartar" data-arg="' + esc(d.idLocal) + '">Descartar</button></div>' : '') +
+      (c.estado === 'error' ? '<div style="margin-top:6px">' + (mi ? '' : '<button class="link" data-act="corregirLocal" data-arg="' + esc(d.idLocal) + '">Corregir</button> · ') + '<button class="link" data-act="descartar" data-arg="' + esc(d.idLocal) + '">Descartar</button></div>' : '') +
       '</div>' + (c.estado === 'error' ? '<span class="tag er">No registrada</span>' : '<span class="tag wa">Por enviar</span>') + '</div>';
   }).join('') + '</div>';
   h += '<h2>Registradas en el sistema</h2><div class="grid2"><div class="field"><select data-chg="filtro"><option value="todos"' + (FILTRO === 'todos' ? ' selected' : '') + '>Manifiestos y certificados</option><option value="man"' + (FILTRO === 'man' ? ' selected' : '') + '>Solo manifiestos</option><option value="cert"' + (FILTRO === 'cert' ? ' selected' : '') + '>Solo certificados</option></select></div></div>';
@@ -809,10 +794,294 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && VISTA === '
 $('ov').addEventListener('click', e => { if (e.target.id === 'ov') cerrarAyuda(); });
 $('net').onclick = () => sincronizar();
 
+// ------------------------------------------------------------------ «MI ESTABLECIMIENTO»: tablero, agua, plagas y documentos (Establecimiento.gs › miRed_)
+let MI = null, F = null, MIV = null;   // MI: tablero del sistema · F: formulario abierto · MIV: pantalla actual del módulo
+const DIAG_PAG = 'diagnostico.html', DIAG_GH = 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
+function miLocal() { return SES ? LS.get('mi_' + SES.est, null) : null; }
+function miAct() { if (MI && SES && MI.est !== SES.est) MI = null; return MI || (MI = miLocal()); }
+async function miCargar(silencioso) {
+  if (!SES) return; miAct();
+  if (!navigator.onLine) return;
+  try { const r = await api('m_tablero'); if (r.ok) { MI = r; LS.set('mi_' + SES.est, r); if (!silencioso || VISTA === 'inicio') repintarMi(); } } catch (e) {}
+}
+function repintarMi() { if (VISTA === 'inicio') inicio(); else if (MIV && MIV.f) MIV.f(); }
+const miTit = (t, sub) => '<h1>' + esc(t) + '</h1>' + (sub ? '<p class="mu" style="margin-top:-6px">' + sub + '</p>' : '');
+const miVolver = (act, txt) => bar('<button class="btn sec" data-act="' + (act || 'inicio') + '">' + (txt || 'Volver al inicio') + '</button>');
+const miNivel = n => n === 'er' ? 'er' : n === 'wa' ? 'wa' : 'ok';
+const miEstTxt = { vencida: ['Vencida', 'er'], porvencer: ['Por vencer', 'wa'], sin: ['Sin registro', 'wa'], aldia: ['Al día', 'ok'] };
+
+// Tablero de control (reemplaza al inicio anterior; los botones de manifiestos siguen igual)
+function inicio() {
+  if (!SES) return ingreso();
+  if (!SES.persona) return quienCarga();
+  VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
+  const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
+  const P = MI ? MI.pendientes : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag' };
+  const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
+  $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
+    '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
+    (err ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Revisalas en «Mis cargas».</div>' : '') +
+    '<h2>Lo que tenés pendiente</h2>' +
+    (!MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
+      : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
+        (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
+      : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
+    '<h2>Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
+      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('lote', 'Enviar escaneados (lote)', 'Manifiestos o certificados en .zip o PDF') + '</div>' +
+    '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' +
+    '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' +
+    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Últimas registradas') + '</div>' +
+    '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
+  bar(null); window.scrollTo(0, 0);
+}
+
+// Diagnóstico y auditoría interna: abre la página para referentes con la misma sesión
+function irDiag() {
+  try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, nombre: SES.nombre })); localStorage.setItem('diag_arNom', JSON.stringify(SES.persona.nombre)); } catch (e) {}
+  location.href = /github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH;
+}
+
+// ------------------------------------------------------------------ Cola: las cargas de estos módulos usan la misma cola que los manifiestos
+function encolarMi(tipo, datos, texto) {
+  datos.idLocal = idNuevo(); datos.quien = SES.persona.nombre; datos._txt = texto;
+  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
+  if (!guardarCola()) { COLA.pop(); alertaEspacio(); return; }
+  F = null; vista('form');
+  $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(texto) + ' guardado.</b><br>' + (navigator.onLine ? 'Se está enviando al sistema.' : 'Quedó guardado en este equipo: se envía solo cuando vuelva la señal.') + '</div>' +
+    '<div class="menu"><button class="big main" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  bar(null); sincronizar();
+}
+function miErr(m) { const e = $('miErr'); if (e) { e.textContent = m; e.hidden = !m; e.scrollIntoView({ block: 'center' }); } }
+const miArch = (o, k) => o[k] ? { base64: o[k], tipo: (o[k].match(/^data:([^;]+)/) || [])[1] || 'image/jpeg', nombre: o[k + 'Nombre'] || '' } : null;
+
+// Campos comunes
+const fLab = (t, ayuda) => '<div class="lab"><label>' + t + '</label>' + (ayuda ? '<span class="mu" style="font-size:13px;display:block">' + ayuda + '</span>' : '') + '</div>';
+const fInp = (k, t, tipo, ph, ayuda) => '<div class="field">' + fLab(t, ayuda) + '<input data-f="' + k + '" type="' + (tipo || 'text') + '" value="' + esc(F[k] || '') + '" placeholder="' + esc(ph || '') + '"' + (tipo === 'number' ? ' inputmode="decimal" step="any"' : '') + '></div>';
+const fTxt = (k, t, ph) => '<div class="field">' + fLab(t) + '<textarea data-f="' + k + '" rows="3" placeholder="' + esc(ph || '') + '" style="width:100%;box-sizing:border-box;font:inherit;padding:12px;border:1px solid var(--line);border-radius:10px">' + esc(F[k] || '') + '</textarea></div>';
+const fSel = (k, t, ops) => '<div class="field">' + fLab(t) + '<select data-f="' + k + '">' + ops.map(o => { const v = typeof o === 'string' ? o : o[0], n = typeof o === 'string' ? o : o[1]; return '<option value="' + esc(v) + '"' + (F[k] === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>';
+const fSeg = (k, t, ops) => '<div class="field">' + fLab(t) + '<div class="seg" style="flex-wrap:wrap">' + ops.map(v => '<button type="button" class="' + (F[k] === v ? 'sel' : '') + '" data-act="fset" data-k="' + k + '" data-arg="' + esc(v) + '" style="min-width:30%">' + esc(v) + '</button>').join('') + '</div></div>';
+const fChk = (k, t, ops) => { const sel = (F[k] || '').split(' · ').filter(Boolean); return '<div class="field">' + fLab(t) + '<div class="lista" style="grid-template-columns:1fr">' + ops.map(v => '<label class="item" style="cursor:pointer;align-items:center;justify-content:flex-start"><input type="checkbox" data-fchk="' + k + '" value="' + esc(v) + '"' + (sel.indexOf(v) >= 0 ? ' checked' : '') + ' style="width:22px;height:22px"> ' + esc(v) + '</label>').join('') + '</div></div>'; };
+function fFoto(k, t, ayuda) {
+  const v = F[k], pdf = /^data:application\/pdf/.test(v || '');
+  return '<div class="field">' + fLab(t, ayuda) + (v ? '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(F[k + 'Nombre'] || '') + '</span>' : '<img src="' + v + '" alt="Foto cargada">') + '</div>' : '') +
+    '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'c">' + (v ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'a">Elegir archivo</label></div>' +
+    '<input id="mf_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfoto="' + k + '"><input id="mf_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-mfoto="' + k + '">' +
+    (v ? '<button class="link" data-act="fquitar" data-k="' + k + '">Quitar</button>' : '') + '</div>';
+}
+function mFoto(input, k) {
+  const f = input.files && input.files[0]; if (!f || !F) return;
+  if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) return miErr('El PDF pesa más de 6 MB.'); const rd = new FileReader(); rd.onload = () => { F[k] = rd.result; F[k + 'Nombre'] = f.name; MIV.f(); }; rd.readAsDataURL(f); return; }
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => { const s = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    F[k] = c.toDataURL('image/jpeg', 0.7); F[k + 'Nombre'] = ''; URL.revokeObjectURL(url); MIV.f(); };
+  img.src = url;
+}
+const fErr = '<div class="notice" id="miErr" hidden style="background:var(--erbg);color:var(--er)"></div>';
+const miSinDatos = () => { if (MI) return false; $('app').innerHTML = miTit('Sin datos del sistema') + '<p class="mu">Para esta pantalla hace falta conectarse una vez. Cuando haya señal, tocá «Actualizar».</p>'; miVolver(); return true; };
+const miEstOps = () => (MI.grupo || [SES.est]).length > 1 ? MI.grupo : null;
+
+// ------------------------------------------------------------------ Agua: inventario (se carga una vez; después se edita)
+function aguaInv() {
+  VISTA = 'mi'; MIV = { f: aguaInv }; vista('wide'); if (miSinDatos()) return;
+  const T = MI.tanques, P = MI.puntos, chip = e => '<span class="tag ' + miEstTxt[e][1] + '">' + miEstTxt[e][0] + '</span>';
+  $('app').innerHTML = miTit('Mis tanques y canillas', 'Se cargan una sola vez: después cada limpieza y cada análisis usan estos datos. Limpieza: ' + esc(MI.poe.limpieza) + ' · Muestras: ' + esc(MI.poe.muestra) + '.') +
+    '<h2>Tanques y cisternas</h2>' + (T.length ? '<div class="lista">' + T.map(t => '<div class="item"><div><b>' + esc(t.codigo) + ' · ' + esc(t.tipo || 'Tanque') + '</b><small>' + esc([t.ubicacion, t.capacidad ? nf(t.capacidad) + ' l' : '', t.acceso].filter(Boolean).join(' · ')) + '<br>' + (t.ultima ? 'Última limpieza: ' + fechaTxt(t.ultima) + ' · próxima: ' + fechaTxt(t.proxima) : 'Sin limpieza registrada') + '</small>' +
+      '<button class="link" data-act="aguaEditT" data-arg="' + esc(t.codigo) + '">Cambiar datos</button></div>' + chip(t.estado) + '</div>').join('') + '</div>' : '<p class="mu">Todavía no hay tanques cargados.</p>') +
+    '<div class="menu"><button class="big" data-act="aguaEditT" data-arg=""><b>+ Agregar tanque o cisterna</b><span>El código lo pone el sistema</span></button></div>' +
+    '<h2>Canillas donde se toman las muestras</h2>' + (P.length ? '<div class="lista">' + P.map(p => '<div class="item"><div><b>' + esc(p.codigo) + ' · ' + esc(p.ubicacion) + '</b><small>' + (p.bact ? 'Bacteriológico: ' + fechaTxt(p.bact) + ' (vence ' + fechaTxt(p.venceBact) + ')' : 'Sin análisis registrado') + (p.ultimo ? '<br>Último resultado: ' + esc(p.ultimo) : '') + '</small>' +
+      '<button class="link" data-act="aguaEditP" data-arg="' + esc(p.codigo) + '">Cambiar datos</button></div>' + (p.noApta ? '<span class="tag er">No apta</span>' : chip(p.estado)) + '</div>').join('') + '</div>' : '<p class="mu">Todavía no hay canillas cargadas. Conviene la más alejada del tanque, la de cocina y la de lactario o neonatología.</p>') +
+    '<div class="menu"><button class="big" data-act="aguaEditP" data-arg=""><b>+ Agregar canilla</b><span>Punto donde se toma la muestra</span></button></div>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function aguaEditT(cod) {
+  const t = cod ? MI.tanques.find(x => x.codigo === cod) : null;
+  F = t ? { CODIGO_TANQUE: t.codigo, ESTABLECIMIENTO: t.est, SITIO: t.sitio, UBICACION: t.ubicacion, TIPO: t.tipo, USO: t.uso, CAPACIDAD_L: t.capacidad, TAPA: t.tapa, ACCESO: t.acceso, QUIEN_LIMPIA: t.quienLimpia, FRECUENCIA_LIMPIEZA_MESES: t.frecuencia, OBSERVACIONES: t.obs, ESTADO: 'Activo' }
+    : { TIPO: 'Tanque elevado', USO: 'Consumo humano', TAPA: 'Sí, en condiciones', ACCESO: 'Escalera fija', QUIEN_LIMPIA: 'Personal propio', FRECUENCIA_LIMPIEZA_MESES: '12', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '' };
+  MIV = { f: () => formTanque() }; formTanque();
+}
+function formTanque() {
+  VISTA = 'mi'; vista('form'); const g = miEstOps();
+  $('app').innerHTML = miTit(F.CODIGO_TANQUE ? 'Cambiar datos de ' + F.CODIGO_TANQUE : 'Agregar tanque o cisterna') + fErr +
+    (g && !F.CODIGO_TANQUE ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('UBICACION', 'Ubicación', 'text', 'Ej.: azotea, sobre cocina') +
+    fSeg('TIPO', 'Tipo', ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']) + fInp('CAPACIDAD_L', 'Capacidad (litros)', 'number', 'Ej.: 40000') + fSeg('USO', 'Uso', ['Consumo humano', 'Incendio', 'Mixto']) +
+    fSeg('TAPA', 'Tapa', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSel('ACCESO', 'Acceso', ['Escalera fija', 'Escalera móvil', 'Espacio confinado', 'A nivel', 'Otro']) +
+    fSel('QUIEN_LIMPIA', 'Quién lo limpia', ['Personal propio', 'Mantenimiento tercerizado', 'Empresa contratada', 's/d (revisar)']) + fSel('FRECUENCIA_LIMPIEZA_MESES', 'Frecuencia de limpieza', [['12', 'Una vez al año'], ['6', 'Cada 6 meses']]) +
+    (F.CODIGO_TANQUE ? fSeg('ESTADO', 'Estado', ['Activo', 'Fuera de uso']) : '') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="aguaInv">Cancelar</button><button class="btn pri" data-act="guardarInv" data-arg="m_reservorio">Guardar</button>');
+}
+function aguaEditP(cod) {
+  const p = cod ? MI.puntos.find(x => x.codigo === cod) : null;
+  F = p ? { CODIGO_PUNTO: p.codigo, ESTABLECIMIENTO: p.est, SITIO: p.sitio, UBICACION: p.ubicacion, TANQUE_ASOCIADO: p.tanque, FUENTE: p.fuente, USO: p.uso, ESTADO: 'Activo' }
+    : { FUENTE: 'Red pública', USO: 'Bebida', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '', TANQUE_ASOCIADO: (MI.tanques[0] || {}).codigo || '' };
+  MIV = { f: () => formPunto() }; formPunto();
+}
+function formPunto() {
+  VISTA = 'mi'; vista('form'); const g = miEstOps();
+  $('app').innerHTML = miTit(F.CODIGO_PUNTO ? 'Cambiar datos de ' + F.CODIGO_PUNTO : 'Agregar canilla') + fErr +
+    (g && !F.CODIGO_PUNTO ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('UBICACION', 'Ubicación de la canilla', 'text', 'Ej.: cocina, lactario, la más alejada del tanque') +
+    fSel('TANQUE_ASOCIADO', 'Tanque del que sale el agua', [['', 'No sé / directo de red']].concat(MI.tanques.map(t => [t.codigo, t.codigo + ' · ' + t.ubicacion]))) +
+    fSeg('FUENTE', 'Fuente', ['Red pública', 'Pozo', 'Camión cisterna', 'Otra']) + fSeg('USO', 'Uso', ['Bebida', 'Cocina', 'Higiene', 'Mixto']) + (F.CODIGO_PUNTO ? fSeg('ESTADO', 'Estado', ['Activo', 'Fuera de uso']) : '');
+  bar('<button class="btn sec" data-act="aguaInv">Cancelar</button><button class="btn pri" data-act="guardarInv" data-arg="m_punto">Guardar</button>');
+}
+async function guardarInv(tipo) {
+  if (!F.UBICACION) return miErr('Falta la ubicación.');
+  if (!navigator.onLine) return miErr('Para cargar o cambiar tanques y canillas hace falta señal.');
+  const b = document.querySelector('[data-act="guardarInv"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try { const r = await api(tipo, Object.assign({ quien: SES.persona.nombre }, F)); if (!r.ok) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } return miErr(r.mensaje || 'No se pudo guardar.'); }
+    F = null; await miCargar(true); aguaInv(); } catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr('No se pudo conectar. Probá de nuevo.'); }
+}
+
+// ------------------------------------------------------------------ Agua: limpieza y análisis
+function aguaLimpieza() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  if (!MI.tanques.length) return aguaInv();
+  const propio = /^propio/i.test(MI.poe.limpieza), cargado = /https?:/.test(MI.poe.limpieza);
+  F = F && F._f === 'lim' ? F : { _f: 'lim', CODIGO_TANQUE: (MI.tanques.find(t => t.estado !== 'aldia') || MI.tanques[0]).codigo, FECHA: hoyISO(), PROCEDIMIENTO: propio ? 'POE propio' : 'Proceso provincial',
+    DESINFECTANTE: 'Lavandina concentrada', CONCENTRACION_GL: '55', TAPA: 'Sí, en condiciones', MUESTRA_TOMADA: 'Sí' };
+  MIV = { f: aguaLimpieza }; VISTA = 'mi'; vista('form');
+  const t = MI.tanques.find(x => x.codigo === F.CODIGO_TANQUE) || MI.tanques[0];
+  $('app').innerHTML = miTit('Registrar limpieza de tanque', 'Completá el formulario F-AGU-01 en papel, firmalo y sacale una foto.') + fErr +
+    fSel('CODIGO_TANQUE', '¿Qué tanque o cisterna?', MI.tanques.map(x => [x.codigo, x.codigo + ' · ' + (x.ubicacion || x.tipo) + ' · ' + miEstTxt[x.estado][0]])) +
+    '<div class="notice ok" style="background:var(--cl);color:var(--tx)"><b>Datos guardados de ' + esc(t.codigo) + '</b><br>' + esc([t.tipo, t.ubicacion, t.capacidad ? nf(t.capacidad) + ' litros' : '', t.uso, 'acceso: ' + (t.acceso || 's/d'), 'tapa: ' + (t.tapa || 's/d')].filter(Boolean).join(' · ')) +
+      '<br><button class="link" data-act="aguaEditT" data-arg="' + esc(t.codigo) + '">Cambiar datos del tanque</button></div>' +
+    fInp('FECHA', 'Fecha de la limpieza', 'date') + fSeg('PROCEDIMIENTO', 'Procedimiento usado', ['Proceso provincial', 'POE propio']) +
+    (F.PROCEDIMIENTO === 'POE propio' ? (cargado ? '<p class="mu">POE propio ya cargado: ' + esc(MI.poe.limpieza.split(' · ')[0]) + '. Si cambió de versión, subí la nueva abajo.</p>' : '<div class="notice">Es la primera vez con el POE propio: subí una copia (foto o PDF). Queda guardado para las próximas.</div>') +
+      '<div class="grid2">' + fInp('POE_CODIGO', 'Código del POE', 'text', 'Ej.: POE-AGU-001') + fInp('POE_VERSION', 'Versión', 'text', 'Ej.: 2') + '</div>' + fFoto('poe', 'Copia del POE propio', cargado ? 'Solo si cambió de versión' : 'Foto o PDF') : '') +
+    '<div class="grid2">' + fInp('HORA_CORTE', 'Hora de corte', 'time') + fInp('HORA_REHABILITACION', 'Hora de rehabilitación', 'time') + '</div>' +
+    '<div class="grid2">' + fInp('HORAS_CERRADO', 'Horas con el sistema cerrado', 'number', 'Mínimo 6') + fInp('VOLUMEN_L', 'Lavandina usada (litros)', 'number', 'Ref.: 1,5 l cada 1.000 l') + '</div>' +
+    '<div class="grid2">' + fInp('DESINFECTANTE', 'Desinfectante') + fInp('CONCENTRACION_GL', 'Concentración (g de cloro por litro)', 'number') + '</div>' +
+    '<div class="grid2">' + fInp('CLORO_PPM', 'Cloro libre residual (ppm)', 'number', '0,2 a 0,6') + fInp('TURBIDEZ_NTU', 'Turbidez (NTU), si se midió', 'number', 'Menos de 1') + '</div>' +
+    fSeg('TAPA', 'Tapa al terminar', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSeg('MUESTRA_TOMADA', '¿Se tomaron las muestras posteriores?', ['Sí', 'Pendiente']) +
+    fFoto('foto', 'Foto del formulario F-AGU-01 firmado', 'Obligatoria') + fTxt('OBSERVACIONES', 'Novedades (opcional)', 'Fisuras, sedimentos, reparaciones necesarias…');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarLimpieza">Guardar</button>');
+}
+function guardarLimpieza() {
+  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto) return miErr('Falta la foto del formulario F-AGU-01 firmado.');
+  if (F.PROCEDIMIENTO === 'POE propio' && !/https?:/.test(MI.poe.limpieza) && !F.poe) return miErr('Falta la copia del POE propio (es la primera vez).');
+  if (F.HORAS_CERRADO && Number(F.HORAS_CERRADO) < 6) return miErr('El sistema tiene que quedar cerrado al menos 6 horas.');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.poe; delete d.poeNombre; delete d._f;
+  d.archivo = miArch(F, 'foto'); if (F.poe) d.poe = miArch(F, 'poe');
+  encolarMi('m_limpieza', d, 'Limpieza de ' + F.CODIGO_TANQUE);
+}
+function aguaAnalisis() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  if (!MI.puntos.length) return aguaInv();
+  F = F && F._f === 'ana' ? F : { _f: 'ana', CODIGO_PUNTO: (MI.puntos.find(p => p.noApta || p.estado !== 'aldia') || MI.puntos[0]).codigo, FECHA_TOMA: hoyISO(), TIPO: 'Bacteriológico', MOTIVO: 'Programado', RESULTADO: 'Apta', LABORATORIO: 'Laboratorio provincial (DPL)' };
+  MIV = { f: aguaAnalisis }; VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Cargar análisis de agua', 'Muestreo: ' + esc(MI.poe.muestra) + '. Bacteriológico cada 6 meses y físico-químico cada 12 (Dto. 351/79).') + fErr +
+    fSel('CODIGO_PUNTO', '¿De qué canilla?', MI.puntos.map(p => [p.codigo, p.codigo + ' · ' + p.ubicacion + (p.noApta ? ' · NO APTA abierta' : '')])) +
+    fSeg('TIPO', 'Tipo de análisis', ['Bacteriológico', 'Físico-químico', 'Ambos']) + fSeg('MOTIVO', 'Motivo', ['Programado', 'Post-limpieza', 'Espontáneo', 'Nueva muestra (no apta)']) +
+    fInp('FECHA_TOMA', 'Fecha de la toma', 'date') + fInp('LABORATORIO', 'Laboratorio') + fInp('CLORO_PPM', 'Cloro libre residual medido en el lugar (ppm)', 'number', '0,2 a 0,6') +
+    fSeg('RESULTADO', 'Resultado', ['Apta', 'No apta', 'Pendiente']) +
+    (F.RESULTADO === 'No apta' ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Agua NO APTA.</b> Hay que limpiar y desinfectar cisternas, tanques y cañerías y tomar una nueva muestra en no más de 15 días hábiles (proceso provincial). Avisá a la Dirección.</div>' : '') +
+    (F.RESULTADO !== 'Pendiente' ? fFoto('foto', 'Foto o PDF del informe del laboratorio', 'Obligatorio') : '<p class="mu">Cuando llegue el informe, cargá el análisis de nuevo con el resultado y la foto.</p>') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAnalisis">Guardar</button>');
+}
+function guardarAnalisis() {
+  if (!F.FECHA_TOMA) return miErr('Falta la fecha de la toma.'); if (F.RESULTADO !== 'Pendiente' && !F.foto) return miErr('Falta la foto o el PDF del informe del laboratorio.');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  encolarMi('m_analisis', d, 'Análisis de ' + F.CODIGO_PUNTO);
+}
+
+// ------------------------------------------------------------------ Plagas
+const PLAGAS = ['Ratas o ratones', 'Cucarachas', 'Moscas', 'Hormigas', 'Mosquitos', 'Palomas u otras aves', 'Pulgas, chinches o garrapatas', 'Otra'];
+function plagaAviso() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  F = F && F._f === 'avi' ? F : { _f: 'avi', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '', FECHA: hoyISO(), PLAGA: '', CANTIDAD: 'Uno solo' };
+  MIV = { f: plagaAviso }; VISTA = 'mi'; vista('form'); const g = miEstOps();
+  $('app').innerHTML = miTit('Avisar una aparición', 'Contá qué viste. Se abre un caso y Higiene y Seguridad indica qué hacer.') + fErr +
+    (g ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('SECTOR', 'Sector exacto', 'text', 'Ej.: depósito de cocina, al fondo') + fInp('FECHA', 'Fecha', 'date') +
+    fSeg('PLAGA', '¿Qué plaga?', PLAGAS) + fChk('EVIDENCIA', '¿Qué encontraste?', ['Ejemplar vivo', 'Ejemplar muerto', 'Excremento', 'Daño o roeduras', 'Nido o madriguera', 'Olor', 'Huevos o larvas']) +
+    fSeg('CANTIDAD', '¿Cuánto?', ['Uno solo', 'Varios', 'Muchos (infestación)']) + fFoto('foto', 'Foto (si podés)', 'Opcional') + fTxt('OBSERVACIONES', 'Qué había cerca (opcional)', 'Restos de comida, residuos sin tapa, humedad, cajas, agujeros…');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAviso">Enviar aviso</button>');
+}
+function guardarAviso() {
+  if (!F.SECTOR) return miErr('Falta el sector.'); if (!F.PLAGA) return miErr('Elegí qué plaga viste.');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  encolarMi('m_plaga_aviso', d, 'Aviso de ' + F.PLAGA.toLowerCase());
+}
+function plagaReg(tipo) {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  const casos = MI.casos || [];
+  if (tipo !== 'Recorrida' && !casos.length) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit(tipo === 'Intervención' ? 'Registrar intervención' : 'Seguimiento de un caso') + '<p class="mu">No hay casos abiertos. Primero se avisa la aparición.</p><div class="menu"><button class="big main" data-act="plagaAviso"><b>Avisar una aparición</b></button></div>'; return miVolver(); }
+  F = F && F._f === tipo ? F : { _f: tipo, TIPO: tipo, CASO: (casos[0] || {}).caso || '', FECHA: hoyISO(), QUIMICO: 'No', RESULTADO: '', DECISION: '', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '' };
+  MIV = { f: () => plagaReg(tipo) }; VISTA = 'mi'; vista('form'); const g = miEstOps();
+  const form = tipo === 'Intervención' ? 'F-PLG-02' : tipo === 'Seguimiento' ? 'F-PLG-03' : 'F-PLG-04';
+  let h = miTit(tipo === 'Intervención' ? 'Registrar intervención' : tipo === 'Seguimiento' ? 'Seguimiento de un caso' : 'Recorrida preventiva', 'Completá el formulario ' + form + ' en papel, firmalo y sacale una foto.') + fErr;
+  if (tipo !== 'Recorrida') h += fSel('CASO', 'Caso', casos.map(c => [c.caso, c.caso + ' · ' + c.plaga + ' · ' + c.sector + (c.proxima ? ' · revisión ' + fechaTxt(c.proxima) : '')]));
+  else h += (g ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('SECTOR', 'Sector recorrido', 'text', 'Ej.: cocina y depósito de alimentos');
+  h += fInp('FECHA', 'Fecha', 'date');
+  if (tipo === 'Intervención') h += fChk('ACCIONES', 'Qué se hizo', ['Limpieza profunda', 'Retiro de residuos y restos', 'Orden y retiro de cajas', 'Reparación de pérdida de agua', 'Sellado de grietas u orificios', 'Mallas o burletes', 'Trampas', 'Cebaderas cerradas']) +
+    fSeg('QUIMICO', '¿Se usó producto químico?', ['No', 'Sí']) + (F.QUIMICO === 'Sí' ? fInp('PRODUCTO', 'Producto, principio activo y por qué hizo falta', 'text', 'Ej.: gel cucarachicida (fipronil); no alcanzó el saneamiento') : '') + fInp('PROXIMA_REVISION', 'Próxima revisión', 'date', '', 'Si la dejás vacía, se agenda a los 7 días');
+  if (tipo === 'Seguimiento') h += fSeg('RESULTADO', 'Comparado con la revisión anterior', ['Sin actividad', 'Actividad reducida', 'Sin cambios', 'Aumentó']) + fSeg('DECISION', 'Decisión', ['Cerrar el caso', 'Continuar el seguimiento', 'Nueva intervención']) +
+    (F.DECISION && F.DECISION !== 'Cerrar el caso' ? fInp('PROXIMA_REVISION', 'Próxima revisión', 'date') : '');
+  if (tipo === 'Recorrida') h += fTxt('ACCIONES', 'Qué hay que corregir (si algo)', 'Ej.: puerta del depósito sin burlete');
+  h += fFoto('foto', 'Foto del formulario ' + form + ' firmado', 'Obligatoria') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  $('app').innerHTML = h;
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarPlagaReg">Guardar</button>');
+}
+function guardarPlagaReg() {
+  if (F.TIPO !== 'Recorrida' && !F.CASO) return miErr('Elegí el caso.'); if (F.TIPO === 'Recorrida' && !F.SECTOR) return miErr('Falta el sector recorrido.');
+  if (F.TIPO === 'Seguimiento' && (!F.RESULTADO || !F.DECISION)) return miErr('Falta el resultado o la decisión.'); if (!F.foto) return miErr('Falta la foto del formulario firmado.');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  encolarMi('m_plaga_registro', d, F.TIPO + (F.CASO ? ' de ' + F.CASO : ''));
+}
+
+// ------------------------------------------------------------------ Documentos
+function formularios() {
+  VISTA = 'mi'; MIV = { f: formularios }; vista('wide'); if (miSinDatos()) return;
+  const L = MI.formularios || [];
+  $('app').innerHTML = miTit('Formularios para imprimir', 'Se descargan, se completan en papel, se firman y se suben por foto desde cada carga.') +
+    (L.length ? '<div class="lista">' + L.map(f => '<div class="item"><div><b>' + esc(f.nombre) + '</b><small><a href="' + esc(f.ver) + '" target="_blank" rel="noopener">Ver</a></small></div><a class="btn pri" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(f.url) + '" target="_blank" rel="noopener">Descargar</a></div>').join('') + '</div>'
+      : '<p class="mu">' + esc(MI.formulariosError || 'No hay formularios en la carpeta.') + '</p>') +
+    (MI.carpeta ? '<h2>Carpeta del establecimiento</h2><div class="menu"><a class="big" href="' + esc(MI.carpeta) + '" target="_blank" rel="noopener" style="text-decoration:none"><b>Abrir la carpeta en Drive</b><span>DDJJ, informes, fotos de las cargas y documentos propios</span></a></div>' : '');
+  miVolver(); window.scrollTo(0, 0);
+}
+const TEMAS = ['Residuos', 'Agua', 'Plagas', 'Seguridad', 'Otro'];
+function docs() {
+  VISTA = 'mi'; MIV = { f: docs }; vista('wide'); if (miSinDatos()) return;
+  const D = MI.documentos || [];
+  $('app').innerHTML = miTit('Manuales, guías, POE, protocolos y PTS', 'Los documentos propios del establecimiento. Si se carga una versión nueva, la anterior queda guardada como reemplazada.') +
+    TEMAS.map(t => { const l = D.filter(d => d.tema === t); return l.length ? '<h2>' + t + '</h2><div class="lista">' + l.map(d => '<div class="item"><div><b>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</b><small>' + esc(d.tipo + (d.version ? ' · versión ' + d.version : '') + ' · cargado ' + fechaTxt(d.cargado)) + '</small></div><a class="btn sec" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></div>').join('') + '</div>' : ''; }).join('') +
+    (D.length ? '' : '<p class="mu">Todavía no hay documentos cargados.</p>') +
+    '<div class="menu"><button class="big main" data-act="docNuevo"><b>+ Cargar un documento</b><span>Manual, guía, POE, protocolo o PTS (PDF o foto)</span></button></div>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function docNuevo() {
+  F = F && F._f === 'doc' ? F : { _f: 'doc', TEMA: 'Residuos', TIPO: 'Manual' }; MIV = { f: docNuevo }; VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Cargar un documento') + fErr + fSeg('TEMA', 'Tema', TEMAS) + fSeg('TIPO', 'Tipo', ['Manual', 'Guía', 'POE', 'Protocolo', 'PTS', 'Otro']) +
+    fInp('TITULO', 'Título', 'text', 'Ej.: Manual de gestión integral de residuos') + '<div class="grid2">' + fInp('CODIGO', 'Código (si tiene)', 'text', 'Ej.: MAN-RES-001') + fInp('VERSION', 'Versión', 'text', 'Ej.: 2') + '</div>' +
+    fInp('FECHA_VIGENCIA', 'Vigente desde', 'date') + fFoto('foto', 'Archivo (PDF o foto)', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="docs">Cancelar</button><button class="btn pri" data-act="guardarDoc">Guardar</button>');
+}
+function guardarDoc() {
+  if (!F.TITULO) return miErr('Falta el título.'); if (!F.foto) return miErr('Falta el archivo.');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
+}
+
+// ------------------------------------------------------------------ Acciones y campos
+Object.assign(ACT, {
+  actualizar: () => { actualizarConfig(false); sincronizar(); miCargar(false); },
+  irDiag: () => irDiag(), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
+  aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
+  plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
+  guardarPlagaReg: () => guardarPlagaReg(), formularios: () => formularios(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
+  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); },
+  soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
+});
+document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO/.test(t.dataset.f)) MIV.f(); }
+  else if (t.dataset.fchk && F) { F[t.dataset.fchk] = Array.from(document.querySelectorAll('[data-fchk="' + t.dataset.fchk + '"]:checked')).map(x => x.value).join(' · '); }
+  else if (t.dataset.mfoto) mFoto(t, t.dataset.mfoto);
+});
+
 // ------------------------------------------------------------------ Arranque
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-if (SES && SES.persona && SES.persona.funcion !== 'Referente de residuos' && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
-if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); } else if (SES) quienCarga(); else ingreso();
+if (SES && SES.persona && SES.persona.funcion !== 'Referente de residuos' && !SES.persona.red && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
+if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); miCargar(true); } else if (SES) quienCarga(); else ingreso();
 
 </script>
 </body>
