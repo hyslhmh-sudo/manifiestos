@@ -215,7 +215,7 @@ function ingreso(msg) {
   const ir = async () => {
     const c = $('clave').value.trim(); if (!c) return;
     $('entrar').disabled = true; $('entrar').textContent = 'Verificando…'; CLAVE = c;
-    try { const r = await api('p_ping', {}, 30000); if (!r.ok) throw new Error(); if ($('recordar').checked) LS.set('clave', c); const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
+    try { const r = await api('p_ping', {}, 30000); if (!r.ok) throw new Error(); LS.set('verSrv', r.version || 'anterior a la 8'); if ($('recordar').checked) LS.set('clave', c); const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } if (!location.hash || location.hash === '#') location.hash = '#inicio'; else router(); }
     catch (e) { if (e.message !== 'clave') ingreso('No se pudo ingresar. Revisá la clave y la conexión.'); }
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
@@ -238,7 +238,7 @@ function marco(activo, contenido) {
     it('#ayuda', 'help', 'Ayuda') +
     '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
-    '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button></div></nav><main id="main">' + contenido + '</main></div>' +
+    '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button><div style="font-size:11px;margin-top:6px;color:#A9C6D1">Portal ' + esc(VERSION_PORTAL) + (LS.get('verSrv', '') && LS.get('verSrv', '') !== VERSION_PORTAL ? '<br><b style="color:#FFD27A">Apps Script en versión ' + esc(LS.get('verSrv', '')) + ': falta instalar o publicar algo</b>' : '') + '</div></div></nav><main id="main">' + contenido + '</main></div>' +
     '<nav class="inf" aria-label="Menú">' + inf('#inicio', 'dashboard', 'Tablero') + inf('#est', 'apartment', 'Establec.') + inf('#plan', 'task_alt', 'Acciones') + inf('#bib', 'folder_open', 'Documentos') + '<button id="btnMas"><span class="ms" aria-hidden="true">menu</span>Más</button></nav>' +
     '<button class="ayudaBtn" id="btnAyuda" aria-label="Ayuda de esta pantalla"><span class="ms" aria-hidden="true">help</span><span class="txt">Ayuda</span></button>';
   $('btnSalir').onclick = () => salir();
@@ -291,7 +291,28 @@ async function matriz(fresco) {
   document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#ficha/' + encodeURIComponent(tr.dataset.cod));
 }
 
+// ------------------------------------------------------------------ Ficha › Registros cargados (ver y anular; corregir desde «Mi establecimiento» con la clave de HyS)
+async function fichaReg(cod) {
+  const box = $('fReg'); if (!box) return;
+  box.innerHTML = '<h2>Registros cargados</h2><div class="mu">Leyendo…</div>';
+  let R; try { R = await api('p_registros', { cod: cod }, 120000); } catch (e) { box.innerHTML = '<h2>Registros cargados</h2><div class="mu">No se pudo leer. <button class="link" id="fRegBtn">Reintentar</button></div>'; $('fRegBtn').onclick = () => fichaReg(cod); return; }
+  if (!R.ok) { box.innerHTML = '<h2>Registros cargados</h2><div class="aviso error">' + esc(R.mensaje || 'Error') + '</div>'; return; }
+  const L = R.registros, temas = ['Residuos', 'Agua', 'Plagas', 'Documentos'];
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Registros cargados</h2><span><a class="btn sec" href="' + esc(APP_URL) + '" target="_blank" rel="noopener">Corregir en «Mi establecimiento» ↗</a> <button class="link" id="fRegBtn">Actualizar</button></span></div>' +
+    '<div class="mu peq">Últimos 24 meses. Anular no borra: el registro queda guardado como anulado, con el motivo, y deja de contar. Para corregir datos, entrá a «Mi establecimiento» con la clave de Higiene y Seguridad › Mis registros (sin límite de días).</div>' +
+    temas.map(t => { const l = L.filter(r => r.tema === t); return l.length ? '<h3 style="margin:14px 0 6px">' + t + ' (' + l.length + ')</h3><div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Registro</th><th>Detalle</th><th>Cargó</th><th></th></tr></thead><tbody>' +
+      l.map(r => '<tr' + (r.anulado ? ' style="opacity:.55"' : '') + '><td>' + fechaTxt(r.fecha) + '</td><td><b>' + esc(r.titulo) + '</b>' + (r.anulado ? '<div class="peq" style="color:#B4361F">' + esc(r.motivo) + '</div>' : '') + '</td><td class="peq">' + esc(r.detalle) + '</td><td class="peq">' + esc(r.cargo) + '</td><td style="white-space:nowrap">' +
+        (r.url ? '<a class="link" href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver</a>' : '') + (r.anulado ? '' : ' · <button class="link" data-ran="' + L.indexOf(r) + '">Anular</button>') + '</td></tr>').join('') + '</tbody></table></div>' : ''; }).join('') +
+    ((R.anuladosResiduos || []).length ? '<h3 style="margin:14px 0 6px">Manifiestos y certificados anulados</h3>' + R.anuladosResiduos.map(a => '<div class="peq">' + esc(fechaTxt(a.fecha) + ' · ' + a.texto + ' · ' + a.quien + ' · ' + a.motivo) + '</div>').join('') : '') +
+    (L.length ? '' : '<div class="mu">Todavía no hay registros cargados.</div>');
+  $('fRegBtn').onclick = () => fichaReg(cod);
+  box.querySelectorAll('[data-ran]').forEach(b => b.onclick = () => { const r = L[Number(b.dataset.ran)];
+    modal('Anular: ' + r.titulo, [['MOTIVO', 'Motivo', ['Cargado dos veces', 'Era de otro establecimiento o sitio', 'Datos equivocados (se vuelve a cargar)', 'Otro']], ['DETALLE', 'Detalle (opcional)', null, 1]], { MOTIVO: 'Cargado dos veces' },
+      async v => { const x = await api('p_anular', { cod: cod, tipo: r.tipo, id: r.id, motivo: v.MOTIVO + (v.DETALLE ? ': ' + v.DETALLE : ''), quien: 'Higiene y Seguridad' }); if (!x.ok) return x.mensaje || 'No se pudo anular.'; toast('Registro anulado.'); fichaReg(cod); return ''; }); });
+}
+
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
+const VERSION_PORTAL = '2026-10-05 · 8';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -344,6 +365,7 @@ const leyenda = items => '<div class="leyenda">' + items.map(([t, c]) => '<span>
 
 // ------------------------------------------------------------------ Tablero de control (inicio)
 async function inicio(fresco) {
+  if (!inicio.ver) { inicio.ver = true; api('p_ping', {}, 30000).then(r => { if (r && r.ok) { const v = r.version || 'anterior a la 8'; if (v !== LS.get('verSrv', '')) { LS.set('verSrv', v); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } } }).catch(() => {}); }
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   if (!TB) TB = LS.get('tab', null);
   if (!RES) { cargando('#inicio', 'Armando el tablero…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } }
@@ -527,10 +549,12 @@ async function ficha(cod) {
           [sd(c.v[9]), sd(c.v[10])].filter(Boolean).map(m => '<a href="mailto:' + esc(m) + '">' + esc(m) + '</a>').join('<br>') + '</td><td><button class="link" data-con="' + FICHA.contactos.indexOf(c) + '">Editar</button></td></tr>'; }).join('') + '</tbody></table>'
       : '<div class="vacio">Sin contactos cargados.</div>') + '</section>' +
     '<section style="display:flex;flex-direction:column;gap:10px"><h2>Comités y áreas</h2>' + (FICHA.comitesDe ? '<p class="mu peq">Compartidos con ' + esc(FICHA.comitesDe) + ' (mismo hospital): se cargan y se editan una sola vez.</p>' : '') + '<div class="grid g3">' + (com || '<p class="mu">Sin comités cargados.</p>') + '</div></section>' +
+    '<section class="card" id="fReg"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Registros cargados</h2><button class="btn sec" id="fRegVer">Ver</button></div><div class="mu peq">Manifiestos, certificados, agua, plagas y documentos: ver, anular o corregir.</div></section>' +
     '<section class="card" id="fMi"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Agua, plagas y documentos</h2><button class="btn sec" id="fMiBtn">Ver</button></div><div class="mu peq">Tanques, canillas, análisis, casos de plagas y documentos propios, con sus pendientes.</div></section>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimos manifiestos</h2></div><table><thead><tr><th>Fecha</th><th>Sitio</th><th>N.º</th><th>Corriente</th><th>Cantidad</th><th>Origen</th></tr></thead><tbody>' +
     R.manifiestos.map(m => '<tr><td>' + fechaTxt(m.fecha) + '</td><td>' + esc(m.sitio) + '</td><td>' + esc(m.nro) + '</td><td>' + esc(m.corriente) + '</td><td>' + esc(m.cantidad) + ' ' + esc(m.unidad) + '</td><td class="peq">' + esc(m.origen) + '</td></tr>').join('') + '</tbody></table>' + (R.manifiestos.length ? '' : '<div class="vacio">Sin manifiestos registrados.</div>') + '</section>');
   $('fMiBtn').onclick = () => fichaMi(d.CODIGO);
+  $('fRegVer').onclick = () => fichaReg(d.CODIGO);
   $('edDatos').onclick = () => modal('Datos de ' + d.CODIGO, [['LOCALIDAD', 'Localidad'], ['DIRECCION', 'Dirección'], ['TELEFONOS', 'Teléfonos'], ['CODIGO_SISA', 'Código SISA'], ['DIRECTOR', 'Director/a'], ['EMPRESA_RESIDUOS', 'Empresa de residuos'], ['SERVICIO_HYS', 'Servicio de HyS', ['Profesional propio', 'Técnico', 'Referente no técnico', 'Sin servicio', 's/d']]], d,
     v => guardarFicha('est', null, v));
   const camposRed = [['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['ROL', 'Rol', ['Profesional', 'Técnico', 'Referente no técnico', 'Referente de residuos']], ['CUIL', 'CUIL'], ['DNI', 'DNI'], ['TITULO_O_MATRICULA', 'Título o matrícula', null, 1], ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['HORAS_SEMANALES', 'Horas semanales'], ['DESDE', 'Desde (fecha)'], ['BLOQUES_QUE_REPORTA', 'Bloques que reporta'], ['FRECUENCIA', 'Frecuencia', ['Mensual', 'Trimestral', 'Semestral', 'Anual']], ['ESTADO', 'Estado', ['Activo', 'A confirmar', 'Baja']], ['OBSERVACIONES', 'Observaciones', null, 1]];

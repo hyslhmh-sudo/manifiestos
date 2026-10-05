@@ -489,7 +489,8 @@ function leer() {
 function cab() { return '<div class="steps">' + PASOS.map((p, i) => '<i class="' + (i <= PASO ? 'on' : '') + '"></i>').join('') + '</div><div class="steplbl">Paso ' + (PASO + 1) + ' de ' + PASOS.length + ' · ' + PASOS[PASO] + '</div>'; }
 function inp(k, type, ph, extra) { return '<input id="f_' + k + '" data-k="' + k + '" type="' + type + '" value="' + esc(M[k]) + '" placeholder="' + esc(ph || '') + '"' + (ERR[k] ? ' class="bad"' : '') + (extra || '') + '>'; }
 function siNo(k) { return '<div class="seg" id="f_' + k + '">' + ['Sí', 'No'].map(v => '<button type="button" class="' + (M[k] === v ? 'sel' : '') + '" data-act="sino" data-k2="' + k + '" data-arg="' + v + '">' + v + '</button>').join('') + '</div>'; }
-function pasoMan() {
+function pasoMan() { pasoMan0(); if (M && M.reemplaza) { const a = $('app'); if (a && !document.getElementById('corrAviso')) a.insertAdjacentHTML('afterbegin', '<div class="notice" id="corrAviso">Estás corrigiendo el manifiesto ' + esc(M._nroOrig) + ': al guardar, reemplaza al anterior, que queda anulado.' + (M.fotoUrl ? ' La foto ya cargada se mantiene si no sacás otra (<a href="' + esc(M.fotoUrl) + '" target="_blank" rel="noopener">ver</a>).' : '') + '</div>'); } }
+function pasoMan0() {
   vista('form');
   let h = cab();
   if (PASO === 0) {
@@ -533,7 +534,7 @@ function validar() {
   if (PASO === 0) {
     if (sitiosCfg().length > 1 && !M.sitio) ERR.sitio = 'Elegí dónde se hizo el retiro.';
     if (!/^\d{3,}$/.test(String(M.nro).replace(/[\s.-]/g, ''))) ERR.nro = 'Escribí el número impreso en el manifiesto (solo números).';
-    else if (CFG && CFG.ultimas && CFG.ultimas.some(u => u.nro === String(M.nro).trim() && u.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está registrado en ' + M.sitio + '.';
+    else if (!(M.reemplaza && String(M.nro).trim() === M._nroOrig && M.sitio === M._sitioOrig) && CFG && CFG.ultimas && CFG.ultimas.some(u => u.nro === String(M.nro).trim() && u.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está registrado en ' + M.sitio + '.';
     else if (miCola().some(c => c.tipo === 'manifiesto' && c.datos.idLocal !== M.idLocal && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)) ERR.nro = 'Ese manifiesto ya está cargado en este equipo, esperando envío.';
     if (!M.fecha) ERR.fecha = !M._fecha ? 'Falta la fecha de recolección.' : M._fecha.length === 10 ? 'Esa fecha no existe: revisá el día y el mes.' : 'Completá la fecha como dd/mm/aaaa.';
     else if (M.fecha < FMIN) ERR.fecha = 'La fecha tiene que ser desde el 01/01/2025.';
@@ -550,7 +551,7 @@ function validar() {
   } else if (PASO === 2) {
     if (!M.firma) ERR.firma = 'Respondé Sí o No.';
     if (!M.original) ERR.original = 'Respondé Sí o No.';
-    if (!M.foto && M.fecha >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del manifiesto es obligatorio.';
+    if (!M.foto && !M.fotoUrl && M.fecha >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del manifiesto es obligatorio.';
   }
   return !Object.keys(ERR).length;
 }
@@ -559,7 +560,7 @@ function adelante() {
   if (PASO < 3) { PASO = DESDE_REV ? 3 : PASO + 1; DESDE_REV = false; pasoMan(); return; }
   // Guardar: tamaños usados quedan como sugerencia para el próximo retiro del sitio
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
-  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, persona: SES.persona,
+  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
 }
@@ -634,11 +635,11 @@ function guardarCert() {
   if (!C.empresa) ERR.empresa = 'Elegí la empresa.';
   if (!C.mes) ERR.mes = 'Elegí el mes y el año.'; else if (C.mes > hoyISO().slice(0, 7)) ERR.mes = 'El mes no puede ser posterior al actual.';
   if (!C.ncert.trim()) ERR.ncert = 'Falta el número de certificado.';
-  else if ((CFG && CFG.certificados || []).some(x => x.ncert === C.ncert.trim())) ERR.ncert = 'Ese certificado ya está registrado.';
+  else if ((CFG && CFG.certificados || []).some(x => x.ncert === C.ncert.trim() && C.reemplaza !== 'cert:' + x.ncert)) ERR.ncert = 'Ese certificado ya está registrado.';
   if (!C.ftrat) ERR.ftrat = 'Falta la fecha de tratamiento.'; else if (C.ftrat > hoyISO()) ERR.ftrat = 'La fecha no puede ser posterior a hoy.';
-  if (!C.foto && C.mes && C.mes + '-01' >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del certificado es obligatorio.';
+  if (!C.foto && !C.fotoUrl && C.mes && C.mes + '-01' >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del certificado es obligatorio.';
   if (Object.keys(ERR).length) return pasoCert();
-  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, foto: C.foto, persona: SES.persona }, 'Certificado ' + C.ncert.trim());
+  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, foto: C.foto, fotoUrl: C.foto ? '' : (C.fotoUrl || ''), reemplaza: C.reemplaza || '', persona: SES.persona }, 'Certificado ' + C.ncert.trim());
 }
 
 // ------------------------------------------------------------------ Lote de escaneados
@@ -805,7 +806,7 @@ async function miCargar(silencioso) {
   try { const r = await api('m_tablero'); if (r.ok) { MI = r; LS.set('mi_' + SES.est, r); if (!silencioso || VISTA === 'inicio') repintarMi(); } } catch (e) {}
 }
 function repintarMi() { if (VISTA === 'inicio') inicio(); else if (MIV && MIV.f) MIV.f(); }
-const miTit = (t, sub) => '<h1>' + esc(t) + '</h1>' + (sub ? '<p class="mu" style="margin-top:-6px">' + sub + '</p>' : '');
+const miTit = (t, sub) => '<h1>' + esc(t) + '</h1>' + (sub ? '<p class="mu" style="margin-top:-6px">' + sub + '</p>' : '') + (F && F._corr && VISTA === 'mi' && MIV && MIV.f !== registros ? '<div class="notice">Estás corrigiendo un registro: al guardar, ' + (F.CASO_EDITAR || F.ID_EDITAR ? 'se actualizan sus datos.' : 'reemplaza al anterior, que queda anulado.') + '</div>' : '');
 const miVolver = (act, txt) => bar('<button class="btn sec" data-act="' + (act || 'inicio') + '">' + (txt || 'Volver al inicio') + '</button>');
 const miNivel = n => n === 'er' ? 'er' : n === 'wa' ? 'wa' : 'ok';
 const miEstTxt = { vencida: ['Vencida', 'er'], porvencer: ['Por vencer', 'wa'], sin: ['Sin registro', 'wa'], aldia: ['Al día', 'ok'] };
@@ -830,7 +831,7 @@ function inicio() {
       tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('lote', 'Enviar escaneados (lote)', 'Manifiestos o certificados en .zip o PDF') + '</div>' +
     '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' +
     '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' +
-    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Últimas registradas') + '</div>' +
+    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
@@ -862,8 +863,8 @@ const fSel = (k, t, ops) => '<div class="field">' + fLab(t) + '<select data-f="'
 const fSeg = (k, t, ops) => '<div class="field">' + fLab(t) + '<div class="seg" style="flex-wrap:wrap">' + ops.map(v => '<button type="button" class="' + (F[k] === v ? 'sel' : '') + '" data-act="fset" data-k="' + k + '" data-arg="' + esc(v) + '" style="min-width:30%">' + esc(v) + '</button>').join('') + '</div></div>';
 const fChk = (k, t, ops) => { const sel = (F[k] || '').split(' · ').filter(Boolean); return '<div class="field">' + fLab(t) + '<div class="lista" style="grid-template-columns:1fr">' + ops.map(v => '<label class="item" style="cursor:pointer;align-items:center;justify-content:flex-start"><input type="checkbox" data-fchk="' + k + '" value="' + esc(v) + '"' + (sel.indexOf(v) >= 0 ? ' checked' : '') + ' style="width:22px;height:22px"> ' + esc(v) + '</label>').join('') + '</div></div>'; };
 function fFoto(k, t, ayuda) {
-  const v = F[k], pdf = /^data:application\/pdf/.test(v || '');
-  return '<div class="field">' + fLab(t, ayuda) + (v ? '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(F[k + 'Nombre'] || '') + '</span>' : '<img src="' + v + '" alt="Foto cargada">') + '</div>' : '') +
+  const v = F[k], pdf = /^data:application\/pdf/.test(v || ''), ya = !v && F[k + 'Url'];
+  return '<div class="field">' + fLab(t, ayuda) + (ya ? '<div class="photo"><b>Archivo ya cargado</b><br><a href="' + esc(F[k + 'Url']) + '" target="_blank" rel="noopener">Ver</a> · se mantiene si no elegís otro</div>' : '') + (v ? '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(F[k + 'Nombre'] || '') + '</span>' : '<img src="' + v + '" alt="Foto cargada">') + '</div>' : '') +
     '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'c">' + (v ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'a">Elegir archivo</label></div>' +
     '<input id="mf_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfoto="' + k + '"><input id="mf_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-mfoto="' + k + '">' +
     (v ? '<button class="link" data-act="fquitar" data-k="' + k + '">Quitar</button>' : '') + '</div>';
@@ -956,7 +957,7 @@ function aguaLimpieza() {
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarLimpieza">Guardar</button>');
 }
 function guardarLimpieza() {
-  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto) return miErr('Falta la foto del formulario F-AGU-01 firmado.');
+  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario F-AGU-01 firmado.');
   if (F.PROCEDIMIENTO === 'POE propio' && !/https?:/.test(MI.poe.limpieza) && !F.poe) return miErr('Falta la copia del POE propio (es la primera vez).');
   if (F.HORAS_CERRADO && Number(F.HORAS_CERRADO) < 6) return miErr('El sistema tiene que quedar cerrado al menos 6 horas.');
   const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.poe; delete d.poeNombre; delete d._f;
@@ -978,7 +979,7 @@ function aguaAnalisis() {
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAnalisis">Guardar</button>');
 }
 function guardarAnalisis() {
-  if (!F.FECHA_TOMA) return miErr('Falta la fecha de la toma.'); if (F.RESULTADO !== 'Pendiente' && !F.foto) return miErr('Falta la foto o el PDF del informe del laboratorio.');
+  if (!F.FECHA_TOMA) return miErr('Falta la fecha de la toma.'); if (F.RESULTADO !== 'Pendiente' && !F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF del informe del laboratorio.');
   const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_analisis', d, 'Análisis de ' + F.CODIGO_PUNTO);
 }
@@ -1022,7 +1023,7 @@ function plagaReg(tipo) {
 }
 function guardarPlagaReg() {
   if (F.TIPO !== 'Recorrida' && !F.CASO) return miErr('Elegí el caso.'); if (F.TIPO === 'Recorrida' && !F.SECTOR) return miErr('Falta el sector recorrido.');
-  if (F.TIPO === 'Seguimiento' && (!F.RESULTADO || !F.DECISION)) return miErr('Falta el resultado o la decisión.'); if (!F.foto) return miErr('Falta la foto del formulario firmado.');
+  if (F.TIPO === 'Seguimiento' && (!F.RESULTADO || !F.DECISION)) return miErr('Falta el resultado o la decisión.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario firmado.');
   const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_plaga_registro', d, F.TIPO + (F.CASO ? ' de ' + F.CASO : ''));
 }
@@ -1058,10 +1059,62 @@ function docNuevo() {
   bar('<button class="btn sec" data-act="docs">Cancelar</button><button class="btn pri" data-act="guardarDoc">Guardar</button>');
 }
 function guardarDoc() {
-  if (!F.TITULO) return miErr('Falta el título.'); if (!F.foto) return miErr('Falta el archivo.');
+  if (!F.TITULO) return miErr('Falta el título.'); if (!F.foto && !F.ID_EDITAR) return miErr('Falta el archivo.');
   const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
 }
+
+// ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
+let REG = null, REGF = 'Todos';
+async function registros(fresco) {
+  VISTA = 'mi'; MIV = { f: registros }; vista('wide');
+  const tit = miTit('Mis registros', 'Lo cargado en los últimos 12 meses.');
+  if (!navigator.onLine) { $('app').innerHTML = tit + '<p class="mu">Necesitás señal para ver lo registrado en el sistema.</p>'; return miVolver(); }
+  if (fresco || !REG || REG._est !== SES.est) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
+    try { const r = await api('m_registros'); if (!r.ok) throw new Error(); REG = r; REG._est = SES.est; } catch (e) { $('app').innerHTML = tit + '<p class="mu">No se pudo leer. Probá de nuevo en un rato.</p>'; return miVolver(); } }
+  const L = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF);
+  const chip = t => '<button class="btn ' + (REGF === t ? 'pri' : 'sec') + '" style="padding:8px 14px;font-size:14px" data-act="regF" data-arg="' + t + '">' + t + '</button>';
+  $('app').innerHTML = miTit('Mis registros', 'Lo cargado en los últimos 12 meses. ' + (REG.maestra ? 'Con la clave de Higiene y Seguridad se puede corregir o anular cualquier registro.' : 'Se puede corregir o anular hasta ' + REG.dias + ' días después de la carga; después lo corrige Higiene y Seguridad.') + ' Anular no borra: el registro queda guardado como anulado, con el motivo.') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px">' + ['Todos', 'Residuos', 'Agua', 'Plagas', 'Documentos'].map(chip).join('') + '</div>' +
+    (L.length ? '<div class="lista">' + L.map(r => '<div class="item" style="flex-direction:column;align-items:stretch;gap:8px' + (r.anulado ? ';opacity:.6' : '') + '"><div><b>' + esc(r.titulo) + '</b><small>' + esc([fechaTxt(r.fecha), r.detalle, r.cargo ? 'cargó ' + r.cargo : ''].filter(Boolean).join(' · ')) + '</small>' +
+      (r.anulado ? '<small style="color:var(--er)">' + esc(r.motivo || 'Anulado') + '</small>' : !r.editable ? '<small>Ya no se puede corregir desde acá (más de ' + REG.dias + ' días).</small>' : '') + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.url ? '<a class="btn sec" style="padding:8px 12px;text-decoration:none" href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver</a>' : '') +
+      (r.editable && !r.anulado ? '<button class="btn sec" style="padding:8px 12px" data-act="regCorregir" data-arg="' + r.i + '">Corregir</button><button class="btn sec" style="padding:8px 12px" data-act="regAnular" data-arg="' + r.i + '">Anular</button>' : '') + '</div></div>').join('') + '</div>'
+      : '<p class="mu">No hay registros' + (REGF === 'Todos' ? '' : ' de ' + REGF.toLowerCase()) + ' en los últimos 12 meses.</p>') +
+    ((REGF === 'Todos' || REGF === 'Residuos') && (REG.anuladosResiduos || []).length ? '<h2>Manifiestos y certificados anulados</h2><div class="lista">' + REG.anuladosResiduos.map(a => '<div class="item"><div><b>' + esc(a.texto) + '</b><small>' + esc('Anulado el ' + fechaTxt(a.fecha) + ' · ' + a.quien + ' · ' + a.motivo) + '</small></div></div>').join('') + '</div>' : '');
+  miVolver(); window.scrollTo(0, 0);
+}
+function regAnular(i) {
+  const r = REG.registros[i]; if (!r) return;
+  $('ov').innerHTML = '<div class="sheet"><h3>Anular: ' + esc(r.titulo) + '</h3><p class="mu">El registro deja de contar, pero queda guardado como anulado, con el motivo.</p>' +
+    '<div class="field"><label for="anMot">Motivo</label><select id="anMot"><option>Cargado dos veces</option><option>Era de otro establecimiento o sitio</option><option>Datos equivocados (lo vuelvo a cargar)</option><option>Otro</option></select></div>' +
+    '<div class="field"><label for="anTxt">Detalle (opcional)</label><textarea id="anTxt" rows="2"></textarea></div><div class="notice" id="anErr" hidden style="background:var(--erbg);color:var(--er)"></div>' +
+    '<div class="grid2"><button class="btn sec" data-act="cerrarAyuda">Cancelar</button><button class="btn pri" data-act="regAnularOk" data-arg="' + i + '">Anular</button></div></div>';
+  $('ov').hidden = false;
+}
+async function regAnularOk(i) {
+  const r = REG.registros[i], mot = $('anMot').value + ($('anTxt').value.trim() ? ': ' + $('anTxt').value.trim() : ''), e = $('anErr');
+  try { const x = await api('m_anular', { tipo: r.tipo, id: r.id, motivo: mot, quien: SES.persona.nombre });
+    if (!x.ok) { e.textContent = x.mensaje || 'No se pudo anular.'; e.hidden = false; return; }
+    cerrarAyuda(); REG = null; actualizarConfig(true); miCargar(true); registros(true);
+  } catch (err) { e.textContent = 'Sin conexión: probá de nuevo cuando tengas señal.'; e.hidden = false; }
+}
+// Corregir: abre el formulario de la carga con los datos puestos. Al guardar, reemplaza al anterior (que queda anulado).
+function regCorregir(i) {
+  const r = REG.registros[i]; if (!r) return; const d = r.datos || {}, toma = ks => { const o = {}; ks.forEach(k => { if (d[k] != null && d[k] !== '') o[k] = String(d[k]); }); return o; };
+  if (r.tipo === 'manifiesto') {
+    const res = corrCfg().map(x => { const e = (d.res || []).find(z => z.corriente === x.c), n = nuevoRes(x.c, d.sitio); if (e) Object.assign(n, { cant: String(e.cant == null ? '' : e.cant), tam: String(e.tam == null ? '' : e.tam), vol: String(e.vol == null ? '' : e.vol), uni: e.uni || 'dm³' }); return n; });
+    return nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, _fecha: String(d.fecha).split('-').reverse().join('/'), res: res, firma: d.firma || '', original: d.original || '', foto: '', fotoUrl: r.url || '', obs: d.obs || '', reemplaza: r.id, _nroOrig: d.nro, _sitioOrig: d.sitio });
+  }
+  if (r.tipo === 'certificado') { const m = String(d.mes || '').split('-'); return nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: m[1] || '', mesA: m[0] || '', mes: d.mes, ncert: d.ncert, ftrat: d.ftrat, _ftrat: d.ftrat ? d.ftrat.split('-').reverse().join('/') : '', foto: '', fotoUrl: r.url || '', reemplaza: r.id }); }
+  const base = { _corr: true, fotoUrl: r.url || '', reemplaza: r.id };
+  if (r.tipo === 'limpieza') { F = Object.assign({ _f: 'lim' }, toma(['CODIGO_TANQUE', 'FECHA', 'PROCEDIMIENTO', 'HORA_CORTE', 'HORA_REHABILITACION', 'HORAS_CERRADO', 'DESINFECTANTE', 'CONCENTRACION_GL', 'VOLUMEN_L', 'CLORO_PPM', 'TURBIDEZ_NTU', 'TAPA', 'MUESTRA_TOMADA', 'OBSERVACIONES']), base); return aguaLimpieza(); }
+  if (r.tipo === 'analisis') { F = Object.assign({ _f: 'ana' }, toma(['CODIGO_PUNTO', 'FECHA_TOMA', 'TIPO', 'MOTIVO', 'LABORATORIO', 'CLORO_PPM', 'RESULTADO', 'FECHA_RESULTADO', 'OBSERVACIONES']), base); return aguaAnalisis(); }
+  if (r.tipo === 'plaga') { F = Object.assign({ _f: d.TIPO }, toma(['TIPO', 'CASO', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'SECTOR', 'ACCIONES', 'QUIMICO', 'PRODUCTO', 'RESULTADO', 'DECISION', 'PROXIMA_REVISION', 'OBSERVACIONES']), base); return plagaReg(d.TIPO); }
+  if (r.tipo === 'caso') { F = Object.assign({ _f: 'avi' }, toma(['ESTABLECIMIENTO', 'SITIO', 'SECTOR', 'FECHA', 'PLAGA', 'EVIDENCIA', 'CANTIDAD', 'OBSERVACIONES']), { _corr: true, fotoUrl: r.url || '', CASO_EDITAR: r.id }); return plagaAviso(); }
+  if (r.tipo === 'documento') { F = Object.assign({ _f: 'doc' }, toma(['TEMA', 'TIPO', 'CODIGO', 'TITULO', 'VERSION', 'FECHA_VIGENCIA', 'OBSERVACIONES']), { _corr: true, fotoUrl: r.url || '', ID_EDITAR: r.id }); return docNuevo(); }
+}
+Object.assign(ACT, { registros: () => { F = null; registros(true); }, regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
 
 // ------------------------------------------------------------------ Acciones y campos
 Object.assign(ACT, {
