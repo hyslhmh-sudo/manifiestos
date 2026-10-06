@@ -312,7 +312,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-05 · 9';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-06 · 10';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -829,6 +829,7 @@ async function diagForm(cod, id) {
   DG = { cod: cod, nombre: D.nombre || DCFG.nombre(cod), D: D, R: R, id: D.actual ? D.actual.ID_DIAG : '', estado: D.actual ? D.actual.ESTADO : 'Nuevo', tab: '', sucio: false, subiendo: 0,
     cab: D.actual ? { FECHA: String(D.actual.FECHA).slice(0, 10), MODALIDAD: D.actual.MODALIDAD, RELEVADO_POR: D.actual.RELEVADO_POR, ENTREVISTADO: D.actual.ENTREVISTADO, OBSERVACIONES: D.actual.OBSERVACIONES }
       : { FECHA: hoyISO(), MODALIDAD: DCFG.modo === 'red' ? 'Referente (en línea)' : 'Visita', RELEVADO_POR: DCFG.modo === 'red' ? '' : 'Belén Pellegrini', ENTREVISTADO: '', OBSERVACIONES: '' } };
+  Object.keys(D.sugerencias || {}).forEach(id => { if (D.sugerencias[id] && !R['|' + id] && D.items.some(i => i.ID === id)) R['|' + id] = { resp: '', valor: D.sugerencias[id], obs: '', fotos: [] }; });   // categoría sugerida (se puede cambiar)
   diagPintar();
 }
 const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
@@ -968,6 +969,10 @@ async function diagGuardar(estado, silencioso) {
   if (!r || !r.ok) { toast((r && r.mensaje) || 'No se pudo guardar.'); return false; }
   DG.id = r.id; DG.estado = r.estado; DG.sucio = false;
   if (DCFG.alGuardar) DCFG.alGuardar(r);
+  if (r.perfil && r.perfil.aviso) alert(r.perfil.aviso);
+  if (r.estado === 'Cerrado' && r.perfil && r.perfil.categoria && DCFG.modo !== 'red') {
+    if (confirm('Perfil guardado en la BASE COMÚN: categoría ' + r.perfil.categoria + ' · módulos ' + r.perfil.modulos + '.\n\n¿Creás ahora el relevamiento inicial (la auditoría de campo de la categoría)?')) {
+      try { const a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); if (a && a.ok) { AU.cod = DG.cod; location.hash = '#aud/' + encodeURIComponent(a.id); return true; } toast((a && a.mensaje) || 'No se pudo crear el relevamiento.'); } catch (e) {} } }
   if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
   return true;
 }
@@ -1294,7 +1299,7 @@ async function audLista() {
         '<td>' + esc(a.RESPONDIDOS || 0) + ' / ' + esc(a.PUNTOS || 0) + '</td><td class="peq">' + (a.CUMPLIMIENTO ? '<b>' + esc(a.CUMPLIMIENTO) + '</b> · ' : '') + esc(a.RESULTADO) + '</td><td>' + audChip(a.ESTADO) + '</td>' +
         '<td style="white-space:nowrap">' + (/planificada|en curso/i.test(a.ESTADO) ? '<a class="link" href="#aud/' + encodeURIComponent(a.ID_AUD) + '">Continuar</a>' : '<a class="link" href="#audr/' + encodeURIComponent(a.ID_AUD) + '">Ver resultado</a>') + '</td></tr>').join('') + '</tbody></table>'
       : '<div class="vacio">Todavía no hay auditorías de este establecimiento. Empezá con «Nueva auditoría».</div>') + '</section>' +
-    '<section class="card peq mu">Programa sugerido: documental cada trimestre (AUD-RES-DOC-001); interna del referente cada trimestre; verificación de HyS cada semestre; seguimiento al vencer una acción. El catálogo de puntos se edita en el LIBRO DIAGNÓSTICO › AUD_ITEMS.</section>');
+    '<section class="card peq mu">Auditoría cada tres meses en todas las categorías (1 puesto sanitario · 2 ambulatorio · 3 hospital rural · 4 subzonal · 5 zonal o regional); cambia la lista y la modalidad. Por ahora, presencial solo en el Área Programática Trelew; en las demás áreas, «Verificación remota». El acopio de 24 h (F3, G4) va como observación, con la Res. MSN 134/2016 como criterio estandarizado. El catálogo se edita en el LIBRO DIAGNÓSTICO › AUD_ITEMS_PROPUESTA.</section>');
   $('auEst').onchange = e => { AU.cod = e.target.value; LS.set('audCod', AU.cod); audLista(); };
 }
 async function audNueva() {
@@ -1303,12 +1308,14 @@ async function audNueva() {
   if (!O.ok) return toast(O.mensaje);
   const hoy = new Date().toISOString().slice(0, 10);
   marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>Planificar una auditoría</h1><span class="mu">' + esc(AU.cod) + ' · El plan fija alcance, criterios y fecha antes de ir al terreno.</span></div></div>' +
+    (O.categoriaTxt ? '<div class="aviso">Categoría <b>' + esc(O.categoria + ' · ' + O.categoriaTxt) + '</b> · módulos: ' + esc((O.modulos || []).join(', ') || 'ninguno') +
+      '. Los puntos se eligen solos según la categoría y los módulos de cada lugar; se corrigen en la BASE COMÚN (CATEGORIA_AUDITORIA y MODULOS).</div>' : '') +
     '<section class="card" style="display:flex;flex-direction:column;gap:14px"><div class="grid g3">' +
       '<label class="f">Tipo<select class="c" id="anTipo">' + O.tipos.map(t => '<option' + (t === 'De campo' ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>' +
       '<label class="f">Fecha<input class="c" type="date" id="anFecha" value="' + hoy + '"></label>' +
       '<label class="f">Auditor/a<input class="c" id="anAud" value="Belén Pellegrini"></label></div>' +
       '<label class="f">Personas auditadas<input class="c" id="anAudit" placeholder="Coordinación de Servicios Generales, jefaturas, referente de residuos…"></label>' +
-      '<fieldset class="card" style="margin:0"><legend class="peq" style="font-weight:700">Lugares</legend><div class="grid g3 peq">' + O.lugares.map(l => '<label style="display:flex;gap:8px;align-items:center;min-height:32px"><input type="checkbox" class="anLug" value="' + esc(l) + '"' + (l === 'Establecimiento' ? '' : ' checked') + '>' + esc(l) + '</label>').join('') + '</div>' +
+      '<fieldset class="card" style="margin:0"><legend class="peq" style="font-weight:700">Lugares</legend><div class="grid g3 peq">' + O.lugares.map(l => { const pf = (O.perfiles || []).find(x => x.lugar === l); return '<label style="display:flex;gap:8px;align-items:center;min-height:32px"><input type="checkbox" class="anLug" value="' + esc(l) + '"' + (l === 'Establecimiento' ? '' : ' checked') + '>' + esc(l) + (pf && l !== 'Establecimiento' ? ' <span class="mu">(cat. ' + pf.cat + ')</span>' : '') + '</label>'; }).join('') + '</div>' +
         '<div class="mu peq">«Establecimiento» es para los puntos documentales (inscripción, DDJJ, manifiestos, registros).</div></fieldset>' +
       '<fieldset class="card" style="margin:0"><legend class="peq" style="font-weight:700">Ejes</legend><div class="grid g3 peq">' + O.ejes.map(e => '<label style="display:flex;gap:8px;align-items:center;min-height:32px"><input type="checkbox" class="anEje" value="' + esc(e.eje) + '" checked>' + esc(e.eje) + ' <span class="mu">(' + e.puntos + ')</span></label>').join('') + '</div></fieldset>' +
       '<label style="display:flex;gap:8px;align-items:center" class="peq"><input type="checkbox" id="anCorta"> Usar solo la lista corta (siempre en la auditoría interna del referente)</label>' +
@@ -1340,14 +1347,17 @@ function audPintar() {
       P.map((p, i) => p.eje !== AU.eje ? '' : (() => { const r = resp(p), sel = r.respuesta || '';
         return '<article class="card" data-i="' + i + '" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>' + esc(p.codigo) + ' · ' + esc(p.texto) + '</b>' + (p.critico ? '<span class="chip er">Crítico</span>' : '') + '</div>' +
           '<div class="mu peq">' + esc(p.lugar) + (p.criterio ? ' · Criterio: ' + esc(p.criterio) : '') + (p.ayuda ? ' · ' + esc(p.ayuda) : '') + (p.evidencia ? ' · Evidencia: ' + esc(p.evidencia) : '') + '</div>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + R.opciones.map(k => { const o = AUD_OP[k], on = sel === k; return '<button class="btn au-op" data-i="' + i + '" data-r="' + k + '" aria-pressed="' + on + '" style="min-height:44px;border:1px solid ' + (on ? o[2] : 'var(--ln)') + ';background:' + (on ? o[1] : '#fff') + ';color:' + (on ? o[2] : 'var(--tx)') + '">' + o[0] + '</button>'; }).join('') + '</div>' +
-          (sel === 'NC' || sel === 'Obs' || r.nota || r.foto ? '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start"><label class="f" style="flex:1 1 300px">Qué se observó<textarea class="c au-nota" data-i="' + i + '">' + esc(r.nota || '') + '</textarea></label>' +
+          (p.soloObs ? '<div class="peq" style="color:#4A3A73">Se registra como observación: no suma ni resta en el cumplimiento.</div>' : '') +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (p.opciones || R.opciones).map(k => { const o = AUD_OP[k], on = sel === k; return '<button class="btn au-op" data-i="' + i + '" data-r="' + k + '" aria-pressed="' + on + '" style="min-height:44px;border:1px solid ' + (on ? o[2] : 'var(--ln)') + ';background:' + (on ? o[1] : '#fff') + ';color:' + (on ? o[2] : 'var(--tx)') + '">' + o[0] + '</button>'; }).join('') + '</div>' +
+          (sel === 'NC' || sel === 'Obs' || r.nota || r.foto || p.soloObs ? '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start"><label class="f" style="flex:1 1 300px">Qué se observó<textarea class="c au-nota" data-i="' + i + '"' + (p.soloObs ? ' rows="4"' : '') + '>' + esc(r.nota || (p.soloObs ? p.precarga || '' : '')) + '</textarea></label>' +
             '<div class="peq">' + (r.foto ? '<a href="' + esc(r.foto) + '" target="_blank" rel="noopener">Ver foto</a> · ' : '') + '<label class="link" style="cursor:pointer">' + (r.foto ? 'Cambiar foto' : '+ Agregar foto') + '<input type="file" accept="image/*" capture="environment" class="au-foto" data-i="' + i + '" hidden></label></div></div>' : '') + '</article>'; })()).join('') +
       '<div style="position:sticky;bottom:0;background:rgba(244,247,248,.96);border-top:1px solid var(--ln);padding:10px 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;align-items:center"><span class="mu peq" id="auSucio">' + (Object.keys(AU.cambios).length ? 'Hay respuestas sin guardar.' : '') + '</span>' +
         '<button class="btn sec" id="auGuardar">Guardar</button><button class="btn pri" id="auCerrar">Terminar y ver resultado</button></div></section></div>');
   const fija = (i, cambio) => { const p = P[i], k = p.codigo + '|' + p.lugar; AU.cambios[k] = Object.assign({ codigo: p.codigo, lugar: p.lugar }, p.r || {}, AU.cambios[k] || {}, cambio); };
   document.querySelectorAll('[data-eje]').forEach(b => b.onclick = () => { AU.eje = b.dataset.eje; audPintar(); window.scrollTo(0, 0); });
-  document.querySelectorAll('.au-op').forEach(b => b.onclick = () => { const y = window.scrollY; fija(+b.dataset.i, { respuesta: b.dataset.r }); audPintar(); window.scrollTo(0, y); });
+  document.querySelectorAll('.au-op').forEach(b => b.onclick = () => { const y = window.scrollY, i = +b.dataset.i, p = P[i], r = resp(p), c = { respuesta: b.dataset.r };
+    if (p.soloObs && b.dataset.r === 'Obs' && !r.nota) { const t = document.querySelector('.au-nota[data-i="' + i + '"]'); c.nota = t ? t.value : (p.precarga || ''); }
+    fija(i, c); audPintar(); window.scrollTo(0, y); });
   document.querySelectorAll('.au-nota').forEach(t => t.onchange = () => { fija(+t.dataset.i, { nota: t.value }); $('auSucio').textContent = 'Hay respuestas sin guardar.'; });
   document.querySelectorAll('.au-foto').forEach(inp => inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return; const i = +inp.dataset.i; toast('Subiendo la foto…');
@@ -1380,7 +1390,7 @@ async function audResultado(id) {
   const colorClase = c => /mayor/.test(c) ? 'er' : /menor/.test(c) ? 'wa' : /bservaci/.test(c) ? 'pa' : 'gr';
   marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>Resultado · ' + esc(A.TIPO) + ' · ' + esc(A.ESTABLECIMIENTO) + '</h1><span class="mu">' + esc(A.ID_AUD) + ' · ' + fechaTxt(A.FECHA) + ' · ' + esc(A.ORIGEN) + (R.anterior ? ' · comparada con ' + esc(R.anterior) : '') + '</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sec" href="#aud/' + encodeURIComponent(A.ID_AUD) + '">Ver respuestas</a>' + (A.ESTADO === 'Para verificar' ? '<button class="btn pri" id="arVerif">Verificar (HyS)</button>' : '') + '<button class="btn pri" id="arPlan">Pasar al plan de acción</button></div></div>' +
-    '<div class="grid g4"><div class="card kpi"><span>RESULTADO</span><b style="font-size:20px">' + esc(A.RESULTADO || '—') + '</b><small class="mu">' + audChip(A.ESTADO) + '</small></div><div class="card kpi"><span>CUMPLIMIENTO</span><b>' + esc(A.CUMPLIMIENTO || '—') + '</b><small class="mu">conformes sobre los que aplican</small></div>' +
+    '<div class="grid g4"><div class="card kpi"><span>RESULTADO</span><b style="font-size:20px">' + esc(A.RESULTADO || '—') + '</b><small class="mu">' + audChip(A.ESTADO) + '</small></div><div class="card kpi"><span>CUMPLIMIENTO</span><b>' + esc(A.CUMPLIMIENTO || '—') + '</b><small class="mu">' + (A.CRITICOS_OK ? 'críticos cumplidos: ' + esc(A.CRITICOS_OK) : 'conformes sobre los que aplican') + (A.CATEGORIA ? ' · cat. ' + esc(String(A.CATEGORIA).split(' ')[0]) : '') + '</small></div>' +
       '<div class="card kpi"><span>NO CONFORMIDADES</span><b' + (+A.NC_MAYOR ? ' style="color:#9B2C22"' : '') + '>' + ((+A.NC_MAYOR || 0) + (+A.NC_MENOR || 0)) + '</b><small class="mu">' + (A.NC_MAYOR || 0) + ' mayores · ' + (A.NC_MENOR || 0) + ' menores</small></div><div class="card kpi"><span>OBSERVACIONES</span><b>' + (A.OBSERVACIONES_N || 0) + '</b><small class="mu">' + (A.MEJORAS_N || 0) + ' oportunidades de mejora</small></div></div>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2>Cumplimiento por eje</h2>' + R.ejes.map(e => '<div style="display:grid;grid-template-columns:minmax(160px,240px) minmax(0,1fr) 60px;gap:12px;align-items:center" class="peq"><span>' + esc(e.eje) + '</span>' +
       '<div style="position:relative;height:12px;background:var(--gr);border-radius:999px"><div style="position:absolute;left:0;top:0;height:12px;width:' + e.pct + '%;background:' + (e.pct < 70 ? '#B45309' : 'var(--az)') + ';border-radius:999px"></div>' + (e.anterior != null ? '<div title="Anterior: ' + e.anterior + ' %" style="position:absolute;top:-3px;left:calc(' + e.anterior + '% - 1px);width:2px;height:18px;background:var(--pa)"></div>' : '') + '</div><b style="text-align:right">' + e.pct + ' %</b></div>').join('') +
