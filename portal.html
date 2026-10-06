@@ -312,7 +312,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-06 · 11';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-06 · 12';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -428,6 +428,7 @@ async function inicio(fresco) {
       kpi('#agua', 'PLAGAS', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
       kpi('#bib', 'DOCUMENTOS', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
       kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
+    modulosHtml(TB.modulos, card) +
     '<div class="tb2" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr)">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) +
       card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">' +
@@ -441,6 +442,21 @@ async function inicio(fresco) {
   $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
 }
 let CAMBIO_RES = false;
+
+// Panel de gestión (Fase 3): lo que dejan resumido cada noche los otros módulos. Solo lee; no recalcula nada.
+function modulosHtml(M, card) {
+  if (!M || M.error) return '';
+  const P = M.personal || {}, C = M.capacitaciones || {}, D = M.documentos || {};
+  const fila = (t, v, col) => '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span class="mu peq">' + esc(t) + '</span><b style="font-size:18px' + (col ? ';color:' + col : '') + '">' + esc(String(v == null ? '—' : v)) + '</b></div>';
+  const pers = fila('Propuestas para revisar en la Bandeja', P.bandeja || 0, P.bandeja ? '#8A5200' : '') + fila('Diferencias entre la base de personal y capacitaciones', P.diferencias || 0) +
+    (P.sinAsignar != null ? fila('Personas sin establecimiento asignado', P.sinAsignar, P.sinAsignar ? '#8A5200' : '') : '') +
+    (P.cruce ? '<span class="mu peq">' + esc(P.cruce.replace(/^Último cruce: /, 'Cruce: ').split(' · ')[0]) + ' · detalle en el libro general › CRUCE_PERSONAL</span>' : '<span class="mu peq">El cruce con capacitaciones todavía no corrió.</span>');
+  const caps = C.error ? '<div class="mu">' + esc(C.error) + '</div>' : fila('Próximos turnos con capacitación', C.proximas || 0) +
+    ((C.lista || []).length ? '<div style="display:flex;flex-direction:column;gap:4px">' + C.lista.map(t => '<div class="peq"><b>' + esc(fechaTxt(t.fecha)) + (t.hora ? ' · ' + esc(t.hora) : '') + '</b> · ' + esc(t.cap) + (t.lugar ? '<span class="mu"> · ' + esc(t.lugar) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">No hay capacitaciones agendadas.</span>');
+  const docs = fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '');
+  return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
+    card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', null, caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
+}
 
 // ------------------------------------------------------------------ Agua y plagas (toda la red)
 async function agua() {
