@@ -189,16 +189,19 @@ function arPintar() {
     '<div style="height:8px;background:var(--gr);border-radius:999px;margin-top:6px"><div style="width:' + (P.length ? Math.round(hechos * 100 / P.length) : 0) + '%;height:8px;background:var(--az);border-radius:999px"></div></div></div></div>' +
     ejes.map(e => '<h2 style="margin-top:6px">' + esc(e.replace(/^[A-Z] · /, '')) + '</h2>' + P.map((p, i) => p.eje !== e ? '' : (() => { const r = arResp(p);
       return '<article class="card" style="display:flex;flex-direction:column;gap:10px"><b style="font-size:16px;line-height:1.35">' + esc(p.texto) + '</b><span class="mu peq">' + esc(p.lugar) + (p.ayuda ? ' · ' + esc(p.ayuda) : '') + '</span>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">' + AR_OP.map(([k, t, c]) => '<button class="btn ' + (r.respuesta === k ? 'pri' : 'sec') + ' ar-op" data-i="' + i + '" data-r="' + k + '" style="min-height:48px;padding:6px">' + t + '</button>').join('') + '</div>' +
+        (p.soloObs ? '<label class="f">Lo que observaste<textarea class="c ar-nota" rows="4" data-i="' + i + '" data-obs="1">' + esc(r.nota || p.precarga || '') + '</textarea></label>' : '') +
+        '<div style="display:grid;grid-template-columns:repeat(' + (p.soloObs ? 2 : 3) + ',minmax(0,1fr));gap:8px">' + (p.soloObs ? [['Obs', 'Anotado', 'pa'], ['NA', 'No aplica', 'gr']] : AR_OP).map(([k, t, c]) => '<button class="btn ' + (r.respuesta === k ? 'pri' : 'sec') + ' ar-op" data-i="' + i + '" data-r="' + k + '" style="min-height:48px;padding:6px">' + t + '</button>').join('') + '</div>' +
         (r.respuesta === 'NC' ? '<div style="display:flex;flex-direction:column;gap:8px;background:var(--wabg);border-radius:10px;padding:10px">' +
-          (r.foto ? '<a href="' + esc(r.foto) + '" target="_blank" rel="noopener">Foto cargada ✓</a>' : '<span class="peq" style="font-weight:700;color:var(--wa)">Falta la foto</span>') +
+          (r.foto ? '<a href="' + esc(r.foto) + '" target="_blank" rel="noopener">Foto cargada ✓</a>' : '<span class="peq" style="color:var(--wa)">Contá qué viste o sacá una foto (la foto es opcional, aunque ayuda mucho).</span>') +
           '<label class="btn sec" style="min-height:44px;cursor:pointer;text-align:center">' + (r.foto ? 'Cambiar foto' : 'Sacar foto') + '<input type="file" accept="image/*" capture="environment" class="ar-foto" data-i="' + i + '" hidden></label>' +
-          '<label class="f">Qué viste (opcional)<textarea class="c ar-nota" data-i="' + i + '">' + esc(r.nota || '') + '</textarea></label></div>' : '') + '</article>'; })()).join('')).join('') +
+          '<label class="f">Qué viste<textarea class="c ar-nota" data-i="' + i + '">' + esc(r.nota || '') + '</textarea></label></div>' : '') + '</article>'; })()).join('')).join('') +
     '<div style="position:sticky;bottom:0;background:rgba(244,247,248,.97);border-top:1px solid var(--ln);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center"><span class="mu peq">' + (pend ? 'Guardado en este celular; falta enviarlo.' : '') + '</span>' +
       '<button class="btn sec" id="arGuardar" style="min-height:48px">Guardar</button><button class="btn pri" id="arEnviar" style="min-height:48px">Enviar a Higiene y Seguridad</button></div>';
   const fija = (i, c) => { const p = P[i], k = p.codigo + '|' + p.lugar; AR.cambios[k] = Object.assign({ codigo: p.codigo, lugar: p.lugar }, arResp(p), c); LS.set('ar_' + AR.id, AR.cambios); };
   $('arVolver').onclick = arLista;
-  document.querySelectorAll('.ar-op').forEach(b => b.onclick = () => { const y = window.scrollY; fija(+b.dataset.i, { respuesta: b.dataset.r }); arPintar(); window.scrollTo(0, y); });
+  document.querySelectorAll('.ar-op').forEach(b => b.onclick = () => { const y = window.scrollY, i = +b.dataset.i, c = { respuesta: b.dataset.r };
+    if (P[i].soloObs && b.dataset.r === 'Obs') { const t = document.querySelector('.ar-nota[data-i="' + i + '"]'); c.nota = t ? t.value : (P[i].precarga || ''); }
+    fija(i, c); arPintar(); window.scrollTo(0, y); });
   document.querySelectorAll('.ar-nota').forEach(t => t.onchange = () => fija(+t.dataset.i, { nota: t.value }));
   document.querySelectorAll('.ar-foto').forEach(inp => inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return; const i = +inp.dataset.i; toast('Subiendo la foto…');
@@ -209,7 +212,7 @@ function arPintar() {
     const L = Object.values(AR.cambios).filter(c => c.respuesta).map(c => ({ codigo: c.codigo, lugar: c.lugar, respuesta: c.respuesta, nota: c.nota || '', foto: c.foto || '' }));
     if (!L.length) return true;
     const x = await post('a_responder', { id: AR.id, respuestas: L }); if (!x.ok) { toast(x.mensaje); return false; }
-    if (x.faltaEvidencia && x.faltaEvidencia.length) { toast('Falta la foto en ' + x.faltaEvidencia.length + ' pregunta(s) marcada(s) «No se cumple».'); return false; }
+    if (x.faltaEvidencia && x.faltaEvidencia.length) { toast('Contá qué viste o sacá una foto en ' + x.faltaEvidencia.length + ' pregunta(s) marcada(s) «No se cumple».'); return false; }
     AR.cambios = {}; LS.del('ar_' + AR.id); return true;
   };
   $('arGuardar').onclick = async () => { $('arGuardar').disabled = true; try { if (await subir()) { toast('Guardado.'); arAbrir(AR.id); return; } } catch (e) { toast('Sin señal: queda guardado en este celular.'); } $('arGuardar').disabled = false; };
@@ -238,6 +241,7 @@ async function diagForm(cod, id) {
   DG = { cod: cod, nombre: D.nombre || DCFG.nombre(cod), D: D, R: R, id: D.actual ? D.actual.ID_DIAG : '', estado: D.actual ? D.actual.ESTADO : 'Nuevo', tab: '', sucio: false, subiendo: 0,
     cab: D.actual ? { FECHA: String(D.actual.FECHA).slice(0, 10), MODALIDAD: D.actual.MODALIDAD, RELEVADO_POR: D.actual.RELEVADO_POR, ENTREVISTADO: D.actual.ENTREVISTADO, OBSERVACIONES: D.actual.OBSERVACIONES }
       : { FECHA: hoyISO(), MODALIDAD: DCFG.modo === 'red' ? 'Referente (en línea)' : 'Visita', RELEVADO_POR: DCFG.modo === 'red' ? '' : 'Belén Pellegrini', ENTREVISTADO: '', OBSERVACIONES: '' } };
+  Object.keys(D.sugerencias || {}).forEach(id => { if (D.sugerencias[id] && !R['|' + id] && D.items.some(i => i.ID === id)) R['|' + id] = { resp: '', valor: D.sugerencias[id], obs: '', fotos: [] }; });   // categoría sugerida (se puede cambiar)
   diagPintar();
 }
 const diagSoloLectura = () => DCFG.modo === 'red' ? /^(Enviado|Cerrado)$/.test(DG.estado) : DG.estado === 'Cerrado';
