@@ -848,7 +848,7 @@ function inicio() {
       tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' +
     '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' +
     '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' +
-    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
+    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
@@ -1056,6 +1056,14 @@ function formularios() {
     (MI.carpeta ? '<h2>Carpeta del establecimiento</h2><div class="menu"><a class="big" href="' + esc(MI.carpeta) + '" target="_blank" rel="noopener" style="text-decoration:none"><b>Abrir la carpeta en Drive</b><span>DDJJ, informes, fotos de las cargas y documentos propios</span></a></div>' : '');
   miVolver(); window.scrollTo(0, 0);
 }
+function contratos() {
+  VISTA = 'mi'; MIV = { f: contratos }; vista('wide'); if (miSinDatos()) return;
+  const L = MI.contratos || [], grupos = [...new Set(L.map(f => f.grupo))];
+  $('app').innerHTML = miTit('Contratos y documentación', 'Documentos compartidos por Higiene y Seguridad: contratos de los servicios y otra documentación de consulta. Solo lectura.') +
+    (L.length ? grupos.map(g => '<h2>' + esc(g) + '</h2><div class="lista">' + L.filter(f => f.grupo === g).map(f => '<div class="item"><div><b>' + esc(f.nombre) + '</b><small><a href="' + esc(f.ver) + '" target="_blank" rel="noopener">Ver</a> · actualizado ' + esc(fechaTxt(f.fecha)) + '</small></div><a class="btn pri" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(f.url) + '" target="_blank" rel="noopener">Descargar</a></div>').join('') + '</div>').join('')
+      : '<p class="mu">' + esc(MI.contratosError || 'Todavía no hay documentos en la carpeta.') + '</p>');
+  miVolver(); window.scrollTo(0, 0);
+}
 const TEMAS = ['Residuos', 'Agua', 'Plagas', 'Seguridad', 'Otro'];
 function docs() {
   VISTA = 'mi'; MIV = { f: docs }; vista('wide'); if (miSinDatos()) return;
@@ -1165,7 +1173,7 @@ Object.assign(ACT, {
   irDiag: () => irDiag(), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
   aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
-  guardarPlagaReg: () => guardarPlagaReg(), formularios: () => formularios(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
+  guardarPlagaReg: () => guardarPlagaReg(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
   fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); },
   soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
 });
