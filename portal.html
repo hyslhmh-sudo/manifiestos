@@ -312,7 +312,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-06 · 10';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-06 · 11';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -1299,8 +1299,24 @@ async function audLista() {
         '<td>' + esc(a.RESPONDIDOS || 0) + ' / ' + esc(a.PUNTOS || 0) + '</td><td class="peq">' + (a.CUMPLIMIENTO ? '<b>' + esc(a.CUMPLIMIENTO) + '</b> · ' : '') + esc(a.RESULTADO) + '</td><td>' + audChip(a.ESTADO) + '</td>' +
         '<td style="white-space:nowrap">' + (/planificada|en curso/i.test(a.ESTADO) ? '<a class="link" href="#aud/' + encodeURIComponent(a.ID_AUD) + '">Continuar</a>' : '<a class="link" href="#audr/' + encodeURIComponent(a.ID_AUD) + '">Ver resultado</a>') + '</td></tr>').join('') + '</tbody></table>'
       : '<div class="vacio">Todavía no hay auditorías de este establecimiento. Empezá con «Nueva auditoría».</div>') + '</section>' +
+    '<section class="card" id="auInf"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>Informes trimestrales</b><div class="mu peq">Un informe por trimestre con todas las auditorías cerradas: Doc editable y PDF, con gráficos, cinco porqués, Ishikawa, FODA y ciclo de Deming cuando corresponden.</div></div><button class="btn" id="auInfVer">Ver trimestres</button></div><div id="auInfL"></div></section>' +
     '<section class="card peq mu">Auditoría cada tres meses en todas las categorías (1 puesto sanitario · 2 ambulatorio · 3 hospital rural · 4 subzonal · 5 zonal o regional); cambia la lista y la modalidad. Por ahora, presencial solo en el Área Programática Trelew; en las demás áreas, «Verificación remota». El acopio de 24 h (F3, G4) va como observación, con la Res. MSN 134/2016 como criterio estandarizado. El catálogo se edita en el LIBRO DIAGNÓSTICO › AUD_ITEMS_PROPUESTA.</section>');
   $('auEst').onchange = e => { AU.cod = e.target.value; LS.set('audCod', AU.cod); audLista(); };
+  $('auInfVer').onclick = audInformes;
+}
+async function audInformes() {
+  $('auInfL').innerHTML = '<p class="mu peq">Buscando trimestres…</p>';
+  let T; try { T = await api('p_informe_trim_op', { cod: AU.cod }); } catch (e) { return; }
+  if (!T.ok || !T.trimestres.length) { $('auInfL').innerHTML = '<p class="mu peq">' + esc((T && T.mensaje) || 'Todavía no hay auditorías cerradas para armar un informe.') + '</p>'; return; }
+  $('auInfL').innerHTML = '<table><thead><tr><th>Trimestre</th><th>Auditorías cerradas</th><th>Informe</th><th></th></tr></thead><tbody>' + T.trimestres.map(t => '<tr><td>' + esc(t.texto) + '</td><td>' + t.auditorias + '</td><td class="peq">' +
+    (t.codigo ? esc(t.codigo) + (t.doc ? ' · <a class="link" href="' + esc(t.doc) + '" target="_blank" rel="noopener">Doc</a>' : '') + (t.pdf ? ' · <a class="link" href="' + esc(t.pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') : '<span class="mu">sin informe</span>') +
+    '</td><td><button class="btn peq auInfGen" data-k="' + esc(t.clave) + '">' + (t.doc ? 'Nueva revisión' : 'Generar informe') + '</button></td></tr>').join('') + '</tbody></table>';
+  document.querySelectorAll('.auInfGen').forEach(btn => btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Generando… (hasta 2 minutos)';
+    try { const r = await api('p_informe_trim', { cod: AU.cod, trim: btn.dataset.k }, 300000);
+      if (!r.ok) { toast(r.mensaje || 'No se pudo generar el informe.'); btn.disabled = false; btn.textContent = 'Generar informe'; return; }
+      toast('Informe ' + r.codigo + ' generado.' + (r.notasAlPie ? '' : ' Las referencias quedaron al final (sin notas al pie).')); window.open(r.doc, '_blank'); audInformes();
+    } catch (e) { btn.disabled = false; btn.textContent = 'Generar informe'; } });
 }
 async function audNueva() {
   cargando('#aud', 'Preparando el plan…');
