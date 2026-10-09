@@ -129,6 +129,13 @@ nav.lat .titu { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color:
 }
 
 nav.lat .grp { color: #fff; padding: 10px 10px 4px; font-size: 14px; font-weight: 700; }
+nav.lat a.sub.on { color: var(--az); font-weight: 700; }
+nav.lat .busca input { width: 100%; box-sizing: border-box; margin: 4px 0 10px; padding: 9px 10px; border-radius: 8px; border: 0; font: inherit; font-size: 13.5px; }
+nav.lat .titu.mod { color: #A9C6D1; font-size: 11.5px; letter-spacing: .8px; padding: 14px 10px 2px; }
+.sinTab td, .sinTab th { padding: 8px 10px; text-align: left; vertical-align: top; border-top: 1px solid #EEF2F4; font-size: 13px; }
+.sinTab tr.cl { cursor: pointer; } .sinTab tr.cl:hover { background: #F4F8FA; }
+.dl { display: grid; grid-template-columns: minmax(150px, max-content) 1fr; gap: 6px 16px; font-size: 14px; } .dl dt { color: var(--mu); } .dl dd { margin: 0; }
+.busca2 { display: flex; gap: 8px; flex-wrap: wrap; } .busca2 input { flex: 1 1 240px; }
 </style>
 </head>
 <body>
@@ -149,6 +156,8 @@ let FICHAS = {};
 const RESPALDO = /googleusercontent\.com$/.test(location.hostname);   // portal servido por Google (sin GitHub)
 const DIAG_URL = RESPALDO ? API_URL + '?p=diagnostico' : 'https://hyslhmh-sudo.github.io/manifiestos/diagnostico.html';
 const APP_URL = RESPALDO ? API_URL + '?p=app' : 'https://hyslhmh-sudo.github.io/manifiestos/';
+const CAP_URL = 'https://docs.google.com/spreadsheets/d/1rrYVwT83jGfPTYvgIxH9eSaVl1apqmwcoExCvyEDHSw/edit';   // módulo 7 · Capacitaciones (su planilla; tiene su propio panel)
+let BUS = { q: '', r: null };
 const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
   ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
 // Informes del diagnóstico (Google Doc editable + PDF)
@@ -231,10 +240,15 @@ function marco(activo, contenido) {
   const en = RES && RES.enlaces || {};
   const inf = (h, ico, t) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + '"><span class="ms" aria-hidden="true">' + ico + '</span>' + t + '</a>';
   $('raiz').innerHTML = '<div class="app"><nav class="lat" id="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
+    '<form class="busca" id="fBusca" role="search"><input id="qBusca" type="search" placeholder="Buscar DNI, apellido o N.º CH" aria-label="Buscar personas y siniestros" value="' + esc(BUS.q || '') + '"></form>' +
     it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') + it('#trab', 'groups', 'Personas') + it('#importar', '', 'Importar base de Personal', 1) +
-    grp('recycling', 'Residuos') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1) +
-    it('#agua', 'water_drop', 'Agua y plagas') + grp('health_and_safety', 'Riesgos') + it('#nte', '', 'NTE · nómina de expuestos', 1) +
-    grp('folder_open', 'Documentos') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
+    '<div class="titu mod">MÓDULOS</div>' +
+    grp('recycling', '1 · Residuos') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1) +
+    grp('folder_open', '2 · Documentos') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
+    it('#agua', 'water_drop', '3 · Agua') +
+    grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
+    it('#plagas', 'pest_control', '5 · Plagas') +
+    ext(CAP_URL, '7 · Capacitaciones') +
     it('#ayuda', 'help', 'Ayuda') +
     '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
@@ -242,6 +256,7 @@ function marco(activo, contenido) {
     '<nav class="inf" aria-label="Menú">' + inf('#inicio', 'dashboard', 'Tablero') + inf('#est', 'apartment', 'Establec.') + inf('#plan', 'task_alt', 'Acciones') + inf('#bib', 'folder_open', 'Documentos') + '<button id="btnMas"><span class="ms" aria-hidden="true">menu</span>Más</button></nav>' +
     '<button class="ayudaBtn" id="btnAyuda" aria-label="Ayuda de esta pantalla"><span class="ms" aria-hidden="true">help</span><span class="txt">Ayuda</span></button>';
   $('btnSalir').onclick = () => salir();
+  $('fBusca').onsubmit = e => { e.preventDefault(); const q = $('qBusca').value.trim(); if (q.length >= 3) location.hash = '#buscar/' + encodeURIComponent(q); else toast('Escribí al menos 3 letras o números.'); };
   $('btnMas').onclick = () => $('lat').classList.toggle('abierto');
   $('btnAyuda').onclick = () => abrirAyuda(ruta === '#est' && activo.indexOf('#ficha') === 0 ? '#ficha' : ruta);
 }
@@ -312,7 +327,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-06 · 12';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-08 · 13';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -323,7 +338,10 @@ const AYUDA = {
   '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa y al menos un lugar.', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
-  '#agua': ['Agua y plagas', ['Agua NO APTA abierta, tanques y casos de plagas de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
+  '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
+  '#plagas': ['5 · Plagas', ['Casos de plagas abiertos en toda la red, con su próxima revisión y enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
+  '#sin': ['4 · Siniestros', ['Todos los siniestros de la red, con filtros por establecimiento, estado y tipo. Tocá uno para ver datos, diagnóstico, novedades, archivos y la exposición de la persona según la NTE.', 'Los cargan Personal y la secretaría de HyS desde «Mi establecimiento», y desde ahí se corrigen o anulan. El libro de siniestros guarda todo y no se borra nada.', 'ESTADO y días de baja los calcula el sistema con las novedades (al guardar y cada noche).', 'Base: Ley 24.557, arts. 6 y 31; Res. SRT 525/15; Res. SRT 905/15, Anexo I pto. 13 y Anexo II pto. 12.']],
+  '#buscar': ['Buscador', ['Escribí un DNI, un apellido o un N.º CH en el recuadro de arriba del menú. Muestra las personas de todos los establecimientos y los siniestros que coinciden.', 'Tocá una persona para abrir su ficha: datos, capacitaciones, siniestros y exposición.']],
   '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
   '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
   '#docs': ['Registro de documentos HYSL', ['Pedir número, ver y anular con motivo.']],
@@ -458,23 +476,99 @@ function modulosHtml(M, card) {
     card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', null, caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
 }
 
-// ------------------------------------------------------------------ Agua y plagas (toda la red)
-async function agua() {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#agua', 'Leyendo establecimientos…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
+// ------------------------------------------------------------------ Módulo 3 · Agua y módulo 5 · Plagas (toda la red; la misma lectura, dos pantallas)
+async function agua(modo) {
+  modo = modo === 'plagas' ? 'plagas' : 'agua'; const R = '#' + modo;
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando(R, 'Leyendo establecimientos…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   if (!TB) TB = LS.get('tab', null);
-  if (!TB || TB.vacio) { cargando('#agua', 'Leyendo agua y plagas…'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
+  if (!TB || TB.vacio) { cargando(R, 'Leyendo…'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
   const nom = c => ((RES && RES.filas.find(f => f.cod === c)) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
   const porEst = {}; TB.tanques.forEach(t => { const x = porEst[t.cod] = porEst[t.cod] || { t: 0, ok: 0 }; x.t++; if (t.aldia) x.ok++; });
   const A = FILTRO.area, todos = RES ? RES.filas.filter(f => !A || f.area === A) : [], areas = RES ? Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort() : [];
+  const enA = c => !A || (RES && (RES.filas.find(f => f.cod === c) || {}).area === A);
   const listaT = todos.map(f => f.cod).concat(Object.keys(porEst).filter(c => !RES || !RES.filas.some(f => f.cod === c))).sort((a, b) => (porEst[b] ? 1 : 0) - (porEst[a] ? 1 : 0) || nom(a).localeCompare(nom(b), 'es'));
   const conInv = listaT.filter(c => porEst[c]).length;
   const fila = (a, b, c) => '<a class="at" href="' + c + '"><span><b>' + a + '</b><small>' + b + '</small></span></a>';
-  marco('#agua', '<div class="cab"><div><span class="mu peq">Agua y plagas</span><h1>Agua y plagas en la red</h1><span class="mu peq">Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.</span></div>' +
+  const noApta = TB.noApta.filter(a => enA(a.cod)), plagas = TB.plagas.filter(p => enA(p.cod));
+  const cuerpo = modo === 'agua'
+    ? '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod))).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : 'Sin inventario cargado', '#ficha/' + encodeURIComponent(c))).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Todos los establecimientos; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS). Los que no están habilitados en la aplicación todavía no pueden cargar.</span></section>'
+    : '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Casos de plagas abiertos</h2>' + (plagas.length ? plagas.map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod))).join('') : '<div class="mu">Ninguno.</div>') + '</section>';
+  marco(R, '<div class="cab"><div><span class="mu peq">' + (modo === 'agua' ? '3 · Agua' : '5 · Plagas') + '</span><h1>' + (modo === 'agua' ? 'Agua en la red' : 'Plagas en la red') + '</h1><span class="mu peq">Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="agA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div></div>' +
-    '<div class="tb3"><section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (TB.noApta.filter(a => !A || (RES && (RES.filas.find(f => f.cod === a.cod) || {}).area === A)).length ? TB.noApta.filter(a => !A || (RES && (RES.filas.find(f => f.cod === a.cod) || {}).area === A)).map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod))).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
-    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : 'Sin inventario cargado', '#ficha/' + encodeURIComponent(c))).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Todos los establecimientos; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS). Los que no están habilitados en la aplicación todavía no pueden cargar.</span></section>' +
-    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Casos de plagas abiertos</h2>' + (TB.plagas.filter(p => !A || (RES && (RES.filas.find(f => f.cod === p.cod) || {}).area === A)).length ? TB.plagas.filter(p => !A || (RES && (RES.filas.find(f => f.cod === p.cod) || {}).area === A)).map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod))).join('') : '<div class="mu">Ninguno.</div>') + '</section></div>');
-  $('agA').onchange = e => { FILTRO.area = e.target.value; agua(); };
+    '<div class="tb3">' + cuerpo + '</div>');
+  $('agA').onchange = e => { FILTRO.area = e.target.value; agua(modo); };
+}
+
+// ------------------------------------------------------------------ Módulo 4 · Siniestros (Modulo4.gs): toda la red, solo lectura. Se cargan y corrigen desde «Mi establecimiento».
+let SINP = null, SINPF = { est: '', estado: 'Abiertos', tipo: '', q: '' };
+const sinChip = e => '<span class="chip ' + (e === 'En ILT' || e === 'Denunciado' ? 'wa' : e === 'Rechazado' || e === 'Inculpable' ? 'er' : 'ok') + '">' + esc(e) + '</span>';
+const sinLinksP = (L, t) => (L || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + t + (L.length > 1 ? ' ' + (i + 1) : '') + ' ↗</a>').join(' · ');
+async function sinPortal(id, fresco) {
+  if (!SINP || fresco) { cargando('#sin', 'Leyendo siniestros…'); try { const r = await api('p_sin_lista', {}, 120000); if (!r.ok) return marco('#sin', '<div class="card aviso error">' + esc(r.mensaje || 'No se pudo leer.') + '</div>'); SINP = r; } catch (e) { return; } }
+  if (id) return sinPortalVer(id);
+  const F = SINPF, anio = SINP.hoy.slice(0, 4), L = SINP.lista, q = F.q.toLowerCase();
+  const V = L.filter(s => (!F.est || s.est === F.est) && (!F.tipo || s.tipo === F.tipo) && (F.estado === 'Todos' || (F.estado === 'Abiertos' ? s.abierto || s.avisos.length : s.estado === F.estado)) && (!q || (s.nombre + ' ' + s.dni + ' ' + s.nro + ' ' + s.servicio).toLowerCase().indexOf(q) >= 0));
+  const delAnio = L.filter(s => s.fecha.slice(0, 4) === anio), ests = Array.from(new Set(L.map(s => s.est))).sort();
+  const kpi = (t, n, sub) => '<section class="card"><span class="mu peq">' + t + '</span><div style="font-size:28px;font-weight:700;color:var(--az)">' + n + '</div><span class="mu peq">' + sub + '</span></section>';
+  const sel = (id, ops, val) => '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
+  marco('#sin', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Siniestros</h1><span class="mu peq">Los cargan Personal y la secretaría desde «Mi establecimiento». Acá se ven todos, con diagnóstico y exposición.</span></div>' +
+    '<div class="filtros"><button class="btn sec" id="sinAct">Actualizar</button><a class="btn sec" href="' + esc(SINP.libro) + '" target="_blank" rel="noopener">Libro de siniestros ↗</a></div></div>' +
+    '<div class="tb3">' + kpi('Siniestros ' + anio, delAnio.length, delAnio.filter(s => s.tipo === 'In itinere').length + ' in itinere · ' + delAnio.filter(s => s.tipo === 'Enfermedad profesional').length + ' enf. profesional') +
+      kpi('En ILT hoy', L.filter(s => s.estado === 'En ILT').length, 'abiertos con baja') + kpi('Días de baja ' + anio, delAnio.reduce((a, s) => a + (Number(s.dias) || 0), 0), 'suma de los siniestros del año') +
+      kpi('Sin investigar', L.filter(s => s.estadoHys === 'Pendiente de análisis').length, L.filter(s => s.avisos.length).length + ' con avisos') + '</div>' +
+    '<section class="card" style="margin-top:16px"><div class="filtros" style="margin-bottom:10px">' +
+      '<label class="f">Establecimiento' + sel('sfE', [['', 'Todos']].concat(ests.map(e => [e, e])), F.est) + '</label>' +
+      '<label class="f">Estado' + sel('sfS', [['Abiertos', 'Abiertos y con avisos'], ['Todos', 'Todos'], ['En ILT', 'En ILT'], ['Denunciado', 'Denunciado'], ['De alta', 'De alta'], ['Sin baja', 'Sin baja'], ['Rechazado', 'Rechazado'], ['Inculpable', 'Inculpable'], ['Cerrado', 'Cerrado']], F.estado) + '</label>' +
+      '<label class="f">Tipo' + sel('sfT', [['', 'Todos'], ['En el lugar de trabajo', 'En el lugar de trabajo'], ['In itinere', 'In itinere'], ['Enfermedad profesional', 'Enfermedad profesional']], F.tipo) + '</label>' +
+      '<label class="f" style="flex:1 1 200px">Buscar<input class="c" id="sfQ" value="' + esc(F.q) + '" placeholder="Apellido, DNI, CH o servicio"></label></div>' +
+    (V.length ? '<div style="overflow-x:auto"><table class="sinTab" style="width:100%;border-collapse:collapse"><thead><tr><th>Fecha</th><th>Persona</th><th>Lugar</th><th>Tipo</th><th>Estado</th><th>Días</th><th>Avisos</th></tr></thead><tbody>' +
+      V.map(s => '<tr class="cl" data-id="' + esc(s.id) + '"><td>' + fechaTxt(s.fecha) + '<div class="mu peq">' + esc(s.nro) + '</div></td><td><b>' + esc(s.nombre) + '</b><div class="mu peq">' + esc(s.servicio) + ' · ' + esc(s.funcion) + '</div></td><td>' + esc(s.est) + '<div class="mu peq">' + esc(s.sitio) + '</div></td><td>' + esc(s.tipo) + '</td><td>' + sinChip(s.estado) + (s.estadoHys === 'Pendiente de análisis' ? '<div class="mu peq">Sin investigar</div>' : '') + '</td><td>' + (s.dias || 0) + '</td><td class="peq">' + s.avisos.map(esc).join('<br>') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<div class="mu">No hay siniestros con esos filtros.</div>') + '</section>');
+  $('sinAct').onclick = () => sinPortal('', true);
+  $('sfE').onchange = e => { SINPF.est = e.target.value; sinPortal(); }; $('sfS').onchange = e => { SINPF.estado = e.target.value; sinPortal(); }; $('sfT').onchange = e => { SINPF.tipo = e.target.value; sinPortal(); };
+  $('sfQ').onchange = e => { SINPF.q = e.target.value.trim(); sinPortal(); };
+  document.querySelectorAll('.sinTab tr.cl').forEach(tr => tr.onclick = () => { location.hash = '#sin/' + encodeURIComponent(tr.dataset.id); });
+}
+function sinPortalVer(id) {
+  const s = SINP.lista.find(x => x.id === id); if (!s) { location.hash = '#sin'; return; }
+  const dd = (t, v) => '<dt>' + t + '</dt><dd>' + (v === '' || v == null ? '<span class="mu">s/d</span>' : v) + '</dd>';
+  marco('#sin', '<div class="cab"><div><a class="mu peq" href="#sin">‹ Siniestros</a><h1>' + esc(s.nombre) + '</h1><span class="mu peq">' + esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + fechaTxt(s.fecha) + ' · ' + esc(s.est) + ' · ' + esc(s.sitio) + '</span></div>' +
+    '<div class="filtros">' + sinChip(s.estado) + '<span class="chip gr">' + (s.dias || 0) + ' días de baja</span><span class="chip gr">' + esc(s.estadoHys) + '</span></div></div>' +
+    (s.avisos.length ? '<div class="aviso" style="margin-bottom:14px">' + s.avisos.map(esc).join(' · ') + '</div>' : '') +
+    '<div class="tb3"><section class="card"><h2 style="margin:0 0 10px;font-size:16px">Denuncia</h2><dl class="dl">' +
+      dd('N.º de siniestro', esc(s.nro) + (s.viene ? ' (viene de ' + esc(s.viene) + ')' : '')) + dd('Fecha y hora', fechaTxt(s.fecha) + (s.hora && !/s\/d/.test(s.hora) ? ' · ' + esc(s.hora) : '')) + dd('Tipo', esc(s.tipo)) + dd('Lugar de trabajo', esc(s.est) + ' · ' + esc(s.sitio)) +
+      dd('El hospital se enteró', fechaTxt(s.conoce)) + dd('Denuncia al Autoseguro', fechaTxt(s.denuncia) + ' · en plazo: ' + esc(s.plazo || 's/d')) + dd('Copia al trabajador', esc(s.copia)) +
+      dd('Archivos', sinLinksP(s.archivos, 'Denuncia')) + dd('Cargó', esc(s.cargo) + ' · ' + esc(String(s.cargado).slice(0, 16))) + (s.obs ? dd('Observaciones', esc(s.obs)) : '') + '</dl></section>' +
+    '<section class="card"><h2 style="margin:0 0 10px;font-size:16px">Persona y diagnóstico</h2><dl class="dl">' +
+      dd('DNI', esc(s.dni) + ' · <a href="#buscar/' + encodeURIComponent(s.dni) + '">ver ficha</a>') + dd('Servicio · función', esc(s.servicio) + ' · ' + esc(s.funcion)) + dd('Ingreso', fechaTxt(s.ingreso)) + dd('En la base', esc(s.enBase)) +
+      dd('CIE 10', esc(s.cie10)) + dd('Diagnóstico de certeza', esc(s.diagnostico)) + '</dl>' +
+      '<h3 style="margin:16px 0 6px;font-size:14px">Exposición según la NTE</h3><div id="sinExpo" class="mu peq">Buscando…</div></section></div>' +
+    '<section class="card" style="margin-top:16px"><h2 style="margin:0 0 10px;font-size:16px">Novedades</h2>' + (s.novedades.length ? '<div style="overflow-x:auto"><table class="sinTab" style="width:100%;border-collapse:collapse"><thead><tr><th>Fecha</th><th>Novedad</th><th>Comprobantes</th><th>Observaciones</th><th>Cargó</th></tr></thead><tbody>' +
+      s.novedades.map(n => '<tr><td>' + fechaTxt(n.fecha) + '</td><td><b>' + esc(n.novedad) + '</b></td><td>' + (sinLinksP(n.urls, 'Ver') || '—') + '</td><td class="peq">' + esc(n.obs || '') + '</td><td class="peq">' + esc(n.cargo || '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="mu">Todavía sin novedades.</div>') + '</section>');
+  api('p_sin_expo', { dni: s.dni, hoja: s.est }, 120000).then(r => { const box = $('sinExpo'); if (box) box.innerHTML = sinExpoTxt(r && r.exposicion, s); }).catch(() => { const box = $('sinExpo'); if (box) box.textContent = 'No se pudo consultar.'; });
+}
+// Exposición de la persona (NTE) y, si es una enfermedad profesional, el control de que el agente esté declarado
+function sinExpoTxt(x, s) {
+  if (!x) return '<span class="mu">No está en la base de trabajadores, o no se pudo consultar.</span>';
+  const base = esc(x.servicio || 's/d') + ' · ' + esc(x.funcion || 's/d') + (x.propio ? ' · definida en su ficha' : ' · según la matriz');
+  if (x.estado === 'sin definir') return '<span class="chip wa">Sin definir en la matriz</span><div class="mu peq" style="margin-top:4px">' + base + '. Completala en NTE › matriz.</div>';
+  if (x.estado === 'no expuesto') return '<span class="chip gr">No expuesto</span><div class="mu peq" style="margin-top:4px">' + base + '</div>' + (s && s.tipo === 'Enfermedad profesional' ? '<div class="aviso error" style="margin-top:8px">Enfermedad profesional en una persona declarada NO EXPUESTA: revisar la NTE de su puesto.</div>' : '');
+  return '<div class="mu peq" style="margin-bottom:4px">' + base + '</div>' + x.agentes.map(a => '<div class="peq"><b>' + esc(a.cod) + '</b> ' + esc(a.agente) + '</div>').join('') +
+    (s && s.tipo === 'Enfermedad profesional' ? '<div class="aviso" style="margin-top:8px">Enfermedad profesional: verificá que el agente que la causó esté entre los declarados. Si no está, hay que actualizar la NTE.</div>' : '');
+}
+
+// ------------------------------------------------------------------ Buscador general (personas y siniestros)
+async function buscar(q) {
+  BUS.q = q || ''; if (BUS.q.length < 3) { location.hash = '#inicio'; return; }
+  cargando('#buscar', 'Buscando «' + BUS.q + '»…');
+  try { BUS.r = await api('p_buscar', { q: BUS.q }, 120000); } catch (e) { return; }
+  const P = BUS.r.personas || [], S = BUS.r.siniestros || [], ix = c => TRAB_COLS.indexOf(c);
+  marco('#buscar', '<div class="cab"><div><span class="mu peq">Buscador</span><h1>«' + esc(BUS.q) + '»</h1><span class="mu peq">' + P.length + ' persona(s) · ' + S.length + ' siniestro(s)</span></div></div>' +
+    '<div class="tb3"><section class="card"><h2 style="margin:0 0 6px;font-size:16px">Personas</h2>' + (P.length ? P.map((f, i) => '<a class="at" href="#" data-p="' + i + '"><span><b>' + esc(f.v[ix('APELLIDOS')] + ', ' + f.v[ix('NOMBRES')]) + '</b><small>DNI ' + esc(f.v[ix('DNI')]) + ' · ' + esc(f.hoja) + ' · ' + esc(f.v[ix('SERVICIO')] || 's/d') + ' · ' + esc(f.v[ix('FUNCION')] || '') + ' · ' + esc(f.v[ix('ESTADO')] || '') + '</small></span></a>').join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Siniestros</h2>' + (S.length ? S.map(s => '<a class="at" href="#sin/' + encodeURIComponent(s.id) + '"><span><b>' + esc(s.nombre) + ' · ' + esc(s.nro) + '</b><small>' + fechaTxt(s.fecha) + ' · ' + esc(s.tipo) + ' · ' + esc(s.est) + ' · ' + esc(s.estado) + '</small></span></a>').join('') : '<div class="mu">Ninguno.</div>') + '</section></div>');
+  document.querySelectorAll('[data-p]').forEach(a => a.onclick = e => { e.preventDefault(); fichaTrab(P[Number(a.dataset.p)]); });
+  if (S.length && !SINP) api('p_sin_lista', {}, 120000).then(r => { if (r && r.ok) SINP = r; }).catch(() => {});
 }
 
 // ------------------------------------------------------------------ Biblioteca HyS
@@ -669,7 +763,16 @@ function fichaTrab(f) {
       box.innerHTML = '<b>Capacitaciones (' + L.length + ')</b>' + (L.length ? '<div class="tabla" style="margin-top:6px"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Resultado</th><th>Vence</th><th></th></tr></thead><tbody>' +
         L.map(c => '<tr><td class="peq">' + esc(fechaTxt(c.fecha)) + '</td><td class="peq">' + esc(c.tema) + '<div class="mu" style="font-size:11px">' + esc(c.fuente + (c.tipo ? ' · ' + c.tipo : '')) + '</div></td><td class="peq">' + esc(c.aprobo || '—') + (c.nota ? ' · ' + esc(c.nota) : '') + '</td><td class="peq">' + esc(fechaTxt(c.vence)) + '</td><td class="peq">' + (c.link ? '<a href="' + esc(c.link) + '" target="_blank" rel="noopener">' + (c.cert ? esc(c.cert) : 'Ver') + '</a>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
         : '<p class="mu peq" style="margin:4px 0 0">Sin capacitaciones registradas con este DNI.</p>');
-    }).catch(() => { box.innerHTML = '<b>Capacitaciones</b><p class="mu peq">No se pudieron consultar.</p>'; });
+    }).catch(() => { box.innerHTML = '<b>Capacitaciones</b><p class="mu peq">No se pudieron consultar.</p>'; });    const box4 = document.createElement('div'); box4.className = 'card'; box4.style.cssText = 'padding:12px 14px;background:var(--bg)'; box4.innerHTML = '<b>Siniestros y exposición</b><p class="mu peq" style="margin:4px 0 0">Buscando…</p>';
+    box.after(box4);
+    api('p_sin_persona', { dni: v.DNI, hoja: hoja }, 120000).then(r => {
+      const S = (r && r.siniestros) || [];
+      box4.innerHTML = '<b>Siniestros (' + S.length + ')</b>' + (S.length ? '<div class="tabla" style="margin-top:6px"><table><thead><tr><th>Fecha</th><th>N.º CH · tipo</th><th>Diagnóstico</th><th>Estado</th><th>Días</th></tr></thead><tbody>' +
+        S.map(s => '<tr><td class="peq">' + fechaTxt(s.fecha) + '</td><td class="peq"><a href="#sin/' + encodeURIComponent(s.id) + '">' + esc(s.nro) + '</a><div class="mu" style="font-size:11px">' + esc(s.tipo) + ' · ' + esc(s.est) + '</div></td><td class="peq">' + esc(s.cie10) + '</td><td class="peq">' + esc(s.estado) + '</td><td class="peq">' + (s.dias || 0) + '</td></tr>').join('') + '</tbody></table></div>'
+        : '<p class="mu peq" style="margin:4px 0 0">Sin siniestros registrados con este DNI.</p>') +
+        '<b style="display:block;margin-top:12px">Exposición según la NTE</b><div style="margin-top:4px">' + sinExpoTxt(r && r.exposicion, null) + '</div>';
+      box4.querySelectorAll('a[href^="#sin/"]').forEach(x => x.addEventListener('click', () => { $('ov').hidden = true; $('ov').innerHTML = ''; }));
+    }).catch(() => { box4.innerHTML = '<b>Siniestros y exposición</b><p class="mu peq">No se pudieron consultar.</p>'; });
   }
   if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
     m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
@@ -1477,7 +1580,10 @@ function router() {
   const [ruta, arg] = location.hash.replace(/^#/, '').split('/');
   const a = arg ? decodeURIComponent(arg) : '';
   if (ruta === 'est') return matriz();
-  if (ruta === 'agua') return agua();
+  if (ruta === 'agua') return agua('agua');
+  if (ruta === 'plagas') return agua('plagas');
+  if (ruta === 'sin') return sinPortal(a);
+  if (ruta === 'buscar') return buscar(a);
   if (ruta === 'bib') return biblioteca();
   if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
