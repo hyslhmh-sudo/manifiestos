@@ -280,7 +280,7 @@ async function sincronizar() {
   ENVIANDO = true; pintarRed();
   for (const c of COLA.filter(x => x.estado === 'pendiente')) {
     try {
-      const res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave });
+      const res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave, dni: c.dni || (SES && SES.est === c.est && SES.clave === c.clave ? SES.dni || '' : '') });
       if (res.ok) { COLA = COLA.filter(x => x.datos.idLocal !== c.datos.idLocal); }
       else if (res.error === 'interno') { /* se reintenta luego */ }
       else { c.estado = 'error'; c.mensaje = res.mensaje || res.error; }
@@ -587,7 +587,7 @@ function adelante() {
 }
 function encolar(tipo, datos, txt) {
   COLA = COLA.filter(c => c.datos.idLocal !== datos.idLocal);
-  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
+  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, dni: SES.dni || '', datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
   if (!guardarCola()) { COLA.pop(); alertaEspacio(); return; }
   listo(txt + ' guardado.', tipo); sincronizar();
 }
@@ -855,7 +855,7 @@ function inicio() {
       tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
-    (MI && MI.accidentes && puede('Accidentes') ? '<h2>Personal</h2><div class="menu">' + tile('accidente', 'Registrar un accidente de trabajo', 'Con la foto o el PDF de la denuncia') + '</div>' : '') +
+    (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
     '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
@@ -871,7 +871,7 @@ function irDiag() {
 // ------------------------------------------------------------------ Cola: las cargas de estos módulos usan la misma cola que los manifiestos
 function encolarMi(tipo, datos, texto) {
   datos.idLocal = idNuevo(); datos.quien = SES.persona.nombre; datos._txt = texto;
-  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
+  COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, dni: SES.dni || '', datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
   if (!guardarCola()) { COLA.pop(); alertaEspacio(); return; }
   F = null; vista('form');
   $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(texto) + ' guardado.</b><br>' + (navigator.onLine ? 'Se está enviando al sistema.' : 'Quedó guardado en este equipo: se envía solo cuando vuelva la señal.') + '</div>' +
@@ -1098,25 +1098,95 @@ function guardarDoc() {
   encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
 }
 
-// ------------------------------------------------------------------ Personal: accidentes de trabajo (Modulo4.gs › accGuardar_). Datos mínimos; el resto lo completa HyS.
+// ------------------------------------------------------------------ Siniestros (Modulo4.gs). Personal y secretaría: denuncia y novedades. No se registra diagnóstico.
 const ACC_TIPOS = ['En el lugar de trabajo', 'In itinere', 'Enfermedad profesional'];
-function accidente() {
+let SIN = null, SINF = 'Abiertos', SINB = '';
+const sinFecha = iso => iso ? String(iso).split('-').reverse().join('/') : '';
+// Sedes de todos los establecimientos que carga esta persona (ej.: HZT y HMH juntos); vienen con la lista de siniestros
+const sinSedes = () => (SIN && SIN._est === SES.est && SIN.sedes && SIN.sedes.length ? SIN.sedes : [{ est: SES.est, sitios: (MI && MI.sitios) || [] }])
+  .reduce((a, g) => a.concat((g.sitios.length ? g.sitios : ['s/d (revisar)']).map(x => [g.est + '|' + x, g.est + ' · ' + x])), []);
+async function accidente() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
-  F = F && F._f === 'acc' ? F : { _f: 'acc', FECHA_ACCIDENTE: hoyISO(), SITIO: (MI.sitios || [])[0] || '', TIPO: '' };
+  if ((!SIN || SIN._est !== SES.est) && navigator.onLine) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit('Cargar un siniestro nuevo') + '<p class="mu">Preparando…</p>'; bar(null);
+    try { const r = await api('m_accidente', { op: 'lista' }); if (r.ok) { SIN = r; SIN._est = SES.est; } } catch (e) {} }
+  F = F && F._f === 'acc' ? F : { _f: 'acc', FECHA_ACCIDENTE: '', SEDE: (sinSedes()[0] || [''])[0], TIPO: '', FECHA_CONOCIMIENTO: '', FECHA_DENUNCIA: hoyISO(), COPIA_ENTREGADA: '' };
   MIV = { f: accidente }; VISTA = 'mi'; vista('form');
-  $('app').innerHTML = miTit('Registrar un accidente de trabajo', 'Datos mínimos de la denuncia. Higiene y Seguridad completa el análisis. No se registra diagnóstico médico.') + fErr +
-    fInp('FECHA_ACCIDENTE', 'Fecha del accidente', 'date') + fInp('DNI', 'DNI de la persona accidentada', 'number', 'Solo números') +
-    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre (solo si la persona es nueva)', 'text', 'Dejalo vacío: el sistema lo busca por DNI al guardar') +
-    fSel('SITIO', 'Lugar', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fSeg('TIPO', 'Tipo', ACC_TIPOS) +
-    fInp('NRO_SINIESTRO', 'N.º de siniestro (si ya lo tenés)', 'text', 'El que da el CeCAP') + fFoto('foto', 'Foto o PDF de la denuncia', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  $('app').innerHTML = miTit('Cargar un siniestro nuevo', 'Copiá los datos de la denuncia del Autoseguro, en el mismo orden. El PDF se adjunta como respaldo. No se carga el diagnóstico.') + fErr +
+    fInp('NRO_SINIESTRO', 'N.º de siniestro', 'text', 'Ej.: CH523636', 'El que empieza con CH (no el número largo de la denuncia)') +
+    '<div class="grid2">' + fInp('FECHA_ACCIDENTE', 'Fecha del accidente', 'date') + fInp('HORA', 'Hora (si figura)', 'time') + '</div>' +
+    fSeg('TIPO', 'Tipo', ACC_TIPOS) +
+    fInp('DNI', 'DNI de la persona', 'number', 'Solo números', 'Con el DNI el sistema trae nombre, servicio y función') +
+    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre (solo si no está en la base)', 'text', 'Dejalo vacío: el sistema lo busca por DNI') +
+    fSel('SEDE', 'Lugar de trabajo (establecimiento y sede)', sinSedes()) +
+    '<div class="grid2">' + fInp('FECHA_CONOCIMIENTO', 'El hospital se enteró el', 'date') + fInp('FECHA_DENUNCIA', 'Denuncia al Autoseguro el', 'date') + '</div>' +
+    '<p class="mu" style="font-size:13px;margin-top:-8px">La denuncia se hace dentro de las 48 h de enterarse (Res. SRT 525/15).</p>' +
+    fSeg('COPIA_ENTREGADA', '¿Se le entregó copia de la denuncia al trabajador?', ['Sí', 'No']) +
+    fInp('VIENE_DE', 'Viene de (solo si es una recaída con número nuevo)', 'text', 'Ej.: CH510000') +
+    fFoto('foto', 'PDF o foto de la denuncia', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAccidente">Guardar</button>');
 }
 function guardarAccidente() {
-  const dni = String(F.DNI || '').replace(/\D/g, '');
-  if (!F.FECHA_ACCIDENTE) return miErr('Falta la fecha del accidente.'); if (dni.length < 7 || dni.length > 8) return miErr('Revisá el DNI: tiene que tener 7 u 8 números.');
-  if (!F.TIPO) return miErr('Elegí el tipo de accidente.'); if (!F.foto) return miErr('Falta la foto o el PDF de la denuncia.');
-  const d = Object.assign({}, F, { DNI: dni }); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
-  encolarMi('m_accidente', d, 'Accidente de trabajo del ' + fechaTxt(F.FECHA_ACCIDENTE));
+  const dni = String(F.DNI || '').replace(/\D/g, ''), nro = String(F.NRO_SINIESTRO || '').replace(/\s+/g, '').toUpperCase(), hoy = hoyISO();
+  if (/^\d{12,}$/.test(nro)) return miErr('Ese es el número largo de la denuncia. Copiá el N.º de siniestro que empieza con CH.');
+  if (!/^CH\d{5,8}$/.test(nro)) return miErr('Revisá el N.º de siniestro: empieza con CH y sigue con números (ej.: CH523636).');
+  if (!F.FECHA_ACCIDENTE) return miErr('Falta la fecha del accidente.'); if (F.FECHA_ACCIDENTE > hoy) return miErr('La fecha del accidente no puede ser posterior a hoy.');
+  if (!F.TIPO) return miErr('Elegí el tipo.'); if (dni.length < 7 || dni.length > 8) return miErr('Revisá el DNI: tiene que tener 7 u 8 números.');
+  if (!F.FECHA_CONOCIMIENTO) return miErr('Falta la fecha en que el hospital se enteró.'); if (!F.FECHA_DENUNCIA) return miErr('Falta la fecha de la denuncia.');
+  if (F.FECHA_DENUNCIA < F.FECHA_CONOCIMIENTO) return miErr('La denuncia no puede ser anterior a la fecha en que el hospital se enteró.');
+  if (!F.COPIA_ENTREGADA) return miErr('Indicá si se entregó la copia de la denuncia.'); if (!F.foto) return miErr('Falta el PDF o la foto de la denuncia.');
+  const sede = String(F.SEDE || (sinSedes()[0] || [''])[0]).split('|');
+  const d = Object.assign({}, F, { DNI: dni, NRO_SINIESTRO: nro, VIENE_DE: String(F.VIENE_DE || '').replace(/\s+/g, '').toUpperCase(), ESTABLECIMIENTO: sede[0] || SES.est, SITIO: sede[1] || '' }); delete d.SEDE; delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  SIN = null; encolarMi('m_accidente', d, 'Siniestro ' + nro + ' (' + d.ESTABLECIMIENTO + ')');
+}
+// Lista: abiertos primero, con avisos; búsqueda por nombre, DNI o N.º CH
+async function siniestros(fresco) {
+  VISTA = 'mi'; MIV = { f: siniestros }; vista('wide'); F = null;
+  const tit = miTit('Siniestros', 'Tocá uno para ver sus novedades o cargar una nueva (inicio de ILT, alta, reingreso…).');
+  if (!navigator.onLine) { $('app').innerHTML = tit + '<p class="mu">Necesitás señal para ver los siniestros.</p>'; return miVolver(); }
+  if (fresco || !SIN || SIN._est !== SES.est) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
+    try { const r = await api('m_accidente', { op: 'lista' }); if (!r.ok) throw new Error(r.mensaje || ''); SIN = r; SIN._est = SES.est; }
+    catch (e) { $('app').innerHTML = tit + '<p class="mu">' + esc(e.message && e.message.length > 12 ? e.message : 'No se pudo leer. Probá de nuevo en un rato.') + '</p>'; return miVolver(); } }
+  const b = SINB.toLowerCase().trim(), L = SIN.lista.filter(s => (SINF === 'Todos' || s.abierto || s.avisos.some(a => a[0] !== 'ok')) && (!b || (s.nombre + ' ' + s.dni + ' ' + s.nro).toLowerCase().indexOf(b) >= 0));
+  const nAb = SIN.lista.filter(s => s.abierto).length, nAv = SIN.lista.filter(s => s.avisos.some(a => a[0] !== 'ok')).length;
+  const chip = e => '<span class="tag ' + (e === 'En ILT' ? 'wa' : e === 'Denunciado' ? 'wa' : e === 'Rechazado' || e === 'Inculpable' ? 'er' : 'ok') + '">' + esc(e) + '</span>';
+  $('app').innerHTML = tit +
+    (nAv ? '<div class="notice"><b>' + nAv + ' siniestro(s) con avisos.</b> Una vez por mes, revisá que los abiertos sigan así.</div>' : '') +
+    '<div class="seg" style="margin-bottom:12px">' + [['Abiertos', 'Abiertos y con avisos (' + nAb + ')'], ['Todos', 'Todos (' + SIN.lista.length + ')']].map(([k, t]) => '<button type="button" class="' + (SINF === k ? 'sel' : '') + '" data-act="sinF" data-arg="' + k + '">' + t + '</button>').join('') + '</div>' +
+    '<div class="field"><input id="sinB" value="' + esc(SINB) + '" placeholder="Buscar por apellido, DNI o N.º CH"></div>' +
+    (L.length ? '<div class="lista">' + L.map(s => '<button class="item pend" data-act="sinVer" data-arg="' + esc(s.id) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(s.nombre) + '</b><small>' + esc(s.nro) + ' · ' + esc(s.est) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.tipo) + (s.dias ? ' · ' + s.dias + ' días de baja' : '') + '</small>' +
+      s.avisos.map(a => '<small style="color:var(--' + (a[0] === 'ok' ? 'mu' : a[0]) + ')">' + esc(a[1]) + '</small>').join('') + '</div>' + chip(s.estado) + '</button>').join('') + '</div>'
+      : '<p class="mu">' + (b ? 'No hay siniestros con esa búsqueda.' : SINF === 'Abiertos' ? 'No hay siniestros abiertos ni avisos.' : 'Todavía no hay siniestros cargados.') + '</p>');
+  const inp = $('sinB'); if (inp) inp.addEventListener('change', () => { SINB = inp.value; siniestros(); });
+  bar('<button class="btn sec" data-act="inicio">Volver</button><button class="btn pri" data-act="accidente">+ Siniestro nuevo</button>');
+}
+function sinVer(id) {
+  const s = SIN && SIN.lista.find(x => x.id === id); if (!s) return siniestros(true);
+  VISTA = 'mi'; MIV = { f: () => sinVer(id) }; vista('form'); F = null;
+  $('app').innerHTML = miTit(s.nombre, esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.sitio || s.est)) +
+    '<div class="notice' + (s.abierto ? '' : ' ok') + '"><b>' + esc(s.estado) + '</b>' + (s.dias ? ' · ' + s.dias + ' días de baja' : '') + '</div>' +
+    s.avisos.map(a => '<div class="notice" style="' + (a[0] === 'er' ? 'background:var(--erbg);color:var(--er)' : '') + '">' + esc(a[1]) + '</div>').join('') +
+    '<h2>Novedades</h2>' + (s.novedades.length ? '<div class="lista">' + s.novedades.map(n => '<div class="item"><div><b>' + esc(n.novedad) + '</b><small>' + sinFecha(n.fecha) + (n.obs ? ' · ' + esc(n.obs) : '') + '</small></div>' + (n.url ? '<a href="' + esc(n.url) + '" target="_blank" rel="noopener">Ver</a>' : '') + '</div>').join('') + '</div>' : '<p class="mu">Todavía sin novedades.</p>') +
+    (s.denuncia ? '<p class="mu" style="font-size:13px"><a href="' + esc(s.denuncia) + '" target="_blank" rel="noopener">Ver la denuncia</a></p>' : '') +
+    '<p class="mu" style="font-size:13px">¿Algo mal cargado? Avisá a Higiene y Seguridad: se corrige sin borrar nada.</p>';
+  bar('<button class="btn sec" data-act="siniestros">Volver</button><button class="btn pri" data-act="sinNov" data-arg="' + esc(id) + '">+ Cargar novedad</button>');
+}
+function sinNov(id) {
+  const s = SIN && SIN.lista.find(x => x.id === id); if (!s) return siniestros(true);
+  F = F && F._f === 'nov' && F.ID_SINIESTRO === id ? F : { _f: 'nov', ID_SINIESTRO: id, FECHA: hoyISO(), NOVEDAD: '' };
+  VISTA = 'mi'; MIV = { f: () => sinNov(id) }; vista('form');
+  const pide = (SIN.pideArchivo || []).indexOf(F.NOVEDAD) >= 0;
+  $('app').innerHTML = miTit('Novedad: ' + s.nombre, esc(s.nro) + ' · hoy: ' + esc(s.estado)) + fErr +
+    fSeg('NOVEDAD', 'Qué pasó', SIN.tipos) + fInp('FECHA', 'Fecha de la novedad', 'date') +
+    fFoto('foto', pide ? 'Notificación del Autoseguro (obligatoria)' : 'Comprobante (alta, parte, nota…)', pide ? 'Rechazo o encuadre: Res. SRT 525/15' : 'Opcional, pero conviene') +
+    fTxt('OBSERVACIONES', F.NOVEDAD === 'Otra' ? 'Cuál es la novedad' : 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="sinVer" data-arg="' + esc(id) + '">Cancelar</button><button class="btn pri" data-act="guardarNov">Guardar</button>');
+}
+function guardarNov() {
+  if (!F.NOVEDAD) return miErr('Elegí qué pasó.'); if (!F.FECHA) return miErr('Falta la fecha.'); if (F.FECHA > hoyISO()) return miErr('La fecha no puede ser posterior a hoy.');
+  if ((SIN.pideArchivo || []).indexOf(F.NOVEDAD) >= 0 && !F.foto) return miErr('Adjuntá la notificación del Autoseguro.');
+  if (F.NOVEDAD === 'Otra' && !String(F.OBSERVACIONES || '').trim()) return miErr('Contá brevemente cuál es la novedad.');
+  const s = SIN.lista.find(x => x.id === F.ID_SINIESTRO) || {}, d = Object.assign({ op: 'novedad' }, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  SIN = null; encolarMi('m_accidente', d, F.NOVEDAD + ' · ' + (s.nombre || ''));
 }
 
 // ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
@@ -1202,7 +1272,7 @@ Object.assign(ACT, {
   irDiag: () => irDiag(), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
   aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
-  guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
+  guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
   fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); },
   soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
 });
