@@ -248,7 +248,7 @@ function marco(activo, contenido) {
     it('#agua', 'water_drop', '3 · Agua') +
     grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
     it('#plagas', 'pest_control', '5 · Plagas') +
-    ext(CAP_URL, '7 · Capacitaciones') +
+    '<a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener"><span class="ms" aria-hidden="true">school</span>7 · Capacitaciones ↗</a>' +
     it('#ayuda', 'help', 'Ayuda') +
     '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
@@ -339,7 +339,7 @@ const AYUDA = {
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
   '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
-  '#plagas': ['5 · Plagas', ['Casos de plagas abiertos en toda la red, con su próxima revisión y enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
+  '#plagas': ['5 · Plagas', ['Registro MIPyV: lo cargan los operarios de la red Trelew desde su app. Muestra intervenciones abiertas, saneamiento en curso, seguimientos vencidos y las visitas de los últimos 90 días.', 'Tocá una visita para ver qué se hizo, productos, EPP y fotos, y marcarla como revisada (queda en el libro MIPyV, columna revisado_hys).', 'Abajo, los avisos de plagas que cargan los establecimientos desde «Mi establecimiento».']],
   '#sin': ['4 · Siniestros', ['Todos los siniestros de la red, con filtros por establecimiento, estado y tipo. Tocá uno para ver datos, diagnóstico, novedades, archivos y la exposición de la persona según la NTE.', 'Los cargan Personal y la secretaría de HyS desde «Mi establecimiento», y desde ahí se corrigen o anulan. El libro de siniestros guarda todo y no se borra nada.', 'ESTADO y días de baja los calcula el sistema con las novedades (al guardar y cada noche).', 'Base: Ley 24.557, arts. 6 y 31; Res. SRT 525/15; Res. SRT 905/15, Anexo I pto. 13 y Anexo II pto. 12.']],
   '#buscar': ['Buscador', ['Escribí un DNI, un apellido o un N.º CH en el recuadro de arriba del menú. Muestra las personas de todos los establecimientos y los siniestros que coinciden.', 'Tocá una persona para abrir su ficha: datos, capacitaciones, siniestros y exposición.']],
   '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
@@ -493,11 +493,49 @@ async function agua(modo) {
   const cuerpo = modo === 'agua'
     ? '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod))).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : 'Sin inventario cargado', '#ficha/' + encodeURIComponent(c))).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Todos los establecimientos; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS). Los que no están habilitados en la aplicación todavía no pueden cargar.</span></section>'
-    : '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Casos de plagas abiertos</h2>' + (plagas.length ? plagas.map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod))).join('') : '<div class="mu">Ninguno.</div>') + '</section>';
-  marco(R, '<div class="cab"><div><span class="mu peq">' + (modo === 'agua' ? '3 · Agua' : '5 · Plagas') + '</span><h1>' + (modo === 'agua' ? 'Agua en la red' : 'Plagas en la red') + '</h1><span class="mu peq">Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.</span></div>' +
+    : '<section class="card" id="mipyvBox" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Registro MIPyV (operarios de la red Trelew)</h2><div class="mu">Leyendo…</div></section>' +
+      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Avisos de los establecimientos (casos abiertos)</h2>' + (plagas.length ? plagas.map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod))).join('') : '<div class="mu">Ninguno.</div>') + '</section>';
+  marco(R, '<div class="cab"><div><span class="mu peq">' + (modo === 'agua' ? '3 · Agua' : '5 · Plagas') + '</span><h1>' + (modo === 'agua' ? 'Agua en la red' : 'Plagas en la red') + '</h1><span class="mu peq">' + (modo === 'agua' ? 'Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.' : 'Lo cargan los operarios desde la app MIPyV y los establecimientos desde «Mi establecimiento» (avisos).') + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="agA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div></div>' +
     '<div class="tb3">' + cuerpo + '</div>');
   $('agA').onchange = e => { FILTRO.area = e.target.value; agua(modo); };
+  if (modo === 'plagas') mipyv();
+}
+// Registro MIPyV (Modulo5.gs): lo cargan los operarios desde su app; acá se ve y se marca «revisado»
+let MIPYV = null;
+async function mipyv(fresco) {
+  const box = $('mipyvBox'); if (!box) return;
+  if (!MIPYV || fresco) { try { MIPYV = await api('p_mipyv', { fresco: !!fresco }, 120000); } catch (e) { box.innerHTML = '<h2 style="margin:0 0 6px;font-size:16px">Registro MIPyV</h2><div class="mu">No se pudo leer.</div>'; return; } }
+  const R = MIPYV; if (!R.ok) { box.innerHTML = '<h2 style="margin:0 0 6px;font-size:16px">Registro MIPyV</h2><div class="aviso error">' + esc(R.mensaje || 'Error') + '</div>'; return; }
+  const k = (t, n, sub) => '<div><span class="mu peq">' + t + '</span><div style="font-size:24px;font-weight:700;color:var(--az)">' + n + '</div><span class="mu peq">' + sub + '</span></div>';
+  const lugar = o => esc(o.cod ? o.cod + (o.sitio ? ' · ' + o.sitio : '') : o.lugar);
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2 style="margin:0;font-size:16px">Registro MIPyV (operarios de la red Trelew)</h2><div class="filtros"><button class="btn sec" id="mpAct">Actualizar</button><a class="btn sec" href="' + esc(R.libro) + '" target="_blank" rel="noopener">Libro MIPyV ↗</a></div></div>' +
+    '<div class="tb3" style="margin:12px 0">' + k('Intervenciones abiertas', R.abiertas.length, 'protocolos sin cerrar') + k('Saneamiento en curso', R.saneamiento.length, 'trabajos sin cerrar') + k('Seguimientos vencidos', R.vencidos.length, 'pidieron otra visita y pasó el plazo') + k('Visitas sin revisar', R.sinRevisar, 'últimos 90 días') + '</div>' +
+    (R.sinLugar.length ? '<div class="aviso" style="margin-bottom:10px">Lugares de MIPyV sin cruzar con el sistema (completar codigo_sistema en la hoja establecimientos del libro MIPyV): ' + R.sinLugar.map(esc).join(', ') + '.</div>' : '') +
+    (R.vencidos.length ? '<h3 style="margin:10px 0 6px;font-size:14px">Seguimientos vencidos</h3>' + R.vencidos.map(v => '<div class="at"><span><b>' + esc(v.lugar) + ' · ' + esc(v.plaga) + '</b><small>Protocolo ' + esc(v.protocolo) + ' · última visita ' + fechaTxt(v.fecha) + ' · venció ' + fechaTxt(v.vencia) + ' (' + esc(v.dias) + ' días) · ' + esc(v.operario) + '</small></span></div>').join('') : '') +
+    (R.abiertas.length ? '<h3 style="margin:14px 0 6px;font-size:14px">Intervenciones abiertas</h3>' + R.abiertas.map(a => '<div class="at"><span><b>' + lugar(a) + ' · ' + esc(a.plaga) + '</b><small>Protocolo ' + esc(a.protocolo) + ' · desde ' + fechaTxt(a.desde) + ' · ' + esc(a.estado) + ' · ' + esc(a.operario) + '</small></span></div>').join('') : '') +
+    (R.saneamiento.length ? '<h3 style="margin:14px 0 6px;font-size:14px">Saneamiento en curso</h3>' + R.saneamiento.map(t => '<div class="at"><span><b>' + lugar(t) + '</b><small>Desde ' + fechaTxt(t.desde) + ' · ' + esc(t.estado) + ' · ' + esc(t.operario) + '</small></span></div>').join('') : '') +
+    '<h3 style="margin:14px 0 6px;font-size:14px">Visitas de los últimos 90 días (' + R.visitas.length + ')</h3>' +
+    (R.visitas.length ? '<div style="overflow-x:auto"><table class="sinTab" style="width:100%;border-collapse:collapse"><thead><tr><th>Fecha</th><th>Lugar</th><th>Plaga · producto</th><th>Operarios</th><th>Resultado</th><th>HyS</th></tr></thead><tbody>' +
+      R.visitas.map((v, i) => '<tr class="cl" data-v="' + i + '"><td>' + fechaTxt(v.fecha) + '<div class="mu peq">' + esc(v.protocolo || '') + '</div></td><td>' + lugar(v) + (v.sector ? '<div class="mu peq">' + esc(v.sector) + '</div>' : '') + '</td><td>' + esc(v.plaga || '—') + '<div class="mu peq">' + esc(v.producto || '') + (v.dosis ? ' · ' + esc(v.dosis) : '') + '</div></td><td class="peq">' + esc(v.operario || '') + (v.acompanante ? ' y ' + esc(v.acompanante) : '') + (v.horario ? '<div class="mu">' + esc(v.horario) + '</div>' : '') + '</td><td class="peq">' + esc(v.resultado || '') + (v.segunda ? '<div class="mu">2.ª: ' + fechaTxt(v.segunda) + '</div>' : '') + '</td><td class="peq">' + (/^revisad/i.test(String(v.revisado)) ? '<span class="chip ok">' + esc(v.revisado) + '</span>' : '<span class="chip wa">Sin revisar</span>') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="mu">Sin visitas en los últimos 90 días.</div>') +
+    '<div class="mu peq" style="margin-top:8px">Datos al ' + esc(R.actualizado) + '. Tocá una visita para ver el detalle, las fotos y marcarla como revisada.</div>';
+  $('mpAct').onclick = () => mipyv(true);
+  box.querySelectorAll('tr[data-v]').forEach(tr => tr.onclick = () => mipyvVer(R.visitas[Number(tr.dataset.v)]));
+}
+function mipyvVer(v) {
+  const dd = (t, x) => x ? '<dt>' + t + '</dt><dd>' + x + '</dd>' : '';
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Visita MIPyV"><h2>Visita del ' + fechaTxt(v.fecha) + ' · ' + esc(v.lugar) + '</h2><dl class="dl">' +
+    dd('Protocolo', esc(v.protocolo)) + dd('Lugar', esc(v.lugar) + (v.sector ? ' · ' + esc(v.sector) : '')) + dd('Operarios', esc(v.operario) + (v.acompanante ? ' y ' + esc(v.acompanante) : '') + (v.horario ? ' · ' + esc(v.horario) : '')) +
+    dd('Qué se hizo', esc(v.motivo)) + dd('Plaga', esc(v.plaga)) + dd('Producto · dosis', esc(v.producto) + (v.dosis ? ' · ' + esc(v.dosis) : '')) + dd('EPP', esc(v.epp)) + dd('Resultado', esc(v.resultado) + (v.segunda ? ' · 2.ª intervención ' + fechaTxt(v.segunda) : '')) +
+    dd('Observaciones', esc(v.obs).replace(/\n/g, '<br>')) + dd('Fotos', v.fotos.map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + ' ↗</a>').join(' · ')) + dd('Revisión HyS', esc(v.revisado || 'Sin revisar')) + '</dl>' +
+    '<label class="f" style="margin-top:12px">Nota de revisión (opcional)<input class="c" id="mpNota" placeholder="Ej.: horas extras aprobadas"></label>' +
+    '<div class="acciones"><div></div><div style="display:flex;gap:8px"><button class="btn sec" id="mpCer">Cerrar</button><button class="btn pri" id="mpRev">Marcar como revisada</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('mpCer').onclick = cerrar;
+  $('mpRev').onclick = async () => { $('mpRev').disabled = true; $('mpRev').textContent = 'Guardando…';
+    try { const r = await api('p_mipyv_revisar', { id: v.id, nota: $('mpNota').value }); if (!r.ok) throw new Error(r.mensaje); toast('Visita marcada como revisada.'); cerrar(); mipyv(true); }
+    catch (e) { $('mpRev').disabled = false; $('mpRev').textContent = 'Marcar como revisada'; toast(e.message || 'No se pudo guardar.'); } };
 }
 
 // ------------------------------------------------------------------ Módulo 4 · Siniestros (Modulo4.gs): toda la red, solo lectura. Se cargan y corrigen desde «Mi establecimiento».
