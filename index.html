@@ -177,7 +177,8 @@ function calendario() {
 // Ayuda de cada campo: qué es, dónde está en el papel (sección resaltada) y ejemplo
 const AYUDA = {
   hospital: { t: 'Hospital', que: 'El hospital donde trabajás y para el que vas a cargar los manifiestos.', donde: 'Buscalo en la lista, ordenada por área programática.', ej: 'Hospital Rural Gan Gan', s: null },
-  clave: { t: 'Clave del hospital', que: 'La clave que te dio Higiene y Seguridad para tu hospital. Es la misma para todas las personas que cargan en ese hospital.', donde: 'Si no la tenés o no funciona, pedila a Higiene y Seguridad.', ej: '••••', s: null },
+  clave: { t: 'Tu clave', que: 'La clave personal que te dio Higiene y Seguridad. Si tu establecimiento todavía usa la clave común, escribí esa.', donde: 'Si no la tenés o no funciona, pedila a Higiene y Seguridad.', ej: '••••', s: null },
+  dni: { t: 'Tu DNI', que: 'Tu DNI, solo números. Con tu DNI y tu clave ves únicamente lo que Higiene y Seguridad te asignó. Si tu establecimiento todavía usa la clave común, dejalo vacío.', donde: 'El de tu documento.', ej: '30123456', s: null },
   pnombre: { t: 'Nombre y apellido', que: 'El nombre de la persona que está cargando ahora.', donde: 'Como figura en el DNI.', ej: 'Laura Gómez', s: null },
   pdni: { t: 'DNI', que: 'El número de documento de quien carga, sin puntos.', donde: 'En el frente del DNI.', ej: '30123456', s: null },
   pfuncion: { t: 'Función', que: 'Qué tarea cumple en el hospital la persona que carga.', donde: 'Elegila de la lista. Si no está, elegí «Otra» y escribila.', ej: 'Mucama', s: null },
@@ -266,7 +267,7 @@ let ESPERA_MS = 25000;   // si el sistema no responde en este tiempo, se corta y
 async function api(accion, datos, ses) {
   const s = ses || SES, ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ESPERA_MS);
   try {
-    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: s.est, clave: s.clave, datos: datos, version: VERSION }), signal: ctl.signal });
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: s.est, clave: s.clave, dni: s.dni || '', datos: datos, version: VERSION }), signal: ctl.signal });
     if (!r.ok) throw new Error('red');
     const txt = await r.text();
     try { return JSON.parse(txt); } catch (e) { throw new Error('respuesta'); }
@@ -348,8 +349,9 @@ function ingreso(msg) {
     bar('<button class="btn pri" data-act="entrar">Ingresar</button>'); window.scrollTo(0, 0); return;
   }
   const lista = LS.get('lista', LISTA_BASE), rec = LS.get('recordados', {});
-  $('app').innerHTML = '<h1>Ingresar</h1><p class="mu">Elegí el establecimiento y escribí la clave.</p>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
+  $('app').innerHTML = '<h1>Ingresar</h1><p class="mu">Elegí el establecimiento y escribí tu DNI y tu clave.</p>' + (msg ? '<div class="notice">' + esc(msg) + '</div>' : '') +
     campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + lista.map(h => '<option value="' + h.id + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</select>', ERR.hospital) +
+    campo('dni', '<input id="f_dni" type="text" inputmode="numeric" data-l="dni" autocomplete="username" placeholder="Solo números" value="' + esc(LOG.dni || '') + '">') +
     campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave) +
     '<label style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><input type="checkbox" data-l2="recordar"' + (LOG.recordar ? ' checked' : '') + ' style="width:22px;height:22px"> Recordar la clave en este equipo (solo en equipos de uso del servicio)</label>' +
     (Object.keys(rec).length ? '<h2>Entrar directo</h2><div class="menu">' + Object.keys(rec).map(id => '<div style="position:relative"><button class="big" style="width:100%" data-act="entrarRec" data-arg="' + esc(id) + '"><b>' + esc((lista.find(h => h.id === id) || { nombre: id }).nombre) + '</b><span>Clave guardada en este equipo</span></button><button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidarClave" data-arg="' + esc(id) + '">Olvidar</button></div>').join('') + '</div>' : '');
@@ -385,13 +387,14 @@ async function entrar() {
   ENTRANDO = true;
   try {
     const nombre = ((hys ? hys.lista : LS.get('lista', LISTA_BASE)).find(h => h.id === LOG.est) || {}).nombre || LOG.est;
-    const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, persona: null }, h = await hashTxt(LOG.est + '|' + LOG.clave.trim().toLowerCase());
+    const dni = hys ? '' : String(LOG.dni || '').replace(/\D/g, '');
+    const ses = { est: LOG.est, nombre: nombre, clave: LOG.clave, dni: dni, persona: null }, h = await hashTxt(LOG.est + '|' + dni + '|' + LOG.clave.trim().toLowerCase());
     const guardado = LS.get('h_' + ses.est);
     if (navigator.onLine) {
       bar('<button class="btn pri" disabled>Verificando la clave… puede tardar unos segundos</button>');
       try {
         const r = await api('config', null, ses);
-        if (!r.ok) { ERR.clave = r.error === 'clave' ? 'La clave no es correcta. Revisala (no importan las mayúsculas) o pedila a Higiene y Seguridad.' : (r.mensaje || 'No se pudo ingresar. Probá de nuevo.'); return ingreso(); }
+        if (!r.ok) { ERR.clave = r.mensaje || (r.error === 'clave' ? 'La clave no es correcta. Revisala (no importan las mayúsculas) o pedila a Higiene y Seguridad.' : 'No se pudo ingresar. Probá de nuevo.'); return ingreso(); }
         CFG = r; LS.set('cfg_' + ses.est, r); LS.set('h_' + ses.est, h);
       } catch (e) {
         // Sin respuesta del sistema: si esta clave ya se usó en este equipo, se entra con los datos guardados
@@ -402,9 +405,12 @@ async function entrar() {
       if (guardado !== h) { ERR.clave = guardado ? 'La clave no es correcta.' : 'Para el primer ingreso se necesita señal.'; return ingreso(); }
       CFG = LS.get('cfg_' + ses.est, null);
     }
-    if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = ses.clave; LS.set('recordados', r); }
-    if (PERSONA_PREV) { const pp = personas().find(x => (x.dni && x.dni === PERSONA_PREV.dni) || x.nombre === PERSONA_PREV.nombre); if (pp && cargaEn(pp, ses.est)) ses.persona = pp; PERSONA_PREV = null; }
-    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '' }; MI = null; miCargar(true); SES.persona ? inicio() : quienCarga();
+    // Acceso por persona (Accesos.gs): módulos asignados y, con clave personal, la persona que carga
+    const A = CFG && CFG.acceso; ses.modulos = A && A.modulos ? A.modulos : null;
+    if (A && A.nombre && dni) ses.persona = { nombre: A.nombre, funcion: A.rol || '', dni: dni, ests: [ses.est], propia: true };
+    if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = { clave: ses.clave, dni: dni }; LS.set('recordados', r); }
+    if (PERSONA_PREV && !ses.persona) { const pp = personas().find(x => (x.dni && x.dni === PERSONA_PREV.dni) || x.nombre === PERSONA_PREV.nombre); if (pp && cargaEn(pp, ses.est)) ses.persona = pp; PERSONA_PREV = null; }
+    SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '', dni: '' }; MI = null; miCargar(true); SES.persona ? inicio() : quienCarga();
   } catch (e) {
     ERR.clave = 'Ocurrió un error al ingresar. Probá de nuevo.'; ingreso();
   } finally { ENTRANDO = false; }
@@ -755,9 +761,9 @@ const ACT = {
   modoHys: () => { ERR = {}; modoHys(); }, entrarHys: () => entrarHys(), volverIngreso: () => { ERR = {}; ingreso(); },
   actualizarHys: () => { const h = LS.get('hys', null); if (h) entrarHys(h.clave); },
   salirHys: () => preguntar('¿Salir del modo Higiene y Seguridad? La clave deja de estar guardada en este equipo.', 'Sí, salir', () => { LS.del('hys'); ingreso(); }),
-  entrarRec: b => { const r = LS.get('recordados', {}); LOG = { est: b.dataset.arg, clave: r[b.dataset.arg] || '', recordar: true }; entrar(); },
+  entrarRec: b => { const r = LS.get('recordados', {}), v = r[b.dataset.arg] || ''; LOG = { est: b.dataset.arg, clave: typeof v === 'string' ? v : v.clave || '', dni: typeof v === 'string' ? '' : v.dni || '', recordar: true }; entrar(); },
   olvidarClave: b => preguntar('¿Olvidar la clave guardada de este establecimiento en este equipo?', 'Sí, olvidar', () => { const r = LS.get('recordados', {}); delete r[b.dataset.arg]; LS.set('recordados', r); ingreso(); }),
-  cambiarEst: () => { const p = SES && SES.persona; SES = null; CFG = null; LS.del('ses'); LOG = { est: '', clave: '' }; PERSONA_PREV = p; ingreso(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
+  cambiarEst: () => { const p = SES && SES.persona; SES = null; CFG = null; LS.del('ses'); LOG = { est: '', clave: '', dni: '' }; PERSONA_PREV = p && !p.propia ? p : null; ingreso(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
   inicio: () => inicio(), consulta: () => consulta(), avance: () => avance(), actualizar: () => { actualizarConfig(false); sincronizar(); },
   nuevoManifiesto: () => nuevoManifiesto(), nuevoCertificado: () => nuevoCertificado(),
   adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
@@ -834,29 +840,30 @@ function inicio() {
   if (!SES.persona) return quienCarga();
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
-  const P = MI ? MI.pendientes : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes' };
+  const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos' };   // módulos asignados (Accesos.gs)
+  const P = MI ? MI.pendientes.filter(p => !TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
-    '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · <button class="link" data-act="quienCarga">Cambiar de persona</button> · <button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
+    '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · ' + (SES.persona.propia ? '' : '<button class="link" data-act="quienCarga">Cambiar de persona</button> · ') + '<button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
     (err ? '<button class="notice" data-act="consulta" style="display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Tocá acá para verlas y corregirlas o descartarlas.</button>' : '') +
     '<h2>Lo que tenés pendiente</h2>' +
     (!MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
-    '<h2>Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
-      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' +
-    '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' +
-    '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' +
-    (MI && MI.accidentes ? '<h2>Personal</h2><div class="menu">' + tile('accidente', 'Registrar un accidente de trabajo', 'Con la foto o el PDF de la denuncia') + '</div>' : '') +
-    '<h2>Documentos</h2><div class="menu">' + tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
+    (puede('Residuos') ? '<h2>Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
+      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
+    (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
+    (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
+    (MI && MI.accidentes && puede('Accidentes') ? '<h2>Personal</h2><div class="menu">' + tile('accidente', 'Registrar un accidente de trabajo', 'Con la foto o el PDF de la denuncia') + '</div>' : '') +
+    '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
 
 // Diagnóstico y auditoría interna: abre la página para referentes con la misma sesión
 function irDiag() {
-  try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, nombre: SES.nombre })); localStorage.setItem('diag_arNom', JSON.stringify(SES.persona.nombre)); } catch (e) {}
+  try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, dni: SES.dni || '', nombre: SES.nombre })); localStorage.setItem('diag_arNom', JSON.stringify(SES.persona.nombre)); } catch (e) {}
   if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico', '_blank');   // aplicación de respaldo (sin GitHub)
   location.href = /github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH;
 }
@@ -1099,7 +1106,7 @@ function accidente() {
   MIV = { f: accidente }; VISTA = 'mi'; vista('form');
   $('app').innerHTML = miTit('Registrar un accidente de trabajo', 'Datos mínimos de la denuncia. Higiene y Seguridad completa el análisis. No se registra diagnóstico médico.') + fErr +
     fInp('FECHA_ACCIDENTE', 'Fecha del accidente', 'date') + fInp('DNI', 'DNI de la persona accidentada', 'number', 'Solo números') +
-    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre (si no aparece solo)', 'text', 'Se completa con la base de personal') +
+    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre (solo si la persona es nueva)', 'text', 'Dejalo vacío: el sistema lo busca por DNI al guardar') +
     fSel('SITIO', 'Lugar', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fSeg('TIPO', 'Tipo', ACC_TIPOS) +
     fInp('NRO_SINIESTRO', 'N.º de siniestro (si ya lo tenés)', 'text', 'El que da el CeCAP') + fFoto('foto', 'Foto o PDF de la denuncia', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAccidente">Guardar</button>');

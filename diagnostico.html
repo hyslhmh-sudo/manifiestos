@@ -100,7 +100,7 @@ let SES = LS.get('ses', null), LISTA = [];
 async function post(accion, datos, sinSes) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 90000);
   try {
-    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: sinSes ? '' : SES.est, clave: sinSes ? '' : SES.clave, datos: datos || {} }), signal: ctl.signal });
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, est: sinSes ? '' : SES.est, clave: sinSes ? '' : SES.clave, dni: sinSes ? '' : (SES.dni || ''), datos: datos || {} }), signal: ctl.signal });
     const j = JSON.parse(await r.text());
     if (j.error === 'clave') { salir('La clave no es correcta.'); throw new Error('clave'); }
     return j;
@@ -118,14 +118,14 @@ const DCFG = {
 };
 async function ingreso(msg) {
   $('salir').hidden = true;
-  $('raiz').innerHTML = '<div class="card login" style="margin:6vh auto"><h1>Ingresar</h1><p class="mu" style="margin:0">Usá la misma clave del establecimiento que se usa para cargar los manifiestos.</p>' + (msg ? '<div class="aviso error">' + esc(msg) + '</div>' : '') +
-    '<label class="f">Establecimiento<select class="c" id="est"><option value="">Cargando…</option></select></label><label class="f">Clave<input class="c" id="clave" type="password" autocomplete="current-password"></label>' +
+  $('raiz').innerHTML = '<div class="card login" style="margin:6vh auto"><h1>Ingresar</h1><p class="mu" style="margin:0">Usá tu DNI y la misma clave con la que entrás a «Mi establecimiento». Si tu establecimiento todavía usa la clave común, dejá el DNI vacío.</p>' + (msg ? '<div class="aviso error">' + esc(msg) + '</div>' : '') +
+    '<label class="f">Establecimiento<select class="c" id="est"><option value="">Cargando…</option></select></label><label class="f">Tu DNI<input class="c" id="dni" type="text" inputmode="numeric" autocomplete="username" placeholder="Solo números"></label><label class="f">Clave<input class="c" id="clave" type="password" autocomplete="current-password"></label>' +
     '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="rec" checked> Recordar en este equipo</label><button class="btn pri" id="entrar">Ingresar</button></div>';
   try { if (!LISTA.length) { const r = await post('d_lista', {}, true); LISTA = (r && r.lista) || []; } } catch (e) {}
   $('est').innerHTML = '<option value="">Elegí…</option>' + LISTA.map(x => '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>').join('');
   const ir = async () => {
     const est = $('est').value, clave = $('clave').value.trim(); if (!est || !clave) return;
-    SES = { est: est, clave: clave, nombre: (LISTA.find(x => x.id === est) || {}).nombre || est };
+    SES = { est: est, clave: clave, dni: $('dni').value.replace(/\D/g, ''), nombre: (LISTA.find(x => x.id === est) || {}).nombre || est };
     $('entrar').disabled = true; $('entrar').textContent = 'Verificando…';
     try { const r = await post('d_abrir', {}); if (!r.ok) throw new Error(r.mensaje || ''); if ($('rec').checked) LS.set('ses', SES); empezar(); }
     catch (e) { if (e.message !== 'clave') ingreso(e.message || 'No se pudo ingresar.'); }
