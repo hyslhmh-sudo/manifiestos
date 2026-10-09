@@ -872,11 +872,21 @@ function irDiag() {
 function encolarMi(tipo, datos, texto) {
   datos.idLocal = idNuevo(); datos.quien = SES.persona.nombre; datos._txt = texto;
   COLA.push({ tipo: tipo, est: SES.est, clave: SES.clave, dni: SES.dni || '', datos: datos, estado: 'pendiente', creado: new Date().toISOString() });
-  if (!guardarCola()) { COLA.pop(); alertaEspacio(); return; }
+  if (!guardarCola()) { COLA.pop(); if (navigator.onLine) return enviarDirecto(tipo, datos, texto); alertaEspacio(); return; }
   F = null; vista('form');
   $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(texto) + ' guardado.</b><br>' + (navigator.onLine ? 'Se está enviando al sistema.' : 'Quedó guardado en este equipo: se envía solo cuando vuelva la señal.') + '</div>' +
     '<div class="menu"><button class="big main" data-act="inicio"><b>Volver al inicio</b></button></div>';
   bar(null); sincronizar();
+}
+// Cargas pesadas (varios PDF) que no entran en la memoria del equipo: se envían en el momento, esperando la respuesta
+async function enviarDirecto(tipo, datos, texto) {
+  const volver = MIV && MIV.f, antes = ESPERA_MS; vista('form'); bar(null);
+  $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Enviando ' + esc(texto) + '…</b><br>Son archivos pesados: no cierres esta pantalla.</div>';
+  ESPERA_MS = 180000;
+  try { const r = await api(tipo, datos); ESPERA_MS = antes;
+    if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo guardar.');
+    F = null; SIN = null; $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>' + esc(texto) + ' guardado.</b><br>Ya está registrado en el sistema.</div><div class="menu"><button class="big main" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  } catch (e) { ESPERA_MS = antes; if (volver) volver(); miErr((e.message === 'tiempo' ? 'El envío tardó demasiado.' : e.message) + ' Probá de nuevo o con menos archivos.'); }
 }
 function miErr(m) { const e = $('miErr'); if (e) { e.textContent = m; e.hidden = !m; e.scrollIntoView({ block: 'center' }); } }
 const miArch = (o, k) => o[k] ? { base64: o[k], tipo: (o[k].match(/^data:([^;]+)/) || [])[1] || 'image/jpeg', nombre: o[k + 'Nombre'] || '' } : null;
@@ -895,6 +905,32 @@ function fFoto(k, t, ayuda) {
     '<input id="mf_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfoto="' + k + '"><input id="mf_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-mfoto="' + k + '">' +
     (v ? '<button class="link" data-act="fquitar" data-k="' + k + '">Quitar</button>' : '') + '</div>';
 }
+// Varios archivos (fotos y PDF): F[k] = [{ base64, tipo, nombre }]; F[k + 'Ya'] = los que ya están en el sistema
+const ARCH_MAX = 8;
+function fArchivos(k, t, ayuda) {
+  const L = F[k] || [], ya = F[k + 'Ya'] || [], lab = 'class="btn sec" style="text-align:center;cursor:pointer"';
+  return '<div class="field">' + fLab(t, ayuda) +
+    (ya.length ? '<div class="photo"><b>Ya cargados: ' + ya.length + '</b> · ' + ya.map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Ver ' + (i + 1) + '</a>').join(' · ') + '<br><span class="mu">Se mantienen; lo que agregues se suma.</span></div>' : '') +
+    L.map((a, i) => '<div class="photo" style="display:flex;align-items:center;gap:12px">' + (a.tipo === 'application/pdf' ? '<b>PDF</b><span class="mu">' + esc(a.nombre || '') + '</span>' : '<img src="' + a.base64 + '" alt="Archivo ' + (i + 1) + '" style="max-height:90px;width:auto">') +
+      '<button class="link" data-act="fquitarN" data-k="' + k + '" data-arg="' + i + '" style="margin-left:auto">Quitar</button></div>').join('') +
+    (L.length < ARCH_MAX ? '<div class="grid2" style="margin-top:8px"><label ' + lab + ' for="mfs_' + k + 'c">' + (L.length ? 'Sacar otra foto' : 'Sacar foto') + '</label><label ' + lab + ' for="mfs_' + k + 'a">' + (L.length ? 'Agregar archivos' : 'Elegir archivos') + '</label></div>' +
+      '<input id="mfs_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfotos="' + k + '"><input id="mfs_' + k + 'a" type="file" accept="image/*,application/pdf" multiple hidden data-mfotos="' + k + '">'
+      : '<p class="mu" style="font-size:13px">Llegaste al máximo de ' + ARCH_MAX + ' archivos.</p>') + '</div>';
+}
+function mFotos(input, k) {
+  const fs = Array.from(input.files || []); input.value = ''; if (!fs.length || !F) return; F[k] = F[k] || [];
+  let pend = fs.length; const listo = () => { if (--pend === 0 && MIV) MIV.f(); };
+  fs.forEach(f => {
+    if (F[k].length >= ARCH_MAX) return listo();
+    if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) { miErr('El PDF «' + f.name + '» pesa más de 6 MB.'); return listo(); }
+      const rd = new FileReader(); rd.onload = () => { F[k].push({ base64: rd.result, tipo: 'application/pdf', nombre: f.name }); listo(); }; rd.onerror = listo; rd.readAsDataURL(f); return; }
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => { const sc = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * sc; c.height = img.height * sc; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      F[k].push({ base64: c.toDataURL('image/jpeg', 0.7), tipo: 'image/jpeg', nombre: f.name }); URL.revokeObjectURL(url); listo(); };
+    img.onerror = () => { URL.revokeObjectURL(url); listo(); }; img.src = url;
+  });
+}
+const archPeso = L => (L || []).reduce((a, x) => a + String(x.base64 || '').length, 0);
 function mFoto(input, k) {
   const f = input.files && input.files[0]; if (!f || !F) return;
   if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) return miErr('El PDF pesa más de 6 MB.'); const rd = new FileReader(); rd.onload = () => { F[k] = rd.result; F[k + 'Nombre'] = f.name; MIV.f(); }; rd.readAsDataURL(f); return; }
@@ -1098,20 +1134,27 @@ function guardarDoc() {
   encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
 }
 
-// ------------------------------------------------------------------ Siniestros (Modulo4.gs). Personal y secretaría: denuncia y novedades. El diagnóstico se copia de la denuncia y no se muestra en las listas.
+// ------------------------------------------------------------------ Siniestros (Modulo4.gs). Personal y secretaría: denuncia, novedades, correcciones y anulaciones.
+// El diagnóstico se copia de la denuncia; solo aparece en el formulario (carga y corrección), nunca en las listas.
 const ACC_TIPOS = ['En el lugar de trabajo', 'In itinere', 'Enfermedad profesional'];
 let SIN = null, SINF = 'Abiertos', SINB = '';
 const sinFecha = iso => iso ? String(iso).split('-').reverse().join('/') : '';
+const sinDe = id => SIN && SIN.lista.find(x => x.id === id);
+const sinLinks = (L, txt) => (L || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + txt + (L.length > 1 ? ' ' + (i + 1) : '') + '</a>').join(' · ');
 // Sedes de todos los establecimientos que carga esta persona (ej.: HZT y HMH juntos); vienen con la lista de siniestros
 const sinSedes = () => (SIN && SIN._est === SES.est && SIN.sedes && SIN.sedes.length ? SIN.sedes : [{ est: SES.est, sitios: (MI && MI.sitios) || [] }])
   .reduce((a, g) => a.concat((g.sitios.length ? g.sitios : ['s/d (revisar)']).map(x => [g.est + '|' + x, g.est + ' · ' + x])), []);
+async function sinAsegurar() {
+  if ((!SIN || SIN._est !== SES.est) && navigator.onLine) { try { const r = await api('m_accidente', { op: 'lista' }); if (r.ok) { SIN = r; SIN._est = SES.est; } } catch (e) {} }
+}
+// Siniestro nuevo o corrección de uno cargado (F._sinCorr = su ID)
 async function accidente() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
-  if ((!SIN || SIN._est !== SES.est) && navigator.onLine) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit('Cargar un siniestro nuevo') + '<p class="mu">Preparando…</p>'; bar(null);
-    try { const r = await api('m_accidente', { op: 'lista' }); if (r.ok) { SIN = r; SIN._est = SES.est; } } catch (e) {} }
-  F = F && F._f === 'acc' ? F : { _f: 'acc', FECHA_ACCIDENTE: '', SEDE: (sinSedes()[0] || [''])[0], TIPO: '', FECHA_CONOCIMIENTO: '', FECHA_DENUNCIA: hoyISO(), COPIA_ENTREGADA: '' };
+  if (!SIN || SIN._est !== SES.est) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit('Siniestro') + '<p class="mu">Preparando…</p>'; bar(null); await sinAsegurar(); }
+  F = F && F._f === 'acc' ? F : { _f: 'acc', FECHA_ACCIDENTE: '', SEDE: (sinSedes()[0] || [''])[0], TIPO: '', FECHA_CONOCIMIENTO: '', FECHA_DENUNCIA: hoyISO(), COPIA_ENTREGADA: '', archivos: [] };
+  const corr = !!F._sinCorr;
   MIV = { f: accidente }; VISTA = 'mi'; vista('form');
-  $('app').innerHTML = miTit('Cargar un siniestro nuevo', 'Copiá los datos de la denuncia del Autoseguro, en el mismo orden. El PDF se adjunta como respaldo.') + fErr +
+  $('app').innerHTML = miTit(corr ? 'Corregir siniestro ' + (F.NRO_SINIESTRO || '') : 'Cargar un siniestro nuevo', corr ? 'Cambiá lo que esté mal y guardá. Queda anotado qué se corrigió, quién y cuándo.' : 'Copiá los datos de la denuncia del Autoseguro, en el mismo orden. El PDF se adjunta como respaldo.') + fErr +
     fInp('NRO_SINIESTRO', 'N.º de siniestro', 'text', 'Ej.: CH523636', 'El que empieza con CH (no el número largo de la denuncia)') +
     '<div class="grid2">' + fInp('FECHA_ACCIDENTE', 'Fecha del accidente', 'date') + fInp('HORA', 'Hora (si figura)', 'time') + '</div>' +
     fSeg('TIPO', 'Tipo', ACC_TIPOS) +
@@ -1125,8 +1168,9 @@ async function accidente() {
     fInp('DIAGNOSTICO', 'Diagnóstico de certeza', 'text', 'Ej.: Traumatismo de pie izquierdo y ambas rodillas', 'Si la denuncia no lo trae, escribí s/d') +
     fSeg('COPIA_ENTREGADA', '¿Se le entregó copia de la denuncia al trabajador?', ['Sí', 'No']) +
     fInp('VIENE_DE', 'Viene de (solo si es una recaída con número nuevo)', 'text', 'Ej.: CH510000') +
-    fFoto('foto', 'PDF o foto de la denuncia', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
-  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAccidente">Guardar</button>');
+    fArchivos('archivos', corr ? 'Agregar archivos (opcional)' : 'PDF o fotos de la denuncia', 'Podés poner varios: hasta ' + ARCH_MAX + ', cada PDF hasta 6 MB') +
+    fTxt('OBSERVACIONES', corr ? 'Qué corregiste (opcional)' : 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="' + (corr ? 'sinVolverVer' : 'inicio') + '">Cancelar</button><button class="btn pri" data-act="guardarAccidente">Guardar</button>');
 }
 function guardarAccidente() {
   const dni = String(F.DNI || '').replace(/\D/g, ''), nro = String(F.NRO_SINIESTRO || '').replace(/\s+/g, '').toUpperCase(), hoy = hoyISO();
@@ -1137,15 +1181,19 @@ function guardarAccidente() {
   if (!F.FECHA_CONOCIMIENTO) return miErr('Falta la fecha en que el hospital se enteró.'); if (!F.FECHA_DENUNCIA) return miErr('Falta la fecha de la denuncia.');
   if (F.FECHA_DENUNCIA < F.FECHA_CONOCIMIENTO) return miErr('La denuncia no puede ser anterior a la fecha en que el hospital se enteró.');
   if (!String(F.CIE10 || '').trim() || !String(F.DIAGNOSTICO || '').trim()) return miErr('Completá el CIE 10 y el diagnóstico de certeza como figuran en la denuncia (si no los trae, escribí s/d).');
-  if (!F.COPIA_ENTREGADA) return miErr('Indicá si se entregó la copia de la denuncia.'); if (!F.foto) return miErr('Falta el PDF o la foto de la denuncia.');
+  if (!F.COPIA_ENTREGADA) return miErr('Indicá si se entregó la copia de la denuncia.');
+  if (!F._sinCorr && !(F.archivos || []).length) return miErr('Falta el PDF o la foto de la denuncia.');
+  if (archPeso(F.archivos) > 30e6) return miErr('Los archivos pesan demasiado juntos. Cargá algunos ahora y el resto con «Corregir datos».');
   const sede = String(F.SEDE || (sinSedes()[0] || [''])[0]).split('|');
-  const d = Object.assign({}, F, { DNI: dni, NRO_SINIESTRO: nro, VIENE_DE: String(F.VIENE_DE || '').replace(/\s+/g, '').toUpperCase(), ESTABLECIMIENTO: sede[0] || SES.est, SITIO: sede[1] || '' }); delete d.SEDE; delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
-  SIN = null; encolarMi('m_accidente', d, 'Siniestro ' + nro + ' (' + d.ESTABLECIMIENTO + ')');
+  const d = Object.assign({}, F, { DNI: dni, NRO_SINIESTRO: nro, VIENE_DE: String(F.VIENE_DE || '').replace(/\s+/g, '').toUpperCase(), ESTABLECIMIENTO: sede[0] || SES.est, SITIO: sede[1] || '', archivos: (F.archivos || []).slice() });
+  if (F._sinCorr) { d.op = 'corregir'; d.ID_SINIESTRO = F._sinCorr; }
+  ['SEDE', '_f', '_sinCorr', 'archivosYa', 'foto', 'fotoNombre'].forEach(k => delete d[k]);
+  SIN = null; encolarMi('m_accidente', d, (F._sinCorr ? 'Corrección del siniestro ' : 'Siniestro ') + nro + ' (' + d.ESTABLECIMIENTO + ')');
 }
 // Lista: abiertos primero, con avisos; búsqueda por nombre, DNI o N.º CH
 async function siniestros(fresco) {
   VISTA = 'mi'; MIV = { f: siniestros }; vista('wide'); F = null;
-  const tit = miTit('Siniestros', 'Tocá uno para ver sus novedades o cargar una nueva (inicio de ILT, alta, reingreso…).');
+  const tit = miTit('Siniestros', 'Tocá uno para ver sus novedades, cargar una nueva o corregir.');
   if (!navigator.onLine) { $('app').innerHTML = tit + '<p class="mu">Necesitás señal para ver los siniestros.</p>'; return miVolver(); }
   if (fresco || !SIN || SIN._est !== SES.est) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
     try { const r = await api('m_accidente', { op: 'lista' }); if (!r.ok) throw new Error(r.mensaje || ''); SIN = r; SIN._est = SES.est; }
@@ -1163,34 +1211,71 @@ async function siniestros(fresco) {
   const inp = $('sinB'); if (inp) inp.addEventListener('change', () => { SINB = inp.value; siniestros(); });
   bar('<button class="btn sec" data-act="inicio">Volver</button><button class="btn pri" data-act="accidente">+ Siniestro nuevo</button>');
 }
+let SIN_VER = '';
 function sinVer(id) {
-  const s = SIN && SIN.lista.find(x => x.id === id); if (!s) return siniestros(true);
-  VISTA = 'mi'; MIV = { f: () => sinVer(id) }; vista('form'); F = null;
-  $('app').innerHTML = miTit(s.nombre, esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.sitio || s.est)) +
+  const s = sinDe(id); if (!s) return siniestros(true);
+  SIN_VER = id; VISTA = 'mi'; MIV = { f: () => sinVer(id) }; vista('form'); F = null;
+  $('app').innerHTML = miTit(s.nombre, esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.est) + ' · ' + esc(s.sitio || '')) +
     '<div class="notice' + (s.abierto ? '' : ' ok') + '"><b>' + esc(s.estado) + '</b>' + (s.dias ? ' · ' + s.dias + ' días de baja' : '') + '</div>' +
     s.avisos.map(a => '<div class="notice" style="' + (a[0] === 'er' ? 'background:var(--erbg);color:var(--er)' : '') + '">' + esc(a[1]) + '</div>').join('') +
-    '<h2>Novedades</h2>' + (s.novedades.length ? '<div class="lista">' + s.novedades.map(n => '<div class="item"><div><b>' + esc(n.novedad) + '</b><small>' + sinFecha(n.fecha) + (n.obs ? ' · ' + esc(n.obs) : '') + '</small></div>' + (n.url ? '<a href="' + esc(n.url) + '" target="_blank" rel="noopener">Ver</a>' : '') + '</div>').join('') + '</div>' : '<p class="mu">Todavía sin novedades.</p>') +
-    (s.denuncia ? '<p class="mu" style="font-size:13px"><a href="' + esc(s.denuncia) + '" target="_blank" rel="noopener">Ver la denuncia</a></p>' : '') +
-    '<p class="mu" style="font-size:13px">¿Algo mal cargado? Avisá a Higiene y Seguridad: se corrige sin borrar nada.</p>';
+    '<h2>Novedades</h2>' + (s.novedades.length ? '<div class="lista">' + s.novedades.map(n => '<div class="item"><div><b>' + esc(n.novedad) + '</b><small>' + sinFecha(n.fecha) + (n.obs ? ' · ' + esc(n.obs) : '') + '</small>' +
+      '<small>' + (n.urls.length ? sinLinks(n.urls, 'Ver comprobante') + ' · ' : '') + '<button class="link" data-act="sinNovCorr" data-arg="' + esc(n.id) + '">Corregir</button> · <button class="link" data-act="sinAnularNov" data-arg="' + esc(n.id) + '">Anular</button></small></div></div>').join('') + '</div>'
+      : '<p class="mu">Todavía sin novedades.</p>') +
+    (s.denuncias && s.denuncias.length ? '<p class="mu" style="font-size:13px">' + sinLinks(s.denuncias, 'Ver la denuncia') + '</p>' : '') +
+    '<h2>¿Algo mal cargado?</h2><div class="menu"><button class="big" data-act="sinCorr" data-arg="' + esc(id) + '"><b>Corregir datos</b><span>Fecha, DNI, sede, N.º CH, diagnóstico… o agregar archivos</span></button>' +
+    '<button class="big" data-act="sinAnular" data-arg="' + esc(id) + '"><b>Anular este siniestro</b><span>Si se cargó dos veces o no corresponde</span></button></div>';
   bar('<button class="btn sec" data-act="siniestros">Volver</button><button class="btn pri" data-act="sinNov" data-arg="' + esc(id) + '">+ Cargar novedad</button>');
 }
+function sinCorr(id) {
+  const s = sinDe(id); if (!s) return siniestros(true);
+  F = Object.assign({ _f: 'acc', _sinCorr: id, archivos: [], archivosYa: s.denuncias || [] }, s.datos, { SEDE: s.datos.ESTABLECIMIENTO + '|' + s.datos.SITIO, APELLIDO_Y_NOMBRE: s.datos.EN_BASE === 'No' ? s.nombre : '' });
+  accidente();
+}
+// Novedad nueva o corrección de una (F.REEMPLAZA = la que se corrige: queda anulada y la nueva la reemplaza)
 function sinNov(id) {
-  const s = SIN && SIN.lista.find(x => x.id === id); if (!s) return siniestros(true);
-  F = F && F._f === 'nov' && F.ID_SINIESTRO === id ? F : { _f: 'nov', ID_SINIESTRO: id, FECHA: hoyISO(), NOVEDAD: '' };
+  const s = sinDe(id); if (!s) return siniestros(true);
+  F = F && F._f === 'nov' && F.ID_SINIESTRO === id ? F : { _f: 'nov', ID_SINIESTRO: id, FECHA: hoyISO(), NOVEDAD: '', archivos: [] };
   VISTA = 'mi'; MIV = { f: () => sinNov(id) }; vista('form');
   const pide = (SIN.pideArchivo || []).indexOf(F.NOVEDAD) >= 0;
-  $('app').innerHTML = miTit('Novedad: ' + s.nombre, esc(s.nro) + ' · hoy: ' + esc(s.estado)) + fErr +
+  $('app').innerHTML = miTit((F.REEMPLAZA ? 'Corregir novedad: ' : 'Novedad: ') + s.nombre, esc(s.nro) + ' · hoy: ' + esc(s.estado)) + fErr +
+    (F.REEMPLAZA ? '<div class="notice">Al guardar, la novedad anterior queda anulada y esta la reemplaza.</div>' : '') +
     fSeg('NOVEDAD', 'Qué pasó', SIN.tipos) + fInp('FECHA', 'Fecha de la novedad', 'date') +
-    fFoto('foto', pide ? 'Notificación del Autoseguro (obligatoria)' : 'Comprobante (alta, parte, nota…)', pide ? 'Rechazo o encuadre: Res. SRT 525/15' : 'Opcional, pero conviene') +
+    fArchivos('archivos', pide ? 'Notificación del Autoseguro (obligatoria)' : 'Comprobantes (alta, parte, nota…)', pide ? 'Rechazo o encuadre: Res. SRT 525/15' : 'Opcional, pero conviene. Podés poner varios') +
     fTxt('OBSERVACIONES', F.NOVEDAD === 'Otra' ? 'Cuál es la novedad' : 'Observaciones (opcional)');
   bar('<button class="btn sec" data-act="sinVer" data-arg="' + esc(id) + '">Cancelar</button><button class="btn pri" data-act="guardarNov">Guardar</button>');
 }
+function sinNovCorr(nid) {
+  const s = SIN && SIN.lista.find(x => x.novedades.some(n => n.id === nid)), n = s && s.novedades.find(x => x.id === nid); if (!n) return siniestros(true);
+  F = { _f: 'nov', ID_SINIESTRO: s.id, REEMPLAZA: nid, NOVEDAD: n.novedad, FECHA: n.fecha, OBSERVACIONES: n.obs || '', archivos: [], archivosYa: n.urls };
+  sinNov(s.id);
+}
 function guardarNov() {
   if (!F.NOVEDAD) return miErr('Elegí qué pasó.'); if (!F.FECHA) return miErr('Falta la fecha.'); if (F.FECHA > hoyISO()) return miErr('La fecha no puede ser posterior a hoy.');
-  if ((SIN.pideArchivo || []).indexOf(F.NOVEDAD) >= 0 && !F.foto) return miErr('Adjuntá la notificación del Autoseguro.');
+  if ((SIN.pideArchivo || []).indexOf(F.NOVEDAD) >= 0 && !(F.archivos || []).length && !(F.archivosYa || []).length) return miErr('Adjuntá la notificación del Autoseguro.');
   if (F.NOVEDAD === 'Otra' && !String(F.OBSERVACIONES || '').trim()) return miErr('Contá brevemente cuál es la novedad.');
-  const s = SIN.lista.find(x => x.id === F.ID_SINIESTRO) || {}, d = Object.assign({ op: 'novedad' }, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
-  SIN = null; encolarMi('m_accidente', d, F.NOVEDAD + ' · ' + (s.nombre || ''));
+  if (archPeso(F.archivos) > 30e6) return miErr('Los archivos pesan demasiado juntos. Cargá menos.');
+  const s = sinDe(F.ID_SINIESTRO) || {}, d = Object.assign({ op: 'novedad' }, F, { archivos: (F.archivos || []).slice() }); ['_f', 'archivosYa', 'foto', 'fotoNombre'].forEach(k => delete d[k]);
+  SIN = null; encolarMi('m_accidente', d, (F.REEMPLAZA ? 'Corrección: ' : '') + F.NOVEDAD + ' · ' + (s.nombre || ''));
+}
+// Anular (siniestro o novedad): con motivo, al momento y con señal
+function sinAnular(id, nid) {
+  const s = sinDe(id); if (!s) return siniestros(true);
+  const n = nid ? s.novedades.find(x => x.id === nid) : null;
+  F = F && F._f === 'anu' && F.id === id && F.nid === nid ? F : { _f: 'anu', id: id, nid: nid || '', MOTIVO: '' };
+  VISTA = 'mi'; MIV = { f: () => sinAnular(id, nid) }; vista('form');
+  $('app').innerHTML = miTit(n ? 'Anular novedad' : 'Anular siniestro', n ? esc(n.novedad) + ' del ' + sinFecha(n.fecha) + ' · ' + esc(s.nombre) : esc(s.nro) + ' · ' + esc(s.nombre)) + fErr +
+    '<div class="notice">' + (n ? 'La novedad no se borra: queda marcada como anulada y el sistema recalcula el estado y los días.' : 'El siniestro no se borra: queda marcado como anulado, con el motivo, y deja de aparecer en la lista.') + '</div>' +
+    fTxt('MOTIVO', 'Motivo', n ? 'Ej.: fecha equivocada, era de otro siniestro' : 'Ej.: cargado dos veces, no corresponde a este hospital');
+  bar('<button class="btn sec" data-act="sinVer" data-arg="' + esc(id) + '">Cancelar</button><button class="btn pri" data-act="sinAnularOk">Anular</button>');
+}
+async function sinAnularOk() {
+  const m = String(F.MOTIVO || '').trim(); if (m.length < 5) return miErr('Escribí el motivo.');
+  if (!navigator.onLine) return miErr('Para anular hace falta señal.');
+  const b = document.querySelector('[data-act="sinAnularOk"]'); if (b) { b.disabled = true; b.textContent = 'Anulando…'; }
+  try { const r = await api('m_accidente', F.nid ? { op: 'anular_nov', ID_NOVEDAD: F.nid, MOTIVO: m, quien: SES.persona.nombre } : { op: 'anular', ID_SINIESTRO: F.id, MOTIVO: m, quien: SES.persona.nombre });
+    if (!r.ok) throw new Error(r.mensaje || 'No se pudo anular.');
+    const id = F.id, nid = F.nid; F = null; SIN = null; await siniestros(true); if (nid) sinVer(id);
+  } catch (e) { if (b) { b.disabled = false; b.textContent = 'Anular'; } miErr(e.message === 'tiempo' ? 'El sistema tardó en responder. Revisá la lista antes de volver a intentar.' : e.message); }
 }
 
 // ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
@@ -1276,8 +1361,10 @@ Object.assign(ACT, {
   irDiag: () => irDiag(), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
   aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
-  guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
-  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); },
+  guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
+  sinCorr: b => sinCorr(b.dataset.arg), sinVolverVer: () => { F = null; SIN_VER ? sinVer(SIN_VER) : siniestros(); }, sinNovCorr: b => sinNovCorr(b.dataset.arg), sinAnular: b => { F = null; sinAnular(b.dataset.arg); },
+  sinAnularNov: b => { F = null; const s = SIN && SIN.lista.find(x => x.novedades.some(n => n.id === b.dataset.arg)); if (s) sinAnular(s.id, b.dataset.arg); }, sinAnularOk: () => sinAnularOk(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
+  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); }, fquitarN: b => { if (!F || !F[b.dataset.k]) return; F[b.dataset.k].splice(Number(b.dataset.arg), 1); MIV.f(); },
   soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
 });
 document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });
@@ -1286,6 +1373,7 @@ document.addEventListener('change', e => {
   if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO/.test(t.dataset.f)) MIV.f(); }
   else if (t.dataset.fchk && F) { F[t.dataset.fchk] = Array.from(document.querySelectorAll('[data-fchk="' + t.dataset.fchk + '"]:checked')).map(x => x.value).join(' · '); }
   else if (t.dataset.mfoto) mFoto(t, t.dataset.mfoto);
+  else if (t.dataset.mfotos) mFotos(t, t.dataset.mfotos);
 });
 
 // ------------------------------------------------------------------ Arranque
