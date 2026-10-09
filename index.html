@@ -1098,7 +1098,7 @@ function guardarDoc() {
   encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
 }
 
-// ------------------------------------------------------------------ Siniestros (Modulo4.gs). Personal y secretaría: denuncia y novedades. No se registra diagnóstico.
+// ------------------------------------------------------------------ Siniestros (Modulo4.gs). Personal y secretaría: denuncia y novedades. El diagnóstico se copia de la denuncia y no se muestra en las listas.
 const ACC_TIPOS = ['En el lugar de trabajo', 'In itinere', 'Enfermedad profesional'];
 let SIN = null, SINF = 'Abiertos', SINB = '';
 const sinFecha = iso => iso ? String(iso).split('-').reverse().join('/') : '';
@@ -1111,7 +1111,7 @@ async function accidente() {
     try { const r = await api('m_accidente', { op: 'lista' }); if (r.ok) { SIN = r; SIN._est = SES.est; } } catch (e) {} }
   F = F && F._f === 'acc' ? F : { _f: 'acc', FECHA_ACCIDENTE: '', SEDE: (sinSedes()[0] || [''])[0], TIPO: '', FECHA_CONOCIMIENTO: '', FECHA_DENUNCIA: hoyISO(), COPIA_ENTREGADA: '' };
   MIV = { f: accidente }; VISTA = 'mi'; vista('form');
-  $('app').innerHTML = miTit('Cargar un siniestro nuevo', 'Copiá los datos de la denuncia del Autoseguro, en el mismo orden. El PDF se adjunta como respaldo. No se carga el diagnóstico.') + fErr +
+  $('app').innerHTML = miTit('Cargar un siniestro nuevo', 'Copiá los datos de la denuncia del Autoseguro, en el mismo orden. El PDF se adjunta como respaldo.') + fErr +
     fInp('NRO_SINIESTRO', 'N.º de siniestro', 'text', 'Ej.: CH523636', 'El que empieza con CH (no el número largo de la denuncia)') +
     '<div class="grid2">' + fInp('FECHA_ACCIDENTE', 'Fecha del accidente', 'date') + fInp('HORA', 'Hora (si figura)', 'time') + '</div>' +
     fSeg('TIPO', 'Tipo', ACC_TIPOS) +
@@ -1120,6 +1120,9 @@ async function accidente() {
     fSel('SEDE', 'Lugar de trabajo (establecimiento y sede)', sinSedes()) +
     '<div class="grid2">' + fInp('FECHA_CONOCIMIENTO', 'El hospital se enteró el', 'date') + fInp('FECHA_DENUNCIA', 'Denuncia al Autoseguro el', 'date') + '</div>' +
     '<p class="mu" style="font-size:13px;margin-top:-8px">La denuncia se hace dentro de las 48 h de enterarse (Res. SRT 525/15).</p>' +
+    '<h2 style="margin-top:18px">Datos médicos de la denuncia</h2><p class="mu" style="font-size:13px;margin-top:-6px">Copialos tal como figuran. Son datos de salud reservados: solo los ve Higiene y Seguridad.</p>' +
+    fInp('CIE10', 'CIE 10', 'text', 'Ej.: Contusión de la rodilla', 'Si la denuncia no lo trae, escribí s/d') +
+    fInp('DIAGNOSTICO', 'Diagnóstico de certeza', 'text', 'Ej.: Traumatismo de pie izquierdo y ambas rodillas', 'Si la denuncia no lo trae, escribí s/d') +
     fSeg('COPIA_ENTREGADA', '¿Se le entregó copia de la denuncia al trabajador?', ['Sí', 'No']) +
     fInp('VIENE_DE', 'Viene de (solo si es una recaída con número nuevo)', 'text', 'Ej.: CH510000') +
     fFoto('foto', 'PDF o foto de la denuncia', 'Hasta 6 MB') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
@@ -1133,6 +1136,7 @@ function guardarAccidente() {
   if (!F.TIPO) return miErr('Elegí el tipo.'); if (dni.length < 7 || dni.length > 8) return miErr('Revisá el DNI: tiene que tener 7 u 8 números.');
   if (!F.FECHA_CONOCIMIENTO) return miErr('Falta la fecha en que el hospital se enteró.'); if (!F.FECHA_DENUNCIA) return miErr('Falta la fecha de la denuncia.');
   if (F.FECHA_DENUNCIA < F.FECHA_CONOCIMIENTO) return miErr('La denuncia no puede ser anterior a la fecha en que el hospital se enteró.');
+  if (!String(F.CIE10 || '').trim() || !String(F.DIAGNOSTICO || '').trim()) return miErr('Completá el CIE 10 y el diagnóstico de certeza como figuran en la denuncia (si no los trae, escribí s/d).');
   if (!F.COPIA_ENTREGADA) return miErr('Indicá si se entregó la copia de la denuncia.'); if (!F.foto) return miErr('Falta el PDF o la foto de la denuncia.');
   const sede = String(F.SEDE || (sinSedes()[0] || [''])[0]).split('|');
   const d = Object.assign({}, F, { DNI: dni, NRO_SINIESTRO: nro, VIENE_DE: String(F.VIENE_DE || '').replace(/\s+/g, '').toUpperCase(), ESTABLECIMIENTO: sede[0] || SES.est, SITIO: sede[1] || '' }); delete d.SEDE; delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
