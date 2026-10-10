@@ -136,6 +136,12 @@ nav.lat .titu.mod { color: #A9C6D1; font-size: 11.5px; letter-spacing: .8px; pad
 .sinTab tr.cl { cursor: pointer; } .sinTab tr.cl:hover { background: #F4F8FA; }
 .dl { display: grid; grid-template-columns: minmax(150px, max-content) 1fr; gap: 6px 16px; font-size: 14px; } .dl dt { color: var(--mu); } .dl dd { margin: 0; }
 .busca2 { display: flex; gap: 8px; flex-wrap: wrap; } .busca2 input { flex: 1 1 240px; }
+/* ---- Fase 5: selector de íconos del certificado ---- */
+.icoGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; max-height: 270px; overflow-y: auto; padding: 2px; }
+.icoT { border: 1px solid var(--ln); background: #fff; border-radius: 8px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font: inherit; font-size: 10.5px; color: var(--mu); cursor: pointer; overflow-wrap: anywhere; text-align: center; }
+.icoT .ms { font-size: 30px; color: var(--az); } .icoT.on { border-color: var(--az); background: #E7F0F3; box-shadow: inset 0 0 0 1px var(--az); color: var(--az); font-weight: 700; }
+.icoT:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
+.icoSel { width: 64px; height: 64px; border-radius: 10px; background: #5894A7; color: #fff; display: grid; place-items: center; flex: 0 0 64px; } .icoSel .ms { font-size: 40px; color: #fff; }
 </style>
 </head>
 <body>
@@ -398,8 +404,19 @@ async function capApi(accion, datos, ms) {
   if (!CAP_API) throw new Error('sinurl');
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
   try {
-    const r = await fetch(CAP_API, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, datos: datos || {} }), signal: ctl.signal });
-    const j = await r.json();
+    let txt = '';
+    for (let intento = 0; intento < 2; intento++) {   // si Google responde una página de error, se reintenta una vez
+      const r = await fetch(CAP_API, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, datos: datos || {} }), signal: ctl.signal });
+      txt = await r.text();
+      if (!/^\s*</.test(txt)) break;
+      await new Promise(ok => setTimeout(ok, 1500));
+    }
+    if (/^\s*</.test(txt)) {   // página de error de Google: se muestra su mensaje para saber qué pasó
+      const doc = new DOMParser().parseFromString(txt, 'text/html'); doc.querySelectorAll('script,style').forEach(x => x.remove());
+      const m = ((doc.body && doc.body.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      throw new Error('El libro de capacitaciones respondió con un error de Google (acción ' + accion + '): ' + (m || 'sin detalle') + '. Mirá en Apps Script › Ejecuciones el último doPost con error.');
+    }
+    const j = JSON.parse(txt);
     if (j.error === 'clave') throw new Error('clave');
     if (!j.ok) throw new Error(j.error || 'error');
     return j;
@@ -502,6 +519,35 @@ const capVacio = v => { v = String(v == null ? '' : v).trim(); return !v || v ==
 const capTit = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>' + esc(t) + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div>' + (botones ? '<div class="filtros">' + botones + '</div>' : '') + '</div>';
 const capEst = e => '<span class="chip ' + (/^activ/i.test(e) ? 'ok' : /borrador|revisi/i.test(e) ? 'wa' : /cancel|suspend|inactiv|anulad/i.test(e) ? 'er' : 'gr') + '">' + esc(e || 's/d') + '</span>';
 const capIco = n => '<span class="ms" aria-hidden="true" style="font-size:22px;vertical-align:-5px">' + esc(capVacio(n) ? 'health_and_safety' : n) + '</span>';
+// Galería de íconos: los de la lista ICONOS del libro + una selección de Material Symbols útiles para HyS. Se puede escribir cualquier otro nombre.
+const CAP_GALERIA = ['health_and_safety', 'badge', 'coronavirus', 'microbiology', 'masks', 'medical_mask', 'clean_hands', 'sanitizer', 'vaccines', 'syringe', 'bloodtype', 'delete', 'recycling', 'compost', 'eco', 'science', 'biotech', 'experiment', 'labs', 'warning', 'dangerous', 'skull',
+  'fire_extinguisher', 'local_fire_department', 'emergency', 'emergency_home', 'directions_run', 'exit_to_app', 'stairs', 'electric_bolt', 'bolt', 'radiology', 'water_drop', 'local_laundry_service', 'dry_cleaning', 'checkroom', 'cleaning_services', 'pest_control', 'restaurant', 'soup_kitchen',
+  'medication', 'pill', 'local_hospital', 'medical_services', 'stethoscope', 'build', 'construction', 'engineering', 'handyman', 'accessibility_new', 'elderly', 'wheelchair_pickup', 'airline_seat_flat', 'back_hand', 'personal_injury', 'monitor', 'desk', 'chair',
+  'inventory_2', 'warehouse', 'local_shipping', 'propane_tank', 'gas_meter', 'oxygen_saturation', 'ac_unit', 'thermostat', 'air', 'noise_aware', 'hearing', 'visibility', 'light_mode', 'psychology', 'self_improvement', 'groups', 'school', 'menu_book', 'gavel', 'policy', 'verified_user', 'shield'];
+const CAP_ICO_TAGS = { fuego: 'fire_extinguisher local_fire_department emergency', incendio: 'fire_extinguisher local_fire_department directions_run exit_to_app', extintor: 'fire_extinguisher', residuo: 'delete recycling compost eco', quimic: 'science biotech experiment labs warning dangerous skull',
+  biolog: 'coronavirus microbiology masks clean_hands sanitizer vaccines syringe bloodtype', laboratorio: 'biotech science labs experiment', agua: 'water_drop', lavadero: 'local_laundry_service dry_cleaning checkroom', limpieza: 'cleaning_services clean_hands sanitizer', ergonom: 'accessibility_new chair desk monitor wheelchair_pickup airline_seat_flat back_hand elderly',
+  electric: 'electric_bolt bolt', radio: 'radiology', emergencia: 'emergency emergency_home directions_run exit_to_app stairs', evacua: 'directions_run exit_to_app stairs emergency_home', plaga: 'pest_control', cocina: 'restaurant soup_kitchen', medicament: 'medication pill', citostatic: 'medication pill dangerous',
+  mantenimiento: 'build construction engineering handyman', gas: 'propane_tank gas_meter oxygen_saturation air', oxigeno: 'oxygen_saturation propane_tank air', ruido: 'noise_aware hearing', clima: 'ac_unit thermostat air', bienes: 'inventory_2 warehouse local_shipping', induccion: 'badge school menu_book', norma: 'gavel policy verified_user shield' };
+function capIconos() { const s = []; ((CAPC && CAPC.listas && CAPC.listas.iconos) || []).concat(CAP_GALERIA).forEach(n => { n = String(n).trim(); if (n && s.indexOf(n) < 0) s.push(n); }); return s; }
+// Selector con vista previa: se usa en el alta y al editar. El valor queda en un campo oculto data-k="ICONO".
+function capPicker(id, actual) {
+  actual = capVacio(actual) ? 'health_and_safety' : actual;
+  return '<div class="f" style="grid-column:1/-1;display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;color:var(--mu);font-weight:600">Ícono del certificado <span style="font-weight:500">(así se ve en la banda azul del certificado)</span></span>' +
+    '<div style="display:flex;gap:12px;align-items:center"><span class="icoSel" id="' + id + 'P"><span class="ms" aria-hidden="true">' + esc(actual) + '</span></span><div><b id="' + id + 'N">' + esc(actual) + '</b><div class="mu peq">Tocá uno de la galería, buscá por tema (fuego, químico, residuos, ergonomía…) o escribí el nombre de cualquier ícono de Material Symbols.</div></div></div>' +
+    '<input class="c" id="' + id + 'Q" placeholder="Buscar: fuego, químico, agua… o escribir un nombre"><div class="icoGrid" id="' + id + 'G"></div><input type="hidden" data-k="ICONO" id="' + id + '" value="' + esc(actual) + '"></div>';
+}
+function capPickerActivar(id, alCambiar) {
+  const pintar = () => {
+    const q = capNorm($(id + 'Q').value.trim()), act = $(id).value;
+    let l = capIconos();
+    if (q) { const t = Object.keys(CAP_ICO_TAGS).filter(k => q.indexOf(k) >= 0 || k.indexOf(q) >= 0).map(k => CAP_ICO_TAGS[k]).join(' ').split(' ').filter(Boolean); l = l.filter(n => n.indexOf(q.replace(/\s+/g, '_')) >= 0 || t.indexOf(n) >= 0); }
+    const libre = q && !l.length && /^[a-z0-9_]+$/.test(q.replace(/\s+/g, '_')) ? q.replace(/\s+/g, '_') : '';   // nombre escrito a mano: se muestra para ver si existe
+    $(id + 'G').innerHTML = (libre ? '<button type="button" class="icoT' + (libre === act ? ' on' : '') + '" data-n="' + esc(libre) + '"><span class="ms" aria-hidden="true">' + esc(libre) + '</span>usar «' + esc(libre) + '»</button>' : '') +
+      l.map(n => '<button type="button" class="icoT' + (n === act ? ' on' : '') + '" data-n="' + esc(n) + '" title="' + esc(n) + '"><span class="ms" aria-hidden="true">' + esc(n) + '</span>' + esc(n) + '</button>').join('') || '<span class="mu peq">Nada con ese nombre.</span>';
+    $(id + 'G').querySelectorAll('[data-n]').forEach(b => b.onclick = () => { $(id).value = b.dataset.n; $(id + 'P').innerHTML = '<span class="ms" aria-hidden="true">' + esc(b.dataset.n) + '</span>'; $(id + 'N').textContent = b.dataset.n; pintar(); if (alCambiar) alCambiar(b.dataset.n); });
+  };
+  $(id + 'Q').oninput = pintar; $(id + 'Q').onkeydown = e => { if (e.key === 'Enter') e.preventDefault(); }; pintar();
+}
 function capMsg(e) {
   const m = e && e.message;
   return m === 'sinurl' ? 'Falta conectar el libro de capacitaciones (constante CAP_API).' : m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave. Salí del portal y volvé a entrar.'
@@ -532,7 +578,7 @@ async function capCatalogo(fresco) {
   const dic = c => c.siempre ? '<span class="chip pa">Siempre abierta</span>' : !c.dictado ? '<span class="mu">Sin dictado</span>' : c.dictado.estado === 'abierto' ? '<span class="chip ok">Abierto hasta ' + esc(c.dictado.cierra) + '</span>' : '<span class="chip pa">Próximo ' + esc(c.dictado.abre) + '</span>';
   const sub = c => [c.tipo && c.tipo !== 's/d' ? c.tipo : '', c.encuentros > 1 ? c.encuentros + ' encuentros' : '', !capVacio(c.carga) ? c.carga + ' h' : '', c.inscripcion ? 'con inscripción' : ''].filter(Boolean).join(' · ');
   const falt = c => c.faltan && c.faltan.length ? ' <span class="chip wa" title="' + esc('Falta: ' + c.faltan.join(', ')) + '">Faltan ' + c.faltan.length + '</span>' : '';
-  marco('#capcat', capTit('Catálogo', CAPC.lista.length + ' capacitaciones, programas y jornadas · tocá una para abrir su ficha', '<a class="btn pri" href="#capalta">+ Nueva capacitación</a><a class="btn sec" href="#capdic">Dictados</a><button class="btn sec" id="ccAct">Actualizar</button>') +
+  marco('#capcat', capTit('Catálogo', CAPC.lista.length + ' capacitaciones, programas y jornadas · tocá una para abrir su ficha', '<a class="btn pri" href="#capalta">+ Nueva capacitación</a><a class="btn sec" href="#capdic">Dictados</a><a class="btn sec" href="#capfir">Firmantes</a><button class="btn sec" id="ccAct">Actualizar</button>') +
     '<div class="filtros"><div class="cpn"><button class="fchip' + (CAPF.filtro === 'act' ? ' on' : '') + '" data-f="act">Activas y borradores</button><button class="fchip' + (CAPF.filtro === 'todas' ? ' on' : '') + '" data-f="todas">Todas</button></div>' +
     '<label class="f">Buscar<input class="c" id="ccQ" value="' + esc(CAPF.q) + '" placeholder="Nombre o código" style="min-width:240px"></label></div>' +
     (!L.length ? '<div class="card vacio">No hay capacitaciones con ese filtro.</div>' :
@@ -562,7 +608,7 @@ async function capFichaVer(cod) {
     '<div class="tb2"><section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>' + capIco(c.ICONO) + ' Datos</h2><dl class="dl">' +
       dd('Tipo', c.TIPO_ACTIVIDAD) + dd('Categoría', c.CATEGORIA) + dd('Eje', c.EJE) + dd('Destinatarios', c.DESTINATARIOS) + dd('Cómo se registra', c.REGISTRO) +
       (Number(c.ENCUENTROS) > 1 ? dd('Encuentros', c.ENCUENTROS) + dd('Asistencia mínima', c.ASISTENCIA_MINIMA) : '') + dd('Carga horaria', capVacio(c.CARGA_HORARIA) ? '' : c.CARGA_HORARIA + ' h') + dd('Vencimiento', c.VENCE) +
-      dd('Siempre abierta', c.SIEMPRE_ABIERTA) + dd('Inscripción previa', c.INSCRIPCION_PREVIA) + dd('Ícono del certificado', c.ICONO) + dd('Firmantes', firm) + dd('Base legal', c.BASE_LEGAL) + '</dl></section>' +
+      dd('Siempre abierta', c.SIEMPRE_ABIERTA) + dd('Inscripción previa', c.INSCRIPCION_PREVIA) + '<dt>Ícono del certificado</dt><dd style="display:flex;gap:10px;align-items:center"><span class="icoSel" style="width:44px;height:44px;flex-basis:44px"><span class="ms" aria-hidden="true" style="font-size:28px">' + esc(capVacio(c.ICONO) ? 'health_and_safety' : c.ICONO) + '</span></span>' + esc(capVacio(c.ICONO) ? 'health_and_safety (por defecto)' : c.ICONO) + ' <button class="link" id="cfIco">Cambiar</button></dd>' + '<dt>Firmantes</dt><dd>' + esc(firm || 's/d') + ' · <a href="#capfir">ver firmantes</a></dd>' + dd('Base legal', c.BASE_LEGAL) + '</dl></section>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Link permanente</h2>' + (F.link ? '<span class="peq" style="overflow-wrap:anywhere">' + esc(F.link) + '</span><div class="cpn"><button class="btn sec" id="cfCop">Copiar link</button><a class="btn sec" href="' + esc(qr) + '" target="_blank" rel="noopener">Abrir QR ↗</a></div>' +
       '<img src="' + esc(qr) + '" alt="QR del link permanente" style="width:160px;height:160px;border:1px solid var(--ln);border-radius:8px">' : '<span class="mu">Sin link todavía.</span>') +
       '<span class="mu peq">El link permanente sirve para las siempre abiertas. Para una clase, usá el link del dictado (abre a la hora y cierra a las 48 h).</span></section></div>' +
@@ -584,6 +630,7 @@ async function capFichaVer(cod) {
   document.querySelectorAll('tr.cl[data-d]').forEach(r => r.onclick = () => location.hash = '#capins/' + encodeURIComponent(r.dataset.d));
   if ($('cfCop')) $('cfCop').onclick = () => capCopiar(F.link, 'Link copiado.');
   $('cfEdit').onclick = () => capEditar(c);
+  $('cfIco').onclick = () => { modal('Ícono del certificado · ' + c.CODIGO, [], {}, async out => { try { await capApi('c_cap_guardar', { CODIGO: c.CODIGO, ICONO: out.ICONO }); toast('Ícono guardado.'); CAPC = null; capFichaVer(c.CODIGO); } catch (e) { return capMsg(e); } }, capPicker('icoF', c.ICONO)); capPickerActivar('icoF'); };
   if ($('cfAct')) $('cfAct').onclick = async () => { const r = await capHacer('c_cap_estado', { codigo: c.CODIGO, estado: 'Activa' }, $('cfAct'), 'Activando…'); if (r) { toast('Capacitación activa.'); CAPC = null; capFichaVer(c.CODIGO); } };
   const cambiarEstado = (estado, texto) => capModalMotivo(estado === 'Borrador' ? 'Pasar a borrador' : 'Inactivar', texto, async motivo => { try { await capApi('c_cap_estado', { codigo: c.CODIGO, estado: estado, motivo: motivo }); toast('Estado cambiado.'); CAPC = null; capFichaVer(c.CODIGO); } catch (e) { return capMsg(e); } });
   if ($('cfBorr')) $('cfBorr').onclick = () => cambiarEstado('Borrador', 'El registro deja de abrir hasta que la vuelvas a activar. No se borra nada.');
@@ -597,15 +644,16 @@ const capOps = (lista, actual) => { const o = (lista || []).slice(); if (!capVac
 function capEditar(c) {
   const L = CAPC.listas, campos = [['NOMBRE', 'Nombre', '', 1], ['TIPO_ACTIVIDAD', 'Tipo', capOps(L.tipos, c.TIPO_ACTIVIDAD)], ['CATEGORIA', 'Categoría', capOps(L.categorias, c.CATEGORIA)], ['EJE', 'Eje', capOps(L.ejes, c.EJE)],
     ['REGISTRO', 'Cómo se registra', capOps(L.registro, c.REGISTRO)], ['ENCUENTROS', 'Encuentros'], ['CARGA_HORARIA', 'Carga horaria total (h)'], ['ASISTENCIA_MINIMA', 'Asistencia mínima (programas)'],
-    ['VENCE', 'Vencimiento', capOps(['Anual', 'No vence'], c.VENCE)], ['SIEMPRE_ABIERTA', 'Siempre abierta', ['Sí', 'No']], ['INSCRIPCION_PREVIA', 'Inscripción previa', ['Sí', 'No']], ['ICONO', 'Ícono del certificado', capOps(L.iconos, c.ICONO)],
+    ['VENCE', 'Vencimiento', capOps(['Anual', 'No vence'], c.VENCE)], ['SIEMPRE_ABIERTA', 'Siempre abierta', ['Sí', 'No']], ['INSCRIPCION_PREVIA', 'Inscripción previa', ['Sí', 'No']],
     ['FRECUENCIA_SUGERIDA', 'Frecuencia sugerida'], ['DESTINATARIOS', 'Destinatarios', '', 1], ['OBJETIVOS', 'Objetivos', '', 1], ['CONTENIDOS', 'Contenidos', '', 1], ['MATERIALES', 'Materiales', '', 1], ['BASE_LEGAL', 'Base legal', '', 1]];
   const v = {}; campos.forEach(k => v[k[0]] = capVacio(c[k[0]]) ? '' : c[k[0]]);
   modal('Editar ' + c.CODIGO, campos, v, async out => {
     const d = Object.assign({ CODIGO: c.CODIGO }, out);
     if ($('cfNV').checked) { d.nuevaVersion = true; d.queCambio = $('cfQC').value.trim(); if (!d.queCambio) return 'Contá en una línea qué cambió en la versión nueva.'; }
     try { const r = await capApi('c_cap_guardar', d); toast(r.cambios.length ? 'Guardado: ' + r.cambios.length + ' cambio(s).' : 'No había cambios.'); CAPC = null; capFichaVer(c.CODIGO); } catch (e) { return capMsg(e); }
-  }, '<div class="aviso peq">El ícono se elige de la lista ICONOS del libro (hoja _LISTAS); para sumar uno nuevo, agregá ahí su nombre de Material Symbols.</div>' +
+  }, capPicker('icoE', c.ICONO) +
     '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="cfNV"> Es una versión nueva (cambió el contenido)</label><label class="f">Qué cambió<input class="c" id="cfQC" placeholder="Ej.: se sumó el módulo de FDS"></label>');
+  capPickerActivar('icoE');
 }
 
 // ---------- Editor de preguntas: banco, planilla o de a una
@@ -716,7 +764,7 @@ async function capAlta() {
     h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' + inp('NOMBRE', 'Nombre', '', 1) + sel('TIPO_ACTIVIDAD', 'Tipo', L.tipos) + sel('CATEGORIA', 'Categoría', L.categorias) + sel('EJE', 'Eje', L.ejes) +
       inp('CARGA_HORARIA', 'Carga horaria total (h)') + sel('VENCE', 'Vencimiento', ['Anual', 'No vence']) + sel('SIEMPRE_ABIERTA', 'Siempre abierta (autoasistida)', ['No', 'Sí']) + sel('INSCRIPCION_PREVIA', 'Inscripción previa', ['No', 'Sí']) +
       inp('DESTINATARIOS', 'Destinatarios', 'area', 1) + inp('OBJETIVOS', 'Objetivos', 'area', 1) + inp('CONTENIDOS', 'Contenidos', 'area', 1) + inp('BASE_LEGAL', 'Base legal', 'area', 1) + '</div>' +
-      '<div><span class="peq" style="font-weight:700">Ícono del certificado</span><div class="cpn" style="margin-top:6px">' + capOps(L.iconos, d.ICONO).map(n => '<button type="button" class="fchip' + (n === d.ICONO ? ' on' : '') + '" data-ico="' + esc(n) + '" title="' + esc(n) + '">' + capIco(n) + '</button>').join('') + '</div><span class="mu peq">Elegido: ' + esc(d.ICONO) + ' · para sumar íconos, agregalos en _LISTAS › ICONOS.</span></div>' +
+      '<div style="display:grid">' + capPicker('icoA', d.ICONO) + '</div>' +
       '<div class="cpn"><button class="btn pri" id="a1">Seguir</button></div>';
   } else if (paso === 2) {
     const op = (v, t, x) => '<button type="button" class="tarj" data-reg="' + esc(v) + '" style="text-align:left;cursor:pointer;border-width:' + (d.REGISTRO === v ? '2px;border-color:var(--az)' : '1px') + '"><b>' + t + '</b><span class="mu peq">' + x + '</span></button>';
@@ -733,7 +781,7 @@ async function capAlta() {
   const leerCampos = () => document.querySelectorAll('#altaCard [data-k]').forEach(e => d[e.dataset.k] = e.value);
   if ($('aV')) $('aV').onclick = () => { leerCampos(); CAPA.paso--; capAlta(); };
   if (paso === 1) {
-    document.querySelectorAll('[data-ico]').forEach(b => b.onclick = () => { leerCampos(); d.ICONO = b.dataset.ico; capAlta(); });
+    capPickerActivar('icoA', n => d.ICONO = n);
     $('a1').onclick = () => { leerCampos(); if (!d.NOMBRE.trim()) return toast('Falta el nombre.'); if (CAPC.lista.some(x => !CAPA.cod && capNorm(x.nombre) === capNorm(d.NOMBRE))) return toast('Ya hay una capacitación con ese nombre.'); CAPA.paso = 2; capAlta(); };
   } else if (paso === 2) {
     document.querySelectorAll('[data-reg]').forEach(b => b.onclick = () => { leerCampos(); d.REGISTRO = b.dataset.reg; if (/encuentro/i.test(d.REGISTRO) && Number(d.ENCUENTROS) < 2) d.ENCUENTROS = '2'; if (!/encuentro/i.test(d.REGISTRO)) d.ENCUENTROS = '1'; if (/encuentro/i.test(d.REGISTRO)) d.TIPO_ACTIVIDAD = 'Programa'; capAlta(); });
@@ -762,7 +810,7 @@ async function capDictados() {
   let r; try { r = await capApi('c_dictados', { dias: 60 }); } catch (e) { return capFalla('#capdic', 'Dictados', e); }
   if (location.hash.split('/')[0] !== '#capdic') return;
   const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
-  marco('#capdic', capTit('Dictados', 'Últimos 60 días y próximos. El link de registro abre a la hora de la clase y cierra solo a las 48 h.', '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a><a class="btn sec" href="#capcat">Catálogo</a>') +
+  marco('#capdic', capTit('Dictados', 'Últimos 60 días y próximos. El link de registro abre a la hora de la clase y cierra solo a las 48 h.', '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a><a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
     (!r.lista.length ? '<div class="card vacio">No hay dictados recientes ni próximos.</div>' :
     '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
     r.lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
@@ -791,7 +839,7 @@ async function capDictadoNuevo(cod) {
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><label class="f">Organizador<input class="c" id="ndOrg" value="Higiene y Seguridad"></label>' +
     '<label class="f">Institución educativa <span class="mu">(si es para estudiantes)</span><select class="c" id="ndIns"><option value="">Ninguna</option>' + (L.instituciones || []).map(i => '<option>' + esc(i) + '</option>').join('') + '<option value="Otra">Otra…</option></select></label><label class="f" id="ndInsXL" hidden>¿Cuál?<input class="c" id="ndInsX"></label></div>' +
     '<div><span class="peq" style="font-weight:700">Disertantes invitados</span> <span class="mu peq">(hasta 3; vos ya estás)</span><div id="ndDis" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div><button type="button" class="btn sec" id="ndDisA" style="margin-top:8px">+ Agregar disertante</button></div>' +
-    '<div><span class="peq" style="font-weight:700">Firmas del certificado</span> <span class="mu peq" id="ndFirN"></span><div class="multi" style="margin-top:6px"><label><input type="checkbox" checked disabled> Belén Pellegrini (siempre, a la derecha)</label>' + firm.map(f => '<label><input type="checkbox" data-fir="' + esc(f.id) + '"> ' + esc(f.nombre) + (capVacio(f.organismo) ? '' : ' · ' + esc(f.organismo)) + (f.firma ? '' : ' <span class="mu">(sin firma cargada)</span>') + '</label>').join('') + '</div>' + (firm.length ? '' : '<span class="mu peq">No hay otros firmantes cargados: se suman en <a href="#capfir">Firmantes</a>.</span>') + '</div>' +
+    '<div><span class="peq" style="font-weight:700">Firmas del certificado</span> <span class="mu peq" id="ndFirN"></span><div class="multi" style="margin-top:6px"><label><input type="checkbox" checked disabled> Belén Pellegrini (siempre, a la derecha)</label>' + firm.map(f => '<label><input type="checkbox" data-fir="' + esc(f.id) + '"> ' + esc(f.nombre) + (capVacio(f.organismo) ? '' : ' · ' + esc(f.organismo)) + (f.firma ? '' : ' <span class="mu">(sin firma cargada)</span>') + '</label>').join('') + '</div>' + '<a class="peq" href="#capfir" target="_blank" rel="noopener">+ Cargar o editar firmantes (se abre aparte; después recargá esta pantalla)</a>' + (firm.length ? '' : '<div class="mu peq">Todavía no hay otros firmantes cargados.</div>') + '</div>' +
     '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ndInsc"> Lleva inscripción previa (link de inscripción con consulta previa; cierra al empezar la clase o al llenarse el cupo)</label>' +
     '<label class="f">Observaciones<textarea class="c" id="ndObs"></textarea></label>' +
     '<div class="cpn"><button class="btn pri" id="ndGu">Crear dictado</button><a class="btn sec" href="#capdic">Cancelar</a></div></section><div id="ndRes"></div>');
