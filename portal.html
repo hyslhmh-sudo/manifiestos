@@ -248,7 +248,7 @@ function marco(activo, contenido) {
     it('#agua', 'water_drop', '3 · Agua') +
     grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
     it('#plagas', 'pest_control', '5 · Plagas') +
-    grp('school', '7 · Capacitaciones') + it('#cap', '', 'Tablero', 1) + ext(CAP_PANEL, 'Panel de carga') + ext(CAP_LIBRO, 'Libro CAPACITACIONES') +
+    grp('school', '7 · Capacitaciones') + it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)') +
     it('#ayuda', 'help', 'Ayuda') +
     '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
@@ -341,6 +341,9 @@ const AYUDA = {
   '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
   '#plagas': ['5 · Plagas', ['Registro MIPyV: lo cargan los operarios de la red Trelew desde su app. Muestra intervenciones abiertas, saneamiento en curso, seguimientos vencidos y las visitas de los últimos 90 días.', 'Tocá una visita para ver qué se hizo, productos, EPP y fotos, y marcarla como revisada (queda en el libro MIPyV, columna revisado_hys).', 'Abajo, los avisos de plagas que cargan los establecimientos desde «Mi establecimiento».']],
   '#cap': ['7 · Capacitaciones', ['Resumen del ciclo de capacitación (1 de febrero al 31 de enero): personas, registros, aprobación, cobertura del personal y cumplimiento de la matriz.', 'Semáforo por servicio con los prioritarios primero; los prioritarios se eligen en el libro CAPACITACIONES, hoja _LISTAS.', '«Requiere atención» avisa solo sobre lo cargado desde octubre de 2026: capacitaciones abiertas sin evaluación o sin carga horaria, dictados próximos sin abrir y vencimientos. Lo anterior queda como histórico.', 'Los dictados nuevos (por ejemplo, jornadas en el CET) se agregan en el libro, hoja DICTADOS.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento. Si el portal falla, el libro tiene la hoja TABLERO con lo mismo.']],
+  '#capcat': ['7 · Catálogo de capacitaciones', ['Todas las capacitaciones, programas y jornadas con su registro, su evaluación (preguntas por intento, nota y si sortea) y el dictado abierto o próximo.', '«Faltan N» dice qué le falta para poder activarse; tocá la fila para abrir la ficha y completarlo.', 'En la ficha: editar datos (o crear una versión nueva diciendo qué cambió), activar, pasar a borrador o inactivar con motivo, cambiar los parámetros de la evaluación, agregar preguntas o reemplazar la evaluación, y ver sus dictados.', '«+ Nueva capacitación»: alta en 4 pasos (datos, cómo se registra, evaluación y publicación). Las preguntas se eligen del banco, se suben en planilla o Excel, o se cargan de a una; «Controlar» avisa si falta la correcta, si hay repetidas o si no alcanzan.', 'El ícono del certificado se elige de la lista ICONOS (libro, hoja _LISTAS).', 'Si el portal falla: libro CAPACITACIONES, hojas CATALOGO, EVALUACIONES y PREGUNTAS, y el menú Capacitaciones HyS › Completar filas cargadas a mano.']],
+  '#capdic': ['7 · Dictados e inscriptos', ['Cada clase o encuentro, con su link y QR de registro: abren a la hora de la clase y cierran solos a las 48 h.', '«+ Nuevo dictado»: fecha, modalidad, lugar (el cupo sale del lugar), servicios destinatarios, institución educativa, hasta 3 disertantes invitados y hasta 4 firmas (la tuya siempre a la derecha). Al crearlo te da el link, el QR y el texto para WhatsApp.', 'Si lleva inscripción previa, también da el link de inscripción: cierra al empezar la clase o al llenarse el cupo.', 'Tocá un dictado para ver inscriptos, consultas previas, quién vino, quién avisó que no y quién vino sin inscribirse. Anular una inscripción pide motivo y no borra la fila; la persona también puede anularla sola desde el link.', '«Agregar asistente»: para sumar a alguien fuera de las 48 h. «Copiar correos»: para escribirles desde tu correo; el sistema no envía correos.']],
+  '#capfir': ['7 · Firmantes', ['Quienes firman o avalan certificados, con su título, cargo, matrícula y la aclaración del sello (hasta 3 renglones).', 'La imagen de la firma (PNG con fondo transparente o JPG, hasta 2 MB) se sube acá y queda en Drive › FIRMAS. Mientras no haya imagen, el certificado lleva la línea y la aclaración.', 'En cada dictado se eligen las firmas: hasta 4, la tuya siempre a la derecha.']],
   '#sinest': ['4 · Estadísticas de siniestros', ['Totales, índices y distribuciones del período elegido (este año, trimestre actual o anterior, año anterior u otras fechas), para HZT y HMH juntos o por separado.', 'Índice de incidencia: casos de accidentes y enfermedades profesionales cada 1.000 trabajadores. Frecuencia: casos con baja por millón de horas trabajadas (estimadas con la jornada del CCT, que se carga en LISTAS_INVESTIGACION). Pérdida: días de baja cada 1.000 trabajadores. Duración media: días por caso con baja.', 'In itinere se informa aparte. Rechazados e inculpables no cuentan como casos. Los trabajadores son los activos de la base de trabajadores al día de hoy.', 'Forma, agente, zona y naturaleza salen de las investigaciones: lo que todavía no se investigó figura como «Sin investigar».', 'Base: Res. SRT 905/15, Anexo I pto. 13.']],
   '#inv': ['4 · Investigación de un siniestro', ['El sistema sugiere el método: árbol de causas cuando la baja supera 15 días, la persona o el servicio repiten, o hay riesgo biológico; investigación breve en el resto y en los in itinere. Podés cambiarlo (motivo «Decisión de HyS»).', 'Árbol de causas: H1 es la lesión. Para cada hecho preguntá «¿qué fue necesario para que pasara?» y cargá las respuestas como hechos nuevos, eligiendo de cuál son antecedente. Ocasional: algo distinto de lo habitual. Permanente: así es siempre.', 'Medidas: con la jerarquía de controles (eliminar, sustituir, ingeniería, administrativas, EPP), responsable y plazo.', 'Causa primaria: si se elimina, el siniestro no ocurre. Medidas en orden de prioridad, con el servicio responsable. El plazo lo informa cada servicio; al cargarlo, la medida pasa a «En curso» y se propone la fecha de verificación.', '«Guardar y armar la nota» crea un borrador numerado en Google Docs: nota a la Dirección (empleador) que, por su intermedio, propone las acciones a los servicios y les pide los plazos; como anexo, el informe de investigación con la estructura del modelo de la SRT. Sin nombre, DNI ni diagnóstico. La firmás y la ingresás por Mesa de Entradas; al cargar esa fecha, las medidas pasan a «Comunicada».', 'Al cerrar la investigación, el siniestro queda «Analizado». Todo queda en las hojas INVESTIGACIONES, HECHOS y MEDIDAS del libro de siniestros, y se puede corregir ahí.', 'Base: Res. SRT 905/15, Anexo II, ítems 12 y 17 (comunicación fehaciente al empleador); Ley 24.557, art. 4; modelo de informe de investigación de la SRT (Circular GPyC 001/04).']],
   '#sin': ['4 · Siniestros', ['Todos los siniestros de la red, con filtros por establecimiento, estado y tipo. Tocá uno para ver datos, diagnóstico, novedades, archivos y la exposición de la persona según la NTE.', 'Los cargan Personal y la secretaría de HyS desde «Mi establecimiento», y desde ahí se corrigen o anulan. El libro de siniestros guarda todo y no se borra nada.', 'ESTADO y días de baja los calcula el sistema con las novedades (al guardar y cada noche).', 'Base: Ley 24.557, arts. 6 y 31; Res. SRT 525/15; Res. SRT 905/15, Anexo I pto. 13 y Anexo II pto. 12.']],
@@ -489,6 +492,406 @@ async function capTablero(fresco) {
   document.querySelectorAll('.capBanda').forEach(x => x.onclick = () => { CAPBANDA = CAPBANDA === x.dataset.b ? '' : x.dataset.b; CAPTODOS = false; capTablero(); });
   if ($('capTodos')) $('capTodos').onclick = () => { CAPTODOS = !CAPTODOS; capTablero(); };
   document.querySelectorAll('.capCopiar').forEach(x => x.onclick = () => { const l = x.dataset.l; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast('Link copiado.')).catch(() => { window.prompt('Copiá el link:', l); }); });
+}
+
+// ------------------------------------------------------------------ 7 · Capacitaciones · Catálogo, alta, dictados, inscriptos y firmantes (fase 5)
+// Todo pasa por el libro «CAPACITACIONES · Sistema HyS» (CAP_API). Si el portal falla, lo mismo se hace en el libro (menú Capacitaciones HyS).
+let CAPC = null, CAPF = { filtro: 'act', q: '' }, CAPA = null, CAPD = null;
+const capNorm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const capVacio = v => { v = String(v == null ? '' : v).trim(); return !v || v === 's/d'; };
+const capTit = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>' + esc(t) + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div>' + (botones ? '<div class="filtros">' + botones + '</div>' : '') + '</div>';
+const capEst = e => '<span class="chip ' + (/^activ/i.test(e) ? 'ok' : /borrador|revisi/i.test(e) ? 'wa' : /cancel|suspend|inactiv|anulad/i.test(e) ? 'er' : 'gr') + '">' + esc(e || 's/d') + '</span>';
+const capIco = n => '<span class="ms" aria-hidden="true" style="font-size:22px;vertical-align:-5px">' + esc(capVacio(n) ? 'health_and_safety' : n) + '</span>';
+function capMsg(e) {
+  const m = e && e.message;
+  return m === 'sinurl' ? 'Falta conectar el libro de capacitaciones (constante CAP_API).' : m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave. Salí del portal y volvé a entrar.'
+    : (e && e.name === 'AbortError') ? 'El libro de capacitaciones tardó demasiado. Probá de nuevo en un rato.' : (m && m !== 'error' ? m : 'No se pudo completar.');
+}
+const capFalla = (ruta, t, e) => marco(ruta, capTit(t) + '<div class="aviso error">' + esc(capMsg(e)) + '</div><section class="card peq">Mientras tanto, todo se puede hacer en el <a href="' + CAP_LIBRO + '" target="_blank" rel="noopener">libro CAPACITACIONES ↗</a> (menú Capacitaciones HyS › Completar filas cargadas a mano).</section>');
+async function capCopiar(t, msg) { try { await navigator.clipboard.writeText(t); toast(msg || 'Copiado.'); } catch (e) { prompt('Copiá el texto:', t); } }
+async function capCargar(fresco) { if (!CAPC || fresco) CAPC = await capApi('c_catalogo', {}); return CAPC; }
+async function capHacer(accion, datos, boton, txt) {
+  const t0 = boton ? boton.textContent : ''; if (boton) { boton.disabled = true; boton.textContent = txt || 'Guardando…'; }
+  try { return await capApi(accion, datos); }
+  catch (e) { toast(capMsg(e)); return null; }
+  finally { if (boton) { boton.disabled = false; boton.textContent = t0; } }
+}
+function capModalMotivo(titulo, texto, ok) {
+  const m = modal(titulo, [['motivo', 'Motivo (queda en el historial)', '', 1]], {}, async v => { if (!v.motivo.trim()) return 'Escribí el motivo.'; return await ok(v.motivo.trim()); }, texto ? '<p class="mu peq" style="margin:0">' + esc(texto) + '</p>' : '');
+  return m;
+}
+
+// ---------- Catálogo
+async function capCatalogo(fresco) {
+  if (!CAPC || fresco) { cargando('#capcat', 'Leyendo el catálogo…'); try { await capCargar(true); } catch (e) { return capFalla('#capcat', 'Catálogo', e); } }
+  if (location.hash.split('/')[0] !== '#capcat') return;
+  const q = capNorm(CAPF.q);
+  const L = CAPC.lista.filter(c => (CAPF.filtro === 'todas' || !/inactiv|anulad/i.test(c.estado)) && (!q || capNorm(c.codigo + ' ' + c.nombre).indexOf(q) >= 0));
+  const ev = c => c.evaluacion === null ? '<span class="mu">No lleva</span>' : c.evaluacion === 'falta' ? '<span class="chip er">Falta cargarla</span>'
+    : esc(c.evaluacion.porIntento || c.evaluacion.preguntas) + ' de ' + esc(c.evaluacion.preguntas) + ' · ' + esc(c.evaluacion.nota) + ' %' + (c.evaluacion.sorteo ? '' : ' · <span class="mu">sin sorteo</span>');
+  const dic = c => c.siempre ? '<span class="chip pa">Siempre abierta</span>' : !c.dictado ? '<span class="mu">Sin dictado</span>' : c.dictado.estado === 'abierto' ? '<span class="chip ok">Abierto hasta ' + esc(c.dictado.cierra) + '</span>' : '<span class="chip pa">Próximo ' + esc(c.dictado.abre) + '</span>';
+  const sub = c => [c.tipo && c.tipo !== 's/d' ? c.tipo : '', c.encuentros > 1 ? c.encuentros + ' encuentros' : '', !capVacio(c.carga) ? c.carga + ' h' : '', c.inscripcion ? 'con inscripción' : ''].filter(Boolean).join(' · ');
+  const falt = c => c.faltan && c.faltan.length ? ' <span class="chip wa" title="' + esc('Falta: ' + c.faltan.join(', ')) + '">Faltan ' + c.faltan.length + '</span>' : '';
+  marco('#capcat', capTit('Catálogo', CAPC.lista.length + ' capacitaciones, programas y jornadas · tocá una para abrir su ficha', '<a class="btn pri" href="#capalta">+ Nueva capacitación</a><a class="btn sec" href="#capdic">Dictados</a><button class="btn sec" id="ccAct">Actualizar</button>') +
+    '<div class="filtros"><div class="cpn"><button class="fchip' + (CAPF.filtro === 'act' ? ' on' : '') + '" data-f="act">Activas y borradores</button><button class="fchip' + (CAPF.filtro === 'todas' ? ' on' : '') + '" data-f="todas">Todas</button></div>' +
+    '<label class="f">Buscar<input class="c" id="ccQ" value="' + esc(CAPF.q) + '" placeholder="Nombre o código" style="min-width:240px"></label></div>' +
+    (!L.length ? '<div class="card vacio">No hay capacitaciones con ese filtro.</div>' :
+    '<section class="card tabla soloEsc"><table><thead><tr><th></th><th>Código</th><th>Capacitación</th><th>Registro</th><th>Evaluación</th><th>Dictado</th><th>Estado</th></tr></thead><tbody>' +
+    L.map(c => '<tr class="cl" data-c="' + esc(c.codigo) + '"><td>' + capIco(c.icono) + '</td><td style="white-space:nowrap"><b>' + esc(c.codigo) + '</b></td><td><b>' + esc(c.nombre) + '</b><div class="mu peq">' + esc(sub(c)) + '</div></td><td>' + esc(c.registro) + '</td><td>' + ev(c) + '</td><td>' + dic(c) + '</td><td style="white-space:nowrap">' + capEst(c.estado) + falt(c) + '</td></tr>').join('') +
+    '</tbody></table></section><div class="tarjetas">' + L.map(c => '<a class="tarj" href="#capficha/' + encodeURIComponent(c.codigo) + '"><div style="display:flex;gap:10px;align-items:center">' + capIco(c.icono) + '<b>' + esc(c.nombre) + '</b></div><span class="mu peq">' + esc(c.codigo) + ' · ' + esc(c.registro) + (sub(c) ? ' · ' + esc(sub(c)) : '') + '</span><span>' + capEst(c.estado) + falt(c) + ' ' + dic(c) + '</span></a>').join('') + '</div>'));
+  document.querySelectorAll('tr.cl[data-c]').forEach(r => r.onclick = () => location.hash = '#capficha/' + encodeURIComponent(r.dataset.c));
+  document.querySelectorAll('.fchip[data-f]').forEach(b => b.onclick = () => { CAPF.filtro = b.dataset.f; capCatalogo(); });
+  $('ccQ').oninput = () => { CAPF.q = $('ccQ').value; clearTimeout(capCatalogo.t); capCatalogo.t = setTimeout(() => { capCatalogo(); const i = $('ccQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); };
+  $('ccAct').onclick = () => capCatalogo(true);
+}
+
+// ---------- Ficha de una capacitación
+async function capFichaVer(cod) {
+  cargando('#capcat', 'Abriendo la ficha…');
+  let F; try { F = await capApi('c_cap', { codigo: cod }); await capCargar(); } catch (e) { return capFalla('#capcat', 'Ficha', e); }
+  if (location.hash.split('/')[0] !== '#capficha') return;
+  const c = F.cap, ev = F.evaluaciones.find(x => x.id === F.evaluacionEnUso), lleva = /evaluaci/i.test(c.REGISTRO), activa = /^activ/i.test(c.ESTADO);
+  const dd = (t, v) => '<dt>' + esc(t) + '</dt><dd>' + (capVacio(v) ? '<span class="mu">s/d</span>' : esc(v)) + '</dd>';
+  const firm = String(c.FIRMANTES || '').split(/[,;]\s*/).map(id => { const f = (CAPC.firmantes || []).find(x => x.id === id); return f ? f.nombre : id; }).join(' · ');
+  const qr = F.link ? 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=' + encodeURIComponent(F.link) : '';
+  marco('#capcat', '<div><a href="#capcat" class="peq">← Catálogo</a></div>' +
+    capTit(c.NOMBRE, esc(c.CODIGO) + ' · versión ' + esc(c.VERSION) + ' · ' + capEst(c.ESTADO),
+      '<button class="btn sec" id="cfEdit">Editar datos</button>' + (activa ? '<button class="btn sec" id="cfBorr">Pasar a borrador</button><button class="btn peligro" id="cfInac">Inactivar</button>' : '<button class="btn pri" id="cfAct">Activar</button>') +
+      '<a class="btn pri" href="#capdicnuevo/' + encodeURIComponent(c.CODIGO) + '">Nuevo dictado</a>') +
+    (F.faltan.length ? '<div class="aviso">Para activarla falta: <b>' + esc(F.faltan.join(', ')) + '</b>.</div>' : '') +
+    '<div class="tb2"><section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>' + capIco(c.ICONO) + ' Datos</h2><dl class="dl">' +
+      dd('Tipo', c.TIPO_ACTIVIDAD) + dd('Categoría', c.CATEGORIA) + dd('Eje', c.EJE) + dd('Destinatarios', c.DESTINATARIOS) + dd('Cómo se registra', c.REGISTRO) +
+      (Number(c.ENCUENTROS) > 1 ? dd('Encuentros', c.ENCUENTROS) + dd('Asistencia mínima', c.ASISTENCIA_MINIMA) : '') + dd('Carga horaria', capVacio(c.CARGA_HORARIA) ? '' : c.CARGA_HORARIA + ' h') + dd('Vencimiento', c.VENCE) +
+      dd('Siempre abierta', c.SIEMPRE_ABIERTA) + dd('Inscripción previa', c.INSCRIPCION_PREVIA) + dd('Ícono del certificado', c.ICONO) + dd('Firmantes', firm) + dd('Base legal', c.BASE_LEGAL) + '</dl></section>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Link permanente</h2>' + (F.link ? '<span class="peq" style="overflow-wrap:anywhere">' + esc(F.link) + '</span><div class="cpn"><button class="btn sec" id="cfCop">Copiar link</button><a class="btn sec" href="' + esc(qr) + '" target="_blank" rel="noopener">Abrir QR ↗</a></div>' +
+      '<img src="' + esc(qr) + '" alt="QR del link permanente" style="width:160px;height:160px;border:1px solid var(--ln);border-radius:8px">' : '<span class="mu">Sin link todavía.</span>') +
+      '<span class="mu peq">El link permanente sirve para las siempre abiertas. Para una clase, usá el link del dictado (abre a la hora y cierra a las 48 h).</span></section></div>' +
+    (lleva ? '<section class="card" style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><h2>Evaluación</h2><div class="cpn">' +
+      (ev ? '<button class="btn sec" id="cfAgr">Agregar preguntas</button>' : '') + '<button class="btn ' + (ev ? 'sec' : 'pri') + '" id="cfNueva">' + (ev ? 'Evaluación nueva (reemplaza)' : 'Cargar la evaluación') + '</button></div></div>' +
+      (ev ? '<div class="mu peq">' + esc(ev.id) + ' · ' + esc(ev.preguntas) + ' preguntas en el banco · estado ' + esc(ev.estado) + '</div><div class="filtros">' +
+        '<label class="f">Preguntas por intento<input class="c" id="evPI" type="number" min="1" value="' + esc(ev.porIntento || '') + '" style="width:120px"></label>' +
+        '<label class="f">Nota mínima %<input class="c" id="evNo" type="number" min="1" max="100" value="' + esc(String(ev.nota || '').replace('%', '')) + '" style="width:120px"></label>' +
+        '<label class="f">Intentos<input class="c" id="evIn" type="number" min="1" value="' + esc(ev.intentos || 3) + '" style="width:100px"></label>' +
+        '<label class="f">Sortear preguntas y opciones<select class="c" id="evSo"><option' + (/^s/i.test(ev.sorteo) ? ' selected' : '') + '>Sí</option><option' + (/^s/i.test(ev.sorteo) ? '' : ' selected') + '>No</option></select></label>' +
+        '<button class="btn pri" id="evGuar">Guardar cambios</button></div>' : '<div class="aviso">Esta capacitación se registra con evaluación y todavía no tiene una cargada.</div>') +
+      (F.evaluaciones.filter(x => x.id !== F.evaluacionEnUso).length ? '<details><summary class="peq">Otras evaluaciones (' + F.evaluaciones.filter(x => x.id !== F.evaluacionEnUso).length + ')</summary><ul class="peq">' + F.evaluaciones.filter(x => x.id !== F.evaluacionEnUso).map(x => '<li>' + esc(x.id) + ' · ' + esc(x.tipo) + ' · ' + esc(x.preguntas) + ' preguntas · ' + esc(x.estado) + '</li>').join('') + '</ul></details>' : '') +
+      '</section>' : '') +
+    '<section class="card tabla"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Dictados</h2><a class="btn sec" href="#capdicnuevo/' + encodeURIComponent(c.CODIGO) + '">Nuevo dictado</a></div>' +
+      (F.dictados.length ? '<table><thead><tr><th>Fecha</th><th>Encuentro</th><th>Modalidad y lugar</th><th>Registro abre · cierra</th><th>Estado</th></tr></thead><tbody>' +
+        F.dictados.slice().reverse().map(d => '<tr class="cl" data-d="' + esc(d.id) + '"><td>' + esc(d.fecha) + ' ' + esc(d.hora || '') + '</td><td>' + esc(Number(c.ENCUENTROS) > 1 ? d.encuentro + ' de ' + c.ENCUENTROS : '—') + '</td><td>' + esc(d.modalidad) + (capVacio(d.lugar) || /virtual/i.test(d.lugar) ? '' : ' · ' + esc(d.lugar)) + '</td><td class="peq">' + esc(d.abre) + ' · ' + esc(d.cierra) + '</td><td>' + capEst(d.estado) + (d.linkInscripcion ? ' <span class="chip pa">Inscripción</span>' : '') + '</td></tr>').join('') + '</tbody></table>'
+        : '<div class="vacio">Todavía no tiene dictados.</div>') + '</section>' +
+    (F.versiones.length ? '<section class="card peq"><h2 style="margin-bottom:6px">Versiones</h2>' + F.versiones.map(v => '<div>Versión ' + esc(v.VERSION) + ' · desde ' + esc(v.DESDE) + (v.HASTA ? ' hasta ' + esc(v.HASTA) : '') + ' · ' + esc(v.QUE_CAMBIO) + '</div>').join('') + '</section>' : ''));
+  document.querySelectorAll('tr.cl[data-d]').forEach(r => r.onclick = () => location.hash = '#capins/' + encodeURIComponent(r.dataset.d));
+  if ($('cfCop')) $('cfCop').onclick = () => capCopiar(F.link, 'Link copiado.');
+  $('cfEdit').onclick = () => capEditar(c);
+  if ($('cfAct')) $('cfAct').onclick = async () => { const r = await capHacer('c_cap_estado', { codigo: c.CODIGO, estado: 'Activa' }, $('cfAct'), 'Activando…'); if (r) { toast('Capacitación activa.'); CAPC = null; capFichaVer(c.CODIGO); } };
+  const cambiarEstado = (estado, texto) => capModalMotivo(estado === 'Borrador' ? 'Pasar a borrador' : 'Inactivar', texto, async motivo => { try { await capApi('c_cap_estado', { codigo: c.CODIGO, estado: estado, motivo: motivo }); toast('Estado cambiado.'); CAPC = null; capFichaVer(c.CODIGO); } catch (e) { return capMsg(e); } });
+  if ($('cfBorr')) $('cfBorr').onclick = () => cambiarEstado('Borrador', 'El registro deja de abrir hasta que la vuelvas a activar. No se borra nada.');
+  if ($('cfInac')) $('cfInac').onclick = () => cambiarEstado('Inactiva', 'Deja de mostrarse en «Activas y borradores». Sus registros y certificados siguen valiendo.');
+  if ($('evGuar')) $('evGuar').onclick = async () => { const r = await capHacer('c_eval_guardar', { codigo: c.CODIGO, idEvaluacion: ev.id, porIntento: $('evPI').value, nota: $('evNo').value, intentos: $('evIn').value, sorteo: $('evSo').value === 'Sí', preguntas: [] }, $('evGuar')); if (r) { if (r.control && !r.control.ok) toast(r.control.errores[0]); else { toast('Evaluación guardada.'); CAPC = null; } } };
+  if ($('cfAgr')) $('cfAgr').onclick = () => capEvalModal(c, ev.id);
+  if ($('cfNueva')) $('cfNueva').onclick = () => capEvalModal(c, '');
+}
+// Opciones de una lista sin perder el valor actual aunque no esté en la lista
+const capOps = (lista, actual) => { const o = (lista || []).slice(); if (!capVacio(actual) && o.indexOf(actual) < 0) o.unshift(actual); return o; };
+function capEditar(c) {
+  const L = CAPC.listas, campos = [['NOMBRE', 'Nombre', '', 1], ['TIPO_ACTIVIDAD', 'Tipo', capOps(L.tipos, c.TIPO_ACTIVIDAD)], ['CATEGORIA', 'Categoría', capOps(L.categorias, c.CATEGORIA)], ['EJE', 'Eje', capOps(L.ejes, c.EJE)],
+    ['REGISTRO', 'Cómo se registra', capOps(L.registro, c.REGISTRO)], ['ENCUENTROS', 'Encuentros'], ['CARGA_HORARIA', 'Carga horaria total (h)'], ['ASISTENCIA_MINIMA', 'Asistencia mínima (programas)'],
+    ['VENCE', 'Vencimiento', capOps(['Anual', 'No vence'], c.VENCE)], ['SIEMPRE_ABIERTA', 'Siempre abierta', ['Sí', 'No']], ['INSCRIPCION_PREVIA', 'Inscripción previa', ['Sí', 'No']], ['ICONO', 'Ícono del certificado', capOps(L.iconos, c.ICONO)],
+    ['FRECUENCIA_SUGERIDA', 'Frecuencia sugerida'], ['DESTINATARIOS', 'Destinatarios', '', 1], ['OBJETIVOS', 'Objetivos', '', 1], ['CONTENIDOS', 'Contenidos', '', 1], ['MATERIALES', 'Materiales', '', 1], ['BASE_LEGAL', 'Base legal', '', 1]];
+  const v = {}; campos.forEach(k => v[k[0]] = capVacio(c[k[0]]) ? '' : c[k[0]]);
+  modal('Editar ' + c.CODIGO, campos, v, async out => {
+    const d = Object.assign({ CODIGO: c.CODIGO }, out);
+    if ($('cfNV').checked) { d.nuevaVersion = true; d.queCambio = $('cfQC').value.trim(); if (!d.queCambio) return 'Contá en una línea qué cambió en la versión nueva.'; }
+    try { const r = await capApi('c_cap_guardar', d); toast(r.cambios.length ? 'Guardado: ' + r.cambios.length + ' cambio(s).' : 'No había cambios.'); CAPC = null; capFichaVer(c.CODIGO); } catch (e) { return capMsg(e); }
+  }, '<div class="aviso peq">El ícono se elige de la lista ICONOS del libro (hoja _LISTAS); para sumar uno nuevo, agregá ahí su nombre de Material Symbols.</div>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="cfNV"> Es una versión nueva (cambió el contenido)</label><label class="f">Qué cambió<input class="c" id="cfQC" placeholder="Ej.: se sumó el módulo de FDS"></label>');
+}
+
+// ---------- Editor de preguntas: banco, planilla o de a una
+let PREG = null;
+function pregEditor(cont, codigo) {
+  PREG = { modo: 'banco', lista: [], banco: null, sel: {}, codigo: codigo, todas: false, q: '' };
+  const pintar = () => {
+    const tab = (m, t) => '<button type="button" class="fchip' + (PREG.modo === m ? ' on' : '') + '" data-m="' + m + '">' + t + '</button>';
+    let h = '<div class="cpn">' + tab('banco', 'Elegir del banco') + tab('subir', 'Subir planilla o Excel') + tab('una', 'Cargar de a una') + '</div>';
+    if (PREG.modo === 'banco') {
+      h += '<div class="filtros"><label class="f">Buscar en el banco<input class="c" id="pbQ" value="' + esc(PREG.q) + '" style="min-width:240px"></label><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="pbTodas"' + (PREG.todas ? ' checked' : '') + '> Ver el banco de todas las capacitaciones</label></div>';
+      if (!PREG.banco) h += '<div class="cargando">Leyendo el banco…</div>';
+      else {
+        const q = capNorm(PREG.q), B = PREG.banco.filter(b => !q || capNorm(b.pregunta + ' ' + b.tema).indexOf(q) >= 0);
+        h += !B.length ? '<div class="vacio">No hay preguntas en el banco' + (PREG.todas ? '' : ' de esta capacitación') + '.</div>' : '<div style="max-height:340px;overflow-y:auto;border:1px solid var(--ln);border-radius:8px">' + B.map(b => '<label style="display:flex;gap:10px;padding:9px 12px;border-top:1px solid #EEF2F4;font-size:13.5px;cursor:pointer"><input type="checkbox" data-b="' + esc(b.id) + '"' + (PREG.sel[b.id] ? ' checked' : '') + '><span><b style="font-weight:600">' + esc(b.pregunta) + '</b><br><span class="mu">' + esc(b.tema || 's/d') + ' · ' + esc(b.codigo || '') + ' · en ' + b.evaluaciones.length + ' evaluación(es)' + (b.usar ? '' : ' · fuera de uso') + '</span></span></label>').join('') + '</div>';
+      }
+    } else if (PREG.modo === 'subir') {
+      h += '<label class="f">Planilla (Excel, CSV o la hoja exportada)<input class="c" type="file" id="psF" accept=".xlsx,.xls,.csv,.tsv,.txt"></label>' +
+        '<label class="f">o pegá las filas copiadas de Sheets o Excel<textarea class="c" id="psT" style="min-height:110px" placeholder="Columnas: PREGUNTA · A · B · C · D · (E) · CORRECTA · FUNDAMENTO · TEMA. Con o sin fila de encabezados."></textarea></label>' +
+        '<div class="cpn"><button class="btn sec" type="button" id="psLeer">Leer preguntas</button></div>';
+    } else {
+      h += '<div class="campos" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"><label class="f" style="grid-column:1/-1">Pregunta<textarea class="c" id="p1Q"></textarea></label>' +
+        ['A', 'B', 'C', 'D', 'E'].map(l => '<label class="f">Opción ' + l + (l > 'B' ? ' (optativa)' : '') + '<input class="c" id="p1o' + l + '"></label>').join('') +
+        '<label class="f">Correcta<select class="c" id="p1Cor"><option></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>' +
+        '<label class="f" style="grid-column:1/-1">Fundamento (lo ve quien aprueba)<textarea class="c" id="p1F"></textarea></label><label class="f" style="grid-column:1/-1">Tema (se sugiere repasar a quien no aprueba)<input class="c" id="p1T"></label></div>' +
+        '<div class="cpn"><button class="btn sec" type="button" id="p1Add">Agregar a la lista</button></div>';
+    }
+    const nSel = Object.keys(PREG.sel).filter(k => PREG.sel[k]).length;
+    h += '<div class="peq"><b>' + (PREG.lista.length + nSel) + ' pregunta(s) para guardar</b>' + (nSel ? ' · ' + nSel + ' del banco' : '') + (PREG.lista.length ? ' · ' + PREG.lista.length + ' nuevas' : '') + '</div>';
+    if (PREG.lista.length) h += '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--ln);border-radius:8px">' + PREG.lista.map((p, j) => '<div style="display:flex;gap:10px;justify-content:space-between;padding:8px 12px;border-top:1px solid #EEF2F4;font-size:13px"><span><b style="font-weight:600">' + (j + 1) + '. ' + esc(p.PREGUNTA) + '</b><br><span class="mu">Correcta: ' + esc(p.CORRECTA || '¿?') + ' · ' + esc(p.TEMA || 'sin tema') + '</span></span><button type="button" class="link" data-q="' + j + '">Quitar</button></div>').join('') + '</div>';
+    h += '<div id="pCtl"></div>';
+    cont.innerHTML = h;
+    cont.querySelectorAll('.fchip[data-m]').forEach(b => b.onclick = () => { PREG.modo = b.dataset.m; pintar(); if (PREG.modo === 'banco') traerBanco(); });
+    cont.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { PREG.lista.splice(Number(b.dataset.q), 1); pintar(); });
+    if ($('pbQ')) $('pbQ').oninput = () => { PREG.q = $('pbQ').value; clearTimeout(pintar.t); pintar.t = setTimeout(() => { pintar(); const i = $('pbQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
+    if ($('pbTodas')) $('pbTodas').onchange = () => { PREG.todas = $('pbTodas').checked; PREG.banco = null; pintar(); traerBanco(); };
+    cont.querySelectorAll('[data-b]').forEach(x => x.onchange = () => { PREG.sel[x.dataset.b] = x.checked; pintar(); });
+    if ($('psLeer')) $('psLeer').onclick = leer;
+    if ($('p1Add')) $('p1Add').onclick = () => {
+      const p = { PREGUNTA: $('p1Q').value.trim() };
+      ['A', 'B', 'C', 'D', 'E'].forEach(l => p['OPCION_' + l] = $('p1o' + l).value.trim());
+      p.CORRECTA = $('p1Cor').value; p.FUNDAMENTO = $('p1F').value.trim(); p.TEMA = $('p1T').value.trim();
+      if (!p.PREGUNTA || !p.OPCION_A || !p.OPCION_B || !p.CORRECTA) return toast('Completá la pregunta, al menos dos opciones y la correcta.');
+      if (!p['OPCION_' + p.CORRECTA]) return toast('La opción correcta (' + p.CORRECTA + ') está vacía.');
+      PREG.lista.push(p); toast('Pregunta agregada (' + PREG.lista.length + ').'); pintar();
+    };
+  };
+  const traerBanco = async () => { try { const r = await capApi('c_banco', { codigo: PREG.todas ? '' : PREG.codigo }); PREG.banco = r.lista; } catch (e) { PREG.banco = []; toast(capMsg(e)); } if (PREG.modo === 'banco') pintar(); };
+  const leer = async () => {
+    let texto = $('psT').value;
+    const f = $('psF').files[0];
+    if (f) {
+      if (/\.(xlsx|xls)$/i.test(f.name)) {
+        if (!window.XLSX) { toast('Abriendo el lector de Excel…'); await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); }).catch(() => toast('No se pudo abrir el lector de Excel: guardalo como CSV o pegá las filas.')); }
+        if (!window.XLSX) return;
+        const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }), filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
+        texto = filas.map(r => r.map(c => String(c).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+      } else { texto = await f.text(); if (!/\t/.test(texto) && /;|,/.test(texto)) { const sep = (texto.split(/\r?\n/)[0].match(/;/g) || []).length > (texto.split(/\r?\n/)[0].match(/,/g) || []).length ? ';' : ','; texto = texto.split(/\r?\n/).map(l => capCsv(l, sep).join('\t')).join('\n'); } }
+    }
+    if (!texto.trim()) return toast('Elegí un archivo o pegá las filas.');
+    const r = await capHacer('c_preg_leer', { texto: texto }, $('psLeer'), 'Leyendo…'); if (!r) return;
+    PREG.lista = PREG.lista.concat(r.preguntas); toast(r.preguntas.length + ' pregunta(s) leídas.'); pintar();
+  };
+  pintar(); traerBanco();
+  return {
+    datos: () => ({ preguntas: PREG.lista, desdeBanco: Object.keys(PREG.sel).filter(k => PREG.sel[k]) }),
+    pregBanco: () => (PREG.banco || []).filter(b => PREG.sel[b.id]).map(b => { const o = { PREGUNTA: b.pregunta, CORRECTA: b.correcta, FUNDAMENTO: b.fundamento, TEMA: b.tema, ID_PREGUNTA: b.id }; b.opciones.forEach((t, j) => o['OPCION_' + 'ABCDE'[j]] = t); return o; }),
+    control: r => { const c = $('pCtl'); if (!c) return; c.innerHTML = !r ? '' : '<div class="aviso' + (r.ok ? '' : ' error') + '" style="display:flex;flex-direction:column;gap:4px"><b>' + (r.ok ? 'Control OK: ' + r.total + ' preguntas' : 'Hay que revisar antes de guardar') + '</b>' +
+      r.errores.map(x => '<span>✗ ' + esc(x) + '</span>').join('') + r.avisos.map(x => '<span class="mu">• ' + esc(x) + '</span>').join('') + '</div>'; }
+  };
+}
+function capCsv(l, sep) { const out = []; let c = '', q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (q) { if (ch === '"' && l[i + 1] === '"') { c += '"'; i++; } else if (ch === '"') q = false; else c += ch; } else if (ch === '"') q = true; else if (ch === sep) { out.push(c); c = ''; } else c += ch; } out.push(c); return out; }
+// Parámetros + editor + control + guardar (sirve para el alta y para la ficha)
+function capEvalBloque(cont, cap, idEvaluacion, alTerminar) {
+  cont.innerHTML = (idEvaluacion ? '<div class="aviso peq">Se suman preguntas a ' + esc(idEvaluacion) + '. Las que ya están no se repiten.</div>' :
+    '<div class="filtros"><label class="f">Tipo<select class="c" id="ebTipo"><option>Final</option><option>Diagnóstica</option></select></label>' +
+    '<label class="f">Para qué público<select class="c" id="ebPub">' + ['Todos'].concat(CAPC.listas.publicos || []).map(p => '<option>' + esc(p) + '</option>').join('') + '</select></label>' +
+    '<label class="f">Preguntas por intento<input class="c" type="number" id="ebPI" value="10" min="1" style="width:110px"></label><label class="f">Nota mínima %<input class="c" type="number" id="ebNo" value="70" min="1" max="100" style="width:110px"></label>' +
+    '<label class="f">Intentos<input class="c" type="number" id="ebIn" value="3" min="1" style="width:90px"></label><label class="f">Sortear preguntas y opciones<select class="c" id="ebSo"><option>Sí</option><option>No</option></select></label></div>') +
+    '<div id="ebEd" style="display:flex;flex-direction:column;gap:12px"></div><div class="cpn"><button class="btn sec" type="button" id="ebCtl">Controlar</button><button class="btn pri" type="button" id="ebGu">Guardar evaluación</button></div>';
+  const ed = pregEditor($('ebEd'), cap.CODIGO || cap.codigo);
+  const params = () => idEvaluacion ? { idEvaluacion: idEvaluacion } : { tipo: $('ebTipo').value, publico: $('ebPub').value, porIntento: $('ebPI').value, nota: $('ebNo').value, intentos: $('ebIn').value, sorteo: $('ebSo').value === 'Sí', reemplazar: true };
+  $('ebCtl').onclick = async () => { const d = ed.datos(); const r = await capHacer('c_preg_control', { preguntas: ed.pregBanco().concat(d.preguntas), porIntento: idEvaluacion ? 0 : $('ebPI').value, codigo: cap.CODIGO || cap.codigo }, $('ebCtl'), 'Controlando…'); if (r || r === null) ed.control(r); };
+  $('ebGu').onclick = async () => {
+    const d = ed.datos(); if (!d.preguntas.length && !d.desdeBanco.length) return toast('Elegí del banco, subí una planilla o cargá preguntas.');
+    let r; try { $('ebGu').disabled = true; r = await capApi('c_eval_guardar', Object.assign({ codigo: cap.CODIGO || cap.codigo }, params(), d)); }
+    catch (e) { $('ebGu').disabled = false; const m = capMsg(e); toast(m); return; }
+    $('ebGu').disabled = false; if (r.control) ed.control(r.control);
+    toast('Evaluación ' + r.id + ' guardada: ' + r.agregadas + ' pregunta(s) nuevas' + (r.reutilizadas ? ', ' + r.reutilizadas + ' del banco' : '') + '.'); CAPC = null; alTerminar && alTerminar(r);
+  };
+}
+function capEvalModal(cap, idEvaluacion) {
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Evaluación"><div style="display:flex;justify-content:space-between;gap:10px"><h2>' + (idEvaluacion ? 'Agregar preguntas' : 'Evaluación nueva') + ' · ' + esc(cap.CODIGO) + '</h2><button class="link" id="emCer">Cerrar</button></div><div id="emCont" style="display:flex;flex-direction:column;gap:12px"></div></div>';
+  $('ov').hidden = false; $('emCer').onclick = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  capEvalBloque($('emCont'), cap, idEvaluacion, () => { $('ov').hidden = true; $('ov').innerHTML = ''; capFichaVer(cap.CODIGO); });
+}
+
+// ---------- Alta en 4 pasos
+async function capAlta() {
+  if (!CAPC) { cargando('#capcat', 'Preparando el alta…'); try { await capCargar(); } catch (e) { return capFalla('#capcat', 'Nueva capacitación', e); } }
+  if (!CAPA) CAPA = { paso: 1, d: { TIPO_ACTIVIDAD: 'Capacitación', VENCE: 'Anual', SIEMPRE_ABIERTA: 'No', INSCRIPCION_PREVIA: 'No', ICONO: 'health_and_safety', ENCUENTROS: '1' }, cod: '' };
+  const L = CAPC.listas, d = CAPA.d, paso = CAPA.paso;
+  const pasos = ['Datos', 'Cómo se registra', 'Evaluación', 'Publicación'].map((t, j) => '<div style="flex:1;min-width:120px;border-top:5px solid ' + (j + 1 <= paso ? 'var(--pa)' : 'var(--gr)') + ';padding-top:6px"><b class="peq">' + (j + 1) + ' · ' + t + '</b></div>').join('');
+  const sel = (k, t, lista) => '<label class="f">' + t + '<select class="c" data-k="' + k + '"><option value=""></option>' + capOps(lista, d[k]).map(o => '<option' + (o === d[k] ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></label>';
+  const inp = (k, t, tipo, ancho) => '<label class="f"' + (ancho ? ' style="grid-column:1/-1"' : '') + '>' + t + (tipo === 'area' ? '<textarea class="c" data-k="' + k + '">' + esc(d[k] || '') + '</textarea>' : '<input class="c" data-k="' + k + '"' + (tipo ? ' type="' + tipo + '"' : '') + ' value="' + esc(d[k] || '') + '">') + '</label>';
+  let h = '<div><a href="#capcat" class="peq">← Catálogo</a></div>' + capTit(CAPA.cod ? 'Alta · ' + CAPA.cod : 'Nueva capacitación', 'Se guarda como borrador en el paso 2. No se puede activar si falta algo: el sistema dice qué.') + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + pasos + '</div><section class="card" style="display:flex;flex-direction:column;gap:14px" id="altaCard">';
+  if (paso === 1) {
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' + inp('NOMBRE', 'Nombre', '', 1) + sel('TIPO_ACTIVIDAD', 'Tipo', L.tipos) + sel('CATEGORIA', 'Categoría', L.categorias) + sel('EJE', 'Eje', L.ejes) +
+      inp('CARGA_HORARIA', 'Carga horaria total (h)') + sel('VENCE', 'Vencimiento', ['Anual', 'No vence']) + sel('SIEMPRE_ABIERTA', 'Siempre abierta (autoasistida)', ['No', 'Sí']) + sel('INSCRIPCION_PREVIA', 'Inscripción previa', ['No', 'Sí']) +
+      inp('DESTINATARIOS', 'Destinatarios', 'area', 1) + inp('OBJETIVOS', 'Objetivos', 'area', 1) + inp('CONTENIDOS', 'Contenidos', 'area', 1) + inp('BASE_LEGAL', 'Base legal', 'area', 1) + '</div>' +
+      '<div><span class="peq" style="font-weight:700">Ícono del certificado</span><div class="cpn" style="margin-top:6px">' + capOps(L.iconos, d.ICONO).map(n => '<button type="button" class="fchip' + (n === d.ICONO ? ' on' : '') + '" data-ico="' + esc(n) + '" title="' + esc(n) + '">' + capIco(n) + '</button>').join('') + '</div><span class="mu peq">Elegido: ' + esc(d.ICONO) + ' · para sumar íconos, agregalos en _LISTAS › ICONOS.</span></div>' +
+      '<div class="cpn"><button class="btn pri" id="a1">Seguir</button></div>';
+  } else if (paso === 2) {
+    const op = (v, t, x) => '<button type="button" class="tarj" data-reg="' + esc(v) + '" style="text-align:left;cursor:pointer;border-width:' + (d.REGISTRO === v ? '2px;border-color:var(--az)' : '1px') + '"><b>' + t + '</b><span class="mu peq">' + x + '</span></button>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">' + op('Asistencia', 'Asistencia', 'Un encuentro sin examen: constancia de asistencia.') + op('Evaluación', 'Evaluación', 'Un encuentro con examen: certificado de aprobación.') + op('Encuentros + evaluación', 'Programa de varios encuentros', 'Constancia por encuentro y, al final, aprobación o participación.') + '</div>' +
+      (/encuentro/i.test(d.REGISTRO) ? '<div class="filtros">' + inp('ENCUENTROS', 'Cantidad de encuentros', 'number') + inp('ASISTENCIA_MINIMA', 'Asistencia mínima (encuentros)', 'number') + '</div>' : '') +
+      '<div class="cpn"><button class="btn sec" id="aV">Volver</button><button class="btn pri" id="a2">' + (CAPA.cod ? 'Guardar y seguir' : 'Guardar borrador y seguir') + '</button></div>';
+  } else if (paso === 3) {
+    h += '<div id="altaEval" style="display:flex;flex-direction:column;gap:12px"></div><div class="cpn"><button class="btn sec" id="aV">Volver</button><button class="btn sec" id="aSaltar">Seguir sin evaluación (queda en borrador)</button></div>';
+  } else {
+    h += '<div id="altaPub" class="cargando">Revisando qué falta…</div>';
+  }
+  h += '</section>';
+  marco('#capcat', h);
+  const leerCampos = () => document.querySelectorAll('#altaCard [data-k]').forEach(e => d[e.dataset.k] = e.value);
+  if ($('aV')) $('aV').onclick = () => { leerCampos(); CAPA.paso--; capAlta(); };
+  if (paso === 1) {
+    document.querySelectorAll('[data-ico]').forEach(b => b.onclick = () => { leerCampos(); d.ICONO = b.dataset.ico; capAlta(); });
+    $('a1').onclick = () => { leerCampos(); if (!d.NOMBRE.trim()) return toast('Falta el nombre.'); if (CAPC.lista.some(x => !CAPA.cod && capNorm(x.nombre) === capNorm(d.NOMBRE))) return toast('Ya hay una capacitación con ese nombre.'); CAPA.paso = 2; capAlta(); };
+  } else if (paso === 2) {
+    document.querySelectorAll('[data-reg]').forEach(b => b.onclick = () => { leerCampos(); d.REGISTRO = b.dataset.reg; if (/encuentro/i.test(d.REGISTRO) && Number(d.ENCUENTROS) < 2) d.ENCUENTROS = '2'; if (!/encuentro/i.test(d.REGISTRO)) d.ENCUENTROS = '1'; if (/encuentro/i.test(d.REGISTRO)) d.TIPO_ACTIVIDAD = 'Programa'; capAlta(); });
+    $('a2').onclick = async () => {
+      leerCampos(); if (!d.REGISTRO) return toast('Elegí cómo se registra.');
+      const r = await capHacer('c_cap_guardar', Object.assign({}, d, CAPA.cod ? { CODIGO: CAPA.cod } : {}), $('a2')); if (!r) return;
+      CAPA.cod = r.codigo || CAPA.cod; CAPC = null; await capCargar(true).catch(() => {});
+      CAPA.paso = /evaluaci/i.test(d.REGISTRO) ? 3 : 4; capAlta();
+    };
+  } else if (paso === 3) {
+    capEvalBloque($('altaEval'), { CODIGO: CAPA.cod }, '', () => { CAPA.paso = 4; capAlta(); });
+    $('aSaltar').onclick = () => { CAPA.paso = 4; capAlta(); };
+  } else {
+    let F; try { F = await capApi('c_cap', { codigo: CAPA.cod }); } catch (e) { $('altaPub').textContent = capMsg(e); return; }
+    $('altaPub').className = ''; $('altaPub').style.cssText = 'display:flex;flex-direction:column;gap:12px';
+    $('altaPub').innerHTML = (F.faltan.length ? '<div class="aviso">Para activarla falta: <b>' + esc(F.faltan.join(', ')) + '</b>. Queda en borrador; lo completás desde su ficha.</div>' : '<div class="aviso">Está completa. Activala para que el registro pueda abrir.</div>') +
+      '<div class="cpn">' + (F.faltan.length ? '' : '<button class="btn pri" id="aAct">Activar ahora</button>') + '<a class="btn sec" href="#capficha/' + encodeURIComponent(CAPA.cod) + '">Ir a la ficha</a><a class="btn sec" href="#capdicnuevo/' + encodeURIComponent(CAPA.cod) + '">Crear el primer dictado</a></div>';
+    const cod = CAPA.cod; CAPA = null;
+    if ($('aAct')) $('aAct').onclick = async () => { const r = await capHacer('c_cap_estado', { codigo: cod, estado: 'Activa' }, $('aAct'), 'Activando…'); if (r) { toast('Activa.'); CAPC = null; location.hash = '#capficha/' + encodeURIComponent(cod); } };
+  }
+}
+
+// ---------- Dictados
+async function capDictados() {
+  cargando('#capdic', 'Leyendo los dictados…');
+  let r; try { r = await capApi('c_dictados', { dias: 60 }); } catch (e) { return capFalla('#capdic', 'Dictados', e); }
+  if (location.hash.split('/')[0] !== '#capdic') return;
+  const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
+  marco('#capdic', capTit('Dictados', 'Últimos 60 días y próximos. El link de registro abre a la hora de la clase y cierra solo a las 48 h.', '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a><a class="btn sec" href="#capcat">Catálogo</a>') +
+    (!r.lista.length ? '<div class="card vacio">No hay dictados recientes ni próximos.</div>' :
+    '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
+    r.lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
+      '<td><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></td><td>' + (x.linkInscripcion ? esc(x.inscriptos) + (capVacio(x.cupo) || /sin/i.test(x.cupo) ? '' : ' / ' + esc(x.cupo)) : '<span class="mu">—</span>') + '</td><td>' + esc(x.asistentes) + '</td>' +
+      '<td style="white-space:nowrap"><button class="link" data-cop="' + j + '">Link</button> · <button class="link" data-wa="' + j + '">WhatsApp</button> · <a class="link" href="' + esc(x.qr) + '" target="_blank" rel="noopener">QR</a></td></tr>').join('') + '</tbody></table></section>' +
+    '<div class="tarjetas">' + r.lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
+  document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
+  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(r.lista[b.dataset.cop].link, 'Link de registro copiado.'));
+  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(r.lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
+}
+async function capDictadoNuevo(cod) {
+  if (!CAPC) { cargando('#capdic', 'Preparando…'); try { await capCargar(); } catch (e) { return capFalla('#capdic', 'Nuevo dictado', e); } }
+  const L = CAPC.listas, caps = CAPC.lista.filter(c => !/inactiv|anulad/i.test(c.estado)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  CAPD = { cod: cod || '', modalidad: 'Presencial', servicios: [], q: '', dis: [], fir: [] };
+  const firm = (CAPC.firmantes || []).filter(f => f.vigente && f.id !== 'FIR-001');
+  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' + capTit('Nuevo dictado', 'El link y el QR se abren a la hora de la clase y se cierran solos a las 48 h. Fuera de ese plazo, solo vos agregás asistentes.') +
+    '<section class="card" style="display:flex;flex-direction:column;gap:14px">' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">' +
+    '<label class="f" style="grid-column:1/-1">Capacitación<select class="c" id="ndCap"><option value="">Elegí…</option>' + caps.map(c => '<option value="' + esc(c.codigo) + '"' + (c.codigo === CAPD.cod ? ' selected' : '') + '>' + esc(c.nombre) + ' (' + esc(c.codigo) + (/^activ/i.test(c.estado) ? '' : ' · ' + esc(c.estado)) + ')</option>').join('') + '</select></label>' +
+    '<label class="f" id="ndEncL" hidden>Encuentro<select class="c" id="ndEnc"></select></label>' +
+    '<label class="f">Fecha<input class="c" type="date" id="ndF"></label><label class="f">Hora de inicio<input class="c" type="time" id="ndH"></label><label class="f">Hora de fin<input class="c" type="time" id="ndHF"></label></div>' +
+    '<div><span class="peq" style="font-weight:700">Modalidad</span><div class="cpn" id="ndMod" style="margin-top:6px">' + ['Presencial', 'Virtual', 'Híbrida'].map(m => '<button type="button" class="fchip' + (m === 'Presencial' ? ' on' : '') + '" data-m="' + m + '">' + m + '</button>').join('') + '</div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="ndLugBox"><label class="f">Lugar<select class="c" id="ndLug"><option value="">Elegí…</option>' + (L.lugares || []).filter(x => !/^virtual$/i.test(x.lugar)).map(x => '<option value="' + esc(x.lugar) + '">' + esc(x.lugar) + (capVacio(x.capacidad) ? '' : ' (' + esc(x.capacidad) + ')') + '</option>').join('') + '</select></label>' +
+    '<label class="f">Cupo presencial <span class="mu">(vacío = capacidad del lugar)</span><input class="c" type="number" id="ndCupo" min="1"></label></div>' +
+    '<div><span class="peq" style="font-weight:700">Servicios destinatarios</span> <span class="mu peq" id="ndSerN">Todos</span><div class="filtros" style="margin-top:6px"><input class="c" id="ndSerQ" placeholder="Buscar servicio…" style="min-width:220px"><button type="button" class="link" id="ndSerT">Todos (limpiar)</button></div><div class="cpn" id="ndSer" style="margin-top:8px;max-height:160px;overflow-y:auto"></div></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px"><label class="f">Organizador<input class="c" id="ndOrg" value="Higiene y Seguridad"></label>' +
+    '<label class="f">Institución educativa <span class="mu">(si es para estudiantes)</span><select class="c" id="ndIns"><option value="">Ninguna</option>' + (L.instituciones || []).map(i => '<option>' + esc(i) + '</option>').join('') + '<option value="Otra">Otra…</option></select></label><label class="f" id="ndInsXL" hidden>¿Cuál?<input class="c" id="ndInsX"></label></div>' +
+    '<div><span class="peq" style="font-weight:700">Disertantes invitados</span> <span class="mu peq">(hasta 3; vos ya estás)</span><div id="ndDis" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div><button type="button" class="btn sec" id="ndDisA" style="margin-top:8px">+ Agregar disertante</button></div>' +
+    '<div><span class="peq" style="font-weight:700">Firmas del certificado</span> <span class="mu peq" id="ndFirN"></span><div class="multi" style="margin-top:6px"><label><input type="checkbox" checked disabled> Belén Pellegrini (siempre, a la derecha)</label>' + firm.map(f => '<label><input type="checkbox" data-fir="' + esc(f.id) + '"> ' + esc(f.nombre) + (capVacio(f.organismo) ? '' : ' · ' + esc(f.organismo)) + (f.firma ? '' : ' <span class="mu">(sin firma cargada)</span>') + '</label>').join('') + '</div>' + (firm.length ? '' : '<span class="mu peq">No hay otros firmantes cargados: se suman en <a href="#capfir">Firmantes</a>.</span>') + '</div>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ndInsc"> Lleva inscripción previa (link de inscripción con consulta previa; cierra al empezar la clase o al llenarse el cupo)</label>' +
+    '<label class="f">Observaciones<textarea class="c" id="ndObs"></textarea></label>' +
+    '<div class="cpn"><button class="btn pri" id="ndGu">Crear dictado</button><a class="btn sec" href="#capdic">Cancelar</a></div></section><div id="ndRes"></div>');
+  const capSel = () => CAPC.lista.find(c => c.codigo === $('ndCap').value);
+  const alCambiarCap = () => { const c = capSel(); $('ndEncL').hidden = !c || c.encuentros < 2; if (c && c.encuentros > 1) $('ndEnc').innerHTML = Array.from({ length: c.encuentros }, (_, j) => '<option value="' + (j + 1) + '">' + (j + 1) + ' de ' + c.encuentros + '</option>').join(''); $('ndInsc').checked = !!(c && c.inscripcion); };
+  $('ndCap').onchange = alCambiarCap; alCambiarCap();
+  document.querySelectorAll('#ndMod [data-m]').forEach(b => b.onclick = () => { CAPD.modalidad = b.dataset.m; document.querySelectorAll('#ndMod [data-m]').forEach(x => x.classList.toggle('on', x === b)); $('ndLugBox').hidden = CAPD.modalidad === 'Virtual'; });
+  const servicios = () => { const q = capNorm(CAPD.q); $('ndSer').innerHTML = (L.servicios || []).slice().sort((a, b) => a.localeCompare(b)).filter(s => !q || capNorm(s).indexOf(q) >= 0).map(s => '<button type="button" class="fchip' + (CAPD.servicios.indexOf(s) >= 0 ? ' on' : '') + '" data-s="' + esc(s) + '">' + esc(s) + '</button>').join('');
+    $('ndSerN').textContent = CAPD.servicios.length ? CAPD.servicios.length + ' elegido(s): ' + CAPD.servicios.join(', ') : 'Todos';
+    $('ndSer').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const s = b.dataset.s, k = CAPD.servicios.indexOf(s); if (k >= 0) CAPD.servicios.splice(k, 1); else CAPD.servicios.push(s); servicios(); }); };
+  $('ndSerQ').oninput = () => { CAPD.q = $('ndSerQ').value; servicios(); }; $('ndSerT').onclick = () => { CAPD.servicios = []; servicios(); }; servicios();
+  $('ndIns').onchange = () => { $('ndInsXL').hidden = $('ndIns').value !== 'Otra'; };
+  const dis = () => { $('ndDis').innerHTML = CAPD.dis.map((x, j) => '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end"><label class="f">Nombre<input class="c" data-dn="' + j + '" value="' + esc(x.nombre) + '"></label><label class="f">Profesión, servicio o institución<input class="c" data-dd="' + j + '" value="' + esc(x.detalle) + '"></label><button type="button" class="link" data-dq="' + j + '">Quitar</button></div>').join('');
+    $('ndDisA').hidden = CAPD.dis.length >= 3;
+    $('ndDis').querySelectorAll('[data-dn]').forEach(i => i.oninput = () => CAPD.dis[i.dataset.dn].nombre = i.value);
+    $('ndDis').querySelectorAll('[data-dd]').forEach(i => i.oninput = () => CAPD.dis[i.dataset.dd].detalle = i.value);
+    $('ndDis').querySelectorAll('[data-dq]').forEach(b => b.onclick = () => { CAPD.dis.splice(Number(b.dataset.dq), 1); dis(); }); };
+  $('ndDisA').onclick = () => { if (CAPD.dis.length < 3) { CAPD.dis.push({ nombre: '', detalle: '' }); dis(); } }; dis();
+  const firmas = () => { const n = document.querySelectorAll('[data-fir]:checked').length; $('ndFirN').textContent = 'Firmas: ' + (n + 1) + ' de 4'; document.querySelectorAll('[data-fir]').forEach(x => { if (!x.checked) x.disabled = n >= 3; }); };
+  document.querySelectorAll('[data-fir]').forEach(x => x.onchange = firmas); firmas();
+  $('ndGu').onclick = async () => {
+    const c = capSel(); if (!c) return toast('Elegí la capacitación.');
+    const ins = $('ndIns').value === 'Otra' ? $('ndInsX').value.trim() : $('ndIns').value;
+    const d = { codigo: c.codigo, encuentro: $('ndEnc').value || 1, fecha: $('ndF').value, hora: $('ndH').value, horaFin: $('ndHF').value, modalidad: CAPD.modalidad, lugar: $('ndLug').value, cupo: $('ndCupo').value,
+      servicios: CAPD.servicios, organizador: $('ndOrg').value.trim(), institucion: ins, disertantes: CAPD.dis.filter(x => x.nombre.trim()), firmantes: Array.from(document.querySelectorAll('[data-fir]:checked')).map(x => x.dataset.fir), inscripcion: $('ndInsc').checked, observaciones: $('ndObs').value.trim() };
+    if (!d.fecha || !d.hora) return toast('Falta la fecha o la hora.');
+    if (d.modalidad !== 'Virtual' && !d.lugar) return toast('Elegí el lugar.');
+    const r = await capHacer('c_dictado_guardar', d, $('ndGu'), 'Creando…'); if (!r) return;
+    capDictadoListo(r, c);
+  };
+}
+function capDictadoListo(r, c) {
+  const wa = 'https://wa.me/?text=' + encodeURIComponent(r.whatsapp);
+  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' + capTit('Dictado creado', esc(c.nombre) + ' · ' + esc(r.fecha) + ' ' + esc(r.hora) + ' · ' + esc(r.modalidad)) +
+    (r.aviso ? '<div class="aviso error">' + esc(r.aviso) + '</div>' : '') +
+    '<div class="tb2"><section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Registro de asistencia</h2><span class="mu peq">Abre el ' + esc(r.abre) + ' y cierra el ' + esc(r.cierra) + '.</span><span class="peq" style="overflow-wrap:anywhere">' + esc(r.link) + '</span>' +
+      '<div class="cpn"><button class="btn sec" id="dlCop">Copiar link</button><a class="btn sec" href="' + esc(r.qr) + '" target="_blank" rel="noopener">Abrir QR para descargar ↗</a></div><img src="' + esc(r.qr) + '" alt="QR del registro" style="width:180px;height:180px;border:1px solid var(--ln);border-radius:8px"></section>' +
+    (r.linkInscripcion ? '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Inscripción previa</h2><span class="mu peq">Cierra el ' + esc(r.cierreInscripcion) + ' o al llenarse el cupo (' + esc(r.cupo) + ').</span><span class="peq" style="overflow-wrap:anywhere">' + esc(r.linkInscripcion) + '</span><div class="cpn"><button class="btn sec" id="dlCopI">Copiar link</button><a class="btn sec" href="' + esc(r.qrInscripcion) + '" target="_blank" rel="noopener">Abrir QR ↗</a></div><img src="' + esc(r.qrInscripcion) + '" alt="QR de la inscripción" style="width:180px;height:180px;border:1px solid var(--ln);border-radius:8px"></section>' : '') + '</div>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Texto para WhatsApp</h2><textarea class="c" id="dlWa" style="min-height:170px">' + esc(r.whatsapp) + '</textarea><div class="cpn"><button class="btn sec" id="dlCopW">Copiar texto</button><a class="btn pri" href="' + esc(wa) + '" target="_blank" rel="noopener">Abrir WhatsApp ↗</a><a class="btn sec" href="#capins/' + encodeURIComponent(r.id) + '">Ver el dictado</a></div></section>');
+  $('dlCop').onclick = () => capCopiar(r.link, 'Link de registro copiado.');
+  if ($('dlCopI')) $('dlCopI').onclick = () => capCopiar(r.linkInscripcion, 'Link de inscripción copiado.');
+  $('dlCopW').onclick = () => capCopiar($('dlWa').value, 'Texto copiado.');
+}
+
+// ---------- Un dictado: inscriptos, asistencia y acciones
+async function capInscriptos(id) {
+  cargando('#capdic', 'Leyendo el dictado…');
+  let r; try { r = await capApi('c_inscriptos', { id: id }); await capCargar().catch(() => {}); } catch (e) { return capFalla('#capdic', 'Dictado', e); }
+  if (location.hash.split('/')[0] !== '#capins') return;
+  const D = r.dictado, R = r.resumen, cancelado = /cancel|suspend/i.test(D.estado);
+  const capN = ((CAPC && CAPC.lista) || []).find(c => c.codigo === D.codigo), nomFir = String(D.firmantes || '').split(/[,;]\s*/).map(x => { const f = ((CAPC && CAPC.firmantes) || []).find(y => y.id === x); return f ? f.nombre : x; }).join(' · ');
+  const kp = (t, v, s) => '<div class="kpi2"><span>' + t + '</span><b>' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>';
+  const asis = a => '<span class="chip ' + (a === 'Vino' ? 'ok' : a === 'No vino' ? 'er' : a === 'Avisó que no asiste' ? 'gr' : 'pa') + '">' + esc(a) + '</span>';
+  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' +
+    capTit(capN ? capN.nombre : D.codigo, esc(D.fecha + ' ' + (D.hora || '')) + ' · ' + esc(D.codigo) + (capN && capN.encuentros > 1 ? ' · encuentro ' + esc(D.encuentro) + ' de ' + capN.encuentros : '') + ' · ' + esc(D.modalidad) + (capVacio(D.lugar) || /virtual/i.test(D.lugar) ? '' : ' · ' + esc(D.lugar)) + ' · registro ' + esc(D.abre) + ' a ' + esc(D.cierra) + ' · ' + capEst(D.estado),
+      '<button class="btn sec" id="diCop">Copiar link de registro</button>' + (D.linkInscripcion ? '<button class="btn sec" id="diCopI">Copiar link de inscripción</button>' : '') + '<button class="btn sec" id="diAgr">Agregar asistente</button>' + (cancelado ? '' : '<button class="btn peligro" id="diCan">Suspender o cancelar</button>')) +
+    '<div class="tb5">' + (D.linkInscripcion ? kp('INSCRIPTOS', R.activos, capVacio(R.cupo) || /sin/i.test(R.cupo) ? 'sin cupo' : R.presenciales + ' presenciales de ' + R.cupo) + kp('VINIERON', R.vinieron, 'de los inscriptos') + kp('AVISARON QUE NO', R.anuladas) + kp('CONSULTAS', R.consultasPendientes, 'pendientes') : '') + kp('SIN INSCRIPCIÓN', r.sinInscripcion.length, 'vinieron igual') + '</div>' +
+    (D.linkInscripcion ? '<section class="card tabla"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Inscriptos</h2>' + (r.correos ? '<button class="btn sec" id="diMails">Copiar correos</button>' : '') + '</div>' +
+      (!r.lista.length ? '<div class="vacio">Todavía no hay inscriptos.</div>' : '<table><thead><tr><th>Persona</th><th>Público</th><th>Modalidad</th><th>Consulta previa</th><th>Asistencia</th><th></th></tr></thead><tbody>' +
+      r.lista.map((x, j) => '<tr><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.doc) + '</div></td><td>' + esc(x.publico) + '<div class="mu peq">' + esc(x.detalle) + '</div></td><td>' + esc(x.modalidad) + '</td>' +
+        '<td style="max-width:320px">' + (x.consulta ? esc(x.consulta) + '<div>' + (/pendiente/i.test(x.estadoConsulta) ? '<button class="link" data-resp="' + j + '">Marcar respondida</button>' : '<span class="mu peq">' + esc(x.estadoConsulta) + '</span>') + '</div>' : '<span class="mu">—</span>') + '</td>' +
+        '<td>' + asis(x.asistencia) + (x.estado === 'Anulada' ? '<div class="mu peq">Anuló: ' + esc(x.anuladaPor) + (x.motivo ? ' · ' + esc(x.motivo) : '') + '</div>' : '') + '</td><td>' + (x.estado === 'Anulada' ? '' : '<button class="link" data-anu="' + j + '">Anular</button>') + '</td></tr>').join('') + '</tbody></table>') + '</section>' : '') +
+    (r.sinInscripcion.length ? '<section class="card"><h2 style="margin-bottom:8px">Vinieron sin inscribirse</h2>' + r.sinInscripcion.map(x => '<div class="item"><span><b>' + esc(x.nombre) + '</b> <span class="mu peq">' + esc(x.doc) + '</span></span><span class="mu peq">' + esc(x.detalle) + '</span></div>').join('') + '</section>' : '') +
+    (!D.linkInscripcion ? '<section class="card peq mu">Este dictado no tiene inscripción previa. Las asistencias están en el libro, hoja REGISTROS (ID_DICTADO ' + esc(D.id) + ').</section>' : '') +
+    '<section class="card peq"><dl class="dl"><dt>Disertantes</dt><dd>' + esc(D.disertantes) + '</dd><dt>Servicios</dt><dd>' + esc(D.servicios) + '</dd><dt>Institución</dt><dd>' + esc(D.institucion) + '</dd><dt>Firmas</dt><dd>' + esc(nomFir) + '</dd><dt>Observaciones</dt><dd>' + esc(D.observaciones) + '</dd></dl></section>');
+  $('diCop').onclick = () => capCopiar(D.link, 'Link de registro copiado.');
+  if ($('diCopI')) $('diCopI').onclick = () => capCopiar(D.linkInscripcion, 'Link de inscripción copiado.');
+  if ($('diMails')) $('diMails').onclick = () => capCopiar(r.correos, 'Correos copiados: pegalos en «CCO» de tu correo (belenpellegrini.hys@gmail.com).');
+  document.querySelectorAll('[data-resp]').forEach(b => b.onclick = async () => { const x = r.lista[b.dataset.resp]; const ok = await capHacer('c_insc_consulta', { id: x.id, estado: 'Respondida' }, b, '…'); if (ok) capInscriptos(id); });
+  document.querySelectorAll('[data-anu]').forEach(b => b.onclick = () => { const x = r.lista[b.dataset.anu]; capModalMotivo('Anular la inscripción de ' + x.nombre, 'El lugar queda libre. La fila no se borra: queda como anulada con el motivo.', async m => { try { await capApi('c_insc_anular', { id: x.id, motivo: m }); toast('Inscripción anulada.'); capInscriptos(id); } catch (e) { return capMsg(e); } }); });
+  $('diAgr').onclick = () => modal('Agregar asistente · ' + D.codigo, [['doc', 'DNI'], ['motivo', 'Motivo', '', 1]], { motivo: 'Agregado fuera de la ventana de 48 h' }, async v => { if (!v.doc.trim()) return 'Escribí el DNI.'; try { const x = await capApi('c_asistente_agregar', { idDictado: D.id, doc: v.doc, motivo: v.motivo }); toast(x.mensaje); capInscriptos(id); } catch (e) { return capMsg(e); } }, '<p class="mu peq" style="margin:0">Si la persona no está en PERSONAS ni en la base de trabajadores, cargala por CARGA_MANUAL en el libro.</p>');
+  if ($('diCan')) $('diCan').onclick = () => { const m = modal('Suspender o cancelar el dictado', [['estado', 'Estado', ['Suspendido', 'Cancelado']], ['motivo', 'Motivo (queda en el historial)', '', 1]], { estado: 'Suspendido' }, async v => { if (!v.estado || !v.motivo.trim()) return 'Elegí el estado y escribí el motivo.'; try { await capApi('c_dictado_estado', { id: D.id, estado: v.estado, motivo: v.motivo.trim() }); toast('Dictado ' + v.estado.toLowerCase() + '.'); capInscriptos(id); } catch (e) { return capMsg(e); } }, '<p class="mu peq" style="margin:0">El link de registro y el de inscripción dejan de funcionar. Avisá a los inscriptos (podés copiar los correos).</p>'); };
+}
+
+// ---------- Firmantes
+async function capFirmantes() {
+  cargando('#capfir', 'Leyendo los firmantes…');
+  let r; try { r = await capApi('c_firmantes', {}); } catch (e) { return capFalla('#capfir', 'Firmantes', e); }
+  if (location.hash.split('/')[0] !== '#capfir') return;
+  marco('#capfir', capTit('Firmantes', 'Quienes firman o avalan los certificados. Hasta 4 firmas por certificado; la tuya va siempre a la derecha.', '<button class="btn pri" id="fiNuevo">+ Nuevo firmante</button>') +
+    '<div class="tb3">' + r.lista.map((f, j) => '<section class="card" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h2>' + esc(f.nombre) + '</h2>' + (f.vigente ? '<span class="chip ok">Vigente</span>' : '<span class="chip gr">No vigente</span>') + '</div>' +
+      '<span class="mu peq">' + esc([f.titulo, f.cargo, f.organismo].filter(x => !capVacio(x)).join(' · ')) + '</span>' +
+      '<div class="peq" style="white-space:pre-line;border:1px dashed var(--ln);border-radius:8px;padding:8px 10px"><b>Sello:</b> ' + esc(capVacio(f.aclaracion) ? 's/d' : f.aclaracion) + '</div>' +
+      '<span class="peq">' + (f.firma ? '<span class="chip ok">Firma cargada</span> <a href="' + esc(f.firma) + '" target="_blank" rel="noopener">ver ↗</a>' : '<span class="chip wa">Firma pendiente de carga</span>') + (f.sello ? ' · <a href="' + esc(f.sello) + '" target="_blank" rel="noopener">sello ↗</a>' : '') + '</span>' +
+      '<div><button class="btn sec" data-ed="' + j + '">Editar</button></div></section>').join('') + '</div>');
+  $('fiNuevo').onclick = () => capFirmanteModal(null);
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => capFirmanteModal(r.lista[b.dataset.ed]));
+}
+function capFirmanteModal(f) {
+  const v = f ? { NOMBRE: f.nombre, TITULO: f.titulo, CARGO: f.cargo, ORGANISMO: f.organismo, MATRICULA: f.matricula, TIPO: f.tipo, CORREO: f.correo, TELEFONO: f.telefono, ACLARACION: f.aclaracion, VIGENTE: f.vigente ? 'Sí' : 'No' } : { VIGENTE: 'Sí', TIPO: 'Aval' };
+  Object.keys(v).forEach(k => { if (capVacio(v[k])) v[k] = ''; });
+  const archivo = id => new Promise(ok => { const x = $(id).files[0]; if (!x) return ok(null); if (x.size > 2 * 1024 * 1024) { toast('La imagen pesa más de 2 MB.'); return ok(null); } const fr = new FileReader(); fr.onload = () => ok({ tipo: x.type, b64: fr.result }); fr.readAsDataURL(x); });
+  modal(f ? 'Editar firmante · ' + f.id : 'Nuevo firmante', [['NOMBRE', 'Nombre (como va en la firma)'], ['TITULO', 'Título'], ['CARGO', 'Cargo'], ['ORGANISMO', 'Organismo o institución'], ['MATRICULA', 'Matrícula'], ['TIPO', 'Tipo', capOps(['HyS', 'Aval', 'Disertante', 'Institución educativa'], v.TIPO)],
+    ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['VIGENTE', 'Vigente', ['Sí', 'No']], ['ACLARACION', 'Aclaración del sello (hasta 3 renglones)', '', 1]], v, async out => {
+    const lineas = out.ACLARACION.split(/\n/).length; if (lineas > 3 || out.ACLARACION.length > 150) return 'La aclaración tiene que entrar en 3 renglones (hasta 150 letras).';
+    const d = Object.assign({}, out, { vigente: out.VIGENTE !== 'No' }); delete d.VIGENTE; if (f) d.ID_FIRMANTE = f.id;
+    const fi = await archivo('fiF'), se = await archivo('fiS'); if (fi) d.firma = fi; if (se) d.sello = se;
+    try { await capApi('c_firmante_guardar', d, 180000); toast('Firmante guardado.'); CAPC = null; capFirmantes(); } catch (e) { return capMsg(e); }
+  }, '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px"><label class="f">Imagen de la firma (PNG con fondo transparente, o JPG)<input class="c" type="file" id="fiF" accept="image/png,image/jpeg"></label><label class="f">Imagen del sello (optativa)<input class="c" type="file" id="fiS" accept="image/png,image/jpeg"></label></div>' +
+    '<p class="mu peq" style="margin:0">Las imágenes se guardan en Drive › carpeta FIRMAS, junto al libro. Mientras no haya imagen, el certificado lleva la línea y la aclaración.</p>');
 }
 
 // ------------------------------------------------------------------ Tablero de control (inicio)
@@ -1893,6 +2296,13 @@ function router() {
   if (ruta === 'buscar') return buscar(a);
   if (ruta === 'bib') return biblioteca();
   if (ruta === 'cap') return capTablero();
+  if (ruta === 'capcat') return capCatalogo();
+  if (ruta === 'capficha') return capFichaVer(a);
+  if (ruta === 'capalta') return capAlta();
+  if (ruta === 'capdic') return capDictados();
+  if (ruta === 'capdicnuevo') return capDictadoNuevo(a);
+  if (ruta === 'capins') return capInscriptos(a);
+  if (ruta === 'capfir') return capFirmantes();
   if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
