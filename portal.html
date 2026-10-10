@@ -248,7 +248,7 @@ function marco(activo, contenido) {
     it('#agua', 'water_drop', '3 · Agua') +
     grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
     it('#plagas', 'pest_control', '5 · Plagas') +
-    '<a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener"><span class="ms" aria-hidden="true">school</span>7 · Capacitaciones ↗</a>' +
+    grp('school', '7 · Capacitaciones') + it('#cap', '', 'Tablero', 1) + ext(CAP_PANEL, 'Panel de carga') + ext(CAP_LIBRO, 'Libro CAPACITACIONES') +
     it('#ayuda', 'help', 'Ayuda') +
     '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
@@ -340,6 +340,7 @@ const AYUDA = {
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
   '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
   '#plagas': ['5 · Plagas', ['Registro MIPyV: lo cargan los operarios de la red Trelew desde su app. Muestra intervenciones abiertas, saneamiento en curso, seguimientos vencidos y las visitas de los últimos 90 días.', 'Tocá una visita para ver qué se hizo, productos, EPP y fotos, y marcarla como revisada (queda en el libro MIPyV, columna revisado_hys).', 'Abajo, los avisos de plagas que cargan los establecimientos desde «Mi establecimiento».']],
+  '#cap': ['7 · Capacitaciones', ['Resumen del ciclo de capacitación (1 de febrero al 31 de enero): personas, registros, aprobación, cobertura del personal y cumplimiento de la matriz.', 'Semáforo por servicio con los prioritarios primero; los prioritarios se eligen en el libro CAPACITACIONES, hoja _LISTAS.', '«Requiere atención» avisa solo sobre lo cargado desde octubre de 2026: capacitaciones abiertas sin evaluación o sin carga horaria, dictados próximos sin abrir y vencimientos. Lo anterior queda como histórico.', 'Los dictados nuevos (por ejemplo, jornadas en el CET) se agregan en el libro, hoja DICTADOS.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento. Si el portal falla, el libro tiene la hoja TABLERO con lo mismo.']],
   '#sinest': ['4 · Estadísticas de siniestros', ['Totales, índices y distribuciones del período elegido (este año, trimestre actual o anterior, año anterior u otras fechas), para HZT y HMH juntos o por separado.', 'Índice de incidencia: casos de accidentes y enfermedades profesionales cada 1.000 trabajadores. Frecuencia: casos con baja por millón de horas trabajadas (estimadas con la jornada del CCT, que se carga en LISTAS_INVESTIGACION). Pérdida: días de baja cada 1.000 trabajadores. Duración media: días por caso con baja.', 'In itinere se informa aparte. Rechazados e inculpables no cuentan como casos. Los trabajadores son los activos de la base de trabajadores al día de hoy.', 'Forma, agente, zona y naturaleza salen de las investigaciones: lo que todavía no se investigó figura como «Sin investigar».', 'Base: Res. SRT 905/15, Anexo I pto. 13.']],
   '#inv': ['4 · Investigación de un siniestro', ['El sistema sugiere el método: árbol de causas cuando la baja supera 15 días, la persona o el servicio repiten, o hay riesgo biológico; investigación breve en el resto y en los in itinere. Podés cambiarlo (motivo «Decisión de HyS»).', 'Árbol de causas: H1 es la lesión. Para cada hecho preguntá «¿qué fue necesario para que pasara?» y cargá las respuestas como hechos nuevos, eligiendo de cuál son antecedente. Ocasional: algo distinto de lo habitual. Permanente: así es siempre.', 'Medidas: con la jerarquía de controles (eliminar, sustituir, ingeniería, administrativas, EPP), responsable y plazo.', 'Causa primaria: si se elimina, el siniestro no ocurre. Medidas en orden de prioridad, con el servicio responsable. El plazo lo informa cada servicio; al cargarlo, la medida pasa a «En curso» y se propone la fecha de verificación.', '«Guardar y armar la nota» crea un borrador numerado en Google Docs: nota a la Dirección (empleador) que, por su intermedio, propone las acciones a los servicios y les pide los plazos; como anexo, el informe de investigación con la estructura del modelo de la SRT. Sin nombre, DNI ni diagnóstico. La firmás y la ingresás por Mesa de Entradas; al cargar esa fecha, las medidas pasan a «Comunicada».', 'Al cerrar la investigación, el siniestro queda «Analizado». Todo queda en las hojas INVESTIGACIONES, HECHOS y MEDIDAS del libro de siniestros, y se puede corregir ahí.', 'Base: Res. SRT 905/15, Anexo II, ítems 12 y 17 (comunicación fehaciente al empleador); Ley 24.557, art. 4; modelo de informe de investigación de la SRT (Circular GPyC 001/04).']],
   '#sin': ['4 · Siniestros', ['Todos los siniestros de la red, con filtros por establecimiento, estado y tipo. Tocá uno para ver datos, diagnóstico, novedades, archivos y la exposición de la persona según la NTE.', 'Los cargan Personal y la secretaría de HyS desde «Mi establecimiento», y desde ahí se corrigen o anulan. El libro de siniestros guarda todo y no se borra nada.', 'ESTADO y días de baja los calcula el sistema con las novedades (al guardar y cada noche).', 'Base: Ley 24.557, arts. 6 y 31; Res. SRT 525/15; Res. SRT 905/15, Anexo I pto. 13 y Anexo II pto. 12.']],
@@ -382,6 +383,102 @@ function grHoriz(items, max, apilado) {   // items: [texto, valor, color] o [tex
   return '<svg viewBox="0 0 ' + W + ' ' + y + '" width="100%" role="img">' + s + '</svg>';
 }
 const leyenda = items => '<div class="leyenda">' + items.map(([t, c]) => '<span><i style="background:' + c + '"></i>' + esc(t) + '</span>').join('') + '</div>';
+
+// ------------------------------------------------------------------ 7 · Capacitaciones · Tablero
+// Lee el libro «CAPACITACIONES · Sistema HyS» a través de su propia aplicación web (CAP_API).
+// Si CAP_API está vacía, el menú sigue abriendo el panel y la planilla de siempre.
+const CAP_API = 'https://script.google.com/macros/s/AKfycbxXz2AuN9nx5JkiNVI0LFYpEG-0ciYTXH9pN6QnO3SIaIltljCi8sbRB4PwiDx9Jf4Ugw/exec';   // pegá acá la URL de la aplicación web del libro de capacitaciones (termina en /exec)
+const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JPqngTquMpNr5uqQPot4uhGI/edit';
+const CAP_PANEL = 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';
+let CAPT = null, CAPRED = 'Red Trelew';
+async function capApi(accion, datos, ms) {
+  if (!CAP_API) throw new Error('sinurl');
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
+  try {
+    const r = await fetch(CAP_API, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, datos: datos || {} }), signal: ctl.signal });
+    const j = await r.json();
+    if (j.error === 'clave') throw new Error('clave');
+    if (!j.ok) throw new Error(j.error || 'error');
+    return j;
+  } finally { clearTimeout(t); }
+}
+function capError(e) {
+  const m = e && e.message;
+  const txt = m === 'sinurl' ? 'Falta conectar el libro de capacitaciones: en el portal, la constante CAP_API todavía está vacía (ver el manual, paso «Conectar el tablero»).'
+    : m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
+    : (e && e.name === 'AbortError') ? 'El libro de capacitaciones tardó demasiado. Probá «Actualizar» en un rato.'
+    : 'No se pudo leer el libro de capacitaciones' + (m && m !== 'error' ? ': ' + m : '.') ;
+  return '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
+    '<div class="aviso error">' + esc(txt) + '</div>' +
+    '<section class="card peq">Mientras tanto, todo sigue funcionando como siempre: <a href="' + CAP_PANEL + '" target="_blank" rel="noopener">panel de carga ↗</a> · <a href="' + CAP_LIBRO + '" target="_blank" rel="noopener">libro CAPACITACIONES (hoja TABLERO) ↗</a> · <a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener">catálogo actual ↗</a></section>';
+}
+async function capTablero(fresco) {
+  if (!CAPT) CAPT = LS.get('capt', null);
+  if (!CAPT || fresco) {
+    if (!CAPT) cargando('#cap', 'Armando el tablero de capacitaciones…'); else toast('Actualizando el tablero de capacitaciones…');
+    try { CAPT = await capApi('c_tablero', { fresco: !!fresco }, 180000); LS.set('capt', CAPT); }
+    catch (e) { if (!CAPT) return marco('#cap', capError(e)); toast('No se pudo actualizar: se muestran los últimos datos guardados.'); }
+    if (location.hash.split('/')[0] !== '#cap') return;
+  }
+  const T = CAPT, K = T.kpi, hoyM = new Date().toISOString().slice(0, 7);
+  const card = (titulo, link, cuerpo) => '<section class="card" style="display:flex;flex-direction:column;gap:10px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">' + titulo + '</h2>' + (link ? '<a href="' + link[0] + '"' + (/^http/.test(link[0]) ? ' target="_blank" rel="noopener"' : '') + ' class="peq" style="font-weight:700">' + link[1] + '</a>' : '') + '</div>' + cuerpo + '</section>';
+  const kpi = (t, v, s, col, extra) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small>' + (extra || '') + '</div>';
+  const colPct = p => p >= 80 ? '#1E6B42' : p >= 50 ? '#B7791F' : '#B4361F';
+  const tagPct = p => '<span class="tag ' + (p >= 80 ? 'ok' : p >= 50 ? 'wa' : 'er') + '">' + p + ' %</span>';
+  const nAt = T.atencion.filter(a => a.nivel !== 'av').length;
+  const meta = '<div style="height:8px;border-radius:999px;background:#EEF2F4;overflow:hidden;margin-top:6px"><i style="display:block;height:100%;width:' + Math.min(100, K.matriz) + '%;background:#5894A7"></i></div>';
+  // Semáforo
+  const chips = ['Red Trelew', 'Red Rawson', 'Otro hospital de Chubut'].map(r => '<button class="fchip' + (r === CAPRED ? ' on' : '') + '" data-red="' + esc(r) + '">' + esc(r) + '</button>').join('');
+  const sem = CAPRED !== 'Red Trelew'
+    ? '<div class="aviso peq">Todavía sin datos para ' + esc(CAPRED) + '. Este semáforo se arma con el registro nuevo (fase 4), que toma la nómina de cada hospital de la base de trabajadores. Hoy solo la red Trelew tiene la matriz cargada.</div>'
+    : '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">SERVICIO</th><th style="padding:6px 8px;text-align:right">PERSONAL</th><th style="padding:6px 8px">OBLIGATORIAS CUMPLIDAS</th><th style="padding:6px 8px;text-align:right">%</th><th style="padding:6px 8px;text-align:right">AL DÍA</th></tr></thead><tbody>' +
+      T.semaforo.servicios.slice().sort((a, b) => (b.prioritario - a.prioritario) || (b.personal - a.personal)).slice(0, 40).map(s => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><b>' + esc(s.servicio) + '</b>' + (s.prioritario ? ' <span style="font-size:10.5px;font-weight:800;color:#B4361F;letter-spacing:.4px">PRIORITARIO</span>' : '') + '</td><td style="padding:8px;text-align:right">' + s.personal + '</td><td style="padding:8px;min-width:110px"><div style="height:10px;border-radius:999px;background:#EEF2F4;overflow:hidden"><i style="display:block;height:100%;width:' + Math.max(1, s.pct) + '%;background:' + colPct(s.pct) + '"></i></div></td><td style="padding:8px;text-align:right">' + tagPct(s.pct) + '</td><td style="padding:8px;text-align:right">' + s.alDia + '</td></tr>').join('') +
+      '</tbody></table></div>' + (T.semaforo.servicios.length > 40 ? '<span class="mu peq">Y ' + (T.semaforo.servicios.length - 40) + ' servicios más en la hoja TABLERO del libro.</span>' : '') +
+      leyenda([['80 % o más', '#1E6B42'], ['50 a 79 %', '#B7791F'], ['Menos de 50 %', '#B4361F']]) + '<span class="mu peq">Prioritarios primero (se eligen en el libro, hoja _LISTAS › SERVICIOS_PRIORITARIOS). Los estudiantes no cuentan.</span>';
+  // Requiere atención
+  const at = T.atencion.length ? '<div style="display:flex;flex-direction:column">' + T.atencion.map(x => '<div class="at"><span class="tag ' + x.nivel + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.nivel]) + '</span><span><b>' + esc(x.titulo) + '</b><small>' + esc(x.detalle) + '</small></span></div>').join('') + '</div>' : '<div class="mu">Nada pendiente.</div>';
+  // Abiertas
+  const abiertas = T.abiertas.length ? '<div style="display:flex;flex-direction:column">' + T.abiertas.map(c => '<div class="item"><span><b style="font-size:14px">' + esc(c.codigo + ' · ' + c.nombre) + '</b><br><small class="mu">' + (c.encuentros > 1 ? c.encuentros + ' encuentros · ' : '') + c.registros + ' registros en 2026</small></span>' +
+    (c.link ? '<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sec capCopiar" style="min-height:32px;padding:4px 10px;font-size:12.5px" data-l="' + esc(c.link) + '">Copiar link</button>' + (c.qr ? '<a class="btn sec" style="min-height:32px;padding:4px 10px;font-size:12.5px" href="' + esc(c.qr) + '" target="_blank" rel="noopener">QR ↗</a>' : '') + '</span>' : '<span class="tag gr">sin link</span>') + '</div>').join('') + '</div>' : '<div class="mu">No hay capacitaciones abiertas.</div>';
+  // Próximos dictados
+  const mesC = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const dict = (T.dictados.length ? '<div style="display:flex;flex-direction:column">' + T.dictados.map(d => '<div class="item" style="justify-content:flex-start;gap:12px"><div style="flex:0 0 56px;background:var(--bg);border:1px solid var(--ln);border-radius:8px;text-align:center;padding:4px 0;line-height:1.1"><b style="display:block;font-size:19px;color:var(--az)">' + d.fecha.slice(8, 10) + '</b><span style="font-size:11px;font-weight:800;color:var(--mu)">' + mesC[Number(d.fecha.slice(5, 7)) - 1] + '</span></div><span style="min-width:0"><b style="font-size:14px">' + esc(d.nombre || 's/d') + '</b><br><small class="mu">' + esc([d.hora, d.modalidad, d.lugar, d.externa ? 'institución externa' + (d.organizador ? ' (' + d.organizador + ')' : '') : ''].filter(Boolean).join(' · ')) + '</small>' +
+    (d.abierta === false ? ' <span class="tag wa">Falta abrirla</span>' : d.inscripcion ? ' <span class="tag av">Inscripción' + (d.cupo ? ' · cupo ' + esc(d.cupo) : '') + '</span>' : '') + '</span></div>').join('') + '</div>' : '<div class="mu">No hay dictados agendados.</div>') +
+    '<span class="mu peq">' + T.libres14 + ' horario(s) libre(s) para servicios en las próximas dos semanas.</span>';
+  // Alcance por público
+  const maxP = Math.max(1, ...T.publico.map(p => p[1]));
+  const pub = grHoriz(T.publico.map((p, i) => [p[0], p[1], ['#0D313F', '#5894A7', '#8DB4C2', '#B8C4CA'][i]]), maxP) +
+    '<span class="mu peq">Hasta septiembre los estudiantes quedaron dentro de «externos» y así se mantienen. Desde octubre cada persona elige su público al registrarse.</span>';
+  // Registros por mes (ciclo febrero a enero)
+  const M = T.meses, maxM = Math.max(4, ...M.map(m => m.n)), W = 640, Hh = 210, x0 = 36, b = 180, k = 150 / maxM, paso = (W - x0 - 8) / M.length, bw = Math.min(30, paso - 10);
+  const nomM = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  let sv = ''; [0, .5, 1].forEach(f => { const v = Math.round(maxM * f), y = b - v * k; sv += '<line x1="' + x0 + '" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="#D6DEE2"/><text x="' + (x0 - 8) + '" y="' + (y + 4) + '" font-size="11" fill="#5B6B73" text-anchor="end">' + v + '</text>'; });
+  M.forEach((m, i) => { const x = x0 + 6 + i * paso, h = m.n * k, col = m.mes >= hoyM ? '#5894A7' : '#0D313F';
+    if (m.n) sv += '<g><title>' + nomM[Number(m.mes.slice(5, 7)) - 1] + ' ' + m.mes.slice(0, 4) + ': ' + m.n + ' registros</title><rect x="' + x + '" y="' + (b - h) + '" width="' + bw + '" height="' + h + '" rx="3" fill="' + col + '"/><text x="' + (x + bw / 2) + '" y="' + (b - h - 5) + '" font-size="11" font-weight="700" fill="#0D313F" text-anchor="middle">' + m.n + '</text></g>';
+    sv += '<text x="' + (x + bw / 2) + '" y="' + (b + 18) + '" font-size="11" fill="#5B6B73" text-anchor="middle">' + nomM[Number(m.mes.slice(5, 7)) - 1] + '</text>'; });
+  const meses = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="Registros por mes del ciclo">' + sv + '</svg>' +
+    leyenda([['Hasta septiembre: histórico, tal como se cargó', '#0D313F'], ['Mes en curso', '#5894A7']]);
+  // Participación
+  const part = '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">CAPACITACIÓN</th><th style="padding:6px 8px;text-align:right">REGISTROS</th><th style="padding:6px 8px;text-align:right">PERSONAS</th><th style="padding:6px 8px;text-align:right">APROBADOS</th></tr></thead><tbody>' +
+    T.participacion.map(p => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px">' + esc(p.nombre) + '</td><td style="padding:8px;text-align:right">' + p.registros + '</td><td style="padding:8px;text-align:right">' + p.personas + '</td><td style="padding:8px;text-align:right">' + (p.aprobados ? p.aprobados : '—') + '</td></tr>').join('') +
+    '</tbody></table></div><span class="mu peq">«—»: sin evaluación o cargada sin nota antes de octubre (queda como registro histórico).</span>';
+
+  marco('#cap', '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
+    '<div class="filtros"><a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a><button class="btn sec" id="capAct">Actualizar</button></div></div>' +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">' +
+      kpi('PERSONAS CAPACITADAS', K.personas, 'personas distintas') +
+      kpi('REGISTROS', K.registros, 'asistencias y evaluaciones') +
+      kpi('APROBACIÓN', K.aprobacion + ' %', 'de las evaluaciones rendidas') +
+      kpi('COBERTURA RED TRELEW', K.cobertura + ' %', K.personalCon + ' de ' + K.personal + ' con al menos una', colPct(K.cobertura)) +
+      kpi('MATRIZ CUMPLIDA', K.matriz + ' %', 'de las obligatorias · meta al ' + fechaTxt(T.ciclo.meta), colPct(K.matriz), meta) +
+      kpi('REQUIERE ATENCIÓN', nAt, 'desde el ' + fechaTxt(T.avisosDesde), nAt ? '#B4361F' : '') + '</div>' +
+    '<div class="tb2">' + card('Semáforo por servicio', null, '<div class="cpn" id="capRed" style="gap:6px">' + chips + '</div>' + sem) + card('Requiere atención', null, at) + '</div>' +
+    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))">' + card('Capacitaciones abiertas', [CAP_PANEL, 'Panel ↗'], abiertas) + card('Próximos dictados', [CAP_LIBRO, 'Agregar en DICTADOS ↗'], dict) + card('Alcance por público', null, pub) + '</div>' +
+    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">' + card('Registros por mes', null, meses) + card('Participación por capacitación', null, part) + '</div>');
+  $('capAct').onclick = () => capTablero(true);
+  $('capRed').querySelectorAll('button').forEach(x => x.onclick = () => { CAPRED = x.dataset.red; capTablero(); });
+  document.querySelectorAll('.capCopiar').forEach(x => x.onclick = () => { const l = x.dataset.l; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast('Link copiado.')).catch(() => { window.prompt('Copiá el link:', l); }); });
+}
 
 // ------------------------------------------------------------------ Tablero de control (inicio)
 async function inicio(fresco) {
@@ -475,7 +572,7 @@ function modulosHtml(M, card) {
     ((C.lista || []).length ? '<div style="display:flex;flex-direction:column;gap:4px">' + C.lista.map(t => '<div class="peq"><b>' + esc(fechaTxt(t.fecha)) + (t.hora ? ' · ' + esc(t.hora) : '') + '</b> · ' + esc(t.cap) + (t.lugar ? '<span class="mu"> · ' + esc(t.lugar) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">No hay capacitaciones agendadas.</span>');
   const docs = fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '');
   return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
-    card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', null, caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
+    card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', ['#cap', 'Tablero'], caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
 }
 
 // ------------------------------------------------------------------ Módulo 3 · Agua y módulo 5 · Plagas (toda la red; la misma lectura, dos pantallas)
@@ -1784,6 +1881,7 @@ function router() {
   if (ruta === 'sinest') return sinEst();
   if (ruta === 'buscar') return buscar(a);
   if (ruta === 'bib') return biblioteca();
+  if (ruta === 'cap') return capTablero();
   if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
