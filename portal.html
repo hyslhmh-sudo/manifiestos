@@ -350,7 +350,7 @@ const AYUDA = {
   '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
   '#ficha': ['Ficha del establecimiento', ['Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento».', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.']],
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
-  '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa y al menos un lugar.', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
+  '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa (y al menos un lugar, solo si hay puntos por lugar activos en ITEMS).', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
   '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
@@ -1807,7 +1807,7 @@ function diagPrevioFalta() { return DG.D.items.filter(i => i.PREVIO === 'Sí' &&
 function diagFaltaCerrar() {
   const est = DG.D.items.filter(i => i.NIVEL !== 'S' && (/^(CPN|ESCALA|LISTA)$/.test(i.TIPO) || i.PREVIO === 'Sí') && diagAplica(i, '') && !diagTiene('', i.ID));
   const sitios = DG.D.sitios.filter(s => DG.D.items.some(i => i.NIVEL === 'S' && diagTiene(s.sitio, i.ID))).length;
-  return { est: est, sitios: sitios };
+  return { est: est, sitios: sitios, requiere: DG.D.items.some(i => i.NIVEL === 'S') };   // si no hay puntos por lugar activos, alcanza con Establecimiento
 }
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
@@ -1825,7 +1825,7 @@ function diagAvance(sitio) {
   return [hechos, its.length];
 }
 function diagPintar() {
-  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio)), ro = diagSoloLectura(), red = DCFG.modo === 'red';
+  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio).filter(s => D.items.some(i => i.NIVEL === 'S' && diagAplica(i, s)))), ro = diagSoloLectura(), red = DCFG.modo === 'red';
   const tabTxt = t => { const [h, n] = diagAvance(t); return (t === '' ? 'Establecimiento' : t) + ' · ' + h + '/' + n; };
   DG.porId = null; const falta = diagPrevioFalta(), bloqueo = DG.tab !== '' && falta.length > 0;
   const its = bloqueo ? [] : D.items.filter(i => (DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S') && diagAplica(i, DG.tab));
@@ -1892,7 +1892,7 @@ function diagPintar() {
   if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
   const diagPuedeCerrar = () => { const f = diagFaltaCerrar();
     if (f.est.length) { toast('Falta completar en Establecimiento ' + f.est.length + ' punto(s): ' + f.est.slice(0, 3).map(i => i.ITEM).join(' · ') + (f.est.length > 3 ? '…' : '')); DG.tab = ''; diagPintar(); window.scrollTo(0, 0); return false; }
-    if (!f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
+    if (f.requiere && !f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
     return true; };
   if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
   if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
