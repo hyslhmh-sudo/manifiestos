@@ -259,7 +259,7 @@ function marco(activo, contenido) {
     it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') + it('#trab', 'groups', 'Personas') + it('#importar', '', 'Importar base de Personal', 1) +
     '<div class="titu mod">MÓDULOS</div>' +
     grp('recycling', '1 · Residuos') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1) +
-    grp('folder_open', '2 · Documentos') + ext(NOTA_URL, 'Nueva nota') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
+    grp('folder_open', '2 · Documentos') + ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
     it('#agua', 'water_drop', '3 · Agua') +
     grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
     it('#plagas', 'pest_control', '5 · Plagas') +
@@ -410,6 +410,8 @@ const leyenda = items => '<div class="leyenda">' + items.map(([t, c]) => '<span>
 // Si CAP_API está vacía, el menú sigue abriendo el panel y la planilla de siempre.
 const CAP_API = 'https://script.google.com/macros/s/AKfycbxXz2AuN9nx5JkiNVI0LFYpEG-0ciYTXH9pN6QnO3SIaIltljCi8sbRB4PwiDx9Jf4Ugw/exec';   // pegá acá la URL de la aplicación web del libro de capacitaciones (termina en /exec)
 const NOTA_URL = 'https://script.google.com/macros/s/AKfycbwl5B8cp4Tw_DCLwwZEB06nwOOmAPP59mosZ0yaO17bsQeL1tC4TQ9fuv6eGGrvnK7P/exec';
+const SEG_URL = NOTA_URL + '?p=seguimiento';
+const REC_URL = NOTA_URL + '?p=recibida';
 const ANTE_URL = 'https://docs.google.com/spreadsheets/d/1OZmvW2-FypFH78tUMrxT_xSGGBtpCckGPAw8MkHyRuw/edit#gid=6';
 const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JPqngTquMpNr5uqQPot4uhGI/edit';
 const CAP_PANEL = 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';
@@ -1101,7 +1103,7 @@ function modulosHtml(M, card) {
     (P.cruce ? '<span class="mu peq">' + esc(P.cruce.replace(/^Último cruce: /, 'Cruce: ').split(' · ')[0]) + ' · detalle en el libro general › CRUCE_PERSONAL</span>' : '<span class="mu peq">El cruce con capacitaciones todavía no corrió.</span>');
   const caps = C.error ? '<div class="mu">' + esc(C.error) + '</div>' : fila('Próximos turnos con capacitación', C.proximas || 0) +
     ((C.lista || []).length ? '<div style="display:flex;flex-direction:column;gap:4px">' + C.lista.map(t => '<div class="peq"><b>' + esc(fechaTxt(t.fecha)) + (t.hora ? ' · ' + esc(t.hora) : '') + '</b> · ' + esc(t.cap) + (t.lugar ? '<span class="mu"> · ' + esc(t.lugar) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">No hay capacitaciones agendadas.</span>');
-  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '');
+  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '');
   return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
     card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', ['#cap', 'Tablero'], caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
 }
