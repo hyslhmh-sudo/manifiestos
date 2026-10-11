@@ -273,7 +273,7 @@ function diagPrevioFalta() { return DG.D.items.filter(i => i.PREVIO === 'Sí' &&
 function diagFaltaCerrar() {
   const est = DG.D.items.filter(i => i.NIVEL !== 'S' && (/^(CPN|ESCALA|LISTA)$/.test(i.TIPO) || i.PREVIO === 'Sí') && diagAplica(i, '') && !diagTiene('', i.ID));
   const sitios = DG.D.sitios.filter(s => DG.D.items.some(i => i.NIVEL === 'S' && diagTiene(s.sitio, i.ID))).length;
-  return { est: est, sitios: sitios };
+  return { est: est, sitios: sitios, requiere: DG.D.items.some(i => i.NIVEL === 'S') };   // si no hay puntos por lugar activos, alcanza con Establecimiento
 }
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
@@ -291,7 +291,7 @@ function diagAvance(sitio) {
   return [hechos, its.length];
 }
 function diagPintar() {
-  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio)), ro = diagSoloLectura(), red = DCFG.modo === 'red';
+  const D = DG.D, c = diagCalc(), tabs = [''].concat(D.sitios.map(s => s.sitio).filter(s => D.items.some(i => i.NIVEL === 'S' && diagAplica(i, s)))), ro = diagSoloLectura(), red = DCFG.modo === 'red';
   const tabTxt = t => { const [h, n] = diagAvance(t); return (t === '' ? 'Establecimiento' : t) + ' · ' + h + '/' + n; };
   DG.porId = null; const falta = diagPrevioFalta(), bloqueo = DG.tab !== '' && falta.length > 0;
   const its = bloqueo ? [] : D.items.filter(i => (DG.tab === '' ? i.NIVEL !== 'S' : i.NIVEL === 'S') && diagAplica(i, DG.tab));
@@ -358,7 +358,7 @@ function diagPintar() {
   if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
   const diagPuedeCerrar = () => { const f = diagFaltaCerrar();
     if (f.est.length) { toast('Falta completar en Establecimiento ' + f.est.length + ' punto(s): ' + f.est.slice(0, 3).map(i => i.ITEM).join(' · ') + (f.est.length > 3 ? '…' : '')); DG.tab = ''; diagPintar(); window.scrollTo(0, 0); return false; }
-    if (!f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
+    if (f.requiere && !f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
     return true; };
   if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
   if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
