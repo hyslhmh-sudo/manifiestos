@@ -367,20 +367,21 @@ function generarInforme_(relId) {
   const st = {}; st[DocumentApp.Attribute.FONT_FAMILY] = FUENTE; st[DocumentApp.Attribute.FONT_SIZE] = 10.5; st[DocumentApp.Attribute.FOREGROUND_COLOR] = C_TXT; B.setAttributes(st);
   const notas = [];   // notas al pie: el texto lleva ⟦n⟧ y después se convierten en notas reales
   const nota = t => { notas.push(t); return '⟦' + notas.length + '⟧'; };
-  const P_ = (t, o) => { o = o || {}; const p = B.appendParagraph(t || ''); p.setFontFamily(FUENTE).setFontSize(o.size || 10.5).setForegroundColor(o.color || C_TXT).setBold(!!o.bold).setItalic(!!o.italic)
-    .setAlignment(o.align || DocumentApp.HorizontalAlignment.JUSTIFY).setLineSpacing(o.ls || 1.5).setSpacingAfter(o.after == null ? 6 : o.after); if (o.heading) p.setHeading(o.heading).setForegroundColor(C_AZUL).setBold(true); return p; };
+  const AT = DocumentApp.Attribute, estilo = (o) => { const a = {}; a[AT.FONT_FAMILY] = FUENTE; a[AT.FONT_SIZE] = o.size || 10.5; a[AT.FOREGROUND_COLOR] = o.color || C_TXT; a[AT.BOLD] = !!o.bold; a[AT.ITALIC] = !!o.italic; return a; };
+  const P_ = (t, o) => { o = o || {}; const p = B.appendParagraph(t || ''); if (o.heading) p.setHeading(o.heading);
+    p.setAttributes(estilo(o.heading ? Object.assign({}, o, { color: o.color || C_AZUL, bold: true }) : o)); p.setAlignment(o.align || DocumentApp.HorizontalAlignment.JUSTIFY); p.setLineSpacing(o.ls || 1.5); p.setSpacingAfter(o.after == null ? 6 : o.after); return p; };
   const G = t => P_(t, { italic: true, color: C_GUIA, size: 9.5 });   // guía: se borra al revisar
   const H1 = t => P_(t, { heading: DocumentApp.ParagraphHeading.HEADING1, size: 14, align: DocumentApp.HorizontalAlignment.LEFT, after: 8 });
   const H2 = t => P_(t, { heading: DocumentApp.ParagraphHeading.HEADING2, size: 12, align: DocumentApp.HorizontalAlignment.LEFT });
-  const H3 = t => P_(t, { heading: DocumentApp.ParagraphHeading.HEADING3, size: 10.5, align: DocumentApp.HorizontalAlignment.LEFT }).setForegroundColor(C_PATA);
-  const T = (filas, cab, anchos) => { const t = B.appendTable(filas); t.setBorderColor('#C9D6DB'); t.setFontFamily(FUENTE).setFontSize(9);
+  const H3 = t => P_(t, { heading: DocumentApp.ParagraphHeading.HEADING3, size: 10.5, color: C_PATA, align: DocumentApp.HorizontalAlignment.LEFT });
+  const T = (filas, cab, anchos) => { const t = B.appendTable(filas); t.setBorderColor('#C9D6DB');
     for (let i = 0; i < t.getNumRows(); i++) { const row = t.getRow(i); for (let j = 0; j < row.getNumCells(); j++) { const c = row.getCell(j); c.setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(5).setPaddingRight(5);
-      for (let k = 0; k < c.getNumChildren(); k++) { const pp = c.getChild(k); if (pp.getType() === DocumentApp.ElementType.PARAGRAPH) pp.asParagraph().setAlignment(DocumentApp.HorizontalAlignment.LEFT).setLineSpacing(1.1).setSpacingAfter(0).setForegroundColor(cab && i === 0 ? '#FFFFFF' : C_TXT).setBold(!!(cab && i === 0)); }
+      for (let k = 0; k < c.getNumChildren(); k++) { const pp = c.getChild(k); if (pp.getType() === DocumentApp.ElementType.PARAGRAPH) { const q = pp.asParagraph(); q.setAttributes(estilo({ size: 9, color: cab && i === 0 ? '#FFFFFF' : C_TXT, bold: !!(cab && i === 0) })); q.setAlignment(DocumentApp.HorizontalAlignment.LEFT); q.setLineSpacing(1.1); q.setSpacingAfter(0); } }
       if (cab && i === 0) c.setBackgroundColor(C_AZUL); } }
     if (anchos) anchos.forEach((w, j) => { try { t.setColumnWidth(j, w); } catch (e) {} }); return t; };
 
   // Portada
-  const enc = B.getParagraphs()[0]; enc.setText('Hospital Zonal Trelew «Dr. Adolfo Margara» · Hospital María Humphreys').setFontFamily(FUENTE).setFontSize(11).setBold(true).setForegroundColor(C_AZUL).setAlignment(DocumentApp.HorizontalAlignment.LEFT);
+  const enc = B.getParagraphs()[0]; enc.setText('Hospital Zonal Trelew «Dr. Adolfo Margara» · Hospital María Humphreys'); enc.setAttributes(estilo({ size: 11, bold: true, color: C_AZUL })); enc.setAlignment(DocumentApp.HorizontalAlignment.LEFT);
   P_('Servicio de Higiene y Seguridad Laboral', { color: C_PATA, align: DocumentApp.HorizontalAlignment.LEFT, after: 60 });
   P_((auditoria ? 'Auditoría' : 'Diagnóstico') + ' de infraestructura e instalaciones', { size: 22, bold: true, color: C_AZUL, align: DocumentApp.HorizontalAlignment.LEFT, ls: 1.15 });
   P_(S.servicio + ' — ' + nomEst, { size: 14, color: C_PATA, align: DocumentApp.HorizontalAlignment.LEFT, after: 30 });
@@ -425,7 +426,7 @@ function generarInforme_(relId) {
   H2('3.5. Limitaciones'); P_('No se registraron limitaciones.'); G('Revisar: mediciones no realizadas, sectores sin acceso o turnos no relevados.');
   // 4. Hechos
   H1('4. Descripción de los hechos'); H2('4.1. Situaciones críticas');
-  if (crit.length) crit.forEach((c, i) => { const p = P_(''); p.appendText(String(c.it.item).replace(/\.$/, '') + '. ').setBold(true); p.appendText(c.obs || '').setBold(false); if (!c.obs) G('Completar: qué se observó, dónde y en qué momento.');
+  if (crit.length) crit.forEach((c, i) => { const p = P_(''); const t1 = p.appendText(String(c.it.item).replace(/\.$/, '') + '. '); t1.setBold(true); const t2 = p.appendText(c.obs || ''); t2.setBold(false); if (!c.obs) G('Completar: qué se observó, dónde y en qué momento.');
     if (c.foto) P_('Foto ' + (i + 1) + ': ' + c.foto, { italic: true, size: 9, align: DocumentApp.HorizontalAlignment.LEFT }); else G('Foto ' + (i + 1) + ': insertar la foto del hallazgo crítico.'); });
   else P_('No se identificaron situaciones críticas.');
   H2('4.2. Otras observaciones');
@@ -470,7 +471,7 @@ function generarInforme_(relId) {
   T([['Concepto', 'Valores'], ['Respuesta', 'C = 1 · P = 0,5 · NC = 0 · NA = no se cuenta'], ['Gravedad del ítem', '1 leve · 2 moderada · 3 grave · 4 crítica'], ['Criticidad del servicio', '1 baja · 2 media · 3 alta (guardia, quirófano, UTI, UCIP, neonatología, esterilización)'],
     ['Factor de incumplimiento', 'NC = 1 · P = 0,5'], ['Puntaje', 'Gravedad × criticidad × factor'], ['Plazo técnico', '≥ 9 o crítico en NC: 30 días · 4 a 8,9: 90 días · < 4: 180 días'], ['Semáforo', 'Verde ≥ 85 % · Amarillo 60 a 84 % · Rojo < 60 % o crítico en NC']], true, [150, 320]);
   // Pie con el logo de HySL
-  try { const pie = doc.addFooter(), pp = pie.getParagraphs()[0]; pp.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pp.appendInlineImage(DriveApp.getFileById(LOGO_PIE_ID).getBlob()); const w = 300; img.setHeight(Math.round(img.getHeight() * w / img.getWidth())).setWidth(w); } catch (e) {}
+  try { const pie = doc.addFooter(), pp = pie.getParagraphs()[0]; pp.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pp.appendInlineImage(DriveApp.getFileById(LOGO_PIE_ID).getBlob()); const w = 300, h = Math.round(img.getHeight() * w / img.getWidth()); img.setWidth(w); img.setHeight(h); } catch (e) {}
   doc.saveAndClose();
   // Notas al pie reales (servicio avanzado Docs)
   let notasOk = true; try { notasAlPie_(id, notas); } catch (e) { notasOk = false; }
