@@ -855,11 +855,11 @@ function inicio() {
     (puede('Residuos') ? '<h2>Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
       tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
-    (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
+    (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
-    '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
+    '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
@@ -1059,15 +1059,17 @@ function guardarAnalisis() {
 
 // ------------------------------------------------------------------ Plagas
 const PLAGAS = ['Ratas o ratones', 'Cucarachas', 'Moscas', 'Hormigas', 'Mosquitos', 'Palomas u otras aves', 'Pulgas, chinches o garrapatas', 'Otra'];
+// Solo para corregir los datos de un caso ya cargado (el «aviso de aparición» se quitó el 12/10/2026: el caso lo abre la primera intervención)
 function plagaAviso() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  if (!F || !F.CASO_EDITAR) { F = null; return plagaReg('Intervención'); }
   F = F && F._f === 'avi' ? F : { _f: 'avi', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '', FECHA: hoyISO(), PLAGA: '', CANTIDAD: 'Uno solo' };
   MIV = { f: plagaAviso }; VISTA = 'mi'; vista('form'); const g = miEstOps();
-  $('app').innerHTML = miTit('Avisar una aparición', 'Contá qué viste. Se abre un caso y Higiene y Seguridad indica qué hacer.') + fErr +
+  $('app').innerHTML = miTit('Corregir el caso', 'Corregí los datos del caso ' + esc(F.CASO_EDITAR) + '.') + fErr +
     (g ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('SECTOR', 'Sector exacto', 'text', 'Ej.: depósito de cocina, al fondo') + fInp('FECHA', 'Fecha', 'date') +
     fSeg('PLAGA', '¿Qué plaga?', PLAGAS) + fChk('EVIDENCIA', '¿Qué encontraste?', ['Ejemplar vivo', 'Ejemplar muerto', 'Excremento', 'Daño o roeduras', 'Nido o madriguera', 'Olor', 'Huevos o larvas']) +
     fSeg('CANTIDAD', '¿Cuánto?', ['Uno solo', 'Varios', 'Muchos (infestación)']) + fFoto('foto', 'Foto (si podés)', 'Opcional') + fTxt('OBSERVACIONES', 'Qué había cerca (opcional)', 'Restos de comida, residuos sin tapa, humedad, cajas, agujeros…');
-  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAviso">Enviar aviso</button>');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarAviso">Guardar la corrección</button>');
 }
 function guardarAviso() {
   if (!F.SECTOR) return miErr('Falta el sector.'); if (!F.PLAGA) return miErr('Elegí qué plaga viste.');
@@ -1077,12 +1079,13 @@ function guardarAviso() {
 function plagaReg(tipo) {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
   const casos = MI.casos || [];
-  if (tipo !== 'Recorrida' && !casos.length) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit(tipo === 'Intervención' ? 'Registrar intervención' : 'Seguimiento de un caso') + '<p class="mu">No hay casos abiertos. Primero se avisa la aparición.</p><div class="menu"><button class="big main" data-act="plagaAviso"><b>Avisar una aparición</b></button></div>'; return miVolver(); }
-  F = F && F._f === tipo ? F : { _f: tipo, TIPO: tipo, CASO: (casos[0] || {}).caso || '', FECHA: hoyISO(), QUIMICO: 'No', RESULTADO: '', DECISION: '', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '' };
+  if (tipo === 'Seguimiento' && !casos.length) { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit('Seguimiento de un caso') + '<p class="mu">No hay casos abiertos. El caso se abre al registrar la primera intervención.</p><div class="menu"><button class="big main" data-act="plagaInter"><b>Registrar intervención</b></button></div>'; return miVolver(); }
+  F = F && F._f === tipo ? F : { _f: tipo, TIPO: tipo, CASO: tipo === 'Intervención' ? 'NUEVO' : (casos[0] || {}).caso || '', PLAGA: '', FECHA: hoyISO(), QUIMICO: 'No', RESULTADO: '', DECISION: '', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '' };
   MIV = { f: () => plagaReg(tipo) }; VISTA = 'mi'; vista('form'); const g = miEstOps();
   const form = tipo === 'Intervención' ? 'F-PLG-02' : tipo === 'Seguimiento' ? 'F-PLG-03' : 'F-PLG-04';
   let h = miTit(tipo === 'Intervención' ? 'Registrar intervención' : tipo === 'Seguimiento' ? 'Seguimiento de un caso' : 'Recorrida preventiva', 'Completá el formulario ' + form + ' en papel, firmalo y sacale una foto.') + fErr;
-  if (tipo !== 'Recorrida') h += fSel('CASO', 'Caso', casos.map(c => [c.caso, c.caso + ' · ' + c.plaga + ' · ' + c.sector + (c.proxima ? ' · revisión ' + fechaTxt(c.proxima) : '')]));
+  if (tipo !== 'Recorrida') h += fSel('CASO', 'Caso', (tipo === 'Intervención' ? [['NUEVO', 'Caso nuevo (primera intervención)']] : []).concat(casos.map(c => [c.caso, c.caso + ' · ' + c.plaga + ' · ' + c.sector + (c.proxima ? ' · revisión ' + fechaTxt(c.proxima) : '')])));
+  if (tipo === 'Intervención' && F.CASO === 'NUEVO') h += (g ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('SECTOR', 'Sector exacto', 'text', 'Ej.: depósito de cocina, al fondo') + fSeg('PLAGA', '¿Qué plaga?', PLAGAS);
   else h += (g ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('SECTOR', 'Sector recorrido', 'text', 'Ej.: cocina y depósito de alimentos');
   h += fInp('FECHA', 'Fecha', 'date');
   if (tipo === 'Intervención') h += fChk('ACCIONES', 'Qué se hizo', ['Limpieza profunda', 'Retiro de residuos y restos', 'Orden y retiro de cajas', 'Reparación de pérdida de agua', 'Sellado de grietas u orificios', 'Mallas o burletes', 'Trampas', 'Cebaderas cerradas']) +
@@ -1095,7 +1098,7 @@ function plagaReg(tipo) {
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarPlagaReg">Guardar</button>');
 }
 function guardarPlagaReg() {
-  if (F.TIPO !== 'Recorrida' && !F.CASO) return miErr('Elegí el caso.'); if (F.TIPO === 'Recorrida' && !F.SECTOR) return miErr('Falta el sector recorrido.');
+  if (F.TIPO !== 'Recorrida' && !F.CASO) return miErr('Elegí el caso.'); if (F.CASO === 'NUEVO' && (!F.SECTOR || !F.PLAGA)) return miErr('Para el caso nuevo faltan el sector y la plaga.'); if (F.TIPO === 'Recorrida' && !F.SECTOR) return miErr('Falta el sector recorrido.');
   if (F.TIPO === 'Seguimiento' && (!F.RESULTADO || !F.DECISION)) return miErr('Falta el resultado o la decisión.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario firmado.');
   const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_plaga_registro', d, F.TIPO + (F.CASO ? ' de ' + F.CASO : ''));
@@ -1434,7 +1437,7 @@ const AYG = [
   { m: 'Agua', t: 'Tanques, cisternas y canillas', p: ['Inicio › Agua › «Mis tanques y canillas». Se cargan una sola vez; para cambiar algo, «Cambiar datos». Necesita señal.'] },
   { m: 'Agua', t: 'Limpieza de tanque', p: ['Completá y hacé firmar el formulario F-AGU-01.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento y datos del formulario (mínimo 6 horas cerrado).', 'La foto del F-AGU-01 firmado es obligatoria.'] },
   { m: 'Agua', t: 'Análisis de agua y NO APTA', p: ['Inicio › Agua › «Cargar análisis de agua»: canilla, tipo, motivo, fecha, laboratorio y resultado, con la foto o el PDF del informe.', 'Si todavía no llegó el informe: «Pendiente»; cuando llegue, cargalo de nuevo con el resultado.', 'NO APTA: avisá a Higiene y Seguridad en el día. Hay que limpiar y tomar una nueva muestra en no más de 15 días hábiles.'] },
-  { m: 'Plagas', t: 'Plagas', p: ['«Avisar una aparición» abre un caso. Después se cargan la intervención (F-PLG-02) y los seguimientos (F-PLG-03) con su foto.', 'El caso se cierra con dos revisiones seguidas sin actividad.'] },
+  { m: 'Plagas', t: 'Plagas', p: ['«Registrar intervención» (F-PLG-02, con su foto) abre el caso si es nuevo. Después se cargan los seguimientos (F-PLG-03) con su foto. La recorrida preventiva (F-PLG-04) no necesita caso.', 'El caso se cierra con dos revisiones seguidas sin actividad.'] },
   { m: 'Cocina', t: 'Cocina', p: ['«Personas de cocina»: carnet de manipulador y libreta sanitaria de cada persona, con su vencimiento y la foto o PDF.', '«Relevamiento de cocina»: buenas prácticas (BPM) y HACCP, con fotos de cada lugar.'] },
   { m: 'Accidentes', t: 'Cargar un siniestro nuevo', p: ['Inicio › Siniestros › «Cargar un siniestro nuevo». Copiá los datos de la denuncia del Autoseguro en el mismo orden.', 'N.º de siniestro: el que empieza con CH. Con el DNI se completan nombre, servicio y función.', 'CIE 10 y diagnóstico como figuran (si no los trae, s/d): son datos de salud reservados.', 'Adjuntá el PDF o las fotos de la denuncia (hasta 8 archivos).'] },
   { m: 'Accidentes', t: 'Novedades, correcciones y anulaciones de siniestros', p: ['Inicio › Siniestros › «Siniestros y novedades»: tocá uno y «+ Cargar novedad» (alta, reingreso, parte, rechazo…), con su comprobante.', '«Corregir datos» o «Corregir» en una novedad; «Anular» solo si se cargó dos veces o no corresponde (pide motivo).', 'Una vez por mes revisá que los abiertos sigan abiertos.'] },
@@ -1478,7 +1481,7 @@ Object.assign(ACT, {
 document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO/.test(t.dataset.f)) MIV.f(); }
+  if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO|CASO/.test(t.dataset.f)) MIV.f(); }
   else if (t.dataset.fchk && F) { F[t.dataset.fchk] = Array.from(document.querySelectorAll('[data-fchk="' + t.dataset.fchk + '"]:checked')).map(x => x.value).join(' · '); }
   else if (t.dataset.mfoto) mFoto(t, t.dataset.mfoto);
   else if (t.dataset.mfotos) mFotos(t, t.dataset.mfotos);
