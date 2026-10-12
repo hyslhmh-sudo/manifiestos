@@ -1809,6 +1809,13 @@ function diagFaltaCerrar() {
   const sitios = DG.D.sitios.filter(s => DG.D.items.some(i => i.NIVEL === 'S' && diagTiene(s.sitio, i.ID))).length;
   return { est: est, sitios: sitios, requiere: DG.D.items.some(i => i.NIVEL === 'S') };   // si no hay puntos por lugar activos, alcanza con Establecimiento
 }
+// Puntaje por opción (hoja ITEMS › PUNTAJES): «1|0.5|0|-» alineado con OPCIONES («-» no puntúa) · PROP: proporción de lo marcado
+function diagPts(it, val) {
+const ops = String(it.OPCIONES || '').split('|'); val = String(val || ''); if (!val) return null;
+if (it.PUNTAJES === 'PROP') { const sel = val.split('|').filter(Boolean); if (sel.indexOf('No se sabe') >= 0) return null; const base = ops.filter(o => !/^(Ninguno|No se sabe)$/.test(o)); return base.length ? sel.filter(s => base.indexOf(s) >= 0).length / base.length : null; }
+const k = ops.indexOf(val), p = k < 0 ? '' : String(it.PUNTAJES).split('|')[k], n = Number(String(p).replace(',', '.'));
+return p === '' || p === '-' || isNaN(n) ? null : n;
+}
 function diagCalc() {
   const porId = {}; DG.D.items.forEach(i => porId[i.ID] = i);
   let suma = 0, pesos = 0, crit = 0, n = 0, msn = 0, nm = 0;
@@ -1816,6 +1823,7 @@ function diagCalc() {
     let v = null;
     if (it.TIPO === 'CPN') v = { 'Cumple': 1, 'Parcial': 0.5, 'No cumple': 0 }[r.resp];
     else if (it.TIPO === 'ESCALA') { const m = /^\s*(\d)/.exec(String(r.valor || '')); if (m) { v = Number(m[1]) / 6; msn += Number(m[1]); nm++; } }
+else if (it.PUNTAJES) v = diagPts(it, r.valor || r.resp);
     if (v == null) return; const w = Number(it.PESO) || 1; suma += w * v; pesos += w; n++; if (it.CRITICO === 'Sí' && v <= 1 / 3) crit++; });
   return { pct: pesos ? Math.round(1000 * suma / pesos) / 10 : null, crit: crit, n: n, msn: nm ? Math.round(10 * msn / nm) / 10 : null };
 }
@@ -1918,7 +1926,7 @@ async function diagGuardar(estado, silencioso) {
   if (r.perfil && r.perfil.aviso) alert(r.perfil.aviso);
   if (r.estado === 'Cerrado' && r.perfil && r.perfil.categoria && DCFG.modo !== 'red') {
     if (confirm('Perfil guardado en la BASE COMÚN: categoría ' + r.perfil.categoria + ' · módulos ' + r.perfil.modulos + '.\n\n¿Creás ahora el relevamiento inicial (la auditoría de campo de la categoría)?')) {
-      try { const a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); if (a && a.ok) { AU.cod = DG.cod; location.hash = '#aud/' + encodeURIComponent(a.id); return true; } toast((a && a.mensaje) || 'No se pudo crear el relevamiento.'); } catch (e) {} } }
+      try { let a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); for (let k = 0; a && a.ok && a.pendientes > 0 && k < 5; k++) { toast('Relevamiento: faltan ' + a.pendientes + ' lugares, sigo…'); a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); } if (a && a.ok) { if (a.mensaje) toast(a.mensaje); AU.cod = DG.cod; location.hash = '#aud/' + encodeURIComponent(a.id); return true; } toast((a && a.mensaje) || 'No se pudo crear el relevamiento.'); } catch (e) {} } }
   if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
   return true;
 }
