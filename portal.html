@@ -271,7 +271,7 @@ const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') 
 function informesDiag() {
   const L = DG.D.informes || [], cerrado = DG.estado === 'Cerrado';
   return '<section class="card" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><div><h2>Informe a la Dirección</h2><div class="mu peq">' +
-    (cerrado ? 'Genera el informe (Google Doc editable y PDF) con su número HYSL, en la carpeta del establecimiento › Informes.' : 'El informe se genera cuando el diagnóstico está cerrado.') + '</div></div>' +
+    (cerrado ? 'Genera el informe (Google Doc editable y PDF) con su número HYSL, en la carpeta del establecimiento › Informes.' : 'El informe se genera cuando el ' + (DCFG.pal || 'diagnóstico') + ' está cerrado.') + '</div></div>' +
     '<button class="btn pri" id="dgInforme"' + (cerrado ? '' : ' disabled') + '>' + (L.length ? 'Generar nueva revisión' : 'Generar informe') + '</button></div>' +
     (L.length ? '<div class="peq">' + L.map(i => '<div style="border-top:1px solid #EEF2F4;padding:8px 0;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><span><b>' + esc(i.codigo) + '</b>' + (i.obs ? ' · ' + esc(i.obs) : '') + '</span><span><a href="' + esc(i.doc) + '" target="_blank" rel="noopener">Documento</a> · <a href="' + esc(i.pdf) + '" target="_blank" rel="noopener">PDF</a> · <button class="link" id="dgCorreo">Copiar correo de envío</button></span></div>').join('') + '</div>' : '') + '</section>';
 }
@@ -280,12 +280,12 @@ async function copiarCorreo(c) {
   try { await navigator.clipboard.writeText(t); toast('Correo copiado: pegalo en tu correo y adjuntá el PDF.'); } catch (e) { prompt('Copiá el texto del correo:', t); }
 }
 function activarInformes() {
-  const c = $('dgCorreo'); if (c) c.onclick = async () => { try { const r = await api('p_informe_correo', { cod: DG.cod, id: DG.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
+  const c = $('dgCorreo'); if (c) c.onclick = async () => { try { const r = await api(DCFG.accCorreo || 'p_informe_correo', { cod: DG.cod, id: DG.id }); if (!r.ok) return toast(r.mensaje); copiarCorreo(r.correo); } catch (e) {} };
   const b = $('dgInforme'); if (!b) return;
   b.onclick = async () => {
     if (DG.sucio) return toast('Guardá los cambios antes de generar el informe.');
     b.disabled = true; b.textContent = 'Generando… (puede tardar uno o dos minutos)';
-    let r; try { r = await api('p_informe_diag', { cod: DG.cod, id: DG.id }, 330000); } catch (e) { b.disabled = false; b.textContent = 'Generar informe'; return; }
+    let r; try { r = await api(DCFG.accInforme || 'p_informe_diag', { cod: DG.cod, id: DG.id }, 330000); } catch (e) { b.disabled = false; b.textContent = 'Generar informe'; return; }
     if (!r.ok) { toast(r.mensaje || 'No se pudo generar el informe.'); b.disabled = false; b.textContent = 'Generar informe'; return; }
     DG.D.informes = [{ codigo: r.codigo, doc: r.doc, pdf: r.pdf, obs: r.revision ? 'Revisión ' + r.revision : '' }];
     toast('Informe ' + r.codigo + ' listo' + (r.notasAlPie ? '' : ' (referencias al final: falta activar el servicio Google Docs API)') + '.');
@@ -448,7 +448,7 @@ const VERSION_PORTAL = '2026-10-09 · 14.2';   // tiene que coincidir con VERSIO
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
-  '#inicio': ['Tablero de control', ['Muestra el estado de toda la red. Cada número, gráfico y aviso se toca y lleva al detalle.', '«Requiere atención»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
+  '#inicio': ['Tablero de control', ['Muestra el estado de toda la red. Cada número, gráfico y aviso se toca y lleva al detalle.', '«Requiere atención»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos. Incluye agua, plagas, residuos, auditorías, documentos y, del módulo 6, las personas de cocina con carnet o libreta vencidos o por vencer.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
   '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
   '#ficha': ['Ficha del establecimiento', ['Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento».', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.']],
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
@@ -474,7 +474,7 @@ const AYUDA = {
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
   '#coc': ['6 · Cocinas hospitalarias', ['Estado de las cocinas de toda la red: relevamientos BPM / HACCP (resultado y puntos críticos) y personas que manipulan alimentos, con su carnet y su libreta.', 'Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Lo decide el TIPO de la BASE COMÚN.', '«Requiere atención»: carnets o libretas vencidos, que vencen en 60 días o sin dato. Tocá uno para ir a las personas de ese establecimiento.', 'Tocá un establecimiento de la tabla para abrir su relevamiento.']],
   '#cocper': ['6 · Personas de cocina', ['Una fila por persona que manipula alimentos, de planta o de empresa: carnet de manipulador (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.', 'Elegí un establecimiento para cargar. «En la base de trabajadores» sugiere personas con función o servicio de cocina, alimentación o nutrición: tocá una para agregarla.', 'Al escribir el DNI, si la persona está en la base de trabajadores, se completa el nombre.', 'La foto del carnet y de la libreta queda en la carpeta del establecimiento › Cocina › Carnets y libretas.', 'Para dar de baja: Editar › Activo = No (no se borra). Todo se puede corregir también en BASE COMÚN › COCINA_PERSONAS.']],
-  '#cocdiag': ['6 · Relevamiento BPM / HACCP', ['El mismo formulario del diagnóstico de residuos: primero la pestaña Establecimiento (empezá por «¿Cómo se resuelve la comida de pacientes?») y después cada lugar que se recorre (cocina, depósito, heladeras, lactario, office, comedor, vestuario).', 'Si no hay servicio de alimentación, se responde solo la primera pregunta y se puede cerrar.', 'Las preguntas de carnet y libreta se sugieren con las personas de cocina cargadas.', 'Cada opción vale 1, 0,5 o 0; «No se sabe» no cuenta y queda como dato a relevar. Los puntos críticos en 0 se destacan.', 'Las preguntas, las opciones y los lugares se cambian en la planilla DIAGNÓSTICO DE COCINAS (hojas ITEMS y LUGARES).']],
+  '#cocdiag': ['6 · Relevamiento BPM / HACCP', ['El mismo formulario del diagnóstico de residuos: primero la pestaña Establecimiento (empezá por «¿Cómo se resuelve la comida de pacientes?») y después cada lugar que se recorre (cocina, depósito, heladeras, lactario, office, comedor, vestuario).', 'Si no hay servicio de alimentación, se responde solo la primera pregunta y se puede cerrar.', 'Las preguntas de carnet y libreta se sugieren con las personas de cocina cargadas.', 'Cada opción vale 1, 0,5 o 0; «No se sabe» no cuenta y queda como dato a relevar. Los puntos críticos en 0 se destacan.', 'Informe a la Dirección: con el relevamiento cerrado, «Generar informe» arma la línea de base de la cocina (Google Doc editable y PDF, con número HYSL) en la carpeta del establecimiento › Informes: método, hechos, críticos, brechas, carnets y libretas, y el anexo con las personas a regularizar. «Copiar correo de envío» copia el texto: el sistema no envía nada. Si hay empresa concesionaria, el correo sugiere mandarle copia.', 'Las preguntas, las opciones y los lugares se cambian en la planilla DIAGNÓSTICO DE COCINAS (hojas ITEMS y LUGARES).']],
   '#bandeja': ['Bandeja de entrada', ['Sube planillas completas, muestra «Ahora › Queda» y aplica lo aprobado.']]
 };
 // Buscador de ayuda: busca en todas las pantallas, sin importar tildes ni mayúsculas
@@ -1187,6 +1187,9 @@ async function inicio(fresco) {
   pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
   docs.forEach(d => at.push([d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), d.titulo + ' · ' + fechaTxt(d.revision), '#bib']));
   plagas.filter(p => p.revision === hoy).forEach(p => at.push(['av', p.cod + ': revisión de plagas hoy', p.caso, '#agua']));
+  (TB.cocina || []).filter(c => enA(c.cod)).forEach(c => { const h = '#cocper/' + encodeURIComponent(c.cod);   // 6 · Cocinas: carnets y libretas
+    if (c.vencidos) at.push(['er', c.cod + ': ' + c.vencidos + (c.vencidos > 1 ? ' personas' : ' persona') + ' de cocina sin carnet o libreta vigente', 'Vencido o faltante · ' + nom(c.cod), h]);
+    if (c.porVencer) at.push(['wa', c.cod + ': ' + c.porVencer + (c.porVencer > 1 ? ' carnets o libretas vencen' : ' carnet o libreta vence') + ' en 60 días', 'Personas de cocina · ' + nom(c.cod), h]); });
   const ord = { er: 0, wa: 1, av: 2 }; at.sort((a, b) => ord[a[0]] - ord[b[0]]);
   const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
   const card = (titulo, link, cuerpo, extra) => '<section class="card" style="display:flex;flex-direction:column;gap:10px;min-width:0' + (extra || '') + '"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">' + titulo + '</h2>' + (link ? '<a href="' + link[0] + '" class="peq" style="font-weight:700">' + link[1] + '</a>' : '') + '</div>' + cuerpo + '</section>';
@@ -2164,7 +2167,8 @@ const DCFG_COC = {
   sinLugares: () => (DG.R['|COC01'] || {}).valor === 'No hay servicio de alimentación',   // sin servicio de alimentación se cierra solo con la primera pregunta
   extra: () => { const P = DG.D.personas; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Personas de cocina</h2><span class="mu peq">' +
     (P && P.total ? P.total + ' cargada(s): carnet vigente ' + P.carnetVigente + ', libreta vigente ' + P.libretaVigente + (P.vencidos ? ', ' + P.vencidos + ' vencida(s) o sin documento' : '') + '. Las preguntas de carnet y libreta se sugieren con estos datos.' : 'Todavía no hay personas cargadas: conviene cargarlas antes, así las preguntas de carnet y libreta se completan solas.') +
-    '</span></div><a class="btn sec" href="#cocper/' + encodeURIComponent(DG.cod) + '">Ver personas de cocina</a></section>'; },
+    '</span></div><a class="btn sec" href="#cocper/' + encodeURIComponent(DG.cod) + '">Ver personas de cocina</a></section>' + informesDiag(); },
+  alPintar: () => activarInformes(), accInforme: 'p_coc_informe', accCorreo: 'p_coc_informe_correo',
   nombre: cod => ((COCT && COCT.establecimientos.find(e => e.cod === cod)) || (RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: () => { COCT = null; }
 };
