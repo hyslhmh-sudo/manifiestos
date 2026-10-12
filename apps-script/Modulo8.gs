@@ -399,8 +399,8 @@ function generarInforme_(relId) {
   const ejemplos = hal.filter(h => /sin costo|bajo/i.test(h.esfuerzo || '')).slice(0, 2).map(h => String(h.propuesta || h.item).replace(/\.$/, '').toLowerCase());
   H1('Resumen ejecutivo');
   P_('El ' + fTxt(rel.fecha) + ' se realizó ' + (auditoria ? 'la auditoría' : 'el diagnóstico') + ' de las condiciones de infraestructura e instalaciones del servicio de ' + S.servicio + ' del ' + nomEst + ', en el marco de las funciones del Servicio de Higiene y Seguridad Laboral' + nota(NORMAS.r905) + '. Se evaluaron ' + eval_.length + ' puntos de control; el nivel de cumplimiento ponderado fue del ' + pct + ' %' +
-    (crit.length ? ', y se identificaron ' + crit.length + (crit.length > 1 ? ' situaciones críticas: ' : ' situación crítica: ') + crit.map(c => String(c.it.item).replace(/\.$/, '').toLowerCase()).join('; ') + '.' : ', sin situaciones críticas.'));
-  if (hal.length) P_('De las ' + hal.length + ' mejoras propuestas, ' + sinCosto + ' pueden resolverse sin costo o con bajo costo' + (ejemplos.length ? ' —' + ejemplos.join('; ') + '—' : '') + ' y se presentan en primer lugar.' + (compras || obras ? ' ' + (compras ? compras + ' requieren compras' : '') + (compras && obras ? ' y ' : '') + (obras ? obras + ' requieren obra' : '') + ', y se proponen para su planificación de acuerdo con las prioridades y los recursos disponibles de la institución.' : ''));
+    (crit.length ? (crit.length > 1 ? ', y se identificaron ' + crit.length + ' situaciones críticas: ' : ', y se identificó una situación crítica: ') + crit.map(c => String(c.it.item).replace(/\.$/, '').toLowerCase()).join('; ') + '.' : ', sin situaciones críticas.'));
+  if (hal.length) P_((hal.length > 1 ? 'De las ' + hal.length + ' mejoras propuestas, ' + sinCosto + (sinCosto === 1 ? ' puede' : ' pueden') : 'La mejora propuesta ' + (sinCosto ? 'puede' : 'no puede')) + ' resolverse sin costo o con bajo costo' + (ejemplos.length ? ' —' + ejemplos.join('; ') + '—' : '') + (hal.length > 1 ? ' y se presentan en primer lugar.' : '.') + (compras || obras ? ' ' + (compras ? compras + (compras === 1 ? ' requiere' : ' requieren') + ' compras' : '') + (compras && obras ? ' y ' : '') + (obras ? obras + (obras === 1 ? ' requiere' : ' requieren') + ' obra' : '') + ', y se proponen para su planificación de acuerdo con las prioridades y los recursos disponibles de la institución.' : ''));
   G('Revisar: uno o dos párrafos en prosa, sin tablas; debe leerse en un minuto.');
   // 1. Presentación
   H1('1. Presentación'); H2('1.1. Objeto');
@@ -432,24 +432,24 @@ function generarInforme_(relId) {
   H2('4.2. Otras observaciones');
   const otros = resp.filter(x => (x.resp === 'P' || x.resp === 'NC') && !(x.it.critico && x.resp === 'NC')), rub = {};
   otros.forEach(x => (rub[x.it.rubro || 's/d'] = rub[x.it.rubro || 's/d'] || []).push(x));
-  if (Object.keys(rub).length) Object.keys(rub).forEach(r => P_(r + ': ' + rub[r].map(x => String(x.it.item).replace(/\.$/, '').toLowerCase() + ' (' + (x.resp === 'P' ? 'cumple en parte' : 'no cumple') + (x.obs ? ': ' + x.obs.replace(/\.$/, '') : '') + ')').join('; ') + '.'));
+  if (Object.keys(rub).length) Object.keys(rub).forEach(r => P_(r + ': ' + rub[r].map(x => String(x.it.item).replace(/\.$/, '').toLowerCase() + ' (' + (x.resp === 'P' ? 'cumple en parte' : 'no cumple') + (x.obs ? ': ' + x.obs.charAt(0).toLowerCase() + x.obs.slice(1).replace(/\.$/, '') : '') + ')').join('; ') + '.'));
   else P_('No se registraron otros incumplimientos.');
   G('Revisar la redacción: describir sin juicios de valor ni adjetivos.');
   H2('4.3. Aspectos favorables');
   const ok = resp.filter(x => x.resp === 'C'), rubOk = Array.from(new Set(ok.map(x => x.it.rubro).filter(Boolean)));
-  P_(ok.length ? 'Se verificó el cumplimiento de ' + ok.length + ' puntos' + (rubOk.length ? ', en los rubros ' + rubOk.join(', ') : '') + '. Estas condiciones conviene sostenerlas.' : 'No se registraron puntos en cumplimiento.');
+  P_(ok.length ? 'Se verificó el cumplimiento de ' + ok.length + (ok.length === 1 ? ' punto' : ' puntos') + (rubOk.length ? (rubOk.length === 1 ? ', en el rubro ' : ', en los rubros ') + rubOk.join(', ') : '') + '. Son condiciones que conviene sostener.' : 'No se registraron puntos en cumplimiento.');
   // 5. Análisis
   H1('5. Análisis de los datos'); H2('5.1. Indicadores');
   T([['Indicador', 'Valor'], ['Puntos evaluados', eval_.length + ' (sin NA)'], ['Cumplen / parcial / no cumplen', n('C') + ' / ' + n('P') + ' / ' + n('NC')], ['Cumplimiento ponderado', pct + ' %'], ['Puntos críticos en «no cumple»', String(crit.length)],
     ['Hallazgos «actuar ya» (30 días)', String(cuenta('Actuar ya'))], ['Hallazgos «resolver rápido» (90 días)', String(cuenta('Resolver rápido'))], ['Hallazgos «planificar» (180 días)', String(cuenta('Planificar'))], ['Mejoras sin costo o de bajo costo', sinCosto + ' de ' + hal.length], ['Semáforo', semaforo]], true, [280, 190]);
   H2('5.2. Interpretación');
   const rubNc = Object.keys(rub).concat(crit.map(c => c.it.rubro)).reduce((m, r) => (m[r] = (m[r] || 0) + 1, m), {}), top = Object.keys(rubNc).sort((a, b) => rubNc[b] - rubNc[a]).slice(0, 2);
-  P_('El servicio se ubica en la categoría ' + semaforo.toLowerCase() + (crit.length ? ' por la presencia de ' + crit.length + (crit.length > 1 ? ' puntos críticos' : ' punto crítico') + ' sin cumplir' : ' con un cumplimiento ponderado del ' + pct + ' %') + '.' + (top.length ? ' Los rubros con más incumplimientos fueron ' + top.join(' y ') + '.' : ''));
+  P_('El servicio se ubica en la categoría ' + semaforo.toLowerCase() + (crit.length ? ' por la presencia de ' + crit.length + (crit.length > 1 ? ' puntos críticos' : ' punto crítico') + ' sin cumplir' : ' con un cumplimiento ponderado del ' + pct + ' %') + '.' + (top.length ? (top.length > 1 ? ' Los rubros con más incumplimientos fueron ' + top.join(' y ') : ' El rubro con más incumplimientos fue ' + top[0]) + '.' : ''));
   if (previos.length) P_('Respecto del relevamiento del ' + fTxt(fecha_(previos[0][1])) + ', el cumplimiento ponderado pasó de ' + Math.round(Number(String(previos[0][6]).replace('%', '').replace(',', '.')) * (String(previos[0][6]).indexOf('%') >= 0 ? 1 : 100)) + ' % a ' + pct + ' %.');
   G('Completar: con qué se relacionan principalmente los incumplimientos (organización interna, mantenimiento, recursos) y qué indica.');
   // 6. Conclusión
   H1('6. Conclusión');
-  P_(crit.length ? 'Las condiciones de infraestructura e instalaciones del servicio presentan situaciones críticas que requieren una acción inmediata. Resolver las acciones de 30 días, varias de ellas sin costo, reduce el riesgo principal mientras se planifican las mejoras que requieren compras u obra.' : 'Las condiciones de infraestructura e instalaciones del servicio no presentan situaciones críticas. Las mejoras propuestas permiten sostener y mejorar el nivel de cumplimiento, empezando por las que no requieren presupuesto.');
+  P_(crit.length ? 'Las condiciones de infraestructura e instalaciones del servicio presentan ' + (crit.length > 1 ? 'situaciones críticas que requieren' : 'una situación crítica que requiere') + ' una acción inmediata. Resolver las acciones de 30 días' + (sinCosto ? ', empezando por las que no requieren presupuesto,' : '') + ' reduce el riesgo principal' + (compras || obras ? ' mientras se planifican las mejoras que requieren compras u obra.' : '.') : 'Las condiciones de infraestructura e instalaciones del servicio no presentan situaciones críticas. Las mejoras propuestas permiten sostener y mejorar el nivel de cumplimiento, empezando por las que no requieren presupuesto.');
   G('Revisar: estado general, riesgo principal y qué cambia si se resuelven las prioridades.');
   // 7. Recomendaciones
   H1('7. Recomendaciones y plan de acción');
@@ -474,9 +474,9 @@ function generarInforme_(relId) {
   try { const pie = doc.addFooter(), pp = pie.getParagraphs()[0]; pp.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pp.appendInlineImage(DriveApp.getFileById(LOGO_PIE_ID).getBlob()); const w = 300, h = Math.round(img.getHeight() * w / img.getWidth()); img.setWidth(w); img.setHeight(h); } catch (e) {}
   doc.saveAndClose();
   // Notas al pie reales (servicio avanzado Docs)
-  let notasOk = true; try { notasAlPie_(id, notas); } catch (e) { notasOk = false; }
+  let notasOk = true, notasError = ''; try { notasAlPie_(id, notas); } catch (e) { notasOk = false; notasError = String(e.message || e); }
   hoja_(H.REL).getRange(R.fila, 10).setValue(doc.getUrl());
-  return { ok: true, url: 'https://docs.google.com/document/d/' + id + '/edit', nro: nro, nombre: nombre, notas: notasOk };
+  return { ok: true, url: 'https://docs.google.com/document/d/' + id + '/edit', nro: nro, nombre: nombre, notas: notasOk, notasError: notasError };
 }
 
 // Reemplaza cada ⟦n⟧ por una nota al pie con su texto (de atrás hacia adelante, para no correr los índices).
