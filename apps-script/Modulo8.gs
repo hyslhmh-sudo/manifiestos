@@ -507,7 +507,7 @@ function menuGenerarInforme() {
   ui.alert(r.ok ? 'Informe ' + r.nro + ' generado (borrador):\n' + r.url : r.mensaje);
 }
 // Para probar desde el editor: genera el informe del relevamiento de ejemplo
-function probarInforme() { Logger.log(JSON.stringify(generarInforme_('EJEMPLO-001'))); }
+function probarInforme() { const r = filas_(H.REL, 10).map(x => String(x[0])).filter(Boolean).pop(); if (!r) return Logger.log('No hay relevamientos cargados para probar el informe.'); Logger.log(JSON.stringify(generarInforme_(r))); }
 
 // Reinicia la numeración de informes del módulo 8 después de borrar pruebas (12/10/2026).
 // Borra los contadores M8_NRO_* y los números asignados a relevamientos que ya no existen en RELEVAMIENTOS.
