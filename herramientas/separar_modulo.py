@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Mueve bloques del script principal de portal.html a modulos/<nombre>.js.
 Uso: separar_modulo.py <nombre> "<título>" "<marcador inicio>" "<marcador fin>" [otro par inicio fin ...]
-Cada bloque va desde la línea que empieza con el marcador de inicio hasta la anterior al de fin."""
+Cada bloque va desde la línea que empieza con el marcador de inicio hasta la anterior al de fin (FIN = hasta el final del script principal)."""
 import sys, pathlib, re
 raiz = pathlib.Path(__file__).resolve().parent.parent
 nombre, titulo, pares = sys.argv[1], sys.argv[2], sys.argv[3:]
 L = (raiz / 'portal.html').read_text(encoding='utf-8').split('\n')
 fin_principal = L.index('</script>')
 def linea(pref, desde=0):
+    if pref == 'FIN': return fin_principal
     for i in range(desde, fin_principal):
         if L[i].startswith(pref): return i
     sys.exit('No encontré: ' + pref)
