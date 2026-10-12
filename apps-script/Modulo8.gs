@@ -319,6 +319,7 @@ function menuGenerarHallazgos() {
 // 4) Informe a la Dirección (borrador en Google Docs)
 // ======================================================================
 const LOGO_PIE_ID = '1DnztPPclcsCNA23DDlAF-90Uchf6QdzN';   // logo-hysl-pie.png (SISTEMA HyS)
+const LOGO_ENC_ID = '1xuFHOjKMz2f5mLhFVEc7ZOhnjH8-8_Uy';  // LOGO HYSL HMH.png (encabezado HZT/HMH)
 const CARPETA_INFORMES = 'INFORMES';
 const C_AZUL = '#0D313F', C_PATA = '#5894A7', C_TXT = '#404040', C_GUIA = '#5894A7', FUENTE = 'Plus Jakarta Sans';
 const NORMAS = {
@@ -471,6 +472,7 @@ function generarInforme_(relId) {
   T([['Concepto', 'Valores'], ['Respuesta', 'C = 1 · P = 0,5 · NC = 0 · NA = no se cuenta'], ['Gravedad del ítem', '1 leve · 2 moderada · 3 grave · 4 crítica'], ['Criticidad del servicio', '1 baja · 2 media · 3 alta (guardia, quirófano, UTI, UCIP, neonatología, esterilización)'],
     ['Factor de incumplimiento', 'NC = 1 · P = 0,5'], ['Puntaje', 'Gravedad × criticidad × factor'], ['Plazo técnico', '≥ 9 o crítico en NC: 30 días · 4 a 8,9: 90 días · < 4: 180 días'], ['Semáforo', 'Verde ≥ 85 % · Amarillo 60 a 84 % · Rojo < 60 % o crítico en NC']], true, [150, 320]);
   // Pie con el logo de HySL
+  try { const enc = doc.addHeader(), ep = enc.getParagraphs()[0]; ep.setAlignment(DocumentApp.HorizontalAlignment.LEFT); const im = ep.appendInlineImage(DriveApp.getFileById(LOGO_ENC_ID).getBlob()); const w = 170, h = Math.round(im.getHeight() * w / im.getWidth()); im.setWidth(w); im.setHeight(h); } catch (e) {}
   try { const pie = doc.addFooter(), pp = pie.getParagraphs()[0]; pp.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pp.appendInlineImage(DriveApp.getFileById(LOGO_PIE_ID).getBlob()); const w = 300, h = Math.round(img.getHeight() * w / img.getWidth()); img.setWidth(w); img.setHeight(h); } catch (e) {}
   doc.saveAndClose();
   // Notas al pie reales (servicio avanzado Docs)
