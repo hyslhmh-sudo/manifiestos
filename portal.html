@@ -365,9 +365,9 @@ function marco(activo, contenido) {
     '<div class="titu mod">Módulos</div>' +
     grp('res', 'recycling', '1 · Residuos', it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1)) +
     grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docest', '', 'Documentos de los establecimientos', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
-    it('#agua', 'water_drop', '3 · Agua') +
+    grp('agu', 'water_drop', '3 · Agua', it('#agua', '', 'Tablero', 1) + it('#aguadiag', '', 'Diagnóstico', 1)) +
     grp('per', 'badge', '4 · Personal y RAR', it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1)) +
-    it('#plagas', 'pest_control', '5 · Plagas') +
+    grp('plg', 'pest_control', '5 · Plagas', it('#plagas', '', 'Tablero', 1) + it('#plgdiag', '', 'Diagnóstico', 1)) +
     grp('coc', 'soup_kitchen', '6 · Cocinas', it('#coc', '', 'Tablero', 1) + it('#cocper', '', 'Personas de cocina', 1) + it('#cocdiag', '', 'Relevamiento BPM / HACCP', 1)) +
     grp('cap', 'school', '7 · Capacitaciones', it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)')) +
     grp('m8', 'domain', '8 · Servicios e infraestructura', it('#m8', '', 'Tablero', 1) + it('#m8rel', '', 'Nuevo relevamiento', 1) + it('#m8plan', '', 'Plan de acción', 1) + it('#m8serv', '', 'Edificios y servicios', 1) + it('#m8libros', '', 'Libros para la red', 1) + ext(M8_LINKS.planilla, 'Planilla del módulo 8') + ext(M8_LINKS.campo, 'Listas de campo')) +
@@ -455,7 +455,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-12 · 14.4';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-12 · 14.5';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -470,6 +470,8 @@ const AYUDA = {
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
   '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa (y al menos un lugar, solo si hay puntos por lugar activos en ITEMS).', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
+  '#aguadiag': ['Diagnóstico de agua', ['Tocá un establecimiento para abrir su diagnóstico o empezar uno. Pestaña «Establecimiento»: documentación, registros y seguridad; una pestaña por cada tanque, cisterna o lugar.', 'Cada tanque o cisterna cargado en BASE COMÚN › RESERVORIOS es una pestaña propia; los CAPS se relevan dentro del hospital del que dependen. Si todavía no hay reservorios cargados, aparecen «Tanque elevado» y «Cisterna».', 'Frecuencias: limpieza anual, bacteriológico cada 6 meses, fisicoquímico anual (o la norma local más exigente). La sección de agua caliente (Legionella) aparece solo si hay termotanques o calderas.', 'Las preguntas se editan en la planilla del diagnóstico (hoja ITEMS): para dejar de usar una, ACTIVO = No.']],
+  '#plgdiag': ['Diagnóstico de plagas', ['Tocá un establecimiento para abrir su diagnóstico o empezar uno. Pestaña «Establecimiento»: programa, registros, productos y seguridad; una pestaña por cada lugar (cocina, depósitos, residuos, internación, sótanos, exterior).', 'Se habilita para toda la red: es la línea de base. El registro de intervenciones (app MIPyV) sigue solo en Trelew.', 'Las preguntas se editan en la planilla del diagnóstico (hoja ITEMS): para dejar de usar una, ACTIVO = No.']],
   '#accesos': ['Accesos por persona', ['Una fila por persona: con su DNI y su clave entra a «Mi establecimiento» y a la página de diagnóstico, y ve solo los establecimientos y módulos marcados.', '«Nueva persona» o tocá una fila para editarla. Para que entre: Estado Activo, DNI, al menos un establecimiento y un módulo, y su clave («Generar clave»).', '«Copiar mensaje» arma el texto con el enlace, el DNI y la clave para pasárselo por chat o correo (el sistema no envía nada solo).', 'Para quitar un acceso: Estado = Baja. La clave común del establecimiento deja de ver un módulo cuando alguien activo de ese establecimiento lo tiene con clave propia (cuadro de abajo).', 'Todo se puede hacer también en BASE COMÚN › ACCESOS («Abrir la hoja»); los cambios tardan hasta 5 minutos en verse en «Mi establecimiento».']],
   '#acciones': ['Acciones de todos los módulos', ['Junta en una sola lista lo abierto de Residuos (diagnóstico y auditorías), Agua, Plagas y Servicios e infraestructura. Filtrá por establecimiento o módulo; tocá una fila para ir a editarla en su módulo. Primero aparecen las vencidas.']],
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
@@ -896,6 +898,7 @@ async function fichaMi(cod) {
 <script src="modulos/capacitaciones.js?v=14.4"></script>
 <script src="modulos/residuos.js?v=14.4"></script>
 <script src="modulos/diagnostico.js?v=14.4"></script>
+<script src="modulos/diag-modulos.js?v=14.5"></script>
 <script src="modulos/accesos.js?v=14.4"></script>
 <script src="modulos/acciones.js?v=14.4"></script>
 <script src="modulos/m8.js?v=14.4"></script>
@@ -914,6 +917,8 @@ function routerPantalla() {
   if (ruta === 'est') return matriz();
   if (ruta === 'agua') return agua('agua');
   if (ruta === 'plagas') return agua('plagas');
+  if (ruta === 'aguadiag') return dgmRuta('agua', a);
+  if (ruta === 'plgdiag') return dgmRuta('plagas', a);
   if (ruta === 'sin') return sinPortal(a);
   if (ruta === 'inv') return invForm(a);
   if (ruta === 'sinest') return sinEst();
