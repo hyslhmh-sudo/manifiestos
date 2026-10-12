@@ -32,7 +32,7 @@ async function accesosPantalla(fresco) {
   todas.filter(listo).forEach(p => { if (/toda/i.test(p.ESTABLECIMIENTOS)) return;
     const mods = /(^|,)\s*todos\s*(,|$)/i.test(p.MODULOS) ? D.modulos : accpLista(p.MODULOS);
     accpLista(p.ESTABLECIMIENTOS).forEach(c => { porEst[c] = porEst[c] || {}; mods.forEach(m => porEst[c][m] = true); }); });
-  const comunes = D.modulos.filter(m => (D.soloPersonal || []).indexOf(m) < 0);
+  const hab = D.habilitados || null, comunes = D.modulos.filter(m => (D.soloPersonal || []).indexOf(m) < 0 && (!hab || hab[m]));   // solo los habilitados hoy (HABILITACION)
   const filaClave = p => p.CLAVE === '(clave maestra)' ? '<span class="mu peq">Clave maestra</span>'
     : p.CLAVE ? '<span class="accpK" data-f="' + p.fila + '"><code>••••••••</code></span> <button class="btn sec peq" data-ver="' + p.fila + '">Ver</button> <button class="btn sec peq" data-msj="' + p.fila + '">Copiar mensaje</button> <button class="btn sec peq" data-gen="' + p.fila + '">Nueva</button>'
     : (est(p) === 'Activo' && accpDni(p.DNI) ? '<button class="btn pri peq" data-gen="' + p.fila + '">Generar clave</button>' : '<span class="mu peq">' + (accpDni(p.DNI) ? 'Al activarla' : 'Falta el DNI') + '</span>');
@@ -52,7 +52,7 @@ async function accesosPantalla(fresco) {
       (Object.keys(porEst).length ? '<table><thead><tr><th>Establecimiento</th><th>Con clave personal</th><th>Siguen con la clave común</th></tr></thead><tbody>' +
         Object.keys(porEst).sort().map(c => { const pers = Object.keys(porEst[c]).filter(m => comunes.indexOf(m) >= 0), resto = comunes.filter(m => !porEst[c][m]);
           return '<tr><td><b>' + esc(c) + '</b></td><td class="peq">' + esc(pers.join(', ') || '—') + '</td><td class="peq">' + (resto.length ? esc(resto.join(', ')) : '<span class="chip ok">Ninguno: solo claves personales</span>') + '</td></tr>'; }).join('') + '</tbody></table>'
-        : '<span class="peq">Todavía ningún establecimiento tiene módulos con clave personal: todos entran con su clave común.</span>') + '</section>');
+        : '<span class="peq">Todavía ningún establecimiento tiene módulos con clave personal: todos entran con su clave común.</span>') + '</section>' + accpCalendario(D));
   $('apAct').onclick = () => accesosPantalla(true);
   $('apNueva').onclick = () => accpEditar(null);
   $('apQ').onchange = e => { ACCPF.q = e.target.value.trim(); accesosPantalla(); };
@@ -100,4 +100,16 @@ function accpEditar(p) {
       toast(p ? 'Cambios guardados en ACCESOS.' : 'Persona agregada en ACCESOS (fila ' + r.fila + ').'); setTimeout(() => accesosPantalla(true), 0); }
     catch (e) { return 'No se pudo conectar con el sistema.'; }
   }, extra);
+}
+// Habilitación progresiva (12/10/2026): desde qué fecha la clave común ve cada módulo (BASE COMÚN › HABILITACION)
+function accpCalendario(D) {
+  const L = D.habilitacion, hab = D.habilitados || {}, fF = s => s ? s.split('-').reverse().join('/') : '';
+  const cab = '<section class="card" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between"><h2 style="margin:0;font-size:16px">Habilitación progresiva para referentes</h2>' +
+    (D.hojaHab ? '<a class="btn sec peq" href="' + esc(D.hojaHab) + '" target="_blank" rel="noopener">Cambiar fechas en la hoja ↗</a>' : '') + '</div>' +
+    '<span class="mu peq">Desde qué fecha cada módulo se ve con la clave común del establecimiento. Lo marcado para cada persona en sus módulos se respeta siempre (excepciones). Higiene y Seguridad ve todo siempre. Un cambio de fecha tarda hasta 5 minutos en verse.</span>';
+  if (!L) return cab + '<span class="peq">No está la hoja HABILITACION en la BASE COMÚN: todos los módulos están habilitados para la clave común.</span></section>';
+  return cab + '<table><thead><tr><th>Módulo</th><th>Desde</th><th>Hoy</th><th>Observaciones</th></tr></thead><tbody>' +
+    L.map(o => '<tr><td><b>' + esc(o.modulo) + '</b></td><td>' + (o.desde ? esc(fF(o.desde)) : '<span class="mu">Sin fecha</span>') + '</td><td>' +
+      ((D.soloPersonal || []).indexOf(o.modulo) >= 0 ? '<span class="chip">Solo clave personal</span>' : hab[o.modulo] ? '<span class="chip ok">Habilitado</span>' : '<span class="chip">Todavía no</span>') +
+      '</td><td class="peq">' + esc(o.obs || '') + '</td></tr>').join('') + '</tbody></table></section>';
 }
