@@ -478,16 +478,24 @@ function generarInforme_(relId) {
   return { ok: true, url: 'https://docs.google.com/document/d/' + id + '/edit', nro: nro, nombre: nombre, notas: notasOk };
 }
 
-// Reemplaza cada ⟦n⟧ por una nota al pie con su texto (de atrás hacia adelante, para no correr los índices)
+// Reemplaza cada ⟦n⟧ por una nota al pie con su texto (de atrás hacia adelante, para no correr los índices).
+// Usa la API de Docs con el permiso del propio script (no hace falta activar servicios avanzados).
+function docsApi_(id, metodo, cuerpo) {
+  const r = UrlFetchApp.fetch('https://docs.googleapis.com/v1/documents/' + id + (metodo === 'get' ? '' : ':batchUpdate'), {
+    method: metodo === 'get' ? 'get' : 'post', contentType: 'application/json', payload: metodo === 'get' ? undefined : JSON.stringify(cuerpo),
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  if (r.getResponseCode() >= 300) throw new Error('Docs ' + r.getResponseCode() + ': ' + r.getContentText().slice(0, 200));
+  return JSON.parse(r.getContentText());
+}
 function notasAlPie_(id, notas) {
-  const d = Docs.Documents.get(id), marcas = [];
+  const d = docsApi_(id, 'get'), marcas = [];
   (d.body.content || []).forEach(el => (el.paragraph ? el.paragraph.elements || [] : []).forEach(pe => { const t = pe.textRun && pe.textRun.content; if (!t) return; const re = /⟦(\d+)⟧/g; let m;
     while ((m = re.exec(t))) marcas.push({ ini: pe.startIndex + m.index, fin: pe.startIndex + m.index + m[0].length, n: Number(m[1]) }); }));
   marcas.sort((a, b) => b.ini - a.ini).forEach(mk => {
-    const r = Docs.Documents.batchUpdate({ requests: [{ deleteContentRange: { range: { startIndex: mk.ini, endIndex: mk.fin } } }, { createFootnote: { location: { index: mk.ini } } }] }, id);
-    const fid = r.replies[1].createFootnote.footnoteId;
-    Docs.Documents.batchUpdate({ requests: [{ insertText: { location: { segmentId: fid, index: 1 }, text: notas[mk.n - 1] } },
-      { updateTextStyle: { range: { segmentId: fid, startIndex: 1, endIndex: 1 + notas[mk.n - 1].length }, textStyle: { fontSize: { magnitude: 8.5, unit: 'PT' }, weightedFontFamily: { fontFamily: FUENTE }, foregroundColor: { color: { rgbColor: { red: 0.25, green: 0.25, blue: 0.25 } } } }, fields: 'fontSize,weightedFontFamily,foregroundColor' } }] }, id);
+    const r = docsApi_(id, 'batch', { requests: [{ deleteContentRange: { range: { startIndex: mk.ini, endIndex: mk.fin } } }, { createFootnote: { location: { index: mk.ini } } }] });
+    const fid = r.replies[1].createFootnote.footnoteId, tx = notas[mk.n - 1];
+    docsApi_(id, 'batch', { requests: [{ insertText: { location: { segmentId: fid, index: 1 }, text: tx } },
+      { updateTextStyle: { range: { segmentId: fid, startIndex: 1, endIndex: 1 + tx.length }, textStyle: { fontSize: { magnitude: 8.5, unit: 'PT' }, weightedFontFamily: { fontFamily: FUENTE }, foregroundColor: { color: { rgbColor: { red: 0.25, green: 0.25, blue: 0.25 } } } }, fields: 'fontSize,weightedFontFamily,foregroundColor' } }] });
   });
 }
 
