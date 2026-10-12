@@ -145,12 +145,81 @@ nav.lat .titu.mod { color: #A9C6D1; font-size: 11.5px; letter-spacing: .8px; pad
 .agSem { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
   .agDia { background: #F7FAFB; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .agDia.hoy { outline: 2px solid var(--pa); }
-  .agCab { font-weight: 800; font-size: 12px; color: var(--mu); letter-spacing: .4px; text-transform: uppercase; padding: 2px; }
+  .agCab { font-weight: 800; font-size: 12px; color: var(--mu); padding: 2px; }
   .agT { display: flex; flex-direction: column; gap: 2px; text-align: left; border: 1px solid var(--ln); border-left: 4px solid var(--ln); background: #fff; border-radius: 8px; padding: 7px 8px; font: inherit; font-size: 12.5px; cursor: pointer; color: var(--tx); min-width: 0; overflow-wrap: anywhere; }
   .agT:hover { background: #F4F8FA; } .agT:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
   .agT b { color: var(--az); } .agT small { color: var(--mu); font-size: 11.5px; } .agT .chip { align-self: flex-start; font-size: 10.5px; padding: 2px 6px; }
   @media (max-width: 900px) { .agSem { grid-template-columns: minmax(0, 1fr); } }
   .frF { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.6fr auto; gap: 8px; align-items: center; } @media (max-width: 640px) { .frF { grid-template-columns: 1fr 1fr; } }
+/* ---- Diseño (oct 2026): misma paleta institucional (Azul Humphreys y Azul Patagonia), más jerarquía y menos ruido ---- */
+:root { --tx: #22343C; --mu: #5A6D76; --ln: #DDE6E9; --bg: #F3F6F7; --pa1: #EEF4F6; --pa2: #D6E6EC; --sombra: 0 1px 2px rgba(13,49,63,.05); }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+/* Barra lateral: queda fija mientras se recorre el contenido */
+nav.lat { position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto; padding: 22px 12px 18px; scrollbar-width: thin; scrollbar-color: #2A5466 transparent; }
+nav.lat .marca b { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+nav.lat a, nav.lat button.it { transition: background .15s, color .15s; }
+nav.lat a.on, nav.lat a.sub.on { background: rgba(255,255,255,.10); color: #fff; font-weight: 700; box-shadow: inset 3px 0 0 var(--pa); }
+nav.lat a.sub { color: #C9DCE3; } nav.lat a.sub:hover { color: #fff; }
+nav.lat .grp { padding: 16px 10px 4px; }
+nav.lat .busca input { background: rgba(255,255,255,.95); }
+/* Encabezado de cada pantalla */
+main { padding: 30px 40px 72px; gap: 22px; }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+h2 { font-size: 16.5px; font-weight: 700; letter-spacing: -.005em; }
+.cab { padding-bottom: 18px; border-bottom: 1px solid var(--ln); }
+/* Tarjetas: un solo nivel de borde, sin sombras decorativas */
+.card { border-color: var(--ln); border-radius: 14px; padding: 20px 22px; box-shadow: var(--sombra); }
+/* Indicadores: una sola franja dividida con líneas finas, en lugar de cajas sueltas */
+.tb5 { gap: 1px !important; background: var(--ln); border: 1px solid var(--ln); border-radius: 14px; overflow: hidden; box-shadow: var(--sombra); }
+.tb5 > .kpi2 { border: 0; border-radius: 0; padding: 16px 18px; }
+a.kpi2 { transition: background .15s; } a.kpi2:hover { background: var(--pa1); }
+.kpi2 span { font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--mu); }
+.kpi2 b { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.kpi b { font-weight: 800; letter-spacing: -.02em; }
+/* Tablas */
+th { font-size: 12.5px; font-weight: 600; letter-spacing: 0; color: var(--mu); border-bottom: 1px solid var(--ln); }
+td { border-bottom-color: #EDF2F4; }
+tr.cl:hover td, .sinTab tr.cl:hover { background: var(--pa1); }
+/* Estados: píldoras redondeadas, mismo alto */
+.chip { border-radius: 999px; padding: 3px 10px; } .chip.mini { padding: 2px 8px; }
+.tag { border-radius: 999px; padding: 3px 10px; font-weight: 700; }
+/* Botones y campos */
+.btn { border-radius: 10px; transition: background .15s, border-color .15s, color .15s; }
+.pri:hover:not(:disabled) { background: #16465A; }
+.sec { border-color: #B9CFD7; } .sec:hover:not(:disabled) { background: var(--pa1); border-color: var(--pa); }
+.peligro:hover:not(:disabled) { background: var(--erbg); }
+.link { text-underline-offset: 3px; text-decoration-thickness: 1px; } .link:hover { color: var(--pa); }
+input.c, select.c, textarea.c { border-radius: 10px; border-color: #CFDBDF; transition: border-color .15s, box-shadow .15s; }
+input.c:focus, select.c:focus, textarea.c:focus { outline: none; border-color: var(--pa); box-shadow: 0 0 0 3px rgba(88,148,167,.22); }
+label.f { font-size: 12.5px; }
+.fchip { transition: background .15s; } .fchip:hover:not(.on) { background: var(--pa1); }
+/* Avisos: barra de color a la izquierda en lugar de recuadro completo */
+.aviso { border: 0; border-left: 4px solid var(--pa); background: var(--pa1); border-radius: 10px; }
+.aviso.error, .error.aviso { border-left-color: var(--er); background: var(--erbg); color: var(--er); }
+/* Diagnóstico y auditorías: preguntas más legibles y barra de acciones flotante */
+.seccion { overflow: hidden; }
+.sec-tit { background: var(--pa1); padding: 14px 20px; border-bottom-color: var(--ln); }
+.punto { padding: 14px 20px; border-top-color: #EDF2F4; transition: background .15s; }
+.punto:hover { background: #FAFCFC; }
+.punto b { color: var(--tx); }
+.multi label { padding: 4px 0; }
+.tabs { background: #fff; border: 1px solid var(--ln); border-radius: 12px; padding: 6px 8px; box-shadow: var(--sombra); }
+.tabs .btn { border-radius: 8px; }
+.barra { background: rgba(243,246,247,.94); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-top: 1px solid var(--ln); }
+main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
+/* Ventanas y avisos emergentes */
+.modal { border-radius: 16px; box-shadow: 0 18px 50px rgba(13,49,63,.22); }
+.toast { border-radius: 12px; box-shadow: 0 8px 24px rgba(13,49,63,.25); }
+.panel { box-shadow: -10px 0 34px rgba(13,49,63,.18); }
+@media (max-width: 760px) {
+  main { padding: 16px 12px 96px; }
+  main:not(.ref) .barra { margin: 0 -12px; padding: 10px 12px; bottom: 62px; }
+  h1 { font-size: 23px; }
+  .cab { padding-bottom: 12px; }
+  .kpi2 b { font-size: 24px; }
+}
 </style>
 </head>
 <body>
@@ -511,12 +580,12 @@ async function capTablero(fresco) {
   marco('#cap', '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
     '<div class="filtros"><a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a><button class="btn sec" id="capAct">Actualizar</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">' +
-      kpi('PERSONAS CAPACITADAS', K.personas, 'personas distintas') +
-      kpi('REGISTROS', K.registros, 'asistencias y evaluaciones') +
-      kpi('APROBACIÓN', K.aprobacion + ' %', 'de las evaluaciones rendidas') +
-      kpi('COBERTURA RED TRELEW', K.cobertura + ' %', K.personalCon + ' de ' + K.personal + ' con al menos una', colPct(K.cobertura)) +
-      kpi('MATRIZ CUMPLIDA', K.matriz + ' %', 'de las obligatorias · meta al ' + fechaTxt(T.ciclo.meta), colPct(K.matriz), meta) +
-      kpi('REQUIERE ATENCIÓN', nAt, 'desde el ' + fechaTxt(T.avisosDesde), nAt ? '#B4361F' : '') + '</div>' +
+      kpi('Personas capacitadas', K.personas, 'personas distintas') +
+      kpi('Registros', K.registros, 'asistencias y evaluaciones') +
+      kpi('Aprobación', K.aprobacion + ' %', 'de las evaluaciones rendidas') +
+      kpi('Cobertura red Trelew', K.cobertura + ' %', K.personalCon + ' de ' + K.personal + ' con al menos una', colPct(K.cobertura)) +
+      kpi('Matriz cumplida', K.matriz + ' %', 'de las obligatorias · meta al ' + fechaTxt(T.ciclo.meta), colPct(K.matriz), meta) +
+      kpi('Requiere atención', nAt, 'desde el ' + fechaTxt(T.avisosDesde), nAt ? '#B4361F' : '') + '</div>' +
     '<div class="tb2">' + card('Semáforo por servicio', null, '<div class="cpn" id="capRed" style="gap:6px">' + chips + '</div>' + sem) + card('Requiere atención', null, at) + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))">' + card('Capacitaciones abiertas', [CAP_PANEL, 'Panel ↗'], abiertas) + card('Próximos dictados', [CAP_LIBRO, 'Agregar en DICTADOS ↗'], dict) + card('Alcance por público', null, pub) + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">' + card('Registros por mes', null, meses) + card('Participación por capacitación', null, part) + '</div>');
@@ -917,7 +986,7 @@ async function capInscriptos(id) {
   marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' +
     capTit(capN ? capN.nombre : D.codigo, esc(D.fecha + ' ' + (D.hora || '')) + ' · ' + esc(D.codigo) + (capN && capN.encuentros > 1 ? ' · encuentro ' + esc(D.encuentro) + ' de ' + capN.encuentros : '') + ' · ' + esc(D.modalidad) + (capVacio(D.lugar) || /virtual/i.test(D.lugar) ? '' : ' · ' + esc(D.lugar)) + ' · registro ' + esc(D.abre) + ' a ' + esc(D.cierra) + ' · ' + capEst(D.estado),
       '<button class="btn sec" id="diCop">Copiar link de registro</button>' + (D.linkInscripcion ? '<button class="btn sec" id="diCopI">Copiar link de inscripción</button>' : '') + '<button class="btn sec" id="diAgr">Agregar asistente</button>' + (cancelado ? '' : '<button class="btn peligro" id="diCan">Suspender o cancelar</button>')) +
-    '<div class="tb5">' + (D.linkInscripcion ? kp('INSCRIPTOS', R.activos, capVacio(R.cupo) || /sin/i.test(R.cupo) ? 'sin cupo' : R.presenciales + ' presenciales de ' + R.cupo) + kp('VINIERON', R.vinieron, 'de los inscriptos') + kp('AVISARON QUE NO', R.anuladas) + kp('CONSULTAS', R.consultasPendientes, 'pendientes') : '') + kp('SIN INSCRIPCIÓN', r.sinInscripcion.length, 'vinieron igual') + '</div>' +
+    '<div class="tb5">' + (D.linkInscripcion ? kp('Inscriptos', R.activos, capVacio(R.cupo) || /sin/i.test(R.cupo) ? 'sin cupo' : R.presenciales + ' presenciales de ' + R.cupo) + kp('Vinieron', R.vinieron, 'de los inscriptos') + kp('Avisaron que no', R.anuladas) + kp('Consultas', R.consultasPendientes, 'pendientes') : '') + kp('Sin inscripción', r.sinInscripcion.length, 'vinieron igual') + '</div>' +
     (D.linkInscripcion ? '<section class="card tabla"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Inscriptos</h2>' + (r.correos ? '<button class="btn sec" id="diMails">Copiar correos</button>' : '') + '</div>' +
       (!r.lista.length ? '<div class="vacio">Todavía no hay inscriptos.</div>' : '<table><thead><tr><th>Persona</th><th>Público</th><th>Modalidad</th><th>Consulta previa</th><th>Asistencia</th><th></th></tr></thead><tbody>' +
       r.lista.map((x, j) => '<tr><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.doc) + '</div></td><td>' + esc(x.publico) + '<div class="mu peq">' + esc(x.detalle) + '</div></td><td>' + esc(x.modalidad) + '</td>' +
@@ -1064,7 +1133,7 @@ async function inicio(fresco) {
     const w = cnt(t, 'porvencer') + cnt(p, 'porvencer') + cnt(t, 'sin') + cnt(p, 'sin'); return w ? ch('wa', w + ' por revisar') : ch('ok', 'Al día'); };
   const celPlag = c => { const l = plagas.filter(x => x.cod === c); if (!l.length) return ch('ok', 'Sin casos'); const a = l.filter(x => x.revision && x.revision < hoy).length; return ch(a ? 'er' : 'wa', l.length + ' abierto(s)'); };
   const celAcc = c => { const l = acc.filter(x => x.cod === c), v = l.filter(x => x.vencida).length; return !l.length ? ch('ok', 'Ninguna') : ch(v ? 'er' : 'wa', v ? v + ' vencida(s)' : l.length + ' en plazo'); };
-  const semaforo = filasS.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">ESTABLECIMIENTO</th><th style="padding:6px 8px">RESIDUOS · SIN RETIRO</th><th style="padding:6px 8px">DIAGNÓSTICO</th><th style="padding:6px 8px">AGUA</th><th style="padding:6px 8px">PLAGAS</th><th style="padding:6px 8px">ACCIONES</th></tr></thead><tbody>' +
+  const semaforo = filasS.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:12.5px"><th style="padding:6px 8px">Establecimiento</th><th style="padding:6px 8px">Días sin retiro</th><th style="padding:6px 8px">Diagnóstico</th><th style="padding:6px 8px">Agua</th><th style="padding:6px 8px">Plagas</th><th style="padding:6px 8px">Acciones</th></tr></thead><tbody>' +
     filasS.map(f => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><a href="#ficha/' + encodeURIComponent(f.cod) + '" style="font-weight:700;text-decoration:none">' + esc(f.cod) + '</a><div class="mu" style="font-size:12px">' + esc(f.nombre) + '</div></td><td style="padding:8px">' + celRes(f) + '</td><td style="padding:8px">' + celDiag(f) + '</td><td style="padding:8px">' + celAgua(f.cod) + '</td><td style="padding:8px">' + celPlag(f.cod) + '</td><td style="padding:8px">' + celAcc(f.cod) + '</td></tr>').join('') + '</tbody></table></div>' +
     '<span class="mu peq">Establecimientos habilitados en la aplicación y los que tienen algún dato cargado. Tocá el código para abrir la ficha.</span>'
     : '<div class="mu">Todavía no hay establecimientos con datos en esta área.</div>';
@@ -1072,12 +1141,12 @@ async function inicio(fresco) {
   marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
-      kpi('#plan', 'ACCIONES VENCIDAS', venc.length, 'de ' + acc.length + ' abiertas (todos los temas)', venc.length ? '#B4361F' : '') +
-      kpi('#est', 'RESIDUOS', atr.length, 'con más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
-      kpi('#agua', 'AGUA', noApta.length + tanV + ptoV, noApta.length + ' NO APTA · ' + tanV + ' limpieza(s) · ' + ptoV + ' análisis vencidos', (noApta.length + tanV + ptoV) ? '#B4361F' : '') +
-      kpi('#agua', 'PLAGAS', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
-      kpi('#bib', 'DOCUMENTOS', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
-      kpi('#est', 'ESTABLECIMIENTOS', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
+      kpi('#plan', 'Acciones vencidas', venc.length, 'de ' + acc.length + ' abiertas (todos los temas)', venc.length ? '#B4361F' : '') +
+      kpi('#est', 'Residuos', atr.length, 'con más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
+      kpi('#agua', 'Agua', noApta.length + tanV + ptoV, noApta.length + ' NO APTA · ' + tanV + ' limpieza(s) · ' + ptoV + ' análisis vencidos', (noApta.length + tanV + ptoV) ? '#B4361F' : '') +
+      kpi('#agua', 'Plagas', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
+      kpi('#bib', 'Documentos', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
+      kpi('#est', 'Establecimientos', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
     modulosHtml(TB.modulos, card) +
     '<div class="tb2" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr)">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) +
       card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
@@ -2070,8 +2139,8 @@ function planPintar() {
   const env = R.enviado ? 'Enviado el ' + plF(R.enviado) + ' · respuesta hasta el ' + plF(R.limiteRespuesta) : 'Todavía no se marcó como enviado';
   marco('#plan', '<div class="cab"><div><a class="link peq" href="#plan">‹ Todos los planes</a><h1>' + esc(R.nombre) + '</h1><span class="mu">Informe ' + esc(R.codigo) + ' · ' + env + '</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (R.doc ? '<a class="btn" href="' + esc(R.doc) + '" target="_blank" rel="noopener">Documento</a>' : '') + (R.pdf ? '<a class="btn" href="' + esc(R.pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') + '<button class="btn" id="plCorreo">Copiar correo</button></div></div>' +
-    '<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px">' + kpi('RECOMENDACIONES', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('CUMPLIDAS', c['Cumplida'] || 0, 'con evidencia') + kpi('EN CURSO', c['En curso'] || 0, 'dentro del plazo') +
-      kpi('VENCIDAS', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('SIN RESPUESTA', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
+    '<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px">' + kpi('Recomendaciones', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('Cumplidas', c['Cumplida'] || 0, 'con evidencia') + kpi('En curso', c['En curso'] || 0, 'dentro del plazo') +
+      kpi('Vencidas', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('Sin respuesta', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f">Fecha de envío a la Dirección<input class="c" type="date" id="plEnvio" value="' + esc(R.enviado || '') + '"></label><button class="btn" id="plEnviar">' + (R.enviado ? 'Cambiar fecha de envío' : 'Marcar como enviado') + '</button>' +
       '<label class="f">Fecha de la respuesta de la Dirección<input class="c" type="date" id="plResp"></label><span class="mu peq" style="max-width:420px">La fecha de envío fija los plazos técnicos. Al cargar un responsable o una fecha prevista, se registra la respuesta.</span></section>' +
     '<style>.plr{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(200px,1fr) minmax(200px,1fr);gap:14px;padding:14px 18px;border-top:1px solid #EEF2F4}.plr:first-child{border-top:0}.plr .c{width:100%;box-sizing:border-box}.plr label{display:block;font-size:12px;color:var(--mu);font-weight:600;margin:0 0 3px}.plr .blq{display:flex;flex-direction:column;gap:8px}@media(max-width:900px){.plr{grid-template-columns:1fr}}</style>' +
@@ -2210,7 +2279,7 @@ async function nte(cod) {
   const fila = (m, sug) => '<tr data-f="' + m.fila + '"><td>' + esc(m.funcion) + '</td>' + (sug ? '' : '<td>' + esc(m.servicio) + '</td>') + '<td>' + m.personas + '</td>' + (sug ? '<td class="peq mu">' + esc(m.sugerencia || '—') + '</td>' : '') + '<td><input class="c n-ag" value="' + esc(m.agentes) + '" data-sug="' + esc(sug ? m.sugerencia : '') + '" placeholder="' + (sug ? 'sin definir' : 'igual que la función') + '" style="' + (m.agentes || !sug ? '' : 'border-color:#E9B8B3') + '"></td><td><input class="c n-cr" value="' + esc(m.criterio) + '"></td></tr>';
   marco('#nte', cabecera +
     (R.aviso ? '<div class="aviso">' + esc(R.aviso) + (R.ultima ? ' Última: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').' : '') + '</div>' : (R.ultima ? '<div class="aviso">La NTE está al día: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').</div>' : '')) +
-    '<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px">' + kpi('DOTACIÓN', R.total, 'personas activas') + kpi('EXPUESTOS', R.expuestos, 'con código ESOP') + kpi('SIN CÓDIGOS DEFINIDOS', R.sinDefinir, 'personas (por su función)', R.sinDefinir ? '#9B2C22' : '') + kpi('DATOS FALTANTES', P.sinCuil.length + P.sinIngreso.length + P.sinSector.length, 'CUIL, ingreso o puesto', (P.sinCuil.length + P.sinIngreso.length + P.sinSector.length) ? '#B7791F' : '') + '</div>' +
+    '<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px">' + kpi('Dotación', R.total, 'personas activas') + kpi('Expuestos', R.expuestos, 'con código ESOP') + kpi('Sin códigos definidos', R.sinDefinir, 'personas (por su función)', R.sinDefinir ? '#9B2C22' : '') + kpi('Datos faltantes', P.sinCuil.length + P.sinIngreso.length + P.sinSector.length, 'CUIL, ingreso o puesto', (P.sinCuil.length + P.sinIngreso.length + P.sinSector.length) ? '#B7791F' : '') + '</div>' +
     '<section class="card"><h2>1. Datos de las personas</h2><p class="mu peq">Lo que falta se completa en Trabajadores o con el modelo «Nómina de personal» (Documental › Modelos para completar).</p>' + (det('Sin CUIL válido', P.sinCuil) + det('Sin fecha de ingreso', P.sinIngreso) + det('Sin sector o puesto', P.sinSector) + det('Códigos ESOP que no están en el listado', P.invalidos) || '<div class="mu peq">Sin faltantes. ✅</div>') +
       det('Trabajan en más de un edificio (figuran en el lugar indicado)', P.variosEdificios || []) + det('Edificio de la ficha distinto del lugar de la NTE', P.edificioDistinto || []) + det('Otras observaciones de puesto', P.obsPuesto || []) + '</section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2>2. Matriz de exposición por puesto</h2><button class="btn sec" id="nSug">Usar las sugerencias en los vacíos</button></div>' +
@@ -2246,8 +2315,8 @@ async function audLista() {
   const K = R.kpis, L = R.auditorias, kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
   marco('#aud', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Auditorías de gestión de residuos</h1><span class="mu">Verificación periódica con evidencia. Criterios: Ley XI N.º 35 (Código Ambiental del Chubut) y Ley 24.051 por adhesión.</span></div>' +
     '<div class="filtros"><label class="f">Establecimiento<select class="c" id="auEst">' + selectorEst(AU.cod, false) + '</select></label><a class="btn pri" href="#aud/nueva">Nueva auditoría</a></div></div>' +
-    '<div class="grid g4">' + kpi('AUDITORÍAS DEL AÑO', K.realizadas + ' / ' + K.programadas, 'realizadas / programadas') + kpi('CUMPLIMIENTO', K.cumplimiento || '—', 'última de campo o verificación') +
-      kpi('NO CONFORMIDADES ABIERTAS', K.ncAbiertas, K.ncMayores + ' mayores', K.ncMayores ? '#9B2C22' : '') + kpi('PARA VERIFICAR', K.paraVerificar, 'auditorías internas de referentes') + '</div>' +
+    '<div class="grid g4">' + kpi('Auditorías del año', K.realizadas + ' / ' + K.programadas, 'realizadas / programadas') + kpi('Cumplimiento', K.cumplimiento || '—', 'última de campo o verificación') +
+      kpi('No conformidades abiertas', K.ncAbiertas, K.ncMayores + ' mayores', K.ncMayores ? '#9B2C22' : '') + kpi('Para verificar', K.paraVerificar, 'auditorías internas de referentes') + '</div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Auditoría</th><th>Tipo</th><th>Fecha</th><th>Lugares</th><th>Avance</th><th>Resultado</th><th>Estado</th><th></th></tr></thead><tbody>' +
       L.map(a => '<tr><td class="peq"><b>' + esc(a.ID_AUD) + '</b><div class="mu">' + esc(a.ORIGEN) + (a.AUDITOR ? ' · ' + esc(a.AUDITOR) : '') + '</div></td><td>' + esc(a.TIPO) + '</td><td>' + fechaTxt(a.FECHA) + '</td><td class="peq" style="max-width:260px">' + esc(a.LUGARES) + '</td>' +
         '<td>' + esc(a.RESPONDIDOS || 0) + ' / ' + esc(a.PUNTOS || 0) + '</td><td class="peq">' + (a.CUMPLIMIENTO ? '<b>' + esc(a.CUMPLIMIENTO) + '</b> · ' : '') + esc(a.RESULTADO) + '</td><td>' + audChip(a.ESTADO) + '</td>' +
@@ -2444,8 +2513,8 @@ async function capAgenda(desde) {
   marco('#capag', capTit('Agenda', 'Horarios para servicios y clases abiertas · franjas: ' + esc(r.franjasTexto || 'sin franjas') + ' · <a href="' + CAP_AGENDA_WEB + '" target="_blank" rel="noopener">agenda pública ↗</a>',
       '<button class="btn pri" id="agAbr">+ Abrir horarios</button><button class="btn sec" id="agCla">+ Clase abierta</button><button class="btn sec" id="agFra">Franjas</button><button class="btn sec" id="agTxt">Texto de la semana</button><button class="btn sec" id="agMsg">Correos enviados</button><button class="btn sec" id="agLnk">Copiar link de la agenda</button>') +
     (!r.envioOk ? '<div class="aviso error">Los correos de la agenda no salen: falta «Enviar como» belenpellegrini.hys@gmail.com en el Gmail de la cuenta del libro. Las reservas se guardan igual.</div>' : !r.disparador ? '<div class="aviso">Los recordatorios automáticos (7, 2 y 1 día antes) todavía no están activos. <button class="btn pri" id="agRec" style="margin-left:8px">Activar recordatorios</button></div>' : '') +
-    '<div class="tb5">' + kp('HORARIOS OFRECIDOS', K.ofrecidos, 'próximas 2 semanas') + kp('RESERVADOS POR SERVICIOS', K.reservados, 'de ' + K.ofrecidos + ' para servicios') + kp('CLASES ABIERTAS', K.clases, K.anotados + ' persona(s) anotada(s)') +
-      kp('PARA CONFIRMAR', K.pendientes, 'pedidos pendientes', K.pendientes ? 'var(--wa)' : '') + kp('NO SE PRESENTARON', K.ausencias, 'este mes', K.ausencias ? 'var(--er)' : '') + '</div>' +
+    '<div class="tb5">' + kp('Horarios ofrecidos', K.ofrecidos, 'próximas 2 semanas') + kp('Reservados por servicios', K.reservados, 'de ' + K.ofrecidos + ' para servicios') + kp('Clases abiertas', K.clases, K.anotados + ' persona(s) anotada(s)') +
+      kp('Para confirmar', K.pendientes, 'pedidos pendientes', K.pendientes ? 'var(--wa)' : '') + kp('No se presentaron', K.ausencias, 'este mes', K.ausencias ? 'var(--er)' : '') + '</div>' +
     (r.pendientes.length ? '<section class="card tabla"><div style="padding:14px 18px"><h2>Pedidos para confirmar</h2><span class="mu peq">Reservas con menos de 48 h de anticipación o pedidas por alguien que no está en JEFATURAS.</span></div><table><thead><tr><th>Cuándo</th><th>Servicio y quién pide</th><th>Capacitación</th><th></th></tr></thead><tbody>' +
       r.pendientes.map(t => filaP(t, '<div class="cpn"><button class="btn pri" data-conf="' + esc(t.id) + '">Confirmar</button><button class="btn sec" data-rech="' + esc(t.id) + '">No confirmar</button></div>')).join('') + '</tbody></table></section>' : '') +
     (r.sinMarcar.length ? '<section class="card tabla"><div style="padding:14px 18px"><h2>¿Se dieron?</h2><span class="mu peq">Horarios que ya pasaron y no tienen asistencias registradas. Marcá qué pasó (queda para el informe).</span></div><table><thead><tr><th>Cuándo</th><th>Servicio</th><th>Capacitación</th><th></th></tr></thead><tbody>' +
@@ -2566,8 +2635,8 @@ async function capCumplimiento(fresco) {
   marco('#capcump', capTit('Cumplimiento', esc(T.grupo) + ' · ' + K.personal + ' personas de la base de trabajadores · obligatorias según la MATRIZ · calculado el ' + new Date(T.calculado).toLocaleString('es-AR'),
       (T.grupos && T.grupos.length > 1 ? '<label class="f">Grupo<select class="c" id="cuG">' + T.grupos.map(g => '<option' + (g === T.grupo ? ' selected' : '') + '>' + esc(g) + '</option>').join('') + '</select></label>' : '') +
       '<a class="btn sec" href="#capmat">Matriz</a><a class="btn sec" href="#capjef">Jefaturas</a><button class="btn sec" id="cuAct">Recalcular</button>') +
-    '<div class="tb5">' + kp('META ' + fechaTxt(K.meta), K.diasMeta, 'días para que todo el personal tenga sus obligatorias') + kp('OBLIGATORIAS CUMPLIDAS', K.pct + ' %', K.porEst.map(e => e.codigo + ' ' + e.pct + ' %').join(' · '), colP(K.pct)) +
-      kp('SIN NADA DE INCENDIO', K.sinIncendio, 'servicios (' + K.personasSinIncendio + ' personas): ni extintores, ni seguridad humana, ni evacuación', K.sinIncendio ? 'var(--er)' : '') + kp('NUNCA SE CAPACITARON', K.nunca, 'servicios sin ningún registro', K.nunca ? 'var(--er)' : '') + kp('PERSONAS AL DÍA', K.alDia, 'con todas sus obligatorias vigentes') + '</div>' +
+    '<div class="tb5">' + kp('Meta ' + fechaTxt(K.meta), K.diasMeta, 'días para que todo el personal tenga sus obligatorias') + kp('Obligatorias cumplidas', K.pct + ' %', K.porEst.map(e => e.codigo + ' ' + e.pct + ' %').join(' · '), colP(K.pct)) +
+      kp('Sin nada de incendio', K.sinIncendio, 'servicios (' + K.personasSinIncendio + ' personas): ni extintores, ni seguridad humana, ni evacuación', K.sinIncendio ? 'var(--er)' : '') + kp('Nunca se capacitaron', K.nunca, 'servicios sin ningún registro', K.nunca ? 'var(--er)' : '') + kp('Personas al día', K.alDia, 'con todas sus obligatorias vigentes') + '</div>' +
     (T.jefaturasSinDatos ? '<div class="aviso">' + T.jefaturasSinDatos + ' jefatura(s) tienen responsable pero no su DNI: sin DNI no pueden reservar directo. <a href="#capjef">Completar en Jefaturas</a></div>' : '') +
     '<section class="card tabla"><div style="padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:flex-end"><div><h2>Cumplimiento por servicio</h2><span class="mu peq">De peor a mejor. «Incendio»: extintores, seguridad humana y evacuación; se ofrecen en ese orden y para el cumplimiento alcanza con tener las tres.</span></div>' +
       '<div class="filtros"><label class="f">Mostrar<select class="c" id="cuF">' + sel('todos', 'Todos') + sel('prio', 'Prioritarios') + sel('fuego', 'Sin nada de incendio') + sel('nunca', 'Nunca se capacitaron') + sel('sinj', 'Sin jefatura cargada') + '</select></label><label class="f">Buscar<input class="c" id="cuQ" value="' + esc(CAPCU.q) + '"></label></div></div>' +
@@ -2591,8 +2660,8 @@ async function capServicio(nombre) {
   const kp = (t, v, sub, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + sub + '</small></div>';
   const faltan = Object.keys(s.faltan).map(c => ({ c: c, n: s.faltan[c], e: (s.elegibles || {})[c] || 0 })).sort((a, b) => b.n - a.n);
   marco('#capcump', '<div><a href="#capcump" class="peq">← Cumplimiento</a></div>' + capTit(s.servicio, esc(s.establecimientos) + ' · ' + s.personal + ' personas', '<a class="btn sec" href="' + CAP_AGENDA_WEB + '" target="_blank" rel="noopener">Agenda pública ↗</a>') +
-    '<div class="tb5">' + kp('OBLIGATORIAS', s.pct + ' %', s.cumplidas + ' de ' + s.obligatorias, s.pct >= 80 ? 'var(--ok)' : s.pct >= 40 ? 'var(--wa)' : 'var(--er)') + kp('AL DÍA', s.alDia, 'de ' + s.personal + ' personas') +
-      kp('EXTINTORES', s.fuego.ext + ' / ' + s.fuego.req, '1.° de la secuencia') + kp('SEGURIDAD HUMANA', s.fuego.seg + ' / ' + s.fuego.req, '2.°') + kp('EVACUACIÓN', s.fuego.eva + ' / ' + s.fuego.req, '3.°') + '</div>' +
+    '<div class="tb5">' + kp('Obligatorias', s.pct + ' %', s.cumplidas + ' de ' + s.obligatorias, s.pct >= 80 ? 'var(--ok)' : s.pct >= 40 ? 'var(--wa)' : 'var(--er)') + kp('Al día', s.alDia, 'de ' + s.personal + ' personas') +
+      kp('Extintores', s.fuego.ext + ' / ' + s.fuego.req, '1.° de la secuencia') + kp('Seguridad humana', s.fuego.seg + ' / ' + s.fuego.req, '2.°') + kp('Evacuación', s.fuego.eva + ' / ' + s.fuego.req, '3.°') + '</div>' +
     '<div class="grid g2"><section class="card"><h2>Lo que conviene dictar primero</h2><p class="mu peq" style="margin:4px 0 8px">Lo que más falta y se puede tomar ya (la secuencia de incendio, en orden). Es lo que ve la jefatura en la agenda.</p>' +
       (s.sugeridas.length ? s.sugeridas.slice(0, 6).map((x, i) => '<div class="item"><span><b>' + (i + 1) + '. ' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (x.reservada ? ' · reservada el ' + esc(x.reservada) : '') + '</div></span><span class="chip ' + (i === 0 ? 'pa' : 'gr') + '">' + x.elegibles + ' persona(s)</span></div>').join('') : '<div class="mu">Nada pendiente.</div>') + '</section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h2>Jefatura</h2>' + (J ? '<button class="btn sec" id="svJ">Editar</button>' : '<a class="btn sec" href="#capjef">Cargar jefatura</a>') + '</div>' +
