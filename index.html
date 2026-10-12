@@ -855,6 +855,7 @@ function inicio() {
       tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaAviso', 'Avisar una aparición', 'Abre un caso') + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
+    (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
     '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-01 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
@@ -1353,6 +1354,65 @@ async function regFoto(input) {
     REG = null; actualizarConfig(true); miCargar(true); registros(true);
   } catch (e) { ESPERA_MS = 25000; if (lab) lab.firstChild.textContent = 'Subir foto'; alert(e.message === 'tiempo' ? 'Tardó demasiado. Probá de nuevo.' : (e.message || 'No se pudo subir.')); }
 }
+// ------------------------------------------------------------------ Cocina (módulo 6 · Modulo6.gs): personas que manipulan alimentos y relevamiento BPM / HACCP
+let KP = null;   // { personas, resumen, sugeridas, funciones } del establecimiento
+const K_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'wa'] };
+function irCocina() {
+  try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, dni: SES.dni || '', nombre: SES.nombre })); } catch (e) {}
+  if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico#cocina', '_blank');
+  location.href = (/github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH) + '#cocina';
+}
+async function cocPers(fresco) {
+  VISTA = 'mi'; MIV = { f: () => cocPers() }; vista('wide');
+  if (!KP || fresco) {
+    if (!navigator.onLine) { $('app').innerHTML = miTit('Personas de cocina') + '<p class="mu">Para ver y cargar las personas de cocina hace falta señal.</p>'; return miVolver(); }
+    $('app').innerHTML = miTit('Personas de cocina') + '<p class="mu">Cargando…</p>'; bar(null);
+    try { const r = await api('k_personas', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); KP = r; }
+    catch (e) { $('app').innerHTML = miTit('Personas de cocina') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; return miVolver(); }
+  }
+  const L = KP.personas.filter(p => p.ACTIVO !== 'No'), S = KP.resumen, tag = e => '<span class="tag ' + (K_EST[e] || K_EST.sd)[1] + '">' + (K_EST[e] || K_EST.sd)[0] + '</span>';
+  $('app').innerHTML = miTit('Personas de cocina', 'Quienes manipulan alimentos, de planta o de empresa: carnet de manipulador (vale 3 años) y libreta sanitaria (1 año).') +
+    '<div class="notice' + (S.vencidos ? '' : ' ok') + '"' + (S.vencidos ? ' style="background:var(--erbg);color:var(--er)"' : '') + '><b>' + S.total + ' persona(s)</b> · carnet vigente: ' + S.carnetVigente + ' · libreta vigente: ' + S.libretaVigente + (S.vencidos ? ' · <b>' + S.vencidos + ' vencida(s) o sin documento</b>' : '') + (S.porVencer ? ' · ' + S.porVencer + ' vencen en 60 días' : '') + '</div>' +
+    (L.length ? '<div class="lista">' + L.map(p => '<div class="item"><div><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><small>' + esc([p.FUNCION_COCINA, p.ORIGEN === 'Empresa' ? 'Empresa ' + (p.EMPRESA || '') : 'Planta'].filter(Boolean).join(' · ')) + '<br>Carnet: ' + (K_EST[p.carnet] || K_EST.sd)[0].toLowerCase() + (p.carnetVence ? ' (' + fechaTxt(p.carnetVence) + ')' : '') + ' · Libreta: ' + (K_EST[p.libreta] || K_EST.sd)[0].toLowerCase() + (p.libretaVence ? ' (' + fechaTxt(p.libretaVence) + ')' : '') + '</small>' +
+      '<button class="link" data-act="kEditar" data-arg="' + esc(p.ID) + '">Actualizar datos</button></div>' + tag(p.estado) + '</div>').join('') + '</div>' : '<p class="mu">Todavía no hay personas cargadas.</p>') +
+    '<div class="menu"><button class="big main" data-act="kEditar" data-arg=""><b>+ Agregar persona</b><span>Con la foto del carnet y de la libreta</span></button></div>' +
+    ((KP.sugeridas || []).length ? '<h2>En la base de personal</h2><p class="mu" style="margin-top:-6px">Personas de cocina, alimentación o nutrición que todavía no están en la lista. Tocá una para agregarla.</p><div class="lista">' + KP.sugeridas.slice(0, 30).map((s, i) => '<button class="item" data-act="kSug" data-arg="' + i + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(s.nombre) + '</b><small>' + esc([s.funcion, s.servicio].filter(Boolean).join(' · ')) + '</small></div><span class="tag ok">Agregar</span></button>').join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px"><button class="link" data-act="kAct">Actualizar la lista</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function kEditar(id, base) {
+  const p = id ? KP.personas.find(x => x.ID === id) : null;
+  F = p ? { _f: 'kp', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, ORIGEN: p.ORIGEN || 'Planta', EMPRESA: p.EMPRESA, FUNCION_COCINA: p.FUNCION_COCINA, CARNET_TIENE: p.CARNET_TIENE || 's/d', CARNET_EMISOR: p.CARNET_EMISOR, CARNET_EMISION: p.CARNET_EMISION, CARNET_VENCE: p.CARNET_VENCE,
+      LIBRETA_TIENE: p.LIBRETA_TIENE || 's/d', LIBRETA_EMISOR: p.LIBRETA_EMISOR, LIBRETA_EMISION: p.LIBRETA_EMISION, LIBRETA_VENCE: p.LIBRETA_VENCE, ACTIVO: 'Sí', OBSERVACIONES: p.OBSERVACIONES, carnetUrl: p.CARNET_FOTO, libretaUrl: p.LIBRETA_FOTO }
+    : Object.assign({ _f: 'kp', ORIGEN: 'Planta', CARNET_TIENE: 'Sí', LIBRETA_TIENE: 'Sí', ACTIVO: 'Sí' }, base || {});
+  MIV = { f: formKP }; formKP();
+}
+function formKP() {
+  VISTA = 'mi'; vista('form'); const fun = (KP && KP.funciones) || ['Cocinero/a', 'Ayudante de cocina', 'Otro'];
+  $('app').innerHTML = miTit(F.ID ? 'Actualizar datos de ' + F.APELLIDO_Y_NOMBRE : 'Agregar persona de cocina') + fErr +
+    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre', 'text', 'Ej.: Pérez, Ana') + fInp('DNI', 'DNI', 'number', 'Solo números') + fSeg('ORIGEN', 'Es personal de…', ['Planta', 'Empresa']) + (F.ORIGEN === 'Empresa' ? fInp('EMPRESA', 'Empresa', 'text', 'Nombre de la empresa') : '') +
+    fSel('FUNCION_COCINA', 'Función en la cocina', [['', 'Elegí…']].concat(fun)) +
+    '<h2>Carnet de manipulador de alimentos</h2>' + fSeg('CARNET_TIENE', '¿Tiene carnet?', ['Sí', 'No', 's/d']) +
+    (F.CARNET_TIENE === 'Sí' ? fInp('CARNET_EMISOR', 'Quién lo emitió', 'text', 'Ej.: Municipalidad de Trelew') + '<div class="grid2">' + fInp('CARNET_EMISION', 'Fecha de emisión', 'date') + fInp('CARNET_VENCE', 'Vencimiento (si figura)', 'date') + '</div>' + fFoto('carnet', 'Foto del carnet', 'Opcional') : '') +
+    '<h2>Libreta sanitaria</h2>' + fSeg('LIBRETA_TIENE', '¿Tiene libreta?', ['Sí', 'No', 's/d']) +
+    (F.LIBRETA_TIENE === 'Sí' ? fInp('LIBRETA_EMISOR', 'Quién la emitió', 'text', 'Ej.: Municipalidad de Trelew') + '<div class="grid2">' + fInp('LIBRETA_EMISION', 'Fecha de emisión', 'date') + fInp('LIBRETA_VENCE', 'Vencimiento (si figura)', 'date') + '</div>' + fFoto('libreta', 'Foto de la libreta', 'Opcional') : '') +
+    '<p class="mu" style="font-size:13px">Si no figura el vencimiento, el sistema lo calcula: carnet 3 años y libreta 1 año desde la emisión.</p>' +
+    (F.ID ? fSeg('ACTIVO', '¿Sigue trabajando en la cocina?', ['Sí', 'No']) : '') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="kVolver">Cancelar</button><button class="btn pri" data-act="kGuardar">Guardar</button>');
+}
+async function kGuardar() {
+  if (!F.APELLIDO_Y_NOMBRE) return miErr('Falta el apellido y nombre.');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const b = document.querySelector('[data-act="kGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const d = Object.assign({ quien: SES.persona.nombre }, F); ['carnet', 'carnetNombre', 'carnetUrl', 'libreta', 'libretaNombre', 'libretaUrl', '_f'].forEach(k => delete d[k]);
+  if (F.carnet) d.carnetArchivo = miArch(F, 'carnet'); if (F.libreta) d.libretaArchivo = miArch(F, 'libreta');
+  try { const r = await api('k_persona_guardar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); F = null; KP = null; cocPers(true); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); }
+}
+Object.assign(ACT, { irCocina: () => irCocina(), cocPers: () => { F = null; cocPers(); }, kAct: () => cocPers(true), kVolver: () => { F = null; cocPers(); },
+  kEditar: b => kEditar(b.dataset.arg), kGuardar: () => kGuardar(),
+  kSug: b => { const s = KP.sugeridas[Number(b.dataset.arg)]; kEditar('', { DNI: s.dni, APELLIDO_Y_NOMBRE: s.nombre, ORIGEN: s.empresa ? 'Empresa' : 'Planta', EMPRESA: s.empresa, OBSERVACIONES: [s.funcion, s.servicio].filter(Boolean).join(' · ') }); } });
+
 Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosRes: () => { F = null; REGF = 'Residuos'; registros(true); }, otroMismoLugar: () => nuevoManifiesto(null, ultimoMan().sitio), regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
 
 // ------------------------------------------------------------------ Acciones y campos
