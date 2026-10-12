@@ -319,7 +319,7 @@ async function api(accion, datos, ms) {
   } catch (e) { if (e.message !== 'clave') toast(e.name === 'AbortError' ? 'El sistema tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el sistema.'); throw e; }
   finally { clearTimeout(t); }
 }
-function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3500); }
+function toast(m) { if (m === NAV_VIEJA.message) return; const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3500); }
 
 // ------------------------------------------------------------------ Ingreso
 function ingreso(msg) {
@@ -339,7 +339,16 @@ function ingreso(msg) {
 function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); LS.del('tab'); RES = null; FICHAS = {}; ingreso(msg); }
 
 // ------------------------------------------------------------------ Estructura
+// Pantallas que se dejaron atrás: si terminan de cargar tarde (respuesta lenta del servidor), no se dibujan encima de la actual
+const NAV = { act: null, ruta: null, sync: false, dejadas: new Set() };
+const NAV_VIEJA = new Error('pantalla-anterior');
+window.addEventListener('unhandledrejection', e => { if (e.reason === NAV_VIEJA) e.preventDefault(); });
+window.addEventListener('error', e => { if (e.error === NAV_VIEJA) e.preventDefault(); });
 function marco(activo, contenido) {
+  const base = String(activo).split('/')[0];
+  if (NAV.sync) { NAV.act = base; NAV.dejadas.delete(base); }
+  else if (!NAV.act) { NAV.act = base; NAV.dejadas.delete(base); }
+  else if (base !== NAV.act && NAV.dejadas.has(base)) throw NAV_VIEJA;
   // Pantallas que no están en el menú se marcan en el ítem del que dependen
   const ALIAS = { '#ficha': '#est', '#inv': '#sin', '#buscar': '#trab', '#audr': '#aud', '#capficha': '#capcat', '#capalta': '#capcat', '#capdicnuevo': '#capdic', '#capins': '#capdic', '#capserv': '#capcump', '#capjef': '#capcump' };
   const ruta0 = activo.split('/')[0], ruta = ALIAS[ruta0] || ruta0;
@@ -888,7 +897,14 @@ async function fichaMi(cod) {
 <script src="modulos/acciones.js?v=14.3"></script>
 <script src="modulos/m8.js?v=14.3"></script>
 <script>
+// Cada cambio de pantalla deja anotada la anterior (ver NAV en marco)
 function router() {
+  NAV.dejadas.add(NAV.act || NAV.ruta);
+  NAV.ruta = '#' + (location.hash.replace(/^#/, '').split('/')[0] || 'inicio'); NAV.dejadas.delete(NAV.ruta);
+  NAV.act = null; NAV.sync = true;
+  try { return routerPantalla(); } finally { NAV.sync = false; }
+}
+function routerPantalla() {
   if (!CLAVE) return ingreso();
   const [ruta, arg] = location.hash.replace(/^#/, '').split('/');
   const a = arg ? decodeURIComponent(arg) : '';
