@@ -508,3 +508,17 @@ function menuGenerarInforme() {
 }
 // Para probar desde el editor: genera el informe del relevamiento de ejemplo
 function probarInforme() { Logger.log(JSON.stringify(generarInforme_('EJEMPLO-001'))); }
+
+// Reinicia la numeración de informes del módulo 8 después de borrar pruebas (12/10/2026).
+// Borra los contadores M8_NRO_* y los números asignados a relevamientos que ya no existen en RELEVAMIENTOS.
+function reiniciarContadorM8() {
+  const P = PropertiesService.getScriptProperties(), props = P.getProperties();
+  const ids = filas_(H.REL, 10).map(r => String(r[0]));
+  const borradas = [];
+  Object.keys(props).forEach(k => {
+    if (/^M8_INF_/.test(k) && ids.indexOf(k.replace(/^M8_INF_/, '')) < 0) { P.deleteProperty(k); borradas.push(k + ' = ' + props[k]); }
+  });
+  const quedan = Object.keys(P.getProperties()).filter(k => /^M8_INF_/.test(k));
+  if (!quedan.length) Object.keys(props).filter(k => /^M8_NRO_/.test(k)).forEach(k => { P.deleteProperty(k); borradas.push(k + ' = ' + props[k]); });
+  Logger.log(borradas.length ? 'Borrado: ' + borradas.join(' · ') : 'No había nada para reiniciar.');
+}
