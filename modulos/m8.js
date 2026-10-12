@@ -1,19 +1,18 @@
 // Portal HyS · Módulo 8 · Servicios hospitalarios e infraestructura
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Módulo 8 · Servicios hospitalarios e infraestructura (Modulo8.gs, en la planilla del módulo 8)
-// Tiene su propia dirección de Apps Script: se guarda en M8_API_FIJA o, si está vacía, en este equipo desde la pantalla del módulo.
+// Tiene su propia dirección de Apps Script (M8_API_FIJA).
 const M8_API_FIJA = 'https://script.google.com/macros/s/AKfycbzatb2E3LkLq0E_tx8KQd0PKglLKJtGuEp_52I0JkN2aYVhk9D9i2XPkItmWlz9w9Md/exec';
 const M8_LINKS = {
   planilla: 'https://docs.google.com/spreadsheets/d/1YgClAXgqLHvSRzFLV9AdX5UnGvtdINX__y0QGM7DTPc/edit',
   campo: 'https://docs.google.com/document/d/1cOoofn0GI3VQ82W5q2MXUxSzgrU9y-RMkZ8OjoimhDo/edit',
   modelo: 'https://docs.google.com/document/d/1ckp8CoRYTQpx6WJqKAruvQeHqCMM5FSuuEQ65HaRyN8/edit',
-  ejemplo: 'https://docs.google.com/document/d/14JwCIddSzxNXStsZ5qWBJj27PTMLmw0MJHb-wZ8l4aU/edit',
   libro: 'https://docs.google.com/spreadsheets/d/1zJ_7xbnemqMvkhMYrJoN6F0cWUUiA1LrJIlpx9XKeB8/edit',
   carpeta: 'https://drive.google.com/drive/folders/1_2lcPXz9MVwHufCbsRy5KAO-IA5Q0PYW',
   manual: 'https://docs.google.com/document/d/1SAArtXiru7DcfrUHEMqs9Phzma07lIj_7mkT2pYKjuc/edit'
 };
 let M8 = null, M8F = { estado: 'abiertos', prio: '', serv: '' };
-const m8url = () => M8_API_FIJA || LS.get('m8api', '');
+const m8url = () => M8_API_FIJA;
 async function m8api(accion, datos, ms) {
   const url = m8url(); if (!url) throw new Error('sin-url');
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
@@ -25,22 +24,10 @@ async function m8api(accion, datos, ms) {
   } catch (e) { if (e.message !== 'clave8') toast(e.name === 'AbortError' ? 'El módulo 8 tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el módulo 8.'); throw e; }
   finally { clearTimeout(t); }
 }
-function m8config(ruta) {
-  marco(ruta, '<div class="cab"><div><span class="mu peq">8 · Servicios e infraestructura</span><h1>Conectar el módulo 8</h1></div></div>' +
-    '<section class="card" style="display:flex;flex-direction:column;gap:12px;max-width:720px"><p style="margin:0">El módulo 8 trabaja con su propia planilla. Para conectarlo, pegá la dirección de la aplicación web del módulo 8 (la que da Apps Script al implementar, termina en <b>/exec</b>). Se guarda en este equipo.</p>' +
-    '<label class="f">Dirección de la aplicación web<input class="c" id="m8u" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(m8url()) + '"></label>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="m8g">Conectar</button><a class="btn sec" href="' + M8_LINKS.planilla + '" target="_blank" rel="noopener">Abrir la planilla ↗</a></div></section>');
-  $('m8g').onclick = async () => {
-    const u = $('m8u').value.trim(); if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(u)) return toast('La dirección tiene que empezar con https://script.google.com/macros/s/ y terminar en /exec.');
-    LS.set('m8api', u);
-    try { const r = await m8api('m8_ping'); if (!r.ok) { toast(r.mensaje || 'No respondió.'); return; } toast('Módulo 8 conectado (versión ' + r.version + ').'); M8 = null; router(); } catch (e) {}
-  };
-}
 async function m8cargar(ruta, fresco) {
-  if (!m8url()) { m8config(ruta); return false; }
   if (!M8 || fresco) {
     cargando(ruta, 'Leyendo el módulo 8…');
-    try { M8 = await m8api('m8_datos'); } catch (e) { if (e.message === 'sin-url') m8config(ruta); else marco(ruta, '<div class="aviso error">No se pudo leer el módulo 8. <button class="link" id="m8re">Reintentar</button> · <a href="#m8config">Revisar la conexión</a></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
+    try { M8 = await m8api('m8_datos'); } catch (e) { marco(ruta, '<div class="aviso error">No se pudo leer el módulo 8. <button class="link" id="m8re">Reintentar</button></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
     if (!M8.ok) { marco(ruta, '<div class="aviso error">' + esc(M8.mensaje || 'Error del módulo 8.') + '</div>'); M8 = null; return false; }
   }
   return true;

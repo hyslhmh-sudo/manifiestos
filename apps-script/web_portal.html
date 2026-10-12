@@ -266,7 +266,7 @@ const APP_URL = RESPALDO ? API_URL + '?p=app' : 'https://hyslhmh-sudo.github.io/
 const CAP_URL = 'https://docs.google.com/spreadsheets/d/1rrYVwT83jGfPTYvgIxH9eSaVl1apqmwcoExCvyEDHSw/edit';   // módulo 7 · Capacitaciones (su planilla; tiene su propio panel)
 let BUS = { q: '', r: null };
 const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
-  ' . Se ingresa con la misma clave que usan para cargar los manifiestos. Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
+  ' . Se ingresa con el DNI y la clave personal que les dio Higiene y Seguridad (o, mientras tanto, con la clave del establecimiento). Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
 // Informes del diagnóstico (Google Doc editable + PDF)
 function informesDiag() {
   const L = DG.D.informes || [], cerrado = DG.estado === 'Cerrado';
@@ -294,7 +294,7 @@ function activarInformes() {
   };
 }
 function compartirDiag(nombre) {
-  return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + DIAG_URL + '" target="_blank" rel="noopener">' + DIAG_URL + '</a></div><div class="mu peq">Cada referente entra con la clave de su establecimiento (la misma de los manifiestos).</div></div>' +
+  return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + DIAG_URL + '" target="_blank" rel="noopener">' + DIAG_URL + '</a></div><div class="mu peq">Cada referente entra con su DNI y su clave personal (Más › «Accesos»); mientras no la tenga, con la clave de su establecimiento.</div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-copiar="enlace">Copiar enlace</button><button class="btn sec" data-copiar="mensaje">Copiar mensaje</button><a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(diagMensaje(nombre)) + '">Enviar por WhatsApp</a></div></section>';
 }
 function activarCompartir(nombre) {
@@ -455,7 +455,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-12 · 14.11';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-12 · 14.12';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -490,7 +490,7 @@ const AYUDA = {
   '#buscar': ['Buscador', ['Escribí un DNI, un apellido o un N.º CH en el recuadro de arriba del menú. Muestra las personas de todos los establecimientos y los siniestros que coinciden.', 'Tocá una persona para abrir su ficha: datos, capacitaciones, siniestros y exposición.']],
   '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
   '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
-  '#docs': ['Registro de informes', ['Los informes que genera el sistema (diagnósticos, relevamientos, NTE, módulo 8) toman solos su número HYSL y quedan acá, con su documento y su PDF.', 'Un número no se borra: si un informe no va, se anula con motivo.', 'Las notas no se numeran acá: las numera el hospital (Mesa de Entradas).']],
+  '#docs': ['Registro de informes', ['Los informes que genera el sistema (diagnósticos, relevamientos de cocina, NTE) toman solos su número HYSL y quedan acá, con su documento y su PDF.', 'Un número no se borra: si un informe no va, se anula con motivo.', 'Las notas no se numeran acá: las numera el hospital (Mesa de Entradas). Los informes del módulo 8 llevan su propia numeración (EST-M8-001/año).']],
   '#docest': ['2 · Documentos de los establecimientos', ['Los manuales, guías, POE, protocolos y PTS propios de cada establecimiento, de toda la red. Los referentes los cargan desde «Mi establecimiento» › Documentos; vos podés cargarlos y corregirlos desde acá para cualquier establecimiento.', 'Datos de cada documento: tema, tipo (manual, guía, POE, protocolo, PTS, plan, instructivo u otro), código o número si tiene, nombre completo, versión, vigente desde y vence (si tiene vencimiento), y el archivo (PDF o foto).', 'Cuadro por establecimiento y tema: cantidad de documentos vigentes. Verde, al día; amarillo, alguno vence en 60 días; rojo, alguno vencido. Tocá un número para ver esos documentos abajo.', 'Si se carga uno con el mismo código o el mismo nombre que otro vigente del establecimiento, el anterior queda «Reemplazado». Anular pide motivo y no borra nada.', 'Dónde queda: planilla BASE COMÚN › hoja DOCUMENTOS_EST (una fila por documento, columna FECHA_VENCIMIENTO incluida) y archivo en Drive › SISTEMA HyS › MÓDULO 2 · DOCUMENTOS › Establecimientos › carpeta del establecimiento › Documentos propios.', 'Los vencidos y por vencer aparecen en el Tablero, en «Requiere atención», y en los pendientes de «Mi establecimiento» de ese establecimiento.']],
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
   '#coc': ['6 · Cocinas hospitalarias', ['Estado de las cocinas de toda la red: relevamientos BPM / HACCP (resultado y puntos críticos) y personas que manipulan alimentos, con su carnet y su libreta.', 'Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Lo decide el TIPO de la BASE COMÚN.', '«Requiere atención»: carnets o libretas vencidos, que vencen en 60 días o sin dato. Tocá uno para ir a las personas de ese establecimiento.', 'Tocá un establecimiento de la tabla para abrir su relevamiento.']],
@@ -1843,7 +1843,6 @@ const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JP
 const CAP_PANEL = 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';
 let CAPT = null, CAPRED = 'Red Trelew', CAPBANDA = '', CAPTODOS = false;
 async function capApi(accion, datos, ms) {
-  if (!CAP_API) throw new Error('sinurl');
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
   try {
     let txt = '';
@@ -1866,8 +1865,7 @@ async function capApi(accion, datos, ms) {
 }
 function capError(e) {
   const m = e && e.message;
-  const txt = m === 'sinurl' ? 'Falta conectar el libro de capacitaciones: en el portal, la constante CAP_API todavía está vacía (ver el manual, paso «Conectar el tablero»).'
-    : m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
+  const txt = m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
     : (e && e.name === 'AbortError') ? 'El libro de capacitaciones tardó demasiado. Probá «Actualizar» en un rato.'
     : 'No se pudo leer el libro de capacitaciones' + (m && m !== 'error' ? ': ' + m : '.') ;
   return '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
@@ -3319,19 +3317,18 @@ async function acciones(fresco) {
 // Portal HyS · Módulo 8 · Servicios hospitalarios e infraestructura
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Módulo 8 · Servicios hospitalarios e infraestructura (Modulo8.gs, en la planilla del módulo 8)
-// Tiene su propia dirección de Apps Script: se guarda en M8_API_FIJA o, si está vacía, en este equipo desde la pantalla del módulo.
+// Tiene su propia dirección de Apps Script (M8_API_FIJA).
 const M8_API_FIJA = 'https://script.google.com/macros/s/AKfycbzatb2E3LkLq0E_tx8KQd0PKglLKJtGuEp_52I0JkN2aYVhk9D9i2XPkItmWlz9w9Md/exec';
 const M8_LINKS = {
   planilla: 'https://docs.google.com/spreadsheets/d/1YgClAXgqLHvSRzFLV9AdX5UnGvtdINX__y0QGM7DTPc/edit',
   campo: 'https://docs.google.com/document/d/1cOoofn0GI3VQ82W5q2MXUxSzgrU9y-RMkZ8OjoimhDo/edit',
   modelo: 'https://docs.google.com/document/d/1ckp8CoRYTQpx6WJqKAruvQeHqCMM5FSuuEQ65HaRyN8/edit',
-  ejemplo: 'https://docs.google.com/document/d/14JwCIddSzxNXStsZ5qWBJj27PTMLmw0MJHb-wZ8l4aU/edit',
   libro: 'https://docs.google.com/spreadsheets/d/1zJ_7xbnemqMvkhMYrJoN6F0cWUUiA1LrJIlpx9XKeB8/edit',
   carpeta: 'https://drive.google.com/drive/folders/1_2lcPXz9MVwHufCbsRy5KAO-IA5Q0PYW',
   manual: 'https://docs.google.com/document/d/1SAArtXiru7DcfrUHEMqs9Phzma07lIj_7mkT2pYKjuc/edit'
 };
 let M8 = null, M8F = { estado: 'abiertos', prio: '', serv: '' };
-const m8url = () => M8_API_FIJA || LS.get('m8api', '');
+const m8url = () => M8_API_FIJA;
 async function m8api(accion, datos, ms) {
   const url = m8url(); if (!url) throw new Error('sin-url');
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
@@ -3343,22 +3340,10 @@ async function m8api(accion, datos, ms) {
   } catch (e) { if (e.message !== 'clave8') toast(e.name === 'AbortError' ? 'El módulo 8 tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el módulo 8.'); throw e; }
   finally { clearTimeout(t); }
 }
-function m8config(ruta) {
-  marco(ruta, '<div class="cab"><div><span class="mu peq">8 · Servicios e infraestructura</span><h1>Conectar el módulo 8</h1></div></div>' +
-    '<section class="card" style="display:flex;flex-direction:column;gap:12px;max-width:720px"><p style="margin:0">El módulo 8 trabaja con su propia planilla. Para conectarlo, pegá la dirección de la aplicación web del módulo 8 (la que da Apps Script al implementar, termina en <b>/exec</b>). Se guarda en este equipo.</p>' +
-    '<label class="f">Dirección de la aplicación web<input class="c" id="m8u" placeholder="https://script.google.com/macros/s/…/exec" value="' + esc(m8url()) + '"></label>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" id="m8g">Conectar</button><a class="btn sec" href="' + M8_LINKS.planilla + '" target="_blank" rel="noopener">Abrir la planilla ↗</a></div></section>');
-  $('m8g').onclick = async () => {
-    const u = $('m8u').value.trim(); if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(u)) return toast('La dirección tiene que empezar con https://script.google.com/macros/s/ y terminar en /exec.');
-    LS.set('m8api', u);
-    try { const r = await m8api('m8_ping'); if (!r.ok) { toast(r.mensaje || 'No respondió.'); return; } toast('Módulo 8 conectado (versión ' + r.version + ').'); M8 = null; router(); } catch (e) {}
-  };
-}
 async function m8cargar(ruta, fresco) {
-  if (!m8url()) { m8config(ruta); return false; }
   if (!M8 || fresco) {
     cargando(ruta, 'Leyendo el módulo 8…');
-    try { M8 = await m8api('m8_datos'); } catch (e) { if (e.message === 'sin-url') m8config(ruta); else marco(ruta, '<div class="aviso error">No se pudo leer el módulo 8. <button class="link" id="m8re">Reintentar</button> · <a href="#m8config">Revisar la conexión</a></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
+    try { M8 = await m8api('m8_datos'); } catch (e) { marco(ruta, '<div class="aviso error">No se pudo leer el módulo 8. <button class="link" id="m8re">Reintentar</button></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
     if (!M8.ok) { marco(ruta, '<div class="aviso error">' + esc(M8.mensaje || 'Error del módulo 8.') + '</div>'); M8 = null; return false; }
   }
   return true;
@@ -3570,7 +3555,6 @@ function routerPantalla() {
   if (ruta === 'm8plan') return m8Plan();
   if (ruta === 'm8serv') return m8Servicios();
   if (ruta === 'm8libros') return m8Libros();
-  if (ruta === 'm8config') return m8config('#m8');
   if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');

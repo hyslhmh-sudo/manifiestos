@@ -12,7 +12,6 @@ const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JP
 const CAP_PANEL = 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';
 let CAPT = null, CAPRED = 'Red Trelew', CAPBANDA = '', CAPTODOS = false;
 async function capApi(accion, datos, ms) {
-  if (!CAP_API) throw new Error('sinurl');
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
   try {
     let txt = '';
@@ -35,8 +34,7 @@ async function capApi(accion, datos, ms) {
 }
 function capError(e) {
   const m = e && e.message;
-  const txt = m === 'sinurl' ? 'Falta conectar el libro de capacitaciones: en el portal, la constante CAP_API todavía está vacía (ver el manual, paso «Conectar el tablero»).'
-    : m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
+  const txt = m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
     : (e && e.name === 'AbortError') ? 'El libro de capacitaciones tardó demasiado. Probá «Actualizar» en un rato.'
     : 'No se pudo leer el libro de capacitaciones' + (m && m !== 'error' ? ': ' + m : '.') ;
   return '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
