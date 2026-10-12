@@ -43,7 +43,7 @@ async function cocLista() {
   if (!COCT) cargando('#cocdiag', 'Leyendo los relevamientos…');
   if (!(await cocDatos())) return;
   const E = COCT.establecimientos.slice().sort((a, b) => (a.area + (a.rural ? '1' : '0') + a.nombre).localeCompare(b.area + (b.rural ? '1' : '0') + b.nombre));
-  marco('#cocdiag', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Relevamiento BPM / HACCP</h1><span class="mu peq">Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Línea de base: no incluye plan de mejora.</span></div></div>' +
+  marco('#cocdiag', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Relevamiento BPM / HACCP</h1><span class="mu peq">Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Línea de base: el informe propone mejoras (punto 6) que pasan al plan de acción.</span></div></div>' +
     '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Alcance</th><th>Último relevamiento</th><th>Resultado</th><th></th></tr></thead><tbody>' +
     E.map(e => '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(e.alcance) + '</td><td>' + (e.diag ? fechaTxt(e.diag.fecha) : '—') + '</td><td>' + chipDiag(e.diag) + '</td><td><span class="link">' + (e.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
     '</tbody></table></section>');
@@ -63,7 +63,7 @@ const DCFG_COC = {
   sinLugares: () => (DG.R['|COC01'] || {}).valor === 'No hay servicio de alimentación',   // sin servicio de alimentación se cierra solo con la primera pregunta
   extra: () => { const P = DG.D.personas; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Personas de cocina</h2><span class="mu peq">' +
     (P && P.total ? P.total + ' cargada(s): carnet vigente ' + P.carnetVigente + ', libreta vigente ' + P.libretaVigente + (P.vencidos ? ', ' + P.vencidos + ' vencida(s) o sin documento' : '') + '. Las preguntas de carnet y libreta se sugieren con estos datos.' : 'Todavía no hay personas cargadas: conviene cargarlas antes, así las preguntas de carnet y libreta se completan solas.') +
-    '</span></div><a class="btn sec" href="#cocper/' + encodeURIComponent(DG.cod) + '">Ver personas de cocina</a></section>' + informesDiag(); },
+    '</span></div><a class="btn sec" href="#cocper/' + encodeURIComponent(DG.cod) + '">Ver personas de cocina</a></section>' + informesDiag() + cocPlanCard(); },
   alPintar: () => activarInformes(), accInforme: 'p_coc_informe', accCorreo: 'p_coc_informe_correo',
   nombre: cod => ((COCT && COCT.establecimientos.find(e => e.cod === cod)) || (RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: () => { COCT = null; }
@@ -136,3 +136,7 @@ function cocPersonaForm(p, base) {
     try { const r = await api('p_coc_dni', { dni: dni.value }); if (r.ok && r.persona) { nomI.value = r.persona.nombre; toast('Encontrado en la base de trabajadores: ' + r.persona.nombre + (r.persona.est ? ' (' + r.persona.est + ')' : '') + '.'); } } catch (e) {} };
   return m;
 }
+// Tarjeta del plan de acción (12/10/2026): las mejoras del informe (punto 6) pasan solas al plan
+function cocPlanCard() { const I = (DG.D.informes || [])[0]; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Plan de acción</h2><span class="mu peq">' +
+  (I ? 'Las mejoras del informe ' + esc(I.codigo) + ' están en el plan de acción: ahí se carga el envío a la Dirección, la respuesta, el avance y la evidencia.' : 'Al generar el informe, sus mejoras (punto 6) pasan solas al plan de acción.') + '</span></div>' +
+  (I ? '<a class="btn sec" href="#plan/' + encodeURIComponent(I.codigo) + '">Ver el plan de acción</a>' : '') + '</section>'; }
