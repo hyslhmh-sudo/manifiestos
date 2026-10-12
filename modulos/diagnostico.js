@@ -61,9 +61,9 @@ function diagAplica(it, sitio) {
   const cond = String(it && it.CONDICION || '').trim(); if (!cond) return true;
   const porId = DG.porId || (DG.porId = Object.fromEntries(DG.D.items.map(i => [i.ID, i])));
   return cond.split(';').every(c => {
-    // «LUGAR ~ Tanque|Cisterna»: solo en los lugares cuyo nombre contiene alguna de esas palabras («LUGAR !~ …»: en los demás)
+    // «LUGAR ~ Tanque|Cisterna»: solo en los lugares con alguna palabra que empiece así («LUGAR !~ …»: en los demás)
     const L = /^\s*LUGAR\s*(!~|~)\s*(.+?)\s*$/i.exec(c);
-    if (L) { const t = String(sitio || '').toLowerCase(), hit = L[2].split('|').some(o => o.trim() && t.indexOf(o.trim().toLowerCase()) >= 0); return L[1] === '~' ? hit : !hit; }
+    if (L) { const pal = String(sitio || '').toLowerCase().split(/[^a-z0-9áéíóúüñ]+/), hit = L[2].split('|').some(o => { o = o.trim().toLowerCase(); return o && pal.some(w => w.indexOf(o) === 0); }); return L[1] === '~' ? hit : !hit; }
     const m = /^\s*([A-Z]{3}\d{2})\s*(~|!=|=)\s*(.+?)\s*$/.exec(c); if (!m) return true;
     const ref = porId[m[1]], s = ref && ref.NIVEL === 'S' ? (sitio || '') : '', r = DG.R[s + '|' + m[1]] || {}, v = String(r.valor || r.resp || '');
     if (m[2] === '~') return m[3].split('|').some(o => v.split('|').indexOf(o.trim()) >= 0);
