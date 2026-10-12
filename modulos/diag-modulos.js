@@ -48,7 +48,8 @@ const dgmConfig = m => { const P = DGMP[m]; return {
   volver: '<a href="' + P.ruta + '" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los diagnósticos de ' + (m === 'agua' ? 'agua' : 'plagas') + '</a>',
   titulo: () => P.h1,
   txtLugares: P.txtLugares, txtFaltaLugar: 'Falta relevar al menos un lugar.',
-  extra: () => '<section class="card peq"><b>Informe y plan de acción.</b> Cuando el diagnóstico esté cerrado, el informe a la Dirección y el plan con propuestas de mejora se generan desde acá (próxima etapa).</section>',
+  extra: () => informesDiag() + '<section class="card peq"><b>Plan de acción.</b> Las mejoras del informe (punto 6, de la columna PROPUESTA del cuestionario) pasan al plan de acción en la próxima etapa.</section>',
+  alPintar: () => activarInformes(), accInforme: 'p_dgm_informe_' + m, accCorreo: 'p_dgm_correo_' + m,
   nombre: cod => ((DGMT[m] && DGMT[m].establecimientos && DGMT[m].establecimientos.find(e => e.cod === cod)) || (RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: () => { DGMT[m] = null; }
 }; };
