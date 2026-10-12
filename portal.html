@@ -3007,8 +3007,8 @@ function router() {
   return inicio();
 }
 window.addEventListener('hashchange', router);
-// Al abrir el portal (pestaña nueva) arranca en el Tablero; los enlaces directos a una ficha o un registro se respetan
-try { if (!sessionStorage.getItem('portalAbierto')) { sessionStorage.setItem('portalAbierto', '1'); if (location.hash && location.hash.indexOf('/') < 0 && !/^#?(inicio)?$/.test(location.hash)) history.replaceState(null, '', '#inicio'); } } catch (e) {}
+// Siempre abre en el Tablero, con los módulos del menú cerrados (aunque la dirección guardada o el marcador apunte a otra pantalla)
+try { sessionStorage.removeItem('navAb'); sessionStorage.removeItem('portalAbierto'); if (location.hash !== '#inicio') history.replaceState(null, '', '#inicio'); } catch (e) {}
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ov').hidden) { $('ov').hidden = true; $('ov').innerHTML = ''; } });
 router();
 </script>
