@@ -8,7 +8,7 @@ async function planLista() {
   cargando('#plan', 'Leyendo los planes de acción…');
   let R; try { R = await api('p_plan_listar', {}); } catch (e) { return; }
   const L = R.informes || [];
-  marco('#plan', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido. Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
+  marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos · Agua · Plagas</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido (diagnósticos y auditorías de residuos, diagnósticos de agua y de plagas). Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Establecimiento</th><th>Informe</th><th>Enviado</th><th>Recom.</th><th>Cumplidas</th><th>En curso</th><th>Vencidas</th><th>Sin respuesta</th><th></th></tr></thead><tbody>' +
       L.map(i => '<tr><td><b>' + esc(i.nombre) + '</b></td><td class="peq">' + esc(i.codigo) + '</td><td>' + (i.enviado ? plF(i.enviado) : '<span class="chip gr">Sin enviar</span>') + '</td><td>' + i.total + '</td><td>' + (i.c['Cumplida'] || 0) + '</td><td>' + (i.c['En curso'] || 0) + '</td><td>' + (i.c['Vencida'] ? '<b style="color:#9B2C22">' + i.c['Vencida'] + '</b>' : 0) + '</td><td>' + (i.c['Sin respuesta'] || 0) + '</td><td><a class="link" href="#plan/' + encodeURIComponent(i.codigo) + '">Abrir</a></td></tr>').join('') + '</tbody></table>'
       : '<div class="vacio">Todavía no hay informes emitidos. El plan se crea solo al generar el informe de un diagnóstico cerrado.</div>') + '</section>');

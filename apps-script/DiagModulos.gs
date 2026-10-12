@@ -179,6 +179,7 @@ function dgmPortal_(accion, x) {
 }
 
 // ------------------------------------------------------------------ INFORME A LA DIRECCIÓN (Google Doc editable + PDF, con número HYSL)
+// Al emitirlo, sus mejoras pasan al plan de acción (Plan.gs › PLAN_ACCION) y se ven en «Acciones (todos los módulos)».
 // Estructura: portada · índice · resumen ejecutivo · 1. Presentación · 2. Método de trabajo · 3. Descripción de los hechos ·
 // 4. Análisis de los datos · 5. Conclusión · 6. Recomendaciones (de la columna PROPUESTA de ITEMS) · cierre y firma · anexo fotográfico.
 // Notas al pie con la normativa (infNotas_). Borrador en versión 0: se revisa y se firma.
@@ -374,7 +375,9 @@ function dgmInforme_(m, x) {
   const notasOk = infNotas_(doc.getId(), notas);
   const pdf = carpeta.createFile(DriveApp.getFileById(doc.getId()).getAs('application/pdf')).setName(titulo + '.pdf');
   docActualizar_({ codigo: codigo, documento: doc.getUrl(), pdf: pdf.getUrl(), estado: 'Emitido', motivo: revision ? 'Revisión ' + revision + ' (' + hoy + ')' : '' });
-  return { ok: true, codigo: codigo, revision: revision, doc: doc.getUrl(), pdf: pdf.getUrl(), correo: dgmCorreo_(X, cfg, codigo, H), notasAlPie: notasOk, criticos: crit.length, mejoras: H.length, aRelevar: nose.length };
+  // Plan de acción: cada mejora del punto 6 pasa a DIAGNÓSTICO › PLAN_ACCION (el mismo plan que residuos; nunca pisa respuestas ni estados)
+  let plan = true; try { planDesdeInforme_(X, H.map((h, i) => ({ n: i + 1, h: h, accion: h.propuesta, lugar: h.lugares.join(', '), costo: 's/d', cargo: 's/d (a definir por la Dirección)', prioridad: h.prioridad, plazo: h.dias + ' días' })), codigo); } catch (e) { plan = false; }
+  return { ok: true, codigo: codigo, revision: revision, doc: doc.getUrl(), pdf: pdf.getUrl(), correo: dgmCorreo_(X, cfg, codigo, H), notasAlPie: notasOk, criticos: crit.length, mejoras: H.length, aRelevar: nose.length, plan: plan };
 }
 
 // Texto del correo de envío (no se envía: se copia desde el portal)
@@ -410,9 +413,9 @@ function dgmProbarInforme_(m, cod) {
   const A = { ID_DIAG: 'PRUEBA-' + m.toUpperCase(), CODIGO: cod, FECHA: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), MODALIDAD: 'Visita', RELEVADO_POR: 'Belén Pellegrini', ENTREVISTADO: 's/d (prueba)', ESTADO: 'Cerrado' };
   const X = { ok: true, m: m, A: A, items: items, porId: porId, R: R, calc: pDiagCalcular_(items, R), E: est_(cod) || {}, cod: cod,
     D: { nombre: f ? f.v[1] : cod, sitios: sitios, actual: A, respuestas: R, items: items } };
-  const g = this, orig = { dgmInfDatos_: g.dgmInfDatos_, docNumero_: g.docNumero_, docActualizar_: g.docActualizar_, pInformesDiag_: g.pInformesDiag_ };
+  const g = this, orig = { dgmInfDatos_: g.dgmInfDatos_, docNumero_: g.docNumero_, docActualizar_: g.docActualizar_, pInformesDiag_: g.pInformesDiag_, planDesdeInforme_: g.planDesdeInforme_ };
   try {
-    g.dgmInfDatos_ = () => X; g.docNumero_ = () => ({ ok: true, codigo: 'PRUEBA-' + cod + '-' + m.toUpperCase() }); g.docActualizar_ = () => ({ ok: true }); g.pInformesDiag_ = () => [];
+    g.dgmInfDatos_ = () => X; g.docNumero_ = () => ({ ok: true, codigo: 'PRUEBA-' + cod + '-' + m.toUpperCase() }); g.docActualizar_ = () => ({ ok: true }); g.pInformesDiag_ = () => []; g.planDesdeInforme_ = () => true;
     return dgmInforme_(m, { cod: cod, id: A.ID_DIAG });
   } finally { Object.keys(orig).forEach(n => g[n] = orig[n]); }
 }
