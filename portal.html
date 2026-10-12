@@ -372,6 +372,7 @@ function marco(activo, contenido) {
     grp('cap', 'school', '7 · Capacitaciones', it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)')) +
     grp('m8', 'domain', '8 · Servicios e infraestructura', it('#m8', '', 'Tablero', 1) + it('#m8rel', '', 'Nuevo relevamiento', 1) + it('#m8plan', '', 'Plan de acción', 1) + it('#m8serv', '', 'Edificios y servicios', 1) + it('#m8libros', '', 'Libros para la red', 1) + ext(M8_LINKS.planilla, 'Planilla del módulo 8') + ext(M8_LINKS.campo, 'Listas de campo')) +
     '<div class="titu mod">Más</div>' +
+    it('#accesos', 'key', 'Accesos (DNI y claves)') +
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
     grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)'))) +
@@ -454,7 +455,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-12 · 14.3';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-12 · 14.4';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -469,6 +470,7 @@ const AYUDA = {
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
   '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa (y al menos un lugar, solo si hay puntos por lugar activos en ITEMS).', '«Generar informe» arma el informe a la Dirección y su plan de acción.']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
+  '#accesos': ['Accesos por persona', ['Una fila por persona: con su DNI y su clave entra a «Mi establecimiento» y a la página de diagnóstico, y ve solo los establecimientos y módulos marcados.', '«Nueva persona» o tocá una fila para editarla. Para que entre: Estado Activo, DNI, al menos un establecimiento y un módulo, y su clave («Generar clave»).', '«Copiar mensaje» arma el texto con el enlace, el DNI y la clave para pasárselo por chat o correo (el sistema no envía nada solo).', 'Para quitar un acceso: Estado = Baja. La clave común del establecimiento deja de ver un módulo cuando alguien activo de ese establecimiento lo tiene con clave propia (cuadro de abajo).', 'Todo se puede hacer también en BASE COMÚN › ACCESOS («Abrir la hoja»); los cambios tardan hasta 5 minutos en verse en «Mi establecimiento».']],
   '#acciones': ['Acciones de todos los módulos', ['Junta en una sola lista lo abierto de Residuos (diagnóstico y auditorías), Agua, Plagas y Servicios e infraestructura. Filtrá por establecimiento o módulo; tocá una fila para ir a editarla en su módulo. Primero aparecen las vencidas.']],
   '#plan': ['Plan de acción', ['Una lista por informe o auditoría, con estado, plazos, respuesta de la Dirección y evidencia.']],
   '#agua': ['3 · Agua', ['Agua NO APTA abierta y tanques de toda la red, con enlace a la ficha de cada establecimiento.', 'Los datos los carga cada establecimiento desde «Mi establecimiento».']],
@@ -884,18 +886,19 @@ async function fichaMi(cod) {
 
 // ------------------------------------------------------------------ Navegación
 </script>
-<script src="modulos/riesgos.js?v=14.3"></script>
-<script src="modulos/plan.js?v=14.3"></script>
-<script src="modulos/documentos.js?v=14.3"></script>
-<script src="modulos/cocinas.js?v=14.3"></script>
-<script src="modulos/trabajadores.js?v=14.3"></script>
-<script src="modulos/siniestros.js?v=14.3"></script>
-<script src="modulos/agua-plagas.js?v=14.3"></script>
-<script src="modulos/capacitaciones.js?v=14.3"></script>
-<script src="modulos/residuos.js?v=14.3"></script>
-<script src="modulos/diagnostico.js?v=14.3"></script>
-<script src="modulos/acciones.js?v=14.3"></script>
-<script src="modulos/m8.js?v=14.3"></script>
+<script src="modulos/riesgos.js?v=14.4"></script>
+<script src="modulos/plan.js?v=14.4"></script>
+<script src="modulos/documentos.js?v=14.4"></script>
+<script src="modulos/cocinas.js?v=14.4"></script>
+<script src="modulos/trabajadores.js?v=14.4"></script>
+<script src="modulos/siniestros.js?v=14.4"></script>
+<script src="modulos/agua-plagas.js?v=14.4"></script>
+<script src="modulos/capacitaciones.js?v=14.4"></script>
+<script src="modulos/residuos.js?v=14.4"></script>
+<script src="modulos/diagnostico.js?v=14.4"></script>
+<script src="modulos/accesos.js?v=14.4"></script>
+<script src="modulos/acciones.js?v=14.4"></script>
+<script src="modulos/m8.js?v=14.4"></script>
 <script>
 // Cada cambio de pantalla deja anotada la anterior (ver NAV en marco)
 function router() {
@@ -930,6 +933,7 @@ function routerPantalla() {
   if (ruta === 'capjef') return capJefaturas();
   if (ruta === 'capmat') return capMatriz();
   if (ruta === 'acciones') return acciones();
+  if (ruta === 'accesos') return accesosPantalla();
   if (ruta === 'm8') return m8Tablero();
   if (ruta === 'm8rel') return m8Relev(a);
   if (ruta === 'm8plan') return m8Plan();
