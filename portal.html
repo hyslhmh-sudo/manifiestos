@@ -3210,6 +3210,8 @@ async function m8Plan() {
 }
 
 // Edificios y servicios
+// Suma a la lista el valor que ya tiene la fila, para no perderlo al editar
+const m8con = (op, v) => v && op.indexOf(String(v)) < 0 ? op.concat([String(v)]) : op;
 async function m8Servicios() {
   if (!(await m8cargar('#m8serv'))) return;
   const S = M8.servicios, TIPOS = ['Edificio', 'Guardia', 'Quirófano', 'UTI', 'UCIP', 'Neonatología', 'Esterilización', 'Internación', 'Laboratorio', 'Diagnóstico por imágenes', 'Hemoterapia', 'Farmacia', 'Lavadero', 'Salud Mental', 'Anatomía Patológica', 'Hospital de día oncológico', 'Cocina', 'Consultorios'];
@@ -3217,7 +3219,10 @@ async function m8Servicios() {
     '<section class="card tabla"><table><thead><tr><th>ID</th><th>Servicio</th><th>Establecimiento</th><th>Edificio</th><th>Tipo</th><th>Criticidad</th><th>Directriz</th></tr></thead><tbody>' +
     S.map((s, n) => '<tr class="cl" data-n="' + n + '"><td><b>' + esc(s.id) + '</b></td><td>' + esc(s.servicio) + '</td><td>' + esc(s.est) + '</td><td>' + esc(s.edificio) + '</td><td>' + esc(s.tipo) + '</td><td>' + esc(s.criticidad) + '</td><td class="peq">' + esc(s.directriz) + '</td></tr>').join('') + '</tbody></table></section>' +
     '<p class="mu peq">Criticidad: 1 baja, 2 media, 3 alta (áreas críticas y edificios que las alojan). Si falta un dato, escribí «s/d».</p>');
-  const editar = s => modal(s ? 'Editar ' + s.id : 'Agregar edificio o servicio', [['id', 'ID (ej.: HMH-GUA)'], ['servicio', 'Nombre del servicio o edificio'], ['est', 'Establecimiento (código)'], ['edificio', 'Edificio o sede'], ['tipo', 'Tipo', TIPOS], ['criticidad', 'Criticidad', ['1', '2', '3']], ['directriz', 'Directriz aplicable'], ['personas', 'Personas expuestas'], ['jefatura', 'Jefatura'], ['obs', 'Observaciones', null, 1]], s ? Object.assign({}, s, { criticidad: String(s.criticidad) }) : { criticidad: '2' },
+  const B = M8.base || { establecimientos: [], sitios: [] };
+  const optEst = B.establecimientos.length ? ['s/d'].concat(B.establecimientos.map(e => e.cod)) : null;
+  const optEdi = B.sitios.length ? ['s/d (revisar)'].concat(Array.from(new Set(B.sitios.map(x => x.sitio)))) : null;
+  const editar = s => modal(s ? 'Editar ' + s.id : 'Agregar edificio o servicio', [['id', 'ID (ej.: HMH-GUA)'], ['servicio', 'Nombre del servicio o edificio'], optEst ? ['est', 'Establecimiento (código de la Base común)', m8con(optEst, s && s.est)] : ['est', 'Establecimiento (código)'], optEdi ? ['edificio', 'Edificio o sede (sitios de la Base común)', m8con(optEdi, s && s.edificio)] : ['edificio', 'Edificio o sede'], ['tipo', 'Tipo', TIPOS], ['criticidad', 'Criticidad', ['1', '2', '3']], ['directriz', 'Directriz aplicable'], ['personas', 'Personas expuestas'], ['jefatura', 'Jefatura'], ['obs', 'Observaciones', null, 1]], s ? Object.assign({}, s, { criticidad: String(s.criticidad) }) : { criticidad: '2' },
     async v => { if (!s && S.some(x => x.id === v.id.trim())) return 'Ya existe ese ID.'; const r = await m8api('m8_servicio_guardar', Object.assign(v, { id: s ? s.id : v.id.trim() })); if (!r.ok) return r.mensaje; toast('Guardado.'); await m8cargar('#m8serv', true); m8Servicios(); return ''; });
   $('sN').onclick = () => editar(null);
   document.querySelectorAll('tr.cl[data-n]').forEach(tr => tr.onclick = () => editar(S[Number(tr.dataset.n)]));
@@ -3227,7 +3232,8 @@ async function m8Servicios() {
 // Libros para la red
 async function m8Libros() {
   if (!(await m8cargar('#m8libros'))) return;
-  const S = M8.servicios, ests = Array.from(new Set(S.map(s => s.est))).sort();
+  const S = M8.servicios, B = M8.base || { establecimientos: [] }, nom = {}; B.establecimientos.forEach(e => nom[e.cod] = e.nombre);
+  const ests = Array.from(new Set(S.map(s => s.est).filter(e => e && e !== 's/d'))).sort();
   marco('#m8libros', m8cab('Libros para la red', 'Cada establecimiento recibe un libro con sus ítems, lo completa y Higiene y Seguridad lo importa.') +
     '<div class="tb3"><section class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="margin:0;font-size:16px">1 · Generar un libro</h2>' +
     '<label class="f">Establecimiento (código)<select class="c" id="lE"><option value=""></option>' + ests.map(e => '<option>' + esc(e) + '</option>').join('') + '</select></label>' +
@@ -3240,7 +3246,7 @@ async function m8Libros() {
     '<button class="btn pri" id="lI">Importar</button><div id="lIR"></div>' +
     '<div class="mu peq">Crea un relevamiento por cada servicio con respuestas. Si se importa dos veces, se crea otro relevamiento con el sufijo -2.</div></section>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2 style="margin:0;font-size:16px">Modelo</h2><a class="btn sec" href="' + M8_LINKS.libro + '" target="_blank" rel="noopener">Ver el libro modelo ↗</a><a class="btn sec" href="' + M8_LINKS.carpeta + '" target="_blank" rel="noopener">Carpeta del módulo ↗</a></section></div>');
-  $('lE').onchange = e => { const L = S.filter(s => s.est === e.target.value);
+  $('lE').onchange = e => { const L = S.filter(s => s.est === e.target.value); if (nom[e.target.value]) $('lN').value = nom[e.target.value];
     $('lS').innerHTML = L.length ? L.map(s => '<label style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--tx)"><input type="checkbox" data-sv="' + esc(s.id) + '" checked> ' + esc(s.id + ' · ' + s.servicio + ' (' + s.tipo + ')') + '</label>').join('') : 'Este establecimiento no tiene servicios cargados: agregalos en «Edificios y servicios».'; };
   $('lG').onclick = async () => {
     const ids = Array.from(document.querySelectorAll('[data-sv]:checked')).map(x => x.dataset.sv); if (!ids.length) return toast('Elegí al menos un edificio o servicio.');
