@@ -1,8 +1,6 @@
-// Portal HyS · 2 · Documentos (registro HYSL, documentos de establecimientos, modelos y bandeja)
+// Portal HyS · 2 · Documentos (registro de informes, documentos de establecimientos, modelos y bandeja)
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ Registro de documentos HYSL (numeración)
-const DOC_BLOQUES = { RES: 'Residuos', RIE: 'Riesgos', DOC: 'Documental', CAP: 'Capacitación', GEN: 'General' };
-const DOC_TIPOS = { DG: 'Diagnóstico', SP: 'Seguimiento del plan de acción', IT: 'Informe técnico', AU: 'Auditoría o inspección', NT: 'Nota', AC: 'Acta', IR: 'Informe de la red' };
+// ------------------------------------------------------------------ Registro de informes (numeración HYSL automática; el pedido manual se quitó el 12/10/2026)
 let DOCS = { est: '', anio: new Date().getFullYear() };
 async function documentos(est) {
   if (est != null) DOCS.est = est;
@@ -11,32 +9,15 @@ async function documentos(est) {
   let R; try { R = await api('p_registro', { est: DOCS.est, anio: DOCS.anio }); } catch (e) { return; }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (sel === e.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('');
-  const op = (o, sel) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + k + ' · ' + o[k] + '</option>').join('');
   const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
   const filas = (R.filas || []);
-  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de documentos HYSL</h1><span class="mu">Número correlativo por establecimiento y por año, en todos los bloques. Un número mal pedido no se borra: se anula con motivo.</span></div></div>' +
-    '<section class="card"><h2>Pedir número</h2><p class="mu peq" style="margin:4px 0 10px">Para documentos hechos fuera del sistema (nota en Word, acta, informe puntual). Los informes que genera el sistema toman su número solos.</p>' +
-    '<div class="grid g4"><label class="f">Establecimiento<select class="c" id="dEst">' + opEst(DOCS.est && DOCS.est !== '' ? DOCS.est : 'RED') + '</select></label>' +
-    '<label class="f">Bloque<select class="c" id="dBl">' + op(DOC_BLOQUES, 'RES') + '</select></label><label class="f">Tipo<select class="c" id="dTi">' + op(DOC_TIPOS, 'NT') + '</select></label>' +
-    '<label class="f">Asunto<input class="c" id="dAs" placeholder="Ej.: Nota sobre el depósito final"></label></div>' +
-    '<div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="dPedir">Asignar número</button><span id="dRes" style="font-size:20px;font-weight:800;color:var(--az)"></span><button class="link" id="dCopiar" hidden>Copiar</button></div></section>' +
+  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de informes</h1><span class="mu">Los informes que genera el sistema toman solos su número HYSL (correlativo por establecimiento y por año). Un número no se borra: se anula con motivo. Las notas las numera el hospital (Mesa de Entradas).</span></div></div>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><h2>Registro</h2><div class="filtros"><label class="f">Establecimiento<select class="c" id="fEst">' + opEst(DOCS.est, true) + '</select></label><label class="f">Año<select class="c" id="fAn">' + [0, 1, 2].map(i => { const y = new Date().getFullYear() - i; return '<option' + (y === DOCS.anio ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div></div>' +
     (filas.length ? '<table><thead><tr><th>Código</th><th>Fecha</th><th>Asunto</th><th>Origen</th><th>Estado</th><th>Archivo</th><th></th></tr></thead><tbody>' + filas.map(f => { const v = f.v;
       return '<tr><td><b>' + esc(v[0]) + '</b></td><td>' + fechaTxt(v[8]) + '</td><td>' + esc(v[9]) + (v[15] ? '<div class="mu peq">' + esc(v[15]) + '</div>' : '') + '</td><td class="peq">' + esc(v[10]) + '</td><td>' + chipE(v[14]) + '</td><td class="peq">' +
         (v[12] ? '<a href="' + esc(v[12]) + '" target="_blank" rel="noopener">Documento</a>' : '') + (v[13] ? ' · <a href="' + esc(v[13]) + '" target="_blank" rel="noopener">PDF</a>' : '') + (!v[12] && !v[13] ? '<span class="mu">—</span>' : '') + '</td>' +
         '<td style="white-space:nowrap">' + (v[14] !== 'Anulado' ? '<button class="link" data-adj="' + esc(v[0]) + '">Adjuntar enlace</button> · <button class="link" data-anu="' + esc(v[0]) + '">Anular</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>'
       : '<div class="vacio">No hay documentos registrados con estos filtros.</div>') + '</section>');
-  $('dPedir').onclick = async () => {
-    const as = $('dAs').value.trim(); if (!as) return toast('Escribí el asunto.');
-    const b = $('dPedir'); b.disabled = true; b.textContent = 'Asignando…';
-    let r; try { r = await api('p_numero', { est: $('dEst').value, bloque: $('dBl').value, tipo: $('dTi').value, asunto: as }); } catch (e) { b.disabled = false; b.textContent = 'Asignar número'; return; }
-    b.disabled = false; b.textContent = 'Asignar número';
-    if (!r.ok) return toast(r.mensaje || 'No se pudo asignar.');
-    $('dRes').textContent = r.codigo; $('dCopiar').hidden = false;
-    $('dCopiar').onclick = async () => { try { await navigator.clipboard.writeText(r.codigo); toast('Código copiado.'); } catch (e) { prompt('Copiá el código:', r.codigo); } };
-    toast('Número asignado: ' + r.codigo);
-    setTimeout(() => documentos(), 2500);
-  };
   $('fEst').onchange = e => { DOCS.est = e.target.value; documentos(); };
   $('fAn').onchange = e => { DOCS.anio = Number(e.target.value); documentos(); };
   document.querySelectorAll('[data-adj]').forEach(b => b.onclick = async () => {

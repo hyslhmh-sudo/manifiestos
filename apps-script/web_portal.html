@@ -364,7 +364,7 @@ function marco(activo, contenido) {
     it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') + it('#acciones', 'task_alt', 'Acciones (todos los módulos)') +
     '<div class="titu mod">Módulos</div>' +
     grp('res', 'recycling', '1 · Residuos', it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1)) +
-    grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docest', '', 'Documentos de los establecimientos', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
+    grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docest', '', 'Documentos de los establecimientos', 1) + it('#docs', '', 'Registro de informes', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
     grp('agu', 'water_drop', '3 · Agua', it('#agua', '', 'Tablero', 1) + it('#aguadiag', '', 'Diagnóstico', 1)) +
     grp('per', 'badge', '4 · Personal y RAR', it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1)) +
     grp('plg', 'pest_control', '5 · Plagas', it('#plagas', '', 'Tablero', 1) + it('#plgdiag', '', 'Diagnóstico', 1)) +
@@ -455,7 +455,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-12 · 14.10';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-12 · 14.11';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -490,7 +490,7 @@ const AYUDA = {
   '#buscar': ['Buscador', ['Escribí un DNI, un apellido o un N.º CH en el recuadro de arriba del menú. Muestra las personas de todos los establecimientos y los siniestros que coinciden.', 'Tocá una persona para abrir su ficha: datos, capacitaciones, siniestros y exposición.']],
   '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
   '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
-  '#docs': ['Registro de documentos HYSL', ['Pedir número, ver y anular con motivo.']],
+  '#docs': ['Registro de informes', ['Los informes que genera el sistema (diagnósticos, relevamientos, NTE, módulo 8) toman solos su número HYSL y quedan acá, con su documento y su PDF.', 'Un número no se borra: si un informe no va, se anula con motivo.', 'Las notas no se numeran acá: las numera el hospital (Mesa de Entradas).']],
   '#docest': ['2 · Documentos de los establecimientos', ['Los manuales, guías, POE, protocolos y PTS propios de cada establecimiento, de toda la red. Los referentes los cargan desde «Mi establecimiento» › Documentos; vos podés cargarlos y corregirlos desde acá para cualquier establecimiento.', 'Datos de cada documento: tema, tipo (manual, guía, POE, protocolo, PTS, plan, instructivo u otro), código o número si tiene, nombre completo, versión, vigente desde y vence (si tiene vencimiento), y el archivo (PDF o foto).', 'Cuadro por establecimiento y tema: cantidad de documentos vigentes. Verde, al día; amarillo, alguno vence en 60 días; rojo, alguno vencido. Tocá un número para ver esos documentos abajo.', 'Si se carga uno con el mismo código o el mismo nombre que otro vigente del establecimiento, el anterior queda «Reemplazado». Anular pide motivo y no borra nada.', 'Dónde queda: planilla BASE COMÚN › hoja DOCUMENTOS_EST (una fila por documento, columna FECHA_VENCIMIENTO incluida) y archivo en Drive › SISTEMA HyS › MÓDULO 2 · DOCUMENTOS › Establecimientos › carpeta del establecimiento › Documentos propios.', 'Los vencidos y por vencer aparecen en el Tablero, en «Requiere atención», y en los pendientes de «Mi establecimiento» de ese establecimiento.']],
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
   '#coc': ['6 · Cocinas hospitalarias', ['Estado de las cocinas de toda la red: relevamientos BPM / HACCP (resultado y puntos críticos) y personas que manipulan alimentos, con su carnet y su libreta.', 'Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Lo decide el TIPO de la BASE COMÚN.', '«Requiere atención»: carnets o libretas vencidos, que vencen en 60 días o sin dato. Tocá uno para ir a las personas de ese establecimiento.', 'Tocá un establecimiento de la tabla para abrir su relevamiento.']],
@@ -664,7 +664,7 @@ function modulosHtml(M, card, DEs) {
     (P.cruce ? '<span class="mu peq">' + esc(P.cruce.replace(/^Último cruce: /, 'Cruce: ').split(' · ')[0]) + ' · detalle en el libro general › CRUCE_PERSONAL</span>' : '<span class="mu peq">El cruce con capacitaciones todavía no corrió.</span>');
   const caps = C.error ? '<div class="mu">' + esc(C.error) + '</div>' : fila('Próximos turnos con capacitación', C.proximas || 0) +
     ((C.lista || []).length ? '<div style="display:flex;flex-direction:column;gap:4px">' + C.lista.map(t => '<div class="peq"><b>' + esc(fechaTxt(t.fecha)) + (t.hora ? ' · ' + esc(t.hora) : '') + '</b> · ' + esc(t.cap) + (t.lugar ? '<span class="mu"> · ' + esc(t.lugar) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">No hay capacitaciones agendadas.</span>');
-  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '') +
+  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Informes emitidos este año', D.emitidos != null ? D.emitidos : '—') +
     fila('Documentos de los establecimientos', X.total + (X.total ? ' · ' + X.establecimientos + ' est.' : '')) + fila('Vencidos o por vencer', (X.avisos || []).length, (X.avisos || []).some(a => a.estado === 'vencido') ? '#B4361F' : (X.avisos || []).length ? '#8A5200' : '') +
     '<a class="peq" href="#docest" style="font-weight:700">Ver los documentos de los establecimientos</a>';
   return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
@@ -1008,11 +1008,9 @@ function planPintar() {
 }
 </script>
 <script>
-// Portal HyS · 2 · Documentos (registro HYSL, documentos de establecimientos, modelos y bandeja)
+// Portal HyS · 2 · Documentos (registro de informes, documentos de establecimientos, modelos y bandeja)
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ Registro de documentos HYSL (numeración)
-const DOC_BLOQUES = { RES: 'Residuos', RIE: 'Riesgos', DOC: 'Documental', CAP: 'Capacitación', GEN: 'General' };
-const DOC_TIPOS = { DG: 'Diagnóstico', SP: 'Seguimiento del plan de acción', IT: 'Informe técnico', AU: 'Auditoría o inspección', NT: 'Nota', AC: 'Acta', IR: 'Informe de la red' };
+// ------------------------------------------------------------------ Registro de informes (numeración HYSL automática; el pedido manual se quitó el 12/10/2026)
 let DOCS = { est: '', anio: new Date().getFullYear() };
 async function documentos(est) {
   if (est != null) DOCS.est = est;
@@ -1021,32 +1019,15 @@ async function documentos(est) {
   let R; try { R = await api('p_registro', { est: DOCS.est, anio: DOCS.anio }); } catch (e) { return; }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (sel === e.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('');
-  const op = (o, sel) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + k + ' · ' + o[k] + '</option>').join('');
   const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
   const filas = (R.filas || []);
-  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de documentos HYSL</h1><span class="mu">Número correlativo por establecimiento y por año, en todos los bloques. Un número mal pedido no se borra: se anula con motivo.</span></div></div>' +
-    '<section class="card"><h2>Pedir número</h2><p class="mu peq" style="margin:4px 0 10px">Para documentos hechos fuera del sistema (nota en Word, acta, informe puntual). Los informes que genera el sistema toman su número solos.</p>' +
-    '<div class="grid g4"><label class="f">Establecimiento<select class="c" id="dEst">' + opEst(DOCS.est && DOCS.est !== '' ? DOCS.est : 'RED') + '</select></label>' +
-    '<label class="f">Bloque<select class="c" id="dBl">' + op(DOC_BLOQUES, 'RES') + '</select></label><label class="f">Tipo<select class="c" id="dTi">' + op(DOC_TIPOS, 'NT') + '</select></label>' +
-    '<label class="f">Asunto<input class="c" id="dAs" placeholder="Ej.: Nota sobre el depósito final"></label></div>' +
-    '<div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="dPedir">Asignar número</button><span id="dRes" style="font-size:20px;font-weight:800;color:var(--az)"></span><button class="link" id="dCopiar" hidden>Copiar</button></div></section>' +
+  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de informes</h1><span class="mu">Los informes que genera el sistema toman solos su número HYSL (correlativo por establecimiento y por año). Un número no se borra: se anula con motivo. Las notas las numera el hospital (Mesa de Entradas).</span></div></div>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><h2>Registro</h2><div class="filtros"><label class="f">Establecimiento<select class="c" id="fEst">' + opEst(DOCS.est, true) + '</select></label><label class="f">Año<select class="c" id="fAn">' + [0, 1, 2].map(i => { const y = new Date().getFullYear() - i; return '<option' + (y === DOCS.anio ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div></div>' +
     (filas.length ? '<table><thead><tr><th>Código</th><th>Fecha</th><th>Asunto</th><th>Origen</th><th>Estado</th><th>Archivo</th><th></th></tr></thead><tbody>' + filas.map(f => { const v = f.v;
       return '<tr><td><b>' + esc(v[0]) + '</b></td><td>' + fechaTxt(v[8]) + '</td><td>' + esc(v[9]) + (v[15] ? '<div class="mu peq">' + esc(v[15]) + '</div>' : '') + '</td><td class="peq">' + esc(v[10]) + '</td><td>' + chipE(v[14]) + '</td><td class="peq">' +
         (v[12] ? '<a href="' + esc(v[12]) + '" target="_blank" rel="noopener">Documento</a>' : '') + (v[13] ? ' · <a href="' + esc(v[13]) + '" target="_blank" rel="noopener">PDF</a>' : '') + (!v[12] && !v[13] ? '<span class="mu">—</span>' : '') + '</td>' +
         '<td style="white-space:nowrap">' + (v[14] !== 'Anulado' ? '<button class="link" data-adj="' + esc(v[0]) + '">Adjuntar enlace</button> · <button class="link" data-anu="' + esc(v[0]) + '">Anular</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>'
       : '<div class="vacio">No hay documentos registrados con estos filtros.</div>') + '</section>');
-  $('dPedir').onclick = async () => {
-    const as = $('dAs').value.trim(); if (!as) return toast('Escribí el asunto.');
-    const b = $('dPedir'); b.disabled = true; b.textContent = 'Asignando…';
-    let r; try { r = await api('p_numero', { est: $('dEst').value, bloque: $('dBl').value, tipo: $('dTi').value, asunto: as }); } catch (e) { b.disabled = false; b.textContent = 'Asignar número'; return; }
-    b.disabled = false; b.textContent = 'Asignar número';
-    if (!r.ok) return toast(r.mensaje || 'No se pudo asignar.');
-    $('dRes').textContent = r.codigo; $('dCopiar').hidden = false;
-    $('dCopiar').onclick = async () => { try { await navigator.clipboard.writeText(r.codigo); toast('Código copiado.'); } catch (e) { prompt('Copiá el código:', r.codigo); } };
-    toast('Número asignado: ' + r.codigo);
-    setTimeout(() => documentos(), 2500);
-  };
   $('fEst').onchange = e => { DOCS.est = e.target.value; documentos(); };
   $('fAn').onchange = e => { DOCS.anio = Number(e.target.value); documentos(); };
   document.querySelectorAll('[data-adj]').forEach(b => b.onclick = async () => {
