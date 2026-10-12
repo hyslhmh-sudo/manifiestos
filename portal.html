@@ -355,7 +355,7 @@ function marco(activo, contenido) {
     it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') +
     '<div class="titu mod">Módulos</div>' +
     grp('res', 'recycling', '1 · Residuos', it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1)) +
-    grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
+    grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docest', '', 'Documentos de los establecimientos', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
     it('#agua', 'water_drop', '3 · Agua') +
     grp('per', 'badge', '4 · Personal y RAR', it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1)) +
     it('#plagas', 'pest_control', '5 · Plagas') +
@@ -471,6 +471,7 @@ const AYUDA = {
   '#nte': ['NTE', ['Controles, matriz de exposición por función y generación de la nómina de trabajadores expuestos.']],
   '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
   '#docs': ['Registro de documentos HYSL', ['Pedir número, ver y anular con motivo.']],
+  '#docest': ['2 · Documentos de los establecimientos', ['Los manuales, guías, POE, protocolos y PTS propios de cada establecimiento, de toda la red. Los referentes los cargan desde «Mi establecimiento» › Documentos; vos podés cargarlos y corregirlos desde acá para cualquier establecimiento.', 'Datos de cada documento: tema, tipo (manual, guía, POE, protocolo, PTS, plan, instructivo u otro), código o número si tiene, nombre completo, versión, vigente desde y vence (si tiene vencimiento), y el archivo (PDF o foto).', 'Cuadro por establecimiento y tema: cantidad de documentos vigentes. Verde, al día; amarillo, alguno vence en 60 días; rojo, alguno vencido. Tocá un número para ver esos documentos abajo.', 'Si se carga uno con el mismo código o el mismo nombre que otro vigente del establecimiento, el anterior queda «Reemplazado». Anular pide motivo y no borra nada.', 'Dónde queda: planilla BASE COMÚN › hoja DOCUMENTOS_EST (una fila por documento, columna FECHA_VENCIMIENTO incluida) y archivo en Drive › SISTEMA HyS › MÓDULO 2 · DOCUMENTOS › Establecimientos › carpeta del establecimiento › Documentos propios.', 'Los vencidos y por vencer aparecen en el Tablero, en «Requiere atención», y en los pendientes de «Mi establecimiento» de ese establecimiento.']],
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
   '#coc': ['6 · Cocinas hospitalarias', ['Estado de las cocinas de toda la red: relevamientos BPM / HACCP (resultado y puntos críticos) y personas que manipulan alimentos, con su carnet y su libreta.', 'Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Lo decide el TIPO de la BASE COMÚN.', '«Requiere atención»: carnets o libretas vencidos, que vencen en 60 días o sin dato. Tocá uno para ir a las personas de ese establecimiento.', 'Tocá un establecimiento de la tabla para abrir su relevamiento.']],
   '#cocper': ['6 · Personas de cocina', ['Una fila por persona que manipula alimentos, de planta o de empresa: carnet de manipulador (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.', 'Elegí un establecimiento para cargar. «En la base de trabajadores» sugiere personas con función o servicio de cocina, alimentación o nutrición: tocá una para agregarla.', 'Al escribir el DNI, si la persona está en la base de trabajadores, se completa el nombre.', 'La foto del carnet y de la libreta queda en la carpeta del establecimiento › Cocina › Carnets y libretas.', 'Para dar de baja: Editar › Activo = No (no se borra). Todo se puede corregir también en BASE COMÚN › COCINA_PERSONAS.']],
@@ -1187,6 +1188,7 @@ async function inicio(fresco) {
   pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
   docs.forEach(d => at.push([d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), d.titulo + ' · ' + fechaTxt(d.revision), '#bib']));
   plagas.filter(p => p.revision === hoy).forEach(p => at.push(['av', p.cod + ': revisión de plagas hoy', p.caso, '#agua']));
+  ((TB.docsEst || {}).avisos || []).filter(d => enA(d.cod)).forEach(d => at.push([d.estado === 'vencido' ? 'er' : 'wa', d.cod + ': ' + (d.codigo || 'documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), d.titulo + (d.estado === 'vencido' ? ' · venció el ' + fechaTxt(d.vence) : ''), '#docest/' + encodeURIComponent(d.cod)]));   // 2 · Documentos de los establecimientos
   (TB.cocina || []).filter(c => enA(c.cod)).forEach(c => { const h = '#cocper/' + encodeURIComponent(c.cod);   // 6 · Cocinas: carnets y libretas
     if (c.vencidos) at.push(['er', c.cod + ': ' + c.vencidos + (c.vencidos > 1 ? ' personas' : ' persona') + ' de cocina sin carnet o libreta vigente', 'Vencido o faltante · ' + nom(c.cod), h]);
     if (c.porVencer) at.push(['wa', c.cod + ': ' + c.porVencer + (c.porVencer > 1 ? ' carnets o libretas vencen' : ' carnet o libreta vence') + ' en 60 días', 'Personas de cocina · ' + nom(c.cod), h]); });
@@ -1225,7 +1227,7 @@ async function inicio(fresco) {
       kpi('#plagas', 'Plagas', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
       kpi('#bib', 'Documentos', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
       kpi('#est', 'Establecimientos', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
-    modulosHtml(TB.modulos, card) +
+    modulosHtml(TB.modulos, card, TB.docsEst) +
     '<div class="tb2" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr)">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) +
       card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">' +
@@ -1241,16 +1243,18 @@ async function inicio(fresco) {
 let CAMBIO_RES = false;
 
 // Panel de gestión (Fase 3): lo que dejan resumido cada noche los otros módulos. Solo lee; no recalcula nada.
-function modulosHtml(M, card) {
+function modulosHtml(M, card, DEs) {
   if (!M || M.error) return '';
-  const P = M.personal || {}, C = M.capacitaciones || {}, D = M.documentos || {};
+  const P = M.personal || {}, C = M.capacitaciones || {}, D = M.documentos || {}, X = DEs || { total: 0, establecimientos: 0, avisos: [] };
   const fila = (t, v, col) => '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span class="mu peq">' + esc(t) + '</span><b style="font-size:18px' + (col ? ';color:' + col : '') + '">' + esc(String(v == null ? '—' : v)) + '</b></div>';
   const pers = fila('Propuestas para revisar en la Bandeja', P.bandeja || 0, P.bandeja ? '#8A5200' : '') + fila('Diferencias entre la base de personal y capacitaciones', P.diferencias || 0) +
     (P.sinAsignar != null ? fila('Personas sin establecimiento asignado', P.sinAsignar, P.sinAsignar ? '#8A5200' : '') : '') +
     (P.cruce ? '<span class="mu peq">' + esc(P.cruce.replace(/^Último cruce: /, 'Cruce: ').split(' · ')[0]) + ' · detalle en el libro general › CRUCE_PERSONAL</span>' : '<span class="mu peq">El cruce con capacitaciones todavía no corrió.</span>');
   const caps = C.error ? '<div class="mu">' + esc(C.error) + '</div>' : fila('Próximos turnos con capacitación', C.proximas || 0) +
     ((C.lista || []).length ? '<div style="display:flex;flex-direction:column;gap:4px">' + C.lista.map(t => '<div class="peq"><b>' + esc(fechaTxt(t.fecha)) + (t.hora ? ' · ' + esc(t.hora) : '') + '</b> · ' + esc(t.cap) + (t.lugar ? '<span class="mu"> · ' + esc(t.lugar) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">No hay capacitaciones agendadas.</span>');
-  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '');
+  const docs = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="' + ANTE_URL + '" target="_blank" rel="noopener">Antecedentes ↗</a></div>' + fila('Números HYSL pedidos este año', D.anio != null ? D.anio : '—') + fila('Reservados sin emitir', D.reservados || 0, D.reservados ? '#8A5200' : '') +
+    fila('Documentos de los establecimientos', X.total + (X.total ? ' · ' + X.establecimientos + ' est.' : '')) + fila('Vencidos o por vencer', (X.avisos || []).length, (X.avisos || []).some(a => a.estado === 'vencido') ? '#B4361F' : (X.avisos || []).length ? '#8A5200' : '') +
+    '<a class="peq" href="#docest" style="font-weight:700">Ver los documentos de los establecimientos</a>';
   return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
     card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', ['#cap', 'Tablero'], caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
 }
@@ -2332,6 +2336,91 @@ async function documentos(est) {
 }
 
 
+// ------------------------------------------------------------------ 2 · Documentos de los establecimientos (toda la red; misma hoja y carpeta que «Mi establecimiento»)
+let DE = { L: null, est: '', tema: '', estado: 'vivos', q: '' };
+const DE_ESTADO = { vigente: ['ok', 'Vigente'], sinvenc: ['gr', 'Sin vencimiento'], porvencer: ['wa', 'Por vencer'], vencido: ['er', 'Vencido'], reemplazado: ['gr', 'Reemplazado'], anulado: ['gr', 'Anulado'] };
+const deVivo = d => /^(vigente|sinvenc|porvencer|vencido)$/.test(d.estado);
+async function docEst(cod, fresco) {
+  if (cod) { DE.est = cod; DE.tema = ''; }
+  if (!DE.L || fresco) { cargando('#docest', 'Leyendo los documentos de los establecimientos…'); try { DE.L = await api('p_docest_lista', {}, 120000); } catch (e) { return; } }
+  const R = DE.L; if (!R.ok) return marco('#docest', '<div class="aviso error">' + esc(R.mensaje || R.error || 'No se pudo leer.') + '</div>');
+  const ests = R.establecimientos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')), nom = c => (R.establecimientos.find(e => e.cod === c) || {}).nombre || c;
+  const vivos = R.documentos.filter(deVivo), venc = vivos.filter(d => d.estado === 'vencido').length, porV = vivos.filter(d => d.estado === 'porvencer').length;
+  const chip = e => '<span class="chip ' + (DE_ESTADO[e] || ['gr'])[0] + '">' + esc((DE_ESTADO[e] || ['', e])[1]) + '</span>';
+  // Cuadro: documentos vigentes de cada establecimiento por tema (el color avisa si alguno venció o está por vencer)
+  const celda = (cod, t) => { const l = vivos.filter(d => d.cod === cod && d.tema === t); if (!l.length) return '<td class="mu" style="text-align:center">—</td>';
+    const c = l.some(d => d.estado === 'vencido') ? 'er' : l.some(d => d.estado === 'porvencer') ? 'wa' : 'ok';
+    return '<td style="text-align:center"><button class="chip ' + c + '" style="border:0;cursor:pointer" data-cel="' + esc(cod) + '|' + esc(t) + '" title="Ver los documentos">' + l.length + '</button></td>'; };
+  const conDocs = ests.filter(e => vivos.some(d => d.cod === e.cod)), sinDocs = ests.length - conDocs.length;
+  const cuadro = '<div style="overflow-x:auto"><table class="peq"><thead><tr><th>Establecimiento</th>' + R.temas.map(t => '<th style="text-align:center">' + esc(t) + '</th>').join('') + '<th style="text-align:center">Total</th></tr></thead><tbody>' +
+    (DE.todos ? ests : conDocs).map(e => '<tr><td><button class="link" data-cel="' + esc(e.cod) + '|" style="font-weight:700;text-align:left">' + esc(e.cod) + '</button><div class="mu" style="font-size:12px">' + esc(e.nombre) + '</div></td>' + R.temas.map(t => celda(e.cod, t)).join('') +
+      '<td style="text-align:center"><b>' + vivos.filter(d => d.cod === e.cod).length + '</b></td></tr>').join('') + '</tbody></table></div>' +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:8px"><span class="mu peq">' + (DE.todos ? 'Todos los establecimientos.' : conDocs.length + ' establecimiento(s) con documentos cargados; ' + sinDocs + ' sin ninguno.') +
+    ' Verde: al día · amarillo: alguno vence en ' + R.avisoDias + ' días · rojo: alguno vencido.</span><button class="link" id="deTodos">' + (DE.todos ? 'Ver solo los que tienen documentos' : 'Ver también los que no tienen documentos') + '</button></div>';
+  // Lista con filtros
+  const q = DE.q.toLowerCase();
+  const L = R.documentos.filter(d => (!DE.est || d.cod === DE.est) && (!DE.tema || d.tema === DE.tema) &&
+    (DE.estado === 'todos' || (DE.estado === 'avisos' ? /vencido|porvencer/.test(d.estado) : deVivo(d))) &&
+    (!q || [d.codigo, d.titulo, d.tipo, d.cod, nom(d.cod)].join(' ').toLowerCase().indexOf(q) >= 0))
+    .sort((a, b) => nom(a.cod).localeCompare(nom(b.cod), 'es') || a.tema.localeCompare(b.tema, 'es') || String(a.codigo || a.titulo).localeCompare(String(b.codigo || b.titulo), 'es'));
+  const opc = (lista, sel, todos) => '<option value="">' + todos + '</option>' + lista.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === sel ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
+  marco('#docest', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Documentos de los establecimientos</h1><span class="mu">Manuales, guías, POE, protocolos y PTS propios de cada establecimiento. Los cargan los referentes desde «Mi establecimiento» o vos desde acá.</span></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="deAct">Actualizar</button><button class="btn pri" id="deNuevo">+ Cargar documento</button></div></div>' +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
+      '<div class="kpi2"><span>Documentos vigentes</span><b>' + vivos.length + '</b><small>en ' + conDocs.length + ' establecimiento(s)</small></div>' +
+      '<div class="kpi2"><span>Vencidos</span><b' + (venc ? ' style="color:#B4361F"' : '') + '>' + venc + '</b><small>hay que cargar la versión nueva</small></div>' +
+      '<div class="kpi2"><span>Por vencer</span><b' + (porV ? ' style="color:#8A5200"' : '') + '>' + porV + '</b><small>en los próximos ' + R.avisoDias + ' días</small></div>' +
+      '<div class="kpi2"><span>Sin documentos</span><b>' + sinDocs + '</b><small>establecimientos sin ninguno cargado</small></div></div>' +
+    '<section class="card"><h2>Por establecimiento y tema</h2>' + cuadro + '</section>' +
+    '<section class="card tabla" id="deLista"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><h2>Documentos</h2><div class="filtros">' +
+      '<label class="f">Establecimiento<select class="c" id="deE">' + opc(ests.map(e => [e.cod, e.nombre]), DE.est, 'Todos') + '</select></label>' +
+      '<label class="f">Tema<select class="c" id="deT">' + opc(R.temas.map(t => [t, t]), DE.tema, 'Todos') + '</select></label>' +
+      '<label class="f">Estado<select class="c" id="deS">' + [['vivos', 'Vigentes'], ['avisos', 'Vencidos y por vencer'], ['todos', 'Todos (con reemplazados y anulados)']].map(o => '<option value="' + o[0] + '"' + (o[0] === DE.estado ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></label>' +
+      '<label class="f">Buscar<input class="c" id="deQ" value="' + esc(DE.q) + '" placeholder="Código o nombre"></label></div></div>' +
+    (L.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Tema</th><th>Tipo</th><th>Código</th><th>Nombre completo</th><th>Versión</th><th>Vigencia</th><th>Vence</th><th>Estado</th><th></th></tr></thead><tbody>' +
+      L.map(d => '<tr><td><b>' + esc(d.cod) + '</b><div class="mu" style="font-size:12px">' + esc(nom(d.cod)) + '</div></td><td>' + esc(d.tema) + '</td><td>' + esc(d.tipo) + '</td><td>' + esc(d.codigo || 's/d') + '</td><td>' + esc(d.titulo) +
+        (d.obs ? '<div class="mu peq">' + esc(d.obs) + '</div>' : '') + '<div class="mu" style="font-size:12px">Cargó ' + esc(d.cargo || 's/d') + ' · ' + fechaTxt(d.cargado) + '</div></td><td>' + esc(d.version || 's/d') + '</td><td>' + (d.vigencia ? fechaTxt(d.vigencia) : 's/d') + '</td><td>' + (d.vence ? fechaTxt(d.vence) : '—') + '</td><td>' + chip(d.estado) + '</td>' +
+        '<td style="white-space:nowrap">' + (d.url ? '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a>' : '') + (deVivo(d) ? ' · <button class="link" data-ed="' + esc(d.id) + '">Editar</button> · <button class="link" data-an="' + esc(d.id) + '">Anular</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<div class="vacio">No hay documentos con estos filtros.' + (DE.est ? ' Podés cargar uno con «+ Cargar documento».' : '') + '</div>') + '</section>' +
+    '<section class="card peq mu">Cada carga queda en la BASE COMÚN › DOCUMENTOS_EST (una fila por documento) y el archivo en Drive › SISTEMA HyS › MÓDULO 2 · DOCUMENTOS › Establecimientos › carpeta del establecimiento › Documentos propios. Si cargás un documento con el mismo código o el mismo nombre que uno vigente, el anterior queda «Reemplazado». Nada se borra: anular pide motivo.</section>');
+  $('deAct').onclick = () => docEst('', true);
+  $('deNuevo').onclick = () => docEstForm(null);
+  $('deTodos').onclick = () => { DE.todos = !DE.todos; docEst(); };
+  $('deE').onchange = e => { DE.est = e.target.value; docEst(); };
+  $('deT').onchange = e => { DE.tema = e.target.value; docEst(); };
+  $('deS').onchange = e => { DE.estado = e.target.value; docEst(); };
+  let tq; $('deQ').oninput = e => { clearTimeout(tq); tq = setTimeout(() => { DE.q = e.target.value; docEst(); const i = $('deQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); };
+  document.querySelectorAll('[data-cel]').forEach(b => b.onclick = () => { const [c, t] = b.dataset.cel.split('|'); DE.est = c; DE.tema = t || ''; DE.estado = 'vivos'; docEst(); setTimeout(() => { const s = $('deLista'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 50); });
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => docEstForm(R.documentos.find(d => d.id === b.dataset.ed)));
+  document.querySelectorAll('[data-an]').forEach(b => b.onclick = () => { const d = R.documentos.find(x => x.id === b.dataset.an);
+    modal('Anular · ' + (d.codigo || d.titulo), [['MOTIVO', 'Motivo (queda registrado)', null, 1]], {}, async v => {
+      if (!v.MOTIVO.trim()) return 'Escribí el motivo.';
+      const r = await api('p_docest_anular', { cod: d.cod, id: d.id, motivo: v.MOTIVO }); if (!r.ok) return r.mensaje || 'No se pudo anular.';
+      toast('Documento anulado.'); TB = null; docEst('', true); return ''; }, '<p class="mu peq" style="margin:0">No se borra: queda en la hoja marcado como anulado, con el motivo, y deja de contar.</p>'); });
+}
+// Alta (con archivo) o corrección de un documento de cualquier establecimiento
+function docEstForm(d) {
+  const R = DE.L, ests = R.establecimientos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')), op = e => e.cod + ' · ' + e.nombre;
+  const v = d ? { TEMA: d.tema, TIPO: d.tipo, CODIGO: d.codigo, TITULO: d.titulo, VERSION: d.version, FECHA_VIGENCIA: d.vigencia, FECHA_VENCIMIENTO: d.vence, OBSERVACIONES: d.obs }
+    : { EST: DE.est ? op(ests.find(e => e.cod === DE.est) || { cod: DE.est, nombre: '' }) : '', TEMA: DE.tema || 'Residuos', TIPO: 'Manual' };
+  let arch = null;
+  modal(d ? 'Editar · ' + d.cod + ' · ' + (d.codigo || d.titulo) : 'Cargar documento', (d ? [] : [['EST', 'Establecimiento', ests.map(op)]]).concat([
+    ['TEMA', 'Tema', R.temas], ['TIPO', 'Tipo de documento', R.tipos], ['CODIGO', 'Código o número (si tiene)'], ['TITULO', 'Nombre completo'], ['VERSION', 'Versión (si tiene)'],
+    ['FECHA_VIGENCIA', 'Vigente desde (si figura)', 'date'], ['FECHA_VENCIMIENTO', 'Vence (si tiene vencimiento)', 'date'], ['OBSERVACIONES', 'Observaciones', null, 1]]), v,
+    async out => {
+      const cod = d ? d.cod : String(out.EST || '').split(' · ')[0]; if (!cod) return 'Elegí el establecimiento.';
+      if (!out.TITULO.trim()) return 'Falta el nombre completo.'; if (!d && !arch) return 'Falta el archivo (PDF o foto).';
+      const datos = Object.assign({ cod: cod }, out); delete datos.EST; if (d) datos.ID_EDITAR = d.id; if (arch) datos.archivo = arch;
+      const r = await api('p_docest_guardar', datos, 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      toast(d ? 'Cambios guardados.' : 'Documento cargado.'); TB = null; DE.est = cod; docEst('', true); return '';
+    }, '<label class="f">' + (d ? 'Reemplazar el archivo (opcional)' : 'Archivo (PDF o foto, hasta 6 MB)') + '<input class="c" type="file" id="deArch" accept="application/pdf,image/*"></label><div class="mu peq" id="deArchN"></div>' +
+      '<p class="mu peq" style="margin:0">Con vencimiento cargado, el tablero avisa ' + R.avisoDias + ' días antes y cuando vence. Sin vencimiento, no avisa.</p>');
+  $('deArch').onchange = async () => { const f = $('deArch').files[0], m = $('deArchN'); arch = null; if (!f) { m.textContent = ''; return; }
+    try { if (/pdf/.test(f.type)) { if (f.size > 6 * 1024 * 1024) { m.textContent = 'El PDF pesa más de 6 MB.'; return; } arch = { base64: await new Promise((ok, mal) => { const rd = new FileReader(); rd.onload = () => ok(rd.result); rd.onerror = mal; rd.readAsDataURL(f); }), tipo: 'application/pdf', nombre: f.name.replace(/\.pdf$/i, '') }; }
+      else arch = { base64: await achicar(f), tipo: 'image/jpeg', nombre: f.name.replace(/\.\w+$/, '') };
+      m.textContent = 'Listo para guardar: ' + f.name; } catch (e) { m.textContent = 'No se pudo leer el archivo.'; } };
+}
+
 // ------------------------------------------------------------------ Plan de acción (respuesta de la Dirección y seguimiento)
 const PL_CHIP = { 'Cumplida': 'ok', 'En curso': 'pa', 'Pendiente': 'gr', 'Vencida': 'er', 'Sin respuesta': 'wa', 'Sin enviar': 'gr', 'Descartada': 'gr' };
 const plChip = e => '<span class="chip ' + (PL_CHIP[e] || 'gr') + '">' + esc(e) + '</span>';
@@ -2692,7 +2781,7 @@ async function fichaMi(cod) {
     '<h3 style="margin:16px 0 6px">Tanques y cisternas</h3>' + tabla(['Código', 'Tipo', 'Ubicación', 'Litros', 'Acceso', 'Última limpieza', 'Próxima', 'Estado'], R.tanques.map(t => '<tr><td><b>' + esc(t.codigo) + '</b></td><td>' + esc(t.tipo) + '</td><td>' + esc(t.ubicacion) + '</td><td>' + esc(t.capacidad) + '</td><td>' + esc(t.acceso) + '</td><td>' + fechaTxt(t.ultima) + '</td><td>' + fechaTxt(t.proxima) + '</td><td>' + chip(t.estado) + '</td></tr>')) +
     '<h3 style="margin:16px 0 6px">Canillas (puntos de muestreo)</h3>' + tabla(['Código', 'Ubicación', 'Bacteriológico', 'Vence', 'Físico-químico', 'Último resultado', 'Estado'], R.puntos.map(p => '<tr><td><b>' + esc(p.codigo) + '</b></td><td>' + esc(p.ubicacion) + '</td><td>' + fechaTxt(p.bact) + '</td><td>' + fechaTxt(p.venceBact) + '</td><td>' + fechaTxt(p.fq) + '</td><td>' + esc(p.ultimo) + '</td><td>' + (p.noApta ? '<span class="chip er">No apta</span>' : chip(p.estado)) + '</td></tr>')) +
     '<h3 style="margin:16px 0 6px">Plagas: casos abiertos</h3>' + tabla(['Caso', 'Fecha', 'Plaga', 'Sector', 'Estado', 'Próxima revisión'], R.casos.map(c => '<tr><td><b>' + esc(c.caso) + '</b></td><td>' + fechaTxt(c.fecha) + '</td><td>' + esc(c.plaga) + '</td><td>' + esc(c.sector) + '</td><td>' + esc(c.estado) + '</td><td>' + fechaTxt(c.proxima) + '</td></tr>')) +
-    '<h3 style="margin:16px 0 6px">Documentos propios</h3>' + tabla(['Tema', 'Tipo', 'Documento', 'Versión', 'Cargado', ''], R.documentos.map(d => '<tr><td>' + esc(d.tema) + '</td><td>' + esc(d.tipo) + '</td><td>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</td><td>' + esc(d.version) + '</td><td>' + fechaTxt(d.cargado) + '</td><td><a href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></td></tr>')) +
+    '<h3 style="margin:16px 0 6px">Documentos propios <a class="peq" href="#docest/' + encodeURIComponent(cod) + '" style="font-weight:700;margin-left:8px">Cargar o corregir</a></h3>' + tabla(['Tema', 'Tipo', 'Documento', 'Versión', 'Vence', 'Cargado', ''], R.documentos.map(d => '<tr><td>' + esc(d.tema) + '</td><td>' + esc(d.tipo) + '</td><td>' + esc((d.codigo ? d.codigo + ' · ' : '') + d.titulo) + '</td><td>' + esc(d.version || 's/d') + '</td><td>' + (d.vence ? fechaTxt(d.vence) : '—') + '</td><td>' + fechaTxt(d.cargado) + '</td><td><a href="' + esc(d.url) + '" target="_blank" rel="noopener">Abrir</a></td></tr>')) +
     '<div class="mu peq" style="margin-top:10px">Las fotos de cada carga están en la carpeta del establecimiento (Agua, Plagas, Documentos propios). Los registros completos, en la BASE COMÚN: AGUA_LIMPIEZAS, AGUA_ANALISIS, PLAGAS_CASOS, PLAGAS_REGISTROS y DOCUMENTOS_EST.</div>';
   $('fMiBtn').onclick = () => fichaMi(cod);
 }
@@ -2998,6 +3087,7 @@ function router() {
   if (ruta === 'cocdiag') return a ? cocForm(a) : cocLista();
   if (ruta === 'tablero') return tablero(a);
   if (ruta === 'docs') return documentos(a);
+  if (ruta === 'docest') return docEst(a);
   if (ruta === 'modelos') return modelos();
   if (ruta === 'nte') return nte(a);
   if (ruta === 'bandeja') return bandeja();
