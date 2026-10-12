@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Residuos · Página para referentes · Higiene y Seguridad</title>
+<title>Página para referentes · Higiene y Seguridad</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -141,10 +141,12 @@ main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
 @media (max-width: 760px) {
   main { padding: 16px 12px 96px; }
   main:not(.ref) .barra { margin: 0 -12px; padding: 10px 12px; bottom: 62px; }
+  body:has(main .barra) .ayudaBtn { bottom: 132px; }
   h1 { font-size: 23px; }
   .cab { padding-bottom: 12px; }
   .kpi2 b { font-size: 24px; }
 }
+@media (max-width: 1000px) { .tb2 { grid-template-columns: minmax(0, 1fr) !important; } }
 </style>
 <style>
   .top { background: var(--az); color: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -154,7 +156,7 @@ main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
 </style>
 </head>
 <body>
-<div class="top"><div><b>Residuos · Página para referentes</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><div style="display:flex;gap:14px"><button class="link" id="inicio" hidden>Inicio</button><button class="link" id="salir" hidden>Salir</button></div></div>
+<div class="top"><div><b>Página para referentes</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><div style="display:flex;gap:14px"><button class="link" id="inicio" hidden>Inicio</button><button class="link" id="salir" hidden>Salir</button></div></div>
 <main class="ref" id="raiz"></main>
 <div id="ov" class="ov" hidden></div>
 <div id="toast" class="toast" hidden></div>
@@ -176,7 +178,7 @@ async function post(accion, datos, sinSes) {
   } catch (e) { if (e.message !== 'clave') toast(e.name === 'AbortError' ? 'El sistema tardó demasiado. Probá de nuevo.' : 'No se pudo conectar. Revisá la señal y probá de nuevo.'); throw e; }
   finally { clearTimeout(t); }
 }
-const DCFG = {
+const DCFG_RES = {
   modo: 'red',
   abrir: () => post('d_abrir', {}),
   guardar: p => post('d_guardar', p),
@@ -185,6 +187,21 @@ const DCFG = {
   volver: '',
   nombre: () => SES.nombre
 };
+// Módulo 6 · Cocinas: el mismo formulario, con las preguntas BPM / HACCP (Modulo6.gs › cocRed_)
+const DCFG_COC = {
+  modo: 'red', pal: 'relevamiento',
+  abrir: () => post('k_abrir', {}),
+  guardar: p => post('k_guardar', p),
+  foto: p => post('k_foto', p),
+  pantalla: html => { $('raiz').innerHTML = html; },
+  volver: '',
+  titulo: () => 'Relevamiento de cocina · ' + (DG.D.alcance === 'Rural (BPM)' ? 'BPM' : 'BPM y HACCP'),
+  txtLugares: 'Estas preguntas se responden en cada lugar que se recorre. Si un lugar no existe o no se revisó, dejalo sin completar.',
+  txtFaltaLugar: 'Falta relevar al menos un lugar (por ejemplo, la cocina).',
+  sinLugares: () => (DG.R['|COC01'] || {}).valor === 'No hay servicio de alimentación',
+  nombre: () => SES.nombre
+};
+let DCFG = DCFG_RES;
 async function ingreso(msg) {
   $('salir').hidden = true;
   $('raiz').innerHTML = '<div class="card login" style="margin:6vh auto"><h1>Ingresar</h1><p class="mu" style="margin:0">Usá tu DNI y la misma clave con la que entrás a «Mi establecimiento». Si tu establecimiento todavía usa la clave común, dejá el DNI vacío.</p>' + (msg ? '<div class="aviso error">' + esc(msg) + '</div>' : '') +
@@ -210,8 +227,10 @@ function inicioRef() {
   $('raiz').innerHTML = '<div class="cab"><div><span class="mu peq">' + esc(SES.nombre) + '</span><h1>Página para referentes</h1><span class="mu">Elegí qué querés hacer.</span></div></div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">' +
     '<button class="card" id="irDiag" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Diagnóstico de residuos</b><span class="mu">El relevamiento completo del establecimiento, punto por punto, con fotos.</span></button>' +
-    '<button class="card" id="irAud" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Auditoría interna</b><span class="mu">Una recorrida corta, cada tres meses: cestos, descartadores, bolsas, carros y depósito. Se completa desde el celular.</span></button></div>';
-  $('irDiag').onclick = () => diagForm(SES.est);
+    '<button class="card" id="irAud" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Auditoría interna</b><span class="mu">Una recorrida corta, cada tres meses: cestos, descartadores, bolsas, carros y depósito. Se completa desde el celular.</span></button>' +
+    '<button class="card" id="irCoc" style="text-align:left;cursor:pointer;border:1px solid var(--ln);display:flex;flex-direction:column;gap:6px;min-height:120px"><b style="font-size:18px;color:var(--az)">Relevamiento de cocina</b><span class="mu">Buenas prácticas en la cocina, el depósito, las heladeras y el lactario (y el sistema HACCP en los hospitales no rurales), con fotos.</span></button></div>';
+  $('irDiag').onclick = () => { DCFG = DCFG_RES; diagForm(SES.est); };
+  $('irCoc').onclick = () => { DCFG = DCFG_COC; diagForm(SES.est); };
   $('irAud').onclick = () => arLista();
 }
 let AR = null;
@@ -389,9 +408,9 @@ function diagPintar() {
   const hist = !red && (D.historial || []).length ? '<div class="peq" style="margin-top:4px">Anteriores: ' + D.historial.map(h => '<button class="link" data-hist="' + esc(h.id) + '">' + esc(fechaTxt(h.fecha)) + ' · ' + (h.pct === '' ? '—' : h.pct + ' %') + ' · ' + esc(h.estado) + '</button>').join(' · ') + '</div>' : '';
   let botones = '';
   if (red) botones = ro ? '<span class="mu">Ya se envió a Higiene y Seguridad. Si hay que corregir algo, Higiene y Seguridad lo devuelve.</span>' : '<button class="btn sec" id="dgGuardar">Guardar y seguir después</button><button class="btn pri" id="dgEnviar">Enviar a Higiene y Seguridad</button>';
-  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un diagnóstico nuevo</button>';
-  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar diagnóstico</button>';
-  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
+  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un ' + (DCFG.pal || 'diagnóstico') + ' nuevo</button>';
+  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar ' + (DCFG.pal || 'diagnóstico') + '</button>';
+  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">' + esc(DCFG.titulo ? DCFG.titulo() : 'Diagnóstico de residuos') + ' · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
     '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
     (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
     (DCFG.extra ? DCFG.extra() : '') +
@@ -402,8 +421,8 @@ function diagPintar() {
       '<label class="f">' + (red ? 'Otras personas que participaron' : 'Persona entrevistada') + '<input class="c" data-cab="ENTREVISTADO" value="' + esc(DG.cab.ENTREVISTADO) + '"' + (ro ? ' disabled' : '') + '></label></div>' +
       '<label class="f" style="margin-top:12px">Observaciones generales<textarea class="c" data-cab="OBSERVACIONES"' + (ro ? ' disabled' : '') + '>' + esc(DG.cab.OBSERVACIONES) + '</textarea></label></section>' +
     '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '"' + (t !== '' && falta.length ? ' title="Primero completá los datos del establecimiento" style="opacity:.55"' : '') + '>' + (t !== '' && falta.length ? '🔒 ' : '') + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
-    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.' + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
-    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un diagnóstico anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
+    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">' + (DCFG.txtLugares || 'Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.') + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
+    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un ' + (DCFG.pal || 'diagnóstico') + ' anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
     (bloqueo ? '<section class="card"><h2>Primero, los datos del establecimiento</h2><p class="mu">Para relevar cada lugar hace falta completar antes, en la pestaña <b>Establecimiento</b>: ' + falta.map(i => '<b>' + esc(i.ITEM) + '</b>').join(', ') + '. Esas respuestas definen qué se pregunta en cada lugar.</p><button class="btn pri" data-tab="">Ir a Establecimiento</button></section>' : '') +
     (DG.tab === '' && falta.length ? '<div class="aviso peq">Empezá por los puntos marcados como <b>Primero</b>: definen qué se pregunta en cada lugar.</div>' : '') +
     secciones.map(sec => '<section class="card seccion"><div class="sec-tit"><h2>' + esc(sec) + '</h2></div>' +
@@ -435,11 +454,11 @@ function diagPintar() {
   if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
   const diagPuedeCerrar = () => { const f = diagFaltaCerrar();
     if (f.est.length) { toast('Falta completar en Establecimiento ' + f.est.length + ' punto(s): ' + f.est.slice(0, 3).map(i => i.ITEM).join(' · ') + (f.est.length > 3 ? '…' : '')); DG.tab = ''; diagPintar(); window.scrollTo(0, 0); return false; }
-    if (f.requiere && !f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
+    if (f.requiere && !f.sitios && !(DCFG.sinLugares && DCFG.sinLugares())) { toast(DCFG.txtFaltaLugar || 'Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
     return true; };
-  if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
-  if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
-  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el diagnóstico al referente para que lo complete o corrija?') && diagGuardar('Borrador');
+  if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el ' + (DCFG.pal || 'diagnóstico') + '? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
+  if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el ' + (DCFG.pal || 'diagnóstico') + ' a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
+  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el ' + (DCFG.pal || 'diagnóstico') + ' al referente para que lo complete o corrija?') && diagGuardar('Borrador');
   if ($('dgNuevo')) $('dgNuevo').onclick = () => { DG.D.previo = DG.D.actual || DG.D.previo; DG.D.respuestasPrevio = (DG.D.respuestas || []).length ? DG.D.respuestas : DG.D.respuestasPrevio; DG.D.actual = null; DG.D.respuestas = [];
     DG.id = ''; DG.estado = 'Nuevo'; DG.R = {}; DG.cab.FECHA = hoyISO(); DG.sucio = true; diagPintar(); };
 }
@@ -458,7 +477,7 @@ async function diagGuardar(estado, silencioso) {
   if (!r || !r.ok) { toast((r && r.mensaje) || 'No se pudo guardar.'); return false; }
   DG.id = r.id; DG.estado = r.estado; DG.sucio = false;
   if (DCFG.alGuardar) DCFG.alGuardar(r);
-  if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
+  if (!silencioso) { toast({ Cerrado: (DCFG.pal ? 'Relevamiento' : 'Diagnóstico') + ' cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
   return true;
 }
 // Fotos: se achican en el teléfono (máx. 1600 px) y se suben de a una
@@ -484,6 +503,7 @@ async function diagSubirFotos(k, files) {
 window.addEventListener('beforeunload', e => { if (DG && (DG.sucio || DG.subiendo)) { e.preventDefault(); e.returnValue = ''; } });
 
 SES ? empezar() : ingreso();
+if (SES && location.hash === '#cocina') { DCFG = DCFG_COC; diagForm(SES.est); }
 </script>
 </body>
 </html>
