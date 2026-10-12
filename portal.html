@@ -359,6 +359,7 @@ function marco(activo, contenido) {
     it('#agua', 'water_drop', '3 · Agua') +
     grp('per', 'badge', '4 · Personal y RAR', it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1)) +
     it('#plagas', 'pest_control', '5 · Plagas') +
+    grp('coc', 'soup_kitchen', '6 · Cocinas', it('#coc', '', 'Tablero', 1) + it('#cocper', '', 'Personas de cocina', 1) + it('#cocdiag', '', 'Relevamiento BPM / HACCP', 1)) +
     grp('cap', 'school', '7 · Capacitaciones', it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)')) +
     '<div class="titu mod">Más</div>' +
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
@@ -471,6 +472,9 @@ const AYUDA = {
   '#bib': ['Biblioteca HyS', ['Tus guías, POE, protocolos, PTS y manuales, con versión, vigencia y fecha de revisión.', '«Subir documento»: el código siguiente se sugiere solo. Si subís una versión nueva con el mismo código, la anterior queda «Reemplazado».', 'ALCANCE define quién lo ve en «Mi establecimiento»: toda la red, un área o establecimientos puntuales.', '«A revisar» aparece cuando faltan 60 días o menos para la revisión.']],
   '#docs': ['Registro de documentos HYSL', ['Pedir número, ver y anular con motivo.']],
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
+  '#coc': ['6 · Cocinas hospitalarias', ['Estado de las cocinas de toda la red: relevamientos BPM / HACCP (resultado y puntos críticos) y personas que manipulan alimentos, con su carnet y su libreta.', 'Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Lo decide el TIPO de la BASE COMÚN.', '«Requiere atención»: carnets o libretas vencidos, que vencen en 60 días o sin dato. Tocá uno para ir a las personas de ese establecimiento.', 'Tocá un establecimiento de la tabla para abrir su relevamiento.']],
+  '#cocper': ['6 · Personas de cocina', ['Una fila por persona que manipula alimentos, de planta o de empresa: carnet de manipulador (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.', 'Elegí un establecimiento para cargar. «En la base de trabajadores» sugiere personas con función o servicio de cocina, alimentación o nutrición: tocá una para agregarla.', 'Al escribir el DNI, si la persona está en la base de trabajadores, se completa el nombre.', 'La foto del carnet y de la libreta queda en la carpeta del establecimiento › Cocina › Carnets y libretas.', 'Para dar de baja: Editar › Activo = No (no se borra). Todo se puede corregir también en BASE COMÚN › COCINA_PERSONAS.']],
+  '#cocdiag': ['6 · Relevamiento BPM / HACCP', ['El mismo formulario del diagnóstico de residuos: primero la pestaña Establecimiento (empezá por «¿Cómo se resuelve la comida de pacientes?») y después cada lugar que se recorre (cocina, depósito, heladeras, lactario, office, comedor, vestuario).', 'Si no hay servicio de alimentación, se responde solo la primera pregunta y se puede cerrar.', 'Las preguntas de carnet y libreta se sugieren con las personas de cocina cargadas.', 'Cada opción vale 1, 0,5 o 0; «No se sabe» no cuenta y queda como dato a relevar. Los puntos críticos en 0 se destacan.', 'Las preguntas, las opciones y los lugares se cambian en la planilla DIAGNÓSTICO DE COCINAS (hojas ITEMS y LUGARES).']],
   '#bandeja': ['Bandeja de entrada', ['Sube planillas completas, muestra «Ahora › Queda» y aplica lo aprobado.']]
 };
 // Buscador de ayuda: busca en todas las pantallas, sin importar tildes ni mayúsculas
@@ -1616,7 +1620,7 @@ async function ficha(cod) {
   const com = FICHA.comites.map((c, i) => '<div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.v[1]) + '</b><button class="link" data-com="' + i + '">Editar</button></div><dl class="datos" style="margin-top:8px">' +
     fila('Responsable', c.v[2]) + fila('Contacto', [c.v[3], c.v[4]].filter(x => x && x !== 's/d').join(' · ')) + fila('Reuniones', c.v[5]) + fila('Última reunión', c.v[6] ? fechaTxt(c.v[6]) : '') + '</dl></div>').join('');
   marco(desde || '#ficha', '<div class="cab"><div><a href="' + (desde || '#est') + '" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a ' + (desde === '#agua' ? 'Agua' : desde === '#plagas' ? 'Plagas' : 'establecimientos') + '</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
-    '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + (d.CARPETA && d.CARPETA !== 's/d' ? '<a class="btn sec" href="' + esc(d.CARPETA) + '" target="_blank" rel="noopener" title="Carpeta en Drive: DDJJ, informes, NTE, fotos y documentos del establecimiento">Carpeta y documentos ↗</a>' : '') + '<a class="btn sec" href="#diag/' + encodeURIComponent(d.CODIGO) + '">Diagnóstico de residuos</a><a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
+    '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + (d.CARPETA && d.CARPETA !== 's/d' ? '<a class="btn sec" href="' + esc(d.CARPETA) + '" target="_blank" rel="noopener" title="Carpeta en Drive: DDJJ, informes, NTE, fotos y documentos del establecimiento">Carpeta y documentos ↗</a>' : '') + '<a class="btn sec" href="#diag/' + encodeURIComponent(d.CODIGO) + '">Diagnóstico de residuos</a><a class="btn sec" href="#cocdiag/' + encodeURIComponent(d.CODIGO) + '">Cocina</a><a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
     '<div class="grid g3">' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + fila('Capacitados', FICHA.trabajadores.activos ? FICHA.trabajadores.capacitados + ' de ' + FICHA.trabajadores.activos + ' (' + Math.round(100 * FICHA.trabajadores.capacitados / FICHA.trabajadores.activos) + ' %)' : '') + '</dl></section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Red HyS</h2><button class="link" id="nuevaRed">Agregar persona</button></div><div style="margin-top:6px">' + (red || '<p class="mu">Sin personas cargadas.</p>') + '</div></section>' +
@@ -1879,7 +1883,7 @@ function pasoImp() {
 
 
 // ------------------------------------------------------------------ Diagnóstico de residuos · portal
-const DCFG = {
+const DCFG_RES = {
   modo: 'hys',
   abrir: (cod, id) => api('p_diag_abrir', { cod: cod, id: id }),
   guardar: p => api('p_diag_guardar', p),
@@ -1890,6 +1894,7 @@ const DCFG = {
   nombre: cod => ((RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
 };
+let DCFG = DCFG_RES;   // el módulo 6 (cocinas) usa el mismo formulario con su propia configuración (DCFG_COC)
 async function diagLista() {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#diag'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   const F = RES.filas.slice().sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
@@ -1997,9 +2002,9 @@ function diagPintar() {
   const hist = !red && (D.historial || []).length ? '<div class="peq" style="margin-top:4px">Anteriores: ' + D.historial.map(h => '<button class="link" data-hist="' + esc(h.id) + '">' + esc(fechaTxt(h.fecha)) + ' · ' + (h.pct === '' ? '—' : h.pct + ' %') + ' · ' + esc(h.estado) + '</button>').join(' · ') + '</div>' : '';
   let botones = '';
   if (red) botones = ro ? '<span class="mu">Ya se envió a Higiene y Seguridad. Si hay que corregir algo, Higiene y Seguridad lo devuelve.</span>' : '<button class="btn sec" id="dgGuardar">Guardar y seguir después</button><button class="btn pri" id="dgEnviar">Enviar a Higiene y Seguridad</button>';
-  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un diagnóstico nuevo</button>';
-  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar diagnóstico</button>';
-  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">Diagnóstico de residuos · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
+  else if (ro) botones = '<button class="btn sec" id="dgNuevo">Empezar un ' + (DCFG.pal || 'diagnóstico') + ' nuevo</button>';
+  else botones = '<button class="btn sec" id="dgGuardar">Guardar borrador</button>' + (DG.estado === 'Enviado' ? '<button class="btn sec" id="dgDevolver">Devolver al referente</button>' : '') + '<button class="btn pri" id="dgCerrar">Cerrar ' + (DCFG.pal || 'diagnóstico') + '</button>';
+  DCFG.pantalla('<div class="cab"><div>' + DCFG.volver + '<h1>' + esc(DG.nombre) + '</h1><span class="mu">' + esc(DCFG.titulo ? DCFG.titulo() : 'Diagnóstico de residuos') + ' · ' + esc(estadoTxt) + (ro && !red ? ' (solo lectura)' : '') + '</span>' + hist + '</div>' +
     '<div class="card kpi resultado"><span>Resultado</span><b>' + (c.pct == null ? '—' : c.pct + ' %') + '</b><small>' + (c.msn == null ? '' : 'Matriz nacional: ' + c.msn + ' / 6 · ') + c.n + ' punto(s) evaluado(s)' + (c.crit ? ' · <span style="color:var(--er);font-weight:700">' + c.crit + ' crítico(s)</span>' : '') + '</small></div></div>' +
     (red && !ro ? '<div class="aviso peq">Podés completarlo de a partes: tocá <b>Guardar y seguir después</b> y volvé cuando quieras con la misma clave. Cuando termines, tocá <b>Enviar a Higiene y Seguridad</b>. Las fotos ayudan mucho: agregá las que puedas.</div>' : '') +
     (DCFG.extra ? DCFG.extra() : '') +
@@ -2010,8 +2015,8 @@ function diagPintar() {
       '<label class="f">' + (red ? 'Otras personas que participaron' : 'Persona entrevistada') + '<input class="c" data-cab="ENTREVISTADO" value="' + esc(DG.cab.ENTREVISTADO) + '"' + (ro ? ' disabled' : '') + '></label></div>' +
       '<label class="f" style="margin-top:12px">Observaciones generales<textarea class="c" data-cab="OBSERVACIONES"' + (ro ? ' disabled' : '') + '>' + esc(DG.cab.OBSERVACIONES) + '</textarea></label></section>' +
     '<div class="tabs"><span class="mu peq" style="font-weight:700">Completar:</span>' + tabs.map(t => '<button class="btn ' + (t === DG.tab ? 'pri' : 'sec') + '" data-tab="' + esc(t) + '"' + (t !== '' && falta.length ? ' title="Primero completá los datos del establecimiento" style="opacity:.55"' : '') + '>' + (t !== '' && falta.length ? '🔒 ' : '') + esc(tabTxt(t)) + '</button>').join('') + '</div>' +
-    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.' + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
-    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un diagnóstico anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
+    (DG.tab !== '' ? '<p class="mu peq" style="margin:0">' + (DCFG.txtLugares || 'Estos puntos se completan para cada lugar: edificio, CAPS o dispositivo. Si un lugar no se revisó, dejalo sin completar.') + (!ro && D.sitios.length > 1 ? ' <button class="link" id="dgCopiar">Copiar las respuestas de otro lugar</button>' : '') + '</p>' : '') +
+    (!ro && !red && D.previo && (D.respuestasPrevio || []).length ? '<div class="aviso peq">Hay un ' + (DCFG.pal || 'diagnóstico') + ' anterior (' + esc(fechaTxt(D.previo.FECHA)) + ', ' + esc(D.previo.PORCENTAJE) + ' %). <button class="link" id="dgPrevio">Traer sus respuestas como punto de partida</button></div>' : '') +
     (bloqueo ? '<section class="card"><h2>Primero, los datos del establecimiento</h2><p class="mu">Para relevar cada lugar hace falta completar antes, en la pestaña <b>Establecimiento</b>: ' + falta.map(i => '<b>' + esc(i.ITEM) + '</b>').join(', ') + '. Esas respuestas definen qué se pregunta en cada lugar.</p><button class="btn pri" data-tab="">Ir a Establecimiento</button></section>' : '') +
     (DG.tab === '' && falta.length ? '<div class="aviso peq">Empezá por los puntos marcados como <b>Primero</b>: definen qué se pregunta en cada lugar.</div>' : '') +
     secciones.map(sec => '<section class="card seccion"><div class="sec-tit"><h2>' + esc(sec) + '</h2></div>' +
@@ -2043,11 +2048,11 @@ function diagPintar() {
   if ($('dgGuardar')) $('dgGuardar').onclick = () => diagGuardar(DG.estado === 'Enviado' ? 'Enviado' : 'Borrador');
   const diagPuedeCerrar = () => { const f = diagFaltaCerrar();
     if (f.est.length) { toast('Falta completar en Establecimiento ' + f.est.length + ' punto(s): ' + f.est.slice(0, 3).map(i => i.ITEM).join(' · ') + (f.est.length > 3 ? '…' : '')); DG.tab = ''; diagPintar(); window.scrollTo(0, 0); return false; }
-    if (f.requiere && !f.sitios) { toast('Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
+    if (f.requiere && !f.sitios && !(DCFG.sinLugares && DCFG.sinLugares())) { toast(DCFG.txtFaltaLugar || 'Falta relevar al menos un lugar (el edificio, un CAPS o un dispositivo).'); return false; }
     return true; };
-  if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el diagnóstico? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
-  if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el diagnóstico a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
-  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el diagnóstico al referente para que lo complete o corrija?') && diagGuardar('Borrador');
+  if ($('dgCerrar')) $('dgCerrar').onclick = () => diagPuedeCerrar() && confirm('¿Cerrar el ' + (DCFG.pal || 'diagnóstico') + '? Queda como resultado del establecimiento y ya no se puede editar (se puede empezar otro).') && diagGuardar('Cerrado');
+  if ($('dgEnviar')) $('dgEnviar').onclick = () => diagPuedeCerrar() && confirm('¿Enviar el ' + (DCFG.pal || 'diagnóstico') + ' a Higiene y Seguridad? Después ya no se puede modificar, salvo que te lo devuelvan.') && diagGuardar('Enviado');
+  if ($('dgDevolver')) $('dgDevolver').onclick = () => confirm('¿Devolver el ' + (DCFG.pal || 'diagnóstico') + ' al referente para que lo complete o corrija?') && diagGuardar('Borrador');
   if ($('dgNuevo')) $('dgNuevo').onclick = () => { DG.D.previo = DG.D.actual || DG.D.previo; DG.D.respuestasPrevio = (DG.D.respuestas || []).length ? DG.D.respuestas : DG.D.respuestasPrevio; DG.D.actual = null; DG.D.respuestas = [];
     DG.id = ''; DG.estado = 'Nuevo'; DG.R = {}; DG.cab.FECHA = hoyISO(); DG.sucio = true; diagPintar(); };
 }
@@ -2070,7 +2075,7 @@ async function diagGuardar(estado, silencioso) {
   if (r.estado === 'Cerrado' && r.perfil && r.perfil.categoria && DCFG.modo !== 'red') {
     if (confirm('Perfil guardado en la BASE COMÚN: categoría ' + r.perfil.categoria + ' · módulos ' + r.perfil.modulos + '.\n\n¿Creás ahora el relevamiento inicial (la auditoría de campo de la categoría)?')) {
       try { let a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); for (let k = 0; a && a.ok && a.pendientes > 0 && k < 5; k++) { toast('Relevamiento: faltan ' + a.pendientes + ' lugares, sigo…'); a = await api('p_diag_relevamiento', { cod: DG.cod, idDiag: r.id }, 120000); } if (a && a.ok) { if (a.mensaje) toast(a.mensaje); AU.cod = DG.cod; location.hash = '#aud/' + encodeURIComponent(a.id); return true; } toast((a && a.mensaje) || 'No se pudo crear el relevamiento.'); } catch (e) {} } }
-  if (!silencioso) { toast({ Cerrado: 'Diagnóstico cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
+  if (!silencioso) { toast({ Cerrado: (DCFG.pal ? 'Relevamiento' : 'Diagnóstico') + ' cerrado: ', Enviado: DCFG.modo === 'red' ? 'Enviado a Higiene y Seguridad. ¡Gracias! Resultado: ' : 'Guardado: ', Borrador: 'Guardado: ' }[r.estado] + (r.pct === '' ? '—' : r.pct + ' %')); diagPintar(); }
   return true;
 }
 // Fotos: se achican en el teléfono (máx. 1600 px) y se suben de a una
@@ -2095,6 +2100,142 @@ async function diagSubirFotos(k, files) {
 }
 window.addEventListener('beforeunload', e => { if (DG && (DG.sucio || DG.subiendo)) { e.preventDefault(); e.returnValue = ''; } });
 
+
+// ------------------------------------------------------------------ Módulo 6 · Cocinas hospitalarias (Modulo6.gs)
+// Tablero, personas de cocina (carnet de manipulador y libreta sanitaria) y relevamiento BPM / HACCP con el mismo formulario del diagnóstico.
+let COCT = null, COCP = { cod: '*', filtro: '', L: null, cargado: '' };
+const COC_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'gr'] };
+const cocChip = (e, vence) => { const x = COC_EST[e] || COC_EST.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (vence && e !== 'no' ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(vence) + '</div>' : ''); };
+const cocFrac = (a, b) => b ? a + ' de ' + b : '—';
+async function cocDatos(fresco) {
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!COCT || fresco) { try { COCT = await api('p_coc_tablero', { fresco: !!fresco }, 180000); } catch (e) { return false; } }
+  if (!COCT.ok) { marco('#coc', '<div class="aviso error">' + esc(COCT.mensaje || 'No se pudo leer el módulo de cocinas.') + '</div>'); return false; }
+  return true;
+}
+async function cocTablero(fresco) {
+  if (!COCT || fresco) cargando('#coc', 'Armando el tablero de cocinas…');
+  if (!(await cocDatos(fresco))) return;
+  const T = COCT.totales, A = FILTRO.area, areas = Array.from(new Set(COCT.establecimientos.map(e => e.area))).filter(Boolean).sort();
+  const E = COCT.establecimientos.filter(e => !A || e.area === A).sort((a, b) => (a.area + (a.rural ? '1' : '0') + a.nombre).localeCompare(b.area + (b.rural ? '1' : '0') + b.nombre));
+  const avisos = COCT.avisos.filter(v => !A || E.some(e => e.cod === v.cod));
+  const nom = c => (COCT.establecimientos.find(e => e.cod === c) || { nombre: c }).nombre;
+  const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
+  marco('#coc', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Cocinas hospitalarias</h1><span class="mu peq">Buenas prácticas de manufactura (BPM) en todos los establecimientos y sistema HACCP en los no rurales · personas que manipulan alimentos.</span></div>' +
+    '<div class="filtros"><label class="f">Área<select class="c" id="ccA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="ccAct">Actualizar</button></div></div>' +
+    '<div class="tb5">' + kpi('#cocdiag', 'Relevados', cocFrac(T.relevados, T.establecimientos), 'establecimientos con relevamiento cerrado') + kpi('#cocdiag', 'Cumplimiento promedio', T.promedio == null ? '—' : T.promedio + ' %', 'de los relevados') +
+    kpi('#cocdiag', 'Con puntos críticos', T.criticos, T.enviados ? T.enviados + ' enviado(s) por referentes para revisar' : 'algún punto crítico en 0', T.criticos ? 'var(--er)' : '') +
+    kpi('#cocper', 'Carnet vigente', cocFrac(T.carnetVigente, T.personas), T.personas ? 'carnet de manipulador · personas de cocina cargadas' : 'todavía no hay personas de cocina cargadas') +
+    kpi('#cocper', 'Libreta vigente', cocFrac(T.libretaVigente, T.personas), 'libreta sanitaria') + kpi('#cocper', 'Vencidos o sin documento', T.vencidos, (T.porVencer ? T.porVencer + ' vencen en 60 días · ' : '') + (T.sinDato ? T.sinDato + ' sin dato' : 'carnet o libreta'), T.vencidos ? 'var(--er)' : '') + '</div>' +
+    '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Por establecimiento</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Alcance</th><th>Relevamiento</th><th>Personas</th><th>Carnet</th><th>Libreta</th></tr></thead><tbody>' +
+    E.map(e => { const p = e.personas; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + ' · ' + esc(e.tipo) + '</div></td><td class="peq">' + esc(e.alcance) + '</td><td>' + chipDiag(e.diag) + '</td>' +
+      '<td>' + (p.total ? p.total + (p.empresa ? ' <span class="mu peq">(' + p.empresa + ' de empresa)</span>' : '') : '<span class="mu">—</span>') + '</td><td>' + (p.total ? chipCap(p.carnetVigente, p.total) : '<span class="chip gr">—</span>') + '</td><td>' + (p.total ? chipCap(p.libretaVigente, p.total) : '<span class="chip gr">—</span>') + '</td></tr>'; }).join('') +
+    '</tbody></table></div></section>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (avisos.length ? avisos.slice(0, 14).map(v => '<a class="at" href="#cocper/' + encodeURIComponent(v.cod) + '"><span class="tag ' + (COC_EST[v.estado] || COC_EST.sd)[1] + '">' + (COC_EST[v.estado] || COC_EST.sd)[0] + '</span><span><b>' + esc(v.nombre) + '</b><small>' + esc(nom(v.cod)) + ' · carnet: ' + (COC_EST[v.carnet] || COC_EST.sd)[0].toLowerCase() + ' · libreta: ' + (COC_EST[v.libreta] || COC_EST.sd)[0].toLowerCase() + '</small></span></a>').join('') +
+      (avisos.length > 14 ? '<a class="link peq" href="#cocper">Ver los ' + avisos.length + '</a>' : '') : '<p class="mu" style="margin:0">' + (T.personas ? 'Todos los carnets y libretas cargados están vigentes.' : 'Todavía no hay personas de cocina cargadas.') + '</p>') + '</section></div>' +
+    compartirDiag(''));
+  $('ccA').onchange = e => { FILTRO.area = e.target.value; cocTablero(); };
+  $('ccAct').onclick = () => cocTablero(true);
+  document.querySelectorAll('tr.cl[data-cod]').forEach(tr => tr.onclick = () => location.hash = '#cocdiag/' + encodeURIComponent(tr.dataset.cod));
+  activarCompartir('');
+}
+// Lista de relevamientos (para elegir el establecimiento)
+async function cocLista() {
+  if (!COCT) cargando('#cocdiag', 'Leyendo los relevamientos…');
+  if (!(await cocDatos())) return;
+  const E = COCT.establecimientos.slice().sort((a, b) => (a.area + (a.rural ? '1' : '0') + a.nombre).localeCompare(b.area + (b.rural ? '1' : '0') + b.nombre));
+  marco('#cocdiag', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Relevamiento BPM / HACCP</h1><span class="mu peq">Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Línea de base: no incluye plan de mejora.</span></div></div>' +
+    '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Alcance</th><th>Último relevamiento</th><th>Resultado</th><th></th></tr></thead><tbody>' +
+    E.map(e => '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(e.alcance) + '</td><td>' + (e.diag ? fechaTxt(e.diag.fecha) : '—') + '</td><td>' + chipDiag(e.diag) + '</td><td><span class="link">' + (e.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
+    '</tbody></table></section>');
+  document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => location.hash = '#cocdiag/' + encodeURIComponent(tr.dataset.cod));
+}
+// Relevamiento: el mismo formulario del diagnóstico de residuos, con la configuración de cocinas
+const DCFG_COC = {
+  modo: 'hys', pal: 'relevamiento',
+  abrir: (cod, id) => api('p_coc_abrir', { cod: cod, id: id }, 120000),
+  guardar: p => api('p_coc_guardar', p, 120000),
+  foto: p => api('p_coc_foto', p),
+  pantalla: html => marco('#cocdiag', html),
+  volver: '<a href="#cocdiag" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los relevamientos de cocina</a>',
+  titulo: () => 'Relevamiento de cocina · ' + (DG.D.alcance === 'Rural (BPM)' ? 'BPM' : 'BPM y HACCP'),
+  txtLugares: 'Estas preguntas se responden en cada lugar que se recorre. Si un lugar no existe o no se revisó, dejalo sin completar.',
+  txtFaltaLugar: 'Falta relevar al menos un lugar (por ejemplo, la cocina).',
+  sinLugares: () => (DG.R['|COC01'] || {}).valor === 'No hay servicio de alimentación',   // sin servicio de alimentación se cierra solo con la primera pregunta
+  extra: () => { const P = DG.D.personas; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Personas de cocina</h2><span class="mu peq">' +
+    (P && P.total ? P.total + ' cargada(s): carnet vigente ' + P.carnetVigente + ', libreta vigente ' + P.libretaVigente + (P.vencidos ? ', ' + P.vencidos + ' vencida(s) o sin documento' : '') + '. Las preguntas de carnet y libreta se sugieren con estos datos.' : 'Todavía no hay personas cargadas: conviene cargarlas antes, así las preguntas de carnet y libreta se completan solas.') +
+    '</span></div><a class="btn sec" href="#cocper/' + encodeURIComponent(DG.cod) + '">Ver personas de cocina</a></section>'; },
+  nombre: cod => ((COCT && COCT.establecimientos.find(e => e.cod === cod)) || (RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
+  alGuardar: () => { COCT = null; }
+};
+function cocForm(cod, id) { DCFG = DCFG_COC; diagForm(cod, id); }
+
+// Personas de cocina
+async function cocPersonas(cod) {
+  cod = cod || COCP.cod || '*'; COCP.cod = cod;
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!COCP.L || COCP.cargado !== cod) {
+    cargando('#cocper', 'Leyendo las personas de cocina…');
+    let r; try { r = await api('p_coc_personas', { cod: cod }, 120000); } catch (e) { return; }
+    if (!r.ok) return marco('#cocper', '<div class="aviso error">' + esc(r.mensaje || 'No se pudo leer.') + '</div>');
+    COCP.L = r; COCP.cargado = cod;
+  }
+  const R = COCP.L, f = COCP.filtro, nom = c => ((RES && RES.filas.find(x => x.cod === c)) || { nombre: c }).nombre;
+  const L = R.personas.filter(p => p.ACTIVO !== 'No' || f === 'baja').filter(p => !f || (f === 'atencion' ? p.estado !== 'vigente' : f === 'empresa' ? p.ORIGEN === 'Empresa' : f === 'baja' ? p.ACTIVO === 'No' : true))
+    .sort((a, b) => (a.ESTABLECIMIENTO + a.APELLIDO_Y_NOMBRE).localeCompare(b.ESTABLECIMIENTO + b.APELLIDO_Y_NOMBRE));
+  const S = R.resumen, chipF = (v, t) => '<button class="fchip' + (f === v ? ' on' : '') + '" data-cf="' + v + '">' + t + '</button>';
+  marco('#cocper', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Personas de cocina</h1><span class="mu peq">Carnet de manipulador de alimentos (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.</span></div>' +
+    '<div class="filtros"><label class="f">Establecimiento<select class="c" id="cpE">' + selectorEst(cod, false, true) + '</select></label>' + (cod !== '*' ? '<button class="btn pri" id="cpNuevo">+ Agregar persona</button>' : '') + '</div></div>' +
+    '<div class="tb5">' + [['Personas', S.total, S.empresa ? S.empresa + ' de empresa' : 'activas'], ['Carnet vigente', cocFrac(S.carnetVigente, S.total), 'manipulador de alimentos'], ['Libreta vigente', cocFrac(S.libretaVigente, S.total), 'libreta sanitaria'], ['Vencidos o sin documento', S.vencidos, S.porVencer ? S.porVencer + ' vencen en 60 días' : 'carnet o libreta'], ['Sin dato', S.sinDato, 'falta la fecha o el documento']]
+      .map(k => '<div class="kpi2"><span>' + k[0] + '</span><b>' + k[1] + '</b><small>' + k[2] + '</small></div>').join('') + '</div>' +
+    ((R.sugeridas || []).length ? '<section class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>En la base de trabajadores</h2><span class="mu peq">' + R.sugeridas.length + ' persona(s) de ' + esc(nom(cod)) + ' con función o servicio de cocina, alimentación o nutrición que todavía no están en esta lista.</span></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">' + R.sugeridas.slice(0, 40).map((s, i) => '<button class="btn sec" data-sug="' + i + '" title="' + esc(s.funcion + ' · ' + s.servicio) + '">+ ' + esc(s.nombre) + '</button>').join('') + '</div></section>' : '') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' + chipF('', 'Todas') + chipF('atencion', 'Requieren atención') + chipF('empresa', 'De empresa') + chipF('baja', 'Dadas de baja') + '</div>' +
+    '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Persona</th>' + (cod === '*' ? '<th>Establecimiento</th>' : '') + '<th>Función</th><th>Carnet de manipulador</th><th>Libreta sanitaria</th><th></th></tr></thead><tbody>' +
+    L.map(p => '<tr><td><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">' + (p.DNI ? 'DNI ' + esc(p.DNI) : 'DNI s/d') + ' · ' + esc(p.ORIGEN === 'Empresa' ? 'Empresa' + (p.EMPRESA ? ' ' + p.EMPRESA : '') : 'Planta') + (p.ACTIVO === 'No' ? ' · <b>de baja</b>' : '') + '</div></td>' +
+      (cod === '*' ? '<td class="peq">' + esc(nom(p.ESTABLECIMIENTO)) + '</td>' : '') + '<td class="peq">' + esc(p.FUNCION_COCINA || 's/d') + '</td>' +
+      '<td>' + cocChip(p.carnet, p.carnetVence) + (p.CARNET_FOTO ? '<a class="link peq" href="' + esc(p.CARNET_FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + '</td>' +
+      '<td>' + cocChip(p.libreta, p.libretaVence) + (p.LIBRETA_FOTO ? '<a class="link peq" href="' + esc(p.LIBRETA_FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + '</td>' +
+      '<td><button class="link" data-cp="' + esc(p.ID) + '">Editar</button></td></tr>').join('') + '</tbody></table></div>' +
+    (L.length ? '' : '<div class="vacio">' + (cod === '*' ? 'No hay personas con este filtro. Elegí un establecimiento para cargar.' : 'No hay personas cargadas con este filtro. Tocá «+ Agregar persona» o sumá las sugeridas de la base de trabajadores.') + '</div>') + '</section>' +
+    '<p class="mu peq">También se puede cargar y corregir en la planilla: BASE COMÚN › COCINA_PERSONAS. Los referentes cargan desde «Mi establecimiento» › Cocina.</p>');
+  $('cpE').onchange = e => location.hash = '#cocper/' + encodeURIComponent(e.target.value);
+  document.querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { COCP.filtro = b.dataset.cf; cocPersonas(cod); });
+  if ($('cpNuevo')) $('cpNuevo').onclick = () => cocPersonaForm(null, { ESTABLECIMIENTO: cod, ORIGEN: 'Planta', CARNET_TIENE: 's/d', LIBRETA_TIENE: 's/d', ACTIVO: 'Sí' });
+  document.querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { const s = R.sugeridas[b.dataset.sug];
+    cocPersonaForm(null, { ESTABLECIMIENTO: cod, ORIGEN: s.empresa ? 'Empresa' : 'Planta', EMPRESA: s.empresa, DNI: s.dni, APELLIDO_Y_NOMBRE: s.nombre, FUNCION_COCINA: '', CARNET_TIENE: 's/d', LIBRETA_TIENE: 's/d', ACTIVO: 'Sí', OBSERVACIONES: [s.funcion, s.servicio].filter(Boolean).join(' · ') }); });
+  document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => cocPersonaForm(R.personas.find(p => p.ID === b.dataset.cp)));
+}
+// Alta o cambio: el modal genérico más la carga de fotos del carnet y la libreta
+function cocPersonaForm(p, base) {
+  const v = Object.assign({}, base || p || {}), F = COCP.L.funciones || [];
+  ['CARNET_EMISION', 'CARNET_VENCE', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'CAPACITACION_BPM'].forEach(k => v[k] = v[k] || '');
+  const arch = {};
+  const subir = k => '<label class="f ancho">' + (k === 'carnet' ? 'Foto del carnet' : 'Foto de la libreta') + ' (opcional)<input class="c" type="file" accept="image/*,application/pdf" data-arch="' + k + '"><span class="mu peq" id="ar_' + k + '">' + (p && p[k === 'carnet' ? 'CARNET_FOTO' : 'LIBRETA_FOTO'] ? 'Ya hay una cargada; si elegís otra, se reemplaza.' : '') + '</span></label>';
+  const m = modal(p ? 'Persona de cocina · ' + p.APELLIDO_Y_NOMBRE : 'Agregar persona de cocina', [
+    ['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['DNI', 'DNI (sin puntos)'], ['ORIGEN', 'Personal', ['Planta', 'Empresa']], ['EMPRESA', 'Empresa (si es de empresa)'], ['FUNCION_COCINA', 'Función en la cocina', F],
+    ['CARNET_TIENE', '¿Tiene carnet de manipulador?', ['Sí', 'No', 's/d']], ['CARNET_EMISOR', 'Carnet: quién lo emitió (municipio)'], ['CARNET_EMISION', 'Carnet: fecha de emisión', 'date'], ['CARNET_VENCE', 'Carnet: vencimiento (si figura)', 'date'],
+    ['LIBRETA_TIENE', '¿Tiene libreta sanitaria?', ['Sí', 'No', 's/d']], ['LIBRETA_EMISOR', 'Libreta: quién la emitió'], ['LIBRETA_EMISION', 'Libreta: fecha de emisión', 'date'], ['LIBRETA_VENCE', 'Libreta: vencimiento (si figura)', 'date'],
+    ['CAPACITACION_BPM', 'Última capacitación interna en BPM', 'date'], ['ACTIVO', 'Activo', ['Sí', 'No']], ['OBSERVACIONES', 'Observaciones', null, 1]], v,
+    async out => {
+      const datos = Object.assign({ ID: p ? p.ID : '', ESTABLECIMIENTO: v.ESTABLECIMIENTO || COCP.cod }, out);
+      if (arch.carnet) datos.carnetArchivo = arch.carnet; if (arch.libreta) datos.libretaArchivo = arch.libreta;
+      const r = await api('p_coc_persona_guardar', datos, 120000);
+      if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      toast(p ? 'Cambios guardados.' : 'Persona agregada.'); COCP.cargado = ''; COCT = null; cocPersonas(COCP.cod); return '';
+    }, subir('carnet') + subir('libreta') + '<p class="mu peq" style="margin:0">Si no figura el vencimiento, se calcula: carnet 3 años y libreta 1 año desde la emisión.</p>');
+  document.querySelectorAll('#ov [data-arch]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.arch, msg = $('ar_' + k); if (!f) return;
+    try {
+      if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) { msg.textContent = 'El PDF pesa más de 6 MB.'; return; } arch[k] = await new Promise((ok, mal) => { const rd = new FileReader(); rd.onload = () => ok(rd.result); rd.onerror = mal; rd.readAsDataURL(f); }); }
+      else arch[k] = await achicar(f);
+      msg.textContent = 'Lista para guardar: ' + f.name;
+    } catch (e) { msg.textContent = 'No se pudo leer el archivo.'; } });
+  // DNI: si está en la base de trabajadores, completa el nombre
+  const dni = document.querySelector('#ov [data-k="DNI"]'), nomI = document.querySelector('#ov [data-k="APELLIDO_Y_NOMBRE"]');
+  if (dni && nomI) dni.onchange = async () => { if (nomI.value || String(dni.value).replace(/\D/g, '').length < 7) return;
+    try { const r = await api('p_coc_dni', { dni: dni.value }); if (r.ok && r.persona) { nomI.value = r.persona.nombre; toast('Encontrado en la base de trabajadores: ' + r.persona.nombre + (r.persona.est ? ' (' + r.persona.est + ')' : '') + '.'); } } catch (e) {} };
+  return m;
+}
 
 // ------------------------------------------------------------------ Tablero de problemáticas (matriz de 4 cuadrantes)
 const QDEF = { Q1: ['Actuar ya', 'Urgente e importante'], Q2: ['Planificar', 'Importante, no urgente'], Q3: ['Resolver rápido', 'Urgente, no importante'], Q4: ['Monitorear', 'Ni urgente ni importante'] };
@@ -2847,7 +2988,10 @@ function router() {
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');
   if (ruta === 'importar') return importar();
-  if (ruta === 'diag') return a ? diagForm(a) : diagLista();
+  if (ruta === 'diag') { DCFG = DCFG_RES; return a ? diagForm(a) : diagLista(); }
+  if (ruta === 'coc') return cocTablero();
+  if (ruta === 'cocper') return cocPersonas(a);
+  if (ruta === 'cocdiag') return a ? cocForm(a) : cocLista();
   if (ruta === 'tablero') return tablero(a);
   if (ruta === 'docs') return documentos(a);
   if (ruta === 'modelos') return modelos();
