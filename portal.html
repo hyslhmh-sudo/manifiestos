@@ -216,10 +216,12 @@ main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
 @media (max-width: 760px) {
   main { padding: 16px 12px 96px; }
   main:not(.ref) .barra { margin: 0 -12px; padding: 10px 12px; bottom: 62px; }
+  body:has(main .barra) .ayudaBtn { bottom: 132px; }
   h1 { font-size: 23px; }
   .cab { padding-bottom: 12px; }
   .kpi2 b { font-size: 24px; }
 }
+@media (max-width: 1000px) { .tb2 { grid-template-columns: minmax(0, 1fr) !important; } }
 </style>
 </head>
 <body>
