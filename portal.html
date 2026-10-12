@@ -222,6 +222,27 @@ main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
   .kpi2 b { font-size: 24px; }
 }
 @media (max-width: 1000px) { .tb2 { grid-template-columns: minmax(0, 1fr) !important; } }
+/* Menú lateral con módulos desplegables */
+nav.lat .titu.mod { font-size: 12.5px; font-weight: 600; letter-spacing: 0; color: #A9C6D1; padding: 18px 10px 4px; }
+nav.lat details.mod > summary { list-style: none; display: flex; align-items: center; padding: 8px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; user-select: none; transition: background .15s; }
+nav.lat details.mod > summary::-webkit-details-marker { display: none; }
+nav.lat details.mod > summary:hover { background: #1E4A5C; }
+nav.lat details.mod > summary .t { flex: 1; }
+nav.lat details.mod > summary .flecha { margin: 0; font-size: 20px; color: #A9C6D1; transition: transform .15s; }
+nav.lat details.mod[open] > summary .flecha { transform: rotate(180deg); }
+nav.lat details.mod[open] { padding-bottom: 6px; }
+nav.lat details.mod .pr { padding-left: 38px; }
+nav.lat button.it { font-weight: 400; }
+/* Indicadores: celdas vacías de la última fila en blanco */
+.tb5 { gap: 0 !important; background: #fff; }
+.tb5 > .kpi2 { box-shadow: 1px 0 0 var(--ln), 0 1px 0 var(--ln); }
+/* Buscador de ayuda */
+.ayLista { display: flex; flex-direction: column; gap: 6px; }
+.ayLista:empty { display: none; }
+a.ayRes { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--ln); border-radius: 10px; text-decoration: none; color: var(--tx); font-size: 14px; transition: background .15s, border-color .15s; }
+a.ayRes:hover { background: var(--pa1); border-color: var(--pa); }
+a.ayRes b { font-size: 12.5px; color: var(--mu); font-weight: 600; }
+.ayLista mark { background: var(--pa2); color: inherit; border-radius: 3px; padding: 0 1px; }
 </style>
 </head>
 <body>
@@ -319,32 +340,40 @@ function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); LS.del('tab');
 
 // ------------------------------------------------------------------ Estructura
 function marco(activo, contenido) {
-  const ruta = activo.split('/')[0] === '#ficha' ? '#est' : activo.split('/')[0];
-  const it = (h, ico, t, sub) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + (sub ? ' sub' : '') + '">' + (ico ? '<span class="ms" aria-hidden="true">' + ico + '</span>' : '') + t + '</a>';
-  const grp = (ico, t) => '<div class="grp"><span class="ms" aria-hidden="true">' + ico + '</span>' + t + '</div>';
+  // Pantallas que no están en el menú se marcan en el ítem del que dependen
+  const ALIAS = { '#ficha': '#est', '#inv': '#sin', '#buscar': '#trab', '#audr': '#aud', '#capficha': '#capcat', '#capalta': '#capcat', '#capdicnuevo': '#capdic', '#capins': '#capdic', '#capserv': '#capcump', '#capjef': '#capcump' };
+  const ruta0 = activo.split('/')[0], ruta = ALIAS[ruta0] || ruta0;
+  const it = (h, ico, t, sub) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + (sub ? ' sub' : '') + '"' + (ruta === h ? ' aria-current="page"' : '') + '>' + (ico ? '<span class="ms" aria-hidden="true">' + ico + '</span>' : '') + t + '</a>';
+  // Módulos desplegables: se abre solo el de la pantalla actual y los que se abran a mano en esta sesión
+  let navAb = []; try { navAb = JSON.parse(sessionStorage.getItem('navAb') || '[]'); } catch (e) {}
+  const grp = (id, ico, t, items) => '<details class="mod" data-m="' + id + '"' + (items.indexOf('class="on') >= 0 || navAb.indexOf(id) >= 0 ? ' open' : '') + '><summary><span class="ms" aria-hidden="true">' + ico + '</span><span class="t">' + t + '</span><span class="ms flecha" aria-hidden="true">expand_more</span></summary>' + items + '</details>';
   const ext = (h, t) => '<a href="' + esc(h || '#') + '" target="_blank" rel="noopener" class="sub">' + t + ' ↗</a>';
   const en = RES && RES.enlaces || {};
   const inf = (h, ico, t) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + '"><span class="ms" aria-hidden="true">' + ico + '</span>' + t + '</a>';
   $('raiz').innerHTML = '<div class="app"><nav class="lat" id="lat" aria-label="Menú principal"><div class="marca"><b>Portal HyS</b><span>Red provincial · Chubut</span></div>' +
     '<form class="busca" id="fBusca" role="search"><input id="qBusca" type="search" placeholder="Buscar DNI, apellido o N.º CH" aria-label="Buscar personas y siniestros" value="' + esc(BUS.q || '') + '"></form>' +
-    it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') + it('#trab', 'groups', 'Personas') + it('#importar', '', 'Importar base de Personal', 1) +
-    '<div class="titu mod">MÓDULOS</div>' +
-    grp('recycling', '1 · Residuos') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1) +
-    grp('folder_open', '2 · Documentos') + ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) +
+    it('#inicio', 'dashboard', 'Tablero') + it('#est', 'apartment', 'Establecimientos') +
+    '<div class="titu mod">Módulos</div>' +
+    grp('res', 'recycling', '1 · Residuos', it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#plan', '', 'Plan de acción', 1) + it('#tablero', '', 'Problemáticas', 1)) +
+    grp('doc', 'folder_open', '2 · Documentos', ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes') + it('#bib', '', 'Biblioteca HyS', 1) + it('#docs', '', 'Registro de documentos HYSL', 1) + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1)) +
     it('#agua', 'water_drop', '3 · Agua') +
-    grp('badge', '4 · Personal y RAR') + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) +
+    grp('per', 'badge', '4 · Personal y RAR', it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#sin', '', 'Siniestros', 1) + it('#sinest', '', 'Estadísticas de siniestros', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1)) +
     it('#plagas', 'pest_control', '5 · Plagas') +
-    grp('school', '7 · Capacitaciones') + it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)') +
-    it('#ayuda', 'help', 'Ayuda') +
-    '<div class="titu herr">HERRAMIENTAS</div>' + ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
-    (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
+    grp('cap', 'school', '7 · Capacitaciones', it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)')) +
+    '<div class="titu mod">Más</div>' +
+    '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
+    grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
+    (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)'))) +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button><div style="font-size:11px;margin-top:6px;color:#A9C6D1">Portal ' + esc(VERSION_PORTAL) + (LS.get('verSrv', '') && LS.get('verSrv', '') !== VERSION_PORTAL ? '<br><b style="color:#FFD27A">Apps Script en versión ' + esc(LS.get('verSrv', '')) + ': falta instalar o publicar algo</b>' : '') + '</div></div></nav><main id="main">' + contenido + '</main></div>' +
     '<nav class="inf" aria-label="Menú">' + inf('#inicio', 'dashboard', 'Tablero') + inf('#est', 'apartment', 'Establec.') + inf('#plan', 'task_alt', 'Acciones') + inf('#bib', 'folder_open', 'Documentos') + '<button id="btnMas"><span class="ms" aria-hidden="true">menu</span>Más</button></nav>' +
     '<button class="ayudaBtn" id="btnAyuda" aria-label="Ayuda de esta pantalla"><span class="ms" aria-hidden="true">help</span><span class="txt">Ayuda</span></button>';
   $('btnSalir').onclick = () => salir();
   $('fBusca').onsubmit = e => { e.preventDefault(); const q = $('qBusca').value.trim(); if (q.length >= 3) location.hash = '#buscar/' + encodeURIComponent(q); else toast('Escribí al menos 3 letras o números.'); };
   $('btnMas').onclick = () => $('lat').classList.toggle('abierto');
-  $('btnAyuda').onclick = () => abrirAyuda(ruta === '#est' && activo.indexOf('#ficha') === 0 ? '#ficha' : ruta);
+  const rAy = AYUDA[ruta0] ? ruta0 : ruta;
+  $('btnAyuda').onclick = () => abrirAyuda(rAy);
+  $('btnAyudaNav').onclick = () => { $('lat').classList.remove('abierto'); abrirAyuda(rAy, true); };
+  document.querySelectorAll('#lat details.mod').forEach(d => d.addEventListener('toggle', () => { try { const ab = [...document.querySelectorAll('#lat details.mod[open]')].map(x => x.dataset.m); sessionStorage.setItem('navAb', JSON.stringify(ab)); } catch (e) {} }));
 }
 const cargando = (activo, t) => marco(activo, '<div class="cargando">' + esc(t || 'Cargando…') + '</div>');
 
@@ -372,13 +401,13 @@ async function matriz(fresco) {
     .sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
   const hab = F.filter(f => /^activ/i.test(f.estado)), atras = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10);
   const totTrab = F.reduce((a, f) => a + f.trabajadores, 0) + (RES.nc.total || 0) + (RES.sinAsignar || 0);
-  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  const kpi = (n, t, s) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
   marco('#est', '<div class="cab"><div><span class="mu peq">Establecimientos · matriz provincial</span><h1>Estado de los establecimientos</h1></div>' +
     '<div class="filtros"><label class="f">Área programática<select class="c" id="fArea"><option value="">Todas</option>' + areas.map(a => '<option' + (a === FILTRO.area ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
     '<label class="f">Buscar<input class="c" id="fQ" value="' + esc(FILTRO.q) + '" placeholder="Nombre o código"></label>' +
     '<label style="display:flex;gap:6px;align-items:center;font-size:13px;min-height:42px"><input type="checkbox" id="fApp"' + (FILTRO.soloApp ? ' checked' : '') + '> Solo habilitados en la aplicación</label>' +
     '<button class="btn sec" id="btnAct">Actualizar</button></div></div>' +
-    '<div class="grid g4">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
+    '<div class="tb5">' + kpi(F.length, 'Establecimientos', hab.length + ' habilitados en la aplicación') + kpi(F.filter(f => /propio/i.test(f.servicio)).length, 'Con profesional de HyS', 'Según la base común') +
     kpi(totTrab.toLocaleString('es-AR'), 'Trabajadores en la base', F.reduce((a, f) => a + (f.capacitados || 0), 0).toLocaleString('es-AR') + ' con al menos una capacitación' + (RES.sinAsignar ? ' · ' + RES.sinAsignar + ' sin asignar' : '')) + kpi(atras.length, 'Retiros atrasados', 'Habilitados con más de 10 días sin retiro') + '</div>' +
     '<section class="card tabla soloEsc"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Servicio HyS</th><th>Aplicación</th><th>Trabajadores</th><th>Capacitados</th><th>Diagnóstico residuos</th><th>Último retiro</th><th>Sin retiro</th><th>Retiros Y1 del mes</th></tr></thead><tbody>' +
     vis.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(f.servicio) + '</td><td>' + chipEstado(f.estado) + '</td><td>' + f.trabajadores + '</td><td>' + chipCap(f.capacitados, f.activos) + '</td><td>' + chipDiag(f.diag) + '</td><td>' + fechaTxt(f.ultimoRetiro) + '</td><td>' + chipDias(f.diasSinRetiro) + '</td><td>' + f.retirosMes + '</td></tr>').join('') +
@@ -443,18 +472,57 @@ const AYUDA = {
   '#modelos': ['Modelos para completar', ['Genera planillas prellenadas para mandar a completar.']],
   '#bandeja': ['Bandeja de entrada', ['Sube planillas completas, muestra «Ahora › Queda» y aplica lo aprobado.']]
 };
-function abrirAyuda(ruta) {
-  const a = AYUDA[ruta] || ['Ayuda', ['Esta pantalla todavía no tiene ayuda propia. El manual del sistema explica cada parte.']];
-  $('ov').innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-label="Ayuda"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Ayuda · ' + esc(a[0]) + '</h2><button class="btn sec" id="ayCer" aria-label="Cerrar">Cerrar</button></div>' +
-    '<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px">' + a[1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>' +
-    '<a class="btn sec" href="#ayuda">Ver toda la ayuda</a><a class="btn pri" href="' + MANUAL_URL + '" target="_blank" rel="noopener">Abrir el manual del sistema ↗</a></div>';
-  $('ov').hidden = false; $('ayCer').onclick = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
-  $('ov').querySelectorAll('a').forEach(x => x.addEventListener('click', () => { $('ov').hidden = true; $('ov').innerHTML = ''; }));
+// Buscador de ayuda: busca en todas las pantallas, sin importar tildes ni mayúsculas
+const ayNorm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+function ayBuscar(q) {
+  const pal = ayNorm(q).split(/\s+/).filter(p => p.length > 1); if (!pal.length) return [];
+  const res = [];
+  Object.keys(AYUDA).forEach(k => {
+    const tit = AYUDA[k][0], tt = ayNorm(tit);
+    AYUDA[k][1].forEach(t => { const n = tt + ' ' + ayNorm(t); if (pal.every(p => n.indexOf(p) >= 0)) res.push({ k: k, tit: tit, t: t, peso: pal.filter(p => tt.indexOf(p) >= 0).length }); });
+  });
+  return res.sort((x, y) => y.peso - x.peso);
+}
+function ayMarcar(t, q) {
+  let h = esc(t); const pal = ayNorm(q).split(/\s+/).filter(p => p.length > 1);
+  if (!pal.length) return h;
+  // Resalta coincidencias respetando tildes del texto original
+  const n = ayNorm(t), marcas = [];
+  pal.forEach(p => { let i = n.indexOf(p); while (i >= 0) { marcas.push([i, i + p.length]); i = n.indexOf(p, i + p.length); } });
+  if (!marcas.length) return h;
+  marcas.sort((x, y) => x[0] - y[0]); let out = '', u = 0;
+  marcas.forEach(m => { if (m[0] < u) return; out += esc(t.slice(u, m[0])) + '<mark>' + esc(t.slice(m[0], m[1])) + '</mark>'; u = m[1]; });
+  return out + esc(t.slice(u));
+}
+function ayResultados(q, cont) {
+  const r = ayBuscar(q);
+  cont.innerHTML = !q.trim() ? '' : !r.length ? '<p class="mu peq" style="margin:0">No encontré «' + esc(q) + '» en la ayuda. Probá con otra palabra o abrí el manual del sistema.</p>' :
+    '<p class="mu peq" style="margin:0">' + r.length + (r.length === 1 ? ' resultado' : ' resultados') + '</p>' +
+    r.slice(0, 30).map(x => '<a class="ayRes" href="' + x.k + '"><b>' + esc(x.tit) + '</b><span>' + ayMarcar(x.t, q) + '</span></a>').join('');
+}
+function abrirAyuda(ruta, enfocarBusqueda) {
+  const a = AYUDA[ruta] || ['Ayuda', ['Esta pantalla todavía no tiene ayuda propia. Usá el buscador o el manual del sistema.']];
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('ov').innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-label="Ayuda"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2 style="margin:0">Ayuda</h2><button class="btn sec" id="ayCer">Cerrar</button></div>' +
+    '<form role="search" id="ayF" style="margin:0"><input class="c" id="ayQ" type="search" placeholder="¿Qué necesitás hacer? Ej.: firma, NTE, retiro" aria-label="Buscar en la ayuda" style="width:100%;box-sizing:border-box"></form>' +
+    '<div id="ayRes" class="ayLista" aria-live="polite"></div>' +
+    '<div id="ayEsta"><h3 style="margin:4px 0 8px;font-size:15px">En esta pantalla: ' + esc(a[0]) + '</h3><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px">' + a[1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:8px"><a class="btn sec" href="#ayuda">Ver toda la ayuda</a><a class="btn pri" href="' + MANUAL_URL + '" target="_blank" rel="noopener">Manual del sistema ↗</a></div></div>';
+  $('ov').hidden = false; $('ayCer').onclick = cerrar;
+  $('ayF').onsubmit = e => e.preventDefault();
+  $('ayQ').oninput = () => { const q = $('ayQ').value; ayResultados(q, $('ayRes')); $('ayEsta').hidden = !!q.trim(); };
+  $('ov').addEventListener('click', e => { if (e.target.closest('a')) cerrar(); });
+  if (enfocarBusqueda) $('ayQ').focus();
 }
 function ayuda() {
+  const tarjetas = Object.keys(AYUDA).map(k => '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2 style="margin:0"><a href="' + k + '" style="text-decoration:none">' + esc(AYUDA[k][0]) + '</a></h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px">' + AYUDA[k][1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></section>').join('');
   marco('#ayuda', '<div class="cab"><div><span class="mu peq">Ayuda</span><h1>Cómo se usa el portal</h1></div><a class="btn pri" href="' + MANUAL_URL + '" target="_blank" rel="noopener">Manual del sistema ↗</a></div>' +
-    '<div class="tb3">' + Object.keys(AYUDA).map(k => '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2 style="margin:0"><a href="' + k + '" style="text-decoration:none">' + esc(AYUDA[k][0]) + '</a></h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px">' + AYUDA[k][1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></section>').join('') + '</div>' +
+    '<section class="card"><form role="search" id="ayF2" style="margin:0"><label class="f">Buscar en la ayuda<input class="c" id="ayQ2" type="search" placeholder="Ej.: firma, NTE, retiro, cupo"></label></form><div id="ayRes2" class="ayLista" aria-live="polite" style="margin-top:10px"></div></section>' +
+    '<div class="tb3" id="ayTodas">' + tarjetas + '</div>' +
     '<section class="card peq mu">Si algo no funciona: manual › Plan de contingencia. Si GitHub no abre, usá el portal de respaldo (Herramientas). Las planillas son el sistema: todo se puede ver y corregir ahí.</section>');
+  $('ayF2').onsubmit = e => e.preventDefault();
+  $('ayQ2').oninput = () => { const q = $('ayQ2').value; ayResultados(q, $('ayRes2')); $('ayTodas').hidden = !!q.trim(); };
+  $('ayQ2').focus();
 }
 
 // ------------------------------------------------------------------ Gráficos (SVG simples, sin bibliotecas)
@@ -1251,11 +1319,11 @@ async function sinPortal(id, fresco) {
   const F = SINPF, anio = SINP.hoy.slice(0, 4), L = SINP.lista, q = F.q.toLowerCase();
   const V = L.filter(s => (!F.est || s.est === F.est) && (!F.tipo || s.tipo === F.tipo) && (F.estado === 'Todos' || (F.estado === 'Abiertos' ? s.abierto || s.avisos.length : s.estado === F.estado)) && (!q || (s.nombre + ' ' + s.dni + ' ' + s.nro + ' ' + s.servicio).toLowerCase().indexOf(q) >= 0));
   const delAnio = L.filter(s => s.fecha.slice(0, 4) === anio), ests = Array.from(new Set(L.map(s => s.est))).sort();
-  const kpi = (t, n, sub) => '<section class="card"><span class="mu peq">' + t + '</span><div style="font-size:28px;font-weight:700;color:var(--az)">' + n + '</div><span class="mu peq">' + sub + '</span></section>';
+  const kpi = (t, n, sub) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + sub + '</small></div>';
   const sel = (id, ops, val) => '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
   marco('#sin', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Siniestros</h1><span class="mu peq">Los cargan Personal y la secretaría desde «Mi establecimiento». Acá se ven todos, con diagnóstico y exposición.</span></div>' +
     '<div class="filtros"><button class="btn sec" id="sinAct">Actualizar</button><a class="btn sec" href="' + esc(SINP.libro) + '" target="_blank" rel="noopener">Libro de siniestros ↗</a></div></div>' +
-    '<div class="tb3">' + kpi('Siniestros ' + anio, delAnio.length, delAnio.filter(s => s.tipo === 'In itinere').length + ' in itinere · ' + delAnio.filter(s => s.tipo === 'Enfermedad profesional').length + ' enf. profesional') +
+    '<div class="tb5">' + kpi('Siniestros ' + anio, delAnio.length, delAnio.filter(s => s.tipo === 'In itinere').length + ' in itinere · ' + delAnio.filter(s => s.tipo === 'Enfermedad profesional').length + ' enf. profesional') +
       kpi('En ILT hoy', L.filter(s => s.estado === 'En ILT').length, 'abiertos con baja') + kpi('Días de baja ' + anio, delAnio.reduce((a, s) => a + (Number(s.dias) || 0), 0), 'suma de los siniestros del año') +
       kpi('Investigación pendiente', L.filter(s => s.estadoHys === 'Pendiente de análisis').length, L.filter(s => s.avisos.length).length + ' con avisos') + '</div>' +
     '<section class="card" style="margin-top:16px"><div class="filtros" style="margin-bottom:10px">' +
@@ -1431,7 +1499,7 @@ async function sinEst(fresco) {
     try { const r = await api('p_sin_est', { desde: d, hasta: h, est: SEST.est }, 180000); if (!r.ok) return marco('#sinest', '<div class="card aviso error">' + esc(r.mensaje || 'No se pudo calcular.') + '</div>'); r._est = SEST.est; SEST.r = r; } catch (e) { return; }
   }
   const r = SEST.r, T = r.totales, I = r.indices, nf = v => v == null ? '<span class="mu" style="font-size:14px">s/d (revisar)</span>' : String(v).replace('.', ',');
-  const kpi = (t, n, sub) => '<section class="card"><span class="mu peq">' + t + '</span><div style="font-size:26px;font-weight:700;color:var(--az)">' + n + '</div><span class="mu peq">' + sub + '</span></section>';
+  const kpi = (t, n, sub) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + sub + '</small></div>';
   const barras = (t, filas) => { const max = Math.max(1, ...filas.map(f => f[1])); return '<section class="card"><h3 style="margin:0 0 8px;font-size:14px">' + t + '</h3>' + (filas.length ? filas.slice(0, 12).map(f => '<div style="display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 34px;gap:8px;align-items:center;font-size:12.5px;margin:3px 0"><span>' + esc(f[0]) + '</span><span style="background:#EEF4F6;border-radius:4px;height:12px"><span style="display:block;height:12px;border-radius:4px;background:' + (/Sin investigar|s\/d/.test(f[0]) ? '#B9CED6' : '#5894A7') + ';width:' + Math.round(f[1] * 100 / max) + '%"></span></span><b style="text-align:right">' + f[1] + '</b></div>').join('') : '<div class="mu peq">Sin datos.</div>') + '</section>'; };
   const sel = (id, ops, val) => '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
   const ests = Object.keys(r.trabajadores.por || {});
@@ -1439,9 +1507,9 @@ async function sinEst(fresco) {
     '<div class="filtros"><label class="f">Período' + sel('seP', [['anio', 'Este año'], ['trim', 'Trimestre actual'], ['trimAnt', 'Trimestre anterior'], ['anioAnt', 'Año anterior'], ['otro', 'Otras fechas']], SEST.per) + '</label>' +
       (SEST.per === 'otro' ? '<label class="f">Desde<input class="c" type="date" id="seD" value="' + esc(SEST.desde) + '"></label><label class="f">Hasta<input class="c" type="date" id="seH" value="' + esc(SEST.hasta) + '"></label>' : '') +
       '<label class="f">Establecimiento' + sel('seE', [['', 'Todos']].concat((SEST.est ? [SEST.est] : ests).map(e => [e, e])), SEST.est) + '</label><button class="btn sec" id="seAct">Actualizar</button></div></div>' +
-    '<div class="tb3">' + kpi('Accidentes y enf. profesionales', T.atep, T.at + (T.at === 1 ? ' accidente · ' : ' accidentes · ') + T.ep + (T.ep === 1 ? ' enf. profesional · ' : ' enf. profesionales · ') + T.conBaja + ' con baja') + kpi('In itinere', T.itinere, T.diasItinere + ' días de baja (aparte)') +
+    '<div class="tb5">' + kpi('Accidentes y enf. profesionales', T.atep, T.at + (T.at === 1 ? ' accidente · ' : ' accidentes · ') + T.ep + (T.ep === 1 ? ' enf. profesional · ' : ' enf. profesionales · ') + T.conBaja + ' con baja') + kpi('In itinere', T.itinere, T.diasItinere + ' días de baja (aparte)') +
       kpi('Días de baja (AT/EP)', T.diasBaja, T.enIlt + ' siguen en ILT') + kpi('Investigados', T.investigados + ' de ' + T.casos, T.cerrados + ' cerradas · ' + T.arbol + ' con árbol de causas') + '</div>' +
-    '<div class="tb3" style="margin-top:14px">' + kpi('Índice de incidencia', nf(I.incidencia), 'casos AT/EP cada 1.000 trabajadores') + kpi('Índice de frecuencia', nf(I.frecuencia), 'casos con baja por millón de horas' + (r.horas ? ' (≈ ' + r.horas.toLocaleString('es-AR') + ' h)' : '')) +
+    '<div class="tb5" style="margin-top:14px">' + kpi('Índice de incidencia', nf(I.incidencia), 'casos AT/EP cada 1.000 trabajadores') + kpi('Índice de frecuencia', nf(I.frecuencia), 'casos con baja por millón de horas' + (r.horas ? ' (≈ ' + r.horas.toLocaleString('es-AR') + ' h)' : '')) +
       kpi('Índice de pérdida', nf(I.perdida), 'días de baja cada 1.000 trabajadores') + kpi('Duración media', nf(I.duracionMedia), 'días por caso con baja') + '</div>' +
     '<div class="tb3" style="margin-top:14px">' + barras('Forma', r.por.forma) + barras('Agente material', r.por.agente) + barras('Zona del cuerpo', r.por.zona) + barras('Naturaleza de la lesión', r.por.naturaleza) +
       barras('Servicio', r.por.servicio) + barras('Función', r.por.funcion) + barras('Lugar', r.por.sitio) + barras('Mes', r.por.mes) + barras('Día de la semana', r.por.dia) + barras('Franja horaria', r.por.franja) + barras('Antigüedad', r.por.antiguedad) + barras('Tipo', r.por.tipo) + '</div>' +
@@ -1476,7 +1544,7 @@ async function biblioteca(fresco) {
   const L = BIB.documentos.filter(d => (!BIBF.tipo || d.CODIGO.indexOf(BIBF.tipo + '-') === 0) && (!BIBF.revisar || d.estadoVer === 'A revisar') && (BIBF.viejos || d.ESTADO !== 'Reemplazado') && (!q || (d.CODIGO + ' ' + d.TITULO + ' ' + d.TEMA).toLowerCase().indexOf(q) >= 0));
   const chip = e => '<span class="chip ' + (e === 'Vigente' ? 'ok' : e === 'A revisar' ? 'wa' : 'gr') + '">' + esc(e) + '</span>';
   const fmt = f => f ? f.slice(5, 7) + '/' + f.slice(0, 4) : '—';
-  marco('#bib', '<div class="cab"><div><span class="mu peq">Documentos</span><h1>Biblioteca HyS</h1><span class="mu peq">Guías, POE, protocolos, PTS y manuales. Los visibles aparecen en «Mi establecimiento» según su alcance.</span></div><div class="filtros"><button class="btn pri" id="bibNuevo">Subir documento</button></div></div>' +
+  marco('#bib', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Biblioteca HyS</h1><span class="mu peq">Guías, POE, protocolos, PTS y manuales. Los visibles aparecen en «Mi establecimiento» según su alcance.</span></div><div class="filtros"><button class="btn pri" id="bibNuevo">Subir documento</button></div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="fchip' + (!BIBF.tipo && !BIBF.revisar ? ' on' : '') + '" data-bt="">Todos</button>' + pref.map(p => '<button class="fchip' + (BIBF.tipo === p ? ' on' : '') + '" data-bt="' + esc(p) + '">' + esc(p) + '</button>').join('') +
       '<button class="fchip' + (BIBF.revisar ? ' on' : '') + '" id="bibRev">A revisar (' + BIB.documentos.filter(d => d.estadoVer === 'A revisar').length + ')</button><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="bibViejos"' + (BIBF.viejos ? ' checked' : '') + '> Ver reemplazados</label><input class="c" id="bibQ" placeholder="Buscar" value="' + esc(BIBF.q) + '" style="max-width:220px"></div>' +
     '<section class="card tabla soloEsc">' + (L.length ? '<table><thead><tr><th>Código</th><th>Documento</th><th>Versión</th><th>Vigente desde</th><th>Revisión</th><th>Alcance</th><th>Estado</th><th></th></tr></thead><tbody>' +
@@ -1614,7 +1682,7 @@ async function trabajadores(cod) {
   TRAB.cod = cod || TRAB.cod || '';
   const pintar = () => {
     const D = TRAB.datos;
-    marco('#trab', '<div class="cab"><div><span class="mu peq">Documental · Trabajadores</span><h1>Trabajadores</h1></div>' +
+    marco('#trab', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Personas</h1></div>' +
       '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + selectorEst(TRAB.cod || '*', true, true) + '</select></label>' +
       '<label class="f">Buscar por CUIL, DNI, apellido, función o servicio<input class="c" id="tQ" value="' + esc(TRAB.q) + '" style="min-width:260px"></label><button class="btn sec" id="tBus">Buscar</button>' +
       (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '<a class="btn sec" href="#importar">Importar base de Personal</a></div></div>' +
@@ -1710,7 +1778,7 @@ async function importar() {
   pasoImp();
 }
 function pasoImp() {
-  const P = IMP; let h = '<div class="cab"><div><span class="mu peq">Trabajadores · Importar base de Personal</span><h1>Importar una base</h1></div></div>' +
+  const P = IMP; let h = '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Importar una base</h1></div></div>' +
     '<p class="mu" style="margin:0">El sistema compara por DNI: agrega a quien no está, actualiza lo que cambió y marca a quien ya no figura. <b>Nunca borra.</b> Antes de escribir, muestra todo para que lo revises.</p>';
   if (P.paso === 1) {
     h += '<section class="card" style="display:flex;flex-direction:column;gap:14px"><h2>1 · Archivo y establecimiento</h2>' +
@@ -1823,9 +1891,9 @@ async function diagLista() {
   const F = RES.filas.slice().sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));
   const con = F.filter(f => f.diag && f.diag.pct !== '' && f.diag.pct != null);
   const prom = con.length ? Math.round(con.reduce((a, f) => a + Number(f.diag.pct), 0) / con.length) : null;
-  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
-  marco('#diag', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Diagnóstico de residuos</h1><span class="mu">Todas las corrientes, salvo radiactivos y efluentes. Cumple = 1 · Parcial = 0,5 · No cumple = 0 · No aplica no cuenta.</span></div></div>' +
-    '<div class="grid g4">' + kpi(con.length + ' de ' + F.length, 'Con diagnóstico', 'Establecimientos evaluados') + kpi(prom == null ? '—' : prom + ' %', 'Cumplimiento promedio', 'De los evaluados') +
+  const kpi = (n, t, s) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  marco('#diag', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>Diagnóstico de residuos</h1><span class="mu">Todas las corrientes, salvo radiactivos y efluentes. Cumple = 1 · Parcial = 0,5 · No cumple = 0 · No aplica no cuenta.</span></div></div>' +
+    '<div class="tb5">' + kpi(con.length + ' de ' + F.length, 'Con diagnóstico', 'Establecimientos evaluados') + kpi(prom == null ? '—' : prom + ' %', 'Cumplimiento promedio', 'De los evaluados') +
     kpi(con.filter(f => Number(f.diag.criticos) > 0).length, 'Con puntos críticos', 'Algún punto crítico «No cumple»') + kpi(F.filter(f => f.diag && f.diag.estado === 'Enviado').length, 'Enviados por referentes', 'Para revisar y cerrar') + '</div>' + compartirDiag('') +
     '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Último diagnóstico</th><th>Resultado</th><th></th></tr></thead><tbody>' +
     F.map(f => '<tr class="cl" data-cod="' + esc(f.cod) + '"><td><b>' + esc(f.nombre) + '</b>' + (f.cabecera ? ' <span class="chip pa">Cabecera</span>' : '') + '<div class="mu peq">' + esc(f.cod) + '</div></td><td class="peq">' + esc(String(f.area).replace('Área Programática ', '')) + '</td><td>' + (f.diag ? fechaTxt(f.diag.fecha) : '—') + '</td><td>' + chipDiag(f.diag) + '</td><td><span class="link">' + (f.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
@@ -2032,7 +2100,7 @@ async function tablero(cod, fresco) {
   if (!TAB.ok) return marco('#tablero', '<div class="aviso error">' + esc(TAB.mensaje || 'No se pudo armar el tablero.') + '</div>');
   const E = TAB.establecimientos.slice(), H = cod ? TAB.hallazgos.filter(h => h.cod === cod) : TAB.hallazgos, est = cod ? E.find(e => e.cod === cod) : null;
   const sel = '<label class="f">Ver<select class="c" id="tbSel"><option value="">Toda la red (general)</option>' + E.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre))).map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label>';
-  const kpi = (n, t, s) => '<div class="card kpi"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
+  const kpi = (n, t, s) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
   const prom = (f) => { const v = E.map(f).filter(x => x !== '' && x != null).map(Number); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : '—'; };
   const cuenta = q => H.filter(h => h.q === q).length;
   let k = cod ? kpi(est.pct === '' ? '—' : est.pct + ' %', 'Resultado', fechaTxt(est.fecha) + ' · ' + esc(est.estado)) + kpi(est.msn === '' ? '—' : est.msn + ' / 6', 'Matriz nacional', 'Rojo hasta 2: gestión deficiente') + kpi(cuenta('Q1'), 'Actuar ya', 'Problemas urgentes e importantes') + kpi(H.length, 'Problemas', 'En total')
@@ -2048,7 +2116,7 @@ async function tablero(cod, fresco) {
   };
   const ejes = '<div class="ejes"><span></span><span style="display:flex;justify-content:space-between"><span>← más urgente</span><span>menos urgente →</span></span></div>';
   const l8 = TAB.l8, fr = (a, b) => b ? a + ' de ' + b + ' (' + Math.round(100 * a / b) + ' %)' : '—';
-  const linea8 = cod ? '' : '<section class="card"><h2>Línea 8 · indicadores de base</h2><div class="grid g4" style="margin-top:10px">' +
+  const linea8 = cod ? '' : '<section class="card"><h2>Línea 8 · indicadores de base</h2><div class="tb5" style="margin-top:10px">' +
     kpi(fr(l8.poeTodos, l8.poeResp), 'POE marco de bioseguridad', 'Con todos los POE adoptados (meta 4)') + kpi(fr(l8.vacunaCompleta, l8.vacunaResp), 'Vacunación del personal', 'Cobertura completa en servicios de riesgo (meta 5)') +
     kpi(l8.registro && l8.registro.limpieza ? fr(l8.registro.limpiezaCap, l8.registro.limpieza) : fr(l8.capacitados, l8.capacResp), 'Personal de residuos capacitado', 'Limpieza, maestranza y servicios generales, último año, según el registro (meta 6)' + (l8.registro ? ' · Todo el personal: ' + fr(l8.registro.capacitados, l8.registro.activos) : '')) + kpi(Object.keys(l8.formacion).length, 'Necesidades de formación', Object.keys(l8.formacion).sort((a, b) => l8.formacion[b] - l8.formacion[a]).slice(0, 3).map(x => x + ' (' + l8.formacion[x] + ')').join(' · ') || 'Sin datos (meta 7)') + '</div></section>';
   const top = (id, tit) => { const m = (TAB.cierre || {})[id] || {}, L = Object.keys(m).sort((a, b) => m[b] - m[a]).slice(0, 6);
@@ -2056,8 +2124,8 @@ async function tablero(cod, fresco) {
   const cierre = cod ? '' : '<section class="card"><h2>Lo que más se señala en el cierre</h2><div class="grid g3" style="margin-top:10px">' + top('CIE01', 'Problemas') + top('CIE02', 'Propuestas de mejora') + top('CIE03', 'Necesidades') + '</div></section>';
   const ranking = cod ? '' : '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Establecimientos por prioridad</h2></div><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Fecha</th><th>Resultado</th><th>Matriz</th><th>Capacitación residuos</th><th>Actuar ya</th><th>Planificar</th><th>Resolver rápido</th><th>Monitorear</th></tr></thead><tbody>' +
     TAB.establecimientos.slice().sort((a, b) => b.q.Q1 - a.q.Q1 || (a.pct || 0) - (b.pct || 0)).map(e => '<tr class="cl" data-tb="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.estado) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td>' + fechaTxt(e.fecha) + '</td><td>' + chipDiag({ pct: e.pct, fecha: e.fecha, estado: e.estado, criticos: e.criticos }) + '</td><td>' + (e.msn === '' ? '—' : e.msn) + '</td><td class="peq">' + (e.cap && e.cap.activos ? e.cap.pct + ' %' + (e.cap.limpieza ? ' · limpieza ' + e.cap.pctLimpieza + ' %' : '') : '—') + '</td><td><b style="color:#B42318">' + e.q.Q1 + '</b></td><td>' + e.q.Q2 + '</td><td>' + e.q.Q3 + '</td><td>' + e.q.Q4 + '</td></tr>').join('') + '</tbody></table>' + (TAB.establecimientos.length ? '' : '<div class="vacio">Todavía no hay diagnósticos.</div>') + '</section>';
-  marco('#tablero', '<div class="cab"><div><span class="mu peq">Residuos · Línea 8</span><h1>' + (cod ? esc(est ? est.nombre : cod) : 'Tablero de problemáticas') + '</h1><span class="mu">Matriz de 4 cuadrantes según urgencia e importancia de cada problema detectado en el diagnóstico.</span></div><div class="filtros">' + sel + '<button class="btn sec" id="tbAct">Actualizar</button>' + (cod ? '<a class="btn pri" href="#diag/' + encodeURIComponent(cod) + '">Abrir el diagnóstico</a>' : '') + '</div></div>' +
-    '<div class="grid g4">' + k + '</div>' + ejes + '<div class="cuad">' + caja('Q1') + caja('Q2') + caja('Q3') + caja('Q4') + '</div>' + linea8 + cierre + ranking +
+  marco('#tablero', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>' + (cod ? esc(est ? est.nombre : cod) : 'Tablero de problemáticas') + '</h1><span class="mu">Matriz de 4 cuadrantes según urgencia e importancia de cada problema detectado en el diagnóstico.</span></div><div class="filtros">' + sel + '<button class="btn sec" id="tbAct">Actualizar</button>' + (cod ? '<a class="btn pri" href="#diag/' + encodeURIComponent(cod) + '">Abrir el diagnóstico</a>' : '') + '</div></div>' +
+    '<div class="tb5">' + k + '</div>' + ejes + '<div class="cuad">' + caja('Q1') + caja('Q2') + caja('Q3') + caja('Q4') + '</div>' + linea8 + cierre + ranking +
     '<p class="mu peq">Datos al ' + new Date(TAB.actualizado).toLocaleString('es-AR') + '. Urgencia e importancia de cada punto: columnas URGENCIA e IMPORTANCIA de la hoja ITEMS (editables).</p>');
   $('tbSel').onchange = e => location.hash = '#tablero' + (e.target.value ? '/' + encodeURIComponent(e.target.value) : '');
   $('tbAct').onclick = () => tablero(cod, true);
@@ -2079,7 +2147,7 @@ async function documentos(est) {
   const op = (o, sel) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + k + ' · ' + o[k] + '</option>').join('');
   const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
   const filas = (R.filas || []);
-  marco('#docs', '<div class="cab"><div><span class="mu peq">Documental</span><h1>Registro de documentos HYSL</h1><span class="mu">Número correlativo por establecimiento y por año, en todos los bloques. Un número mal pedido no se borra: se anula con motivo.</span></div></div>' +
+  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de documentos HYSL</h1><span class="mu">Número correlativo por establecimiento y por año, en todos los bloques. Un número mal pedido no se borra: se anula con motivo.</span></div></div>' +
     '<section class="card"><h2>Pedir número</h2><p class="mu peq" style="margin:4px 0 10px">Para documentos hechos fuera del sistema (nota en Word, acta, informe puntual). Los informes que genera el sistema toman su número solos.</p>' +
     '<div class="grid g4"><label class="f">Establecimiento<select class="c" id="dEst">' + opEst(DOCS.est && DOCS.est !== '' ? DOCS.est : 'RED') + '</select></label>' +
     '<label class="f">Bloque<select class="c" id="dBl">' + op(DOC_BLOQUES, 'RES') + '</select></label><label class="f">Tipo<select class="c" id="dTi">' + op(DOC_TIPOS, 'NT') + '</select></label>' +
@@ -2123,7 +2191,7 @@ async function planLista() {
   cargando('#plan', 'Leyendo los planes de acción…');
   let R; try { R = await api('p_plan_listar', {}); } catch (e) { return; }
   const L = R.informes || [];
-  marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido. Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
+  marco('#plan', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido. Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Establecimiento</th><th>Informe</th><th>Enviado</th><th>Recom.</th><th>Cumplidas</th><th>En curso</th><th>Vencidas</th><th>Sin respuesta</th><th></th></tr></thead><tbody>' +
       L.map(i => '<tr><td><b>' + esc(i.nombre) + '</b></td><td class="peq">' + esc(i.codigo) + '</td><td>' + (i.enviado ? plF(i.enviado) : '<span class="chip gr">Sin enviar</span>') + '</td><td>' + i.total + '</td><td>' + (i.c['Cumplida'] || 0) + '</td><td>' + (i.c['En curso'] || 0) + '</td><td>' + (i.c['Vencida'] ? '<b style="color:#9B2C22">' + i.c['Vencida'] + '</b>' : 0) + '</td><td>' + (i.c['Sin respuesta'] || 0) + '</td><td><a class="link" href="#plan/' + encodeURIComponent(i.codigo) + '">Abrir</a></td></tr>').join('') + '</tbody></table>'
       : '<div class="vacio">Todavía no hay informes emitidos. El plan se crea solo al generar el informe de un diagnóstico cerrado.</div>') + '</section>');
@@ -2137,11 +2205,11 @@ async function planDetalle(codigo) {
 }
 function planPintar() {
   const R = PL, F = R.filas, c = {}; F.forEach(o => c[o.EFECTIVO] = (c[o.EFECTIVO] || 0) + 1);
-  const kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
   const env = R.enviado ? 'Enviado el ' + plF(R.enviado) + ' · respuesta hasta el ' + plF(R.limiteRespuesta) : 'Todavía no se marcó como enviado';
   marco('#plan', '<div class="cab"><div><a class="link peq" href="#plan">‹ Todos los planes</a><h1>' + esc(R.nombre) + '</h1><span class="mu">Informe ' + esc(R.codigo) + ' · ' + env + '</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (R.doc ? '<a class="btn" href="' + esc(R.doc) + '" target="_blank" rel="noopener">Documento</a>' : '') + (R.pdf ? '<a class="btn" href="' + esc(R.pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') + '<button class="btn" id="plCorreo">Copiar correo</button></div></div>' +
-    '<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:10px">' + kpi('Recomendaciones', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('Cumplidas', c['Cumplida'] || 0, 'con evidencia') + kpi('En curso', c['En curso'] || 0, 'dentro del plazo') +
+    '<div class="tb5">' + kpi('Recomendaciones', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('Cumplidas', c['Cumplida'] || 0, 'con evidencia') + kpi('En curso', c['En curso'] || 0, 'dentro del plazo') +
       kpi('Vencidas', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('Sin respuesta', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f">Fecha de envío a la Dirección<input class="c" type="date" id="plEnvio" value="' + esc(R.enviado || '') + '"></label><button class="btn" id="plEnviar">' + (R.enviado ? 'Cambiar fecha de envío' : 'Marcar como enviado') + '</button>' +
       '<label class="f">Fecha de la respuesta de la Dirección<input class="c" type="date" id="plResp"></label><span class="mu peq" style="max-width:420px">La fecha de envío fija los plazos técnicos. Al cargar un responsable o una fecha prevista, se registra la respuesta.</span></section>' +
@@ -2203,7 +2271,7 @@ async function modelos() {
   let planes = []; try { planes = (await api('p_plan_listar', {})).informes || []; } catch (e) {}
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const T = BJ_TIPOS_UI[MOD.tipo], infs = planes.filter(p => !MOD.cod || p.cod === MOD.cod);
-  marco('#modelos', '<div class="cab"><div><span class="mu peq">Documental</span><h1>Modelos para completar</h1><span class="mu">Generá la planilla prellenada, mandala y, cuando vuelva completa, subila en <a class="link" href="#bandeja">Bandeja de entrada</a>. Siempre es una hoja de cálculo.</span></div></div>' +
+  marco('#modelos', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Modelos para completar</h1><span class="mu">Generá la planilla prellenada, mandala y, cuando vuelva completa, subila en <a class="link" href="#bandeja">Bandeja de entrada</a>. Siempre es una hoja de cálculo.</span></div></div>' +
     '<section class="card"><h2>1. ¿Qué modelo?</h2><div class="grid g2" style="margin-top:10px">' + Object.keys(BJ_TIPOS_UI).map(k => '<button class="card" data-mt="' + k + '" style="text-align:left;cursor:pointer;border:2px solid ' + (k === MOD.tipo ? 'var(--az)' : 'var(--ln)') + '"><b>' + esc(BJ_TIPOS_UI[k].t) + '</b><div class="mu peq" style="margin-top:4px">' + esc(BJ_TIPOS_UI[k].d) + '</div><div class="peq" style="margin-top:6px">Para: ' + esc(BJ_TIPOS_UI[k].para) + '</div></button>').join('') +
       '<div class="card" style="opacity:.6"><b>RAR y NTE · RGRL</b><div class="mu peq" style="margin-top:4px">Formatos de la SRT, en hoja de cálculo. Próximamente, con el eje Riesgos.</div></div></div></section>' +
     '<section class="card"><h2>2. ¿Para qué establecimiento?</h2><div class="grid g3" style="margin-top:10px"><label class="f">Establecimiento<select class="c" id="mEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === MOD.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label>' +
@@ -2235,7 +2303,7 @@ async function bandeja(propuesta) {
     '<table style="margin-top:10px"><thead><tr><th style="width:30px"><input type="checkbox" checked data-todos></th><th>Qué</th><th>Dato</th><th>Ahora</th><th>Queda</th></tr></thead><tbody>' +
     o.CAMBIOS.map((c, j) => '<tr><td><input type="checkbox" checked data-j="' + j + '"></td><td>' + esc(c.clave) + '</td><td>' + esc(bjCampo(c.campo)) + '</td><td class="mu">' + esc(c.antes || '—') + '</td><td><b>' + esc(c.despues) + '</b></td></tr>').join('') + '</tbody></table>') +
     '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sec" data-rech>Rechazar</button><button class="btn pri" data-apl>Aplicar lo marcado</button></div></section>';
-  marco('#bandeja', '<div class="cab"><div><span class="mu peq">Documental</span><h1>Bandeja de entrada</h1><span class="mu">Subí la planilla completa. El sistema muestra qué cambiaría y vos elegís qué aplicar: nada se cambia sin tu aprobación.</span></div><a class="btn" href="#modelos">Generar un modelo</a></div>' +
+  marco('#bandeja', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Bandeja de entrada</h1><span class="mu">Subí la planilla completa. El sistema muestra qué cambiaría y vos elegís qué aplicar: nada se cambia sin tu aprobación.</span></div><a class="btn" href="#modelos">Generar un modelo</a></div>' +
     '<section class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><label class="btn pri" style="cursor:pointer">Subir planilla completa (.xlsx)<input type="file" id="bjFile" accept=".xlsx,.xls,.ods" hidden></label><button class="btn sec" id="bjDrive">Revisar la carpeta de Drive</button><span class="mu peq">También podés dejar los archivos en Drive › SISTEMA HyS › 07 BANDEJA DE ENTRADA.</span></section>' +
     (rev.length ? '<h2 style="margin:6px 0 0">Para revisar (' + rev.length + ')</h2>' + rev.map(tarjeta).join('') : '<section class="card"><div class="vacio">No hay nada para revisar.</div></section>') +
     (resto.length ? '<section class="card tabla"><h2 style="padding:14px 18px 0">Recibidos anteriormente</h2><table><thead><tr><th>Fecha</th><th>Modelo</th><th>Establecimiento</th><th>Estado</th><th>Resultado</th></tr></thead><tbody>' + resto.map(o => '<tr><td>' + esc(fechaTxt(o.FECHA)) + '</td><td>' + esc(o.TITULO) + (o.REFERENCIA ? '<div class="mu peq">' + esc(o.REFERENCIA) + '</div>' : '') + '</td><td>' + esc(o.ESTABLECIMIENTO) + '</td><td><span class="chip ' + (/Aplicado/.test(o.ESTADO) ? 'ok' : 'gr') + '">' + esc(o.ESTADO) + '</span></td><td class="peq">' + esc(o.APLICADO || o.RESUMEN) + '</td></tr>').join('') + '</tbody></table></section>' : ''));
@@ -2268,20 +2336,20 @@ let NTE = null;
 async function nte(cod) {
   if (!RES) { try { RES = await api('p_resumen', {}, 240000); } catch (e) { return; } }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
-  const cabecera = '<div class="cab"><div><span class="mu peq">Riesgos</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
+  const cabecera = '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="min-width:320px">Establecimiento<select class="c" id="nEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label></section>';
   if (!cod) { marco('#nte', cabecera); $('nEst').onchange = e => location.hash = '#nte/' + encodeURIComponent(e.target.value); return; }
   cargando('#nte', 'Revisando la base de personal y la matriz de exposición…');
   let R; try { R = await api('p_nte_revisar', { cod: cod }, 120000); } catch (e) { return; }
   if (!R.ok) return toast(R.mensaje);
-  NTE = R; const P = R.controles, kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  NTE = R; const P = R.controles, kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
   const det = (t, L) => L.length ? '<details style="margin-top:6px"><summary class="peq"><b>' + t + ' (' + L.length + ')</b></summary><div class="peq mu" style="margin-top:4px">' + L.slice(0, 60).map(esc).join(' · ') + (L.length > 60 ? ' …' : '') + '</div></details>' : '';
   const G = R.matriz.filter(m => m.personas > 0 && m.servicio === R.todos).sort((a, b) => (a.agentes ? 1 : 0) - (b.agentes ? 1 : 0) || b.personas - a.personas);
   const X = R.matriz.filter(m => m.personas > 0 && m.servicio !== R.todos).sort((a, b) => (b.agentes ? 1 : 0) - (a.agentes ? 1 : 0) || a.funcion.localeCompare(b.funcion) || a.servicio.localeCompare(b.servicio));
   const fila = (m, sug) => '<tr data-f="' + m.fila + '"><td>' + esc(m.funcion) + '</td>' + (sug ? '' : '<td>' + esc(m.servicio) + '</td>') + '<td>' + m.personas + '</td>' + (sug ? '<td class="peq mu">' + esc(m.sugerencia || '—') + '</td>' : '') + '<td><input class="c n-ag" value="' + esc(m.agentes) + '" data-sug="' + esc(sug ? m.sugerencia : '') + '" placeholder="' + (sug ? 'sin definir' : 'igual que la función') + '" style="' + (m.agentes || !sug ? '' : 'border-color:#E9B8B3') + '"></td><td><input class="c n-cr" value="' + esc(m.criterio) + '"></td></tr>';
   marco('#nte', cabecera +
     (R.aviso ? '<div class="aviso">' + esc(R.aviso) + (R.ultima ? ' Última: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').' : '') + '</div>' : (R.ultima ? '<div class="aviso">La NTE está al día: <a href="' + esc(R.ultima.url) + '" target="_blank" rel="noopener">' + esc(R.ultima.codigo) + '</a> (' + esc(fechaTxt(R.ultima.fecha)) + ').</div>' : '')) +
-    '<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px">' + kpi('Dotación', R.total, 'personas activas') + kpi('Expuestos', R.expuestos, 'con código ESOP') + kpi('Sin códigos definidos', R.sinDefinir, 'personas (por su función)', R.sinDefinir ? '#9B2C22' : '') + kpi('Datos faltantes', P.sinCuil.length + P.sinIngreso.length + P.sinSector.length, 'CUIL, ingreso o puesto', (P.sinCuil.length + P.sinIngreso.length + P.sinSector.length) ? '#B7791F' : '') + '</div>' +
+    '<div class="tb5">' + kpi('Dotación', R.total, 'personas activas') + kpi('Expuestos', R.expuestos, 'con código ESOP') + kpi('Sin códigos definidos', R.sinDefinir, 'personas (por su función)', R.sinDefinir ? '#9B2C22' : '') + kpi('Datos faltantes', P.sinCuil.length + P.sinIngreso.length + P.sinSector.length, 'CUIL, ingreso o puesto', (P.sinCuil.length + P.sinIngreso.length + P.sinSector.length) ? '#B7791F' : '') + '</div>' +
     '<section class="card"><h2>1. Datos de las personas</h2><p class="mu peq">Lo que falta se completa en Trabajadores o con el modelo «Nómina de personal» (Documental › Modelos para completar).</p>' + (det('Sin CUIL válido', P.sinCuil) + det('Sin fecha de ingreso', P.sinIngreso) + det('Sin sector o puesto', P.sinSector) + det('Códigos ESOP que no están en el listado', P.invalidos) || '<div class="mu peq">Sin faltantes. ✅</div>') +
       det('Trabajan en más de un edificio (figuran en el lugar indicado)', P.variosEdificios || []) + det('Edificio de la ficha distinto del lugar de la NTE', P.edificioDistinto || []) + det('Otras observaciones de puesto', P.obsPuesto || []) + '</section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2>2. Matriz de exposición por puesto</h2><button class="btn sec" id="nSug">Usar las sugerencias en los vacíos</button></div>' +
@@ -2314,10 +2382,10 @@ async function audLista() {
   cargando('#aud', 'Leyendo las auditorías…');
   let R; try { R = await api('p_aud_listar', { cod: AU.cod }); } catch (e) { return; }
   if (!R.ok) return toast(R.mensaje || 'No se pudieron leer las auditorías.');
-  const K = R.kpis, L = R.auditorias, kpi = (t, v, s, col) => '<div class="card kpi"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
-  marco('#aud', '<div class="cab"><div><span class="mu peq">Residuos</span><h1>Auditorías de gestión de residuos</h1><span class="mu">Verificación periódica con evidencia. Criterios: Ley XI N.º 35 (Código Ambiental del Chubut) y Ley 24.051 por adhesión.</span></div>' +
+  const K = R.kpis, L = R.auditorias, kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
+  marco('#aud', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>Auditorías de gestión de residuos</h1><span class="mu">Verificación periódica con evidencia. Criterios: Ley XI N.º 35 (Código Ambiental del Chubut) y Ley 24.051 por adhesión.</span></div>' +
     '<div class="filtros"><label class="f">Establecimiento<select class="c" id="auEst">' + selectorEst(AU.cod, false) + '</select></label><a class="btn pri" href="#aud/nueva">Nueva auditoría</a></div></div>' +
-    '<div class="grid g4">' + kpi('Auditorías del año', K.realizadas + ' / ' + K.programadas, 'realizadas / programadas') + kpi('Cumplimiento', K.cumplimiento || '—', 'última de campo o verificación') +
+    '<div class="tb5">' + kpi('Auditorías del año', K.realizadas + ' / ' + K.programadas, 'realizadas / programadas') + kpi('Cumplimiento', K.cumplimiento || '—', 'última de campo o verificación') +
       kpi('No conformidades abiertas', K.ncAbiertas, K.ncMayores + ' mayores', K.ncMayores ? '#9B2C22' : '') + kpi('Para verificar', K.paraVerificar, 'auditorías internas de referentes') + '</div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Auditoría</th><th>Tipo</th><th>Fecha</th><th>Lugares</th><th>Avance</th><th>Resultado</th><th>Estado</th><th></th></tr></thead><tbody>' +
       L.map(a => '<tr><td class="peq"><b>' + esc(a.ID_AUD) + '</b><div class="mu">' + esc(a.ORIGEN) + (a.AUDITOR ? ' · ' + esc(a.AUDITOR) : '') + '</div></td><td>' + esc(a.TIPO) + '</td><td>' + fechaTxt(a.FECHA) + '</td><td class="peq" style="max-width:260px">' + esc(a.LUGARES) + '</td>' +
@@ -2437,8 +2505,8 @@ async function audResultado(id) {
   const colorClase = c => /mayor/.test(c) ? 'er' : /menor/.test(c) ? 'wa' : /bservaci/.test(c) ? 'pa' : 'gr';
   marco('#aud', '<div class="cab"><div><a class="link peq" href="#aud">‹ Auditorías</a><h1>Resultado · ' + esc(A.TIPO) + ' · ' + esc(A.ESTABLECIMIENTO) + '</h1><span class="mu">' + esc(A.ID_AUD) + ' · ' + fechaTxt(A.FECHA) + ' · ' + esc(A.ORIGEN) + (R.anterior ? ' · comparada con ' + esc(R.anterior) : '') + '</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sec" href="#aud/' + encodeURIComponent(A.ID_AUD) + '">Ver respuestas</a>' + (A.ESTADO === 'Para verificar' ? '<button class="btn pri" id="arVerif">Verificar (HyS)</button>' : '') + '<button class="btn pri" id="arPlan">Pasar al plan de acción</button></div></div>' +
-    '<div class="grid g4"><div class="card kpi"><span>RESULTADO</span><b style="font-size:20px">' + esc(A.RESULTADO || '—') + '</b><small class="mu">' + audChip(A.ESTADO) + '</small></div><div class="card kpi"><span>CUMPLIMIENTO</span><b>' + esc(A.CUMPLIMIENTO || '—') + '</b><small class="mu">' + (A.CRITICOS_OK ? 'críticos cumplidos: ' + esc(A.CRITICOS_OK) : 'conformes sobre los que aplican') + (A.CATEGORIA ? ' · cat. ' + esc(String(A.CATEGORIA).split(' ')[0]) : '') + '</small></div>' +
-      '<div class="card kpi"><span>NO CONFORMIDADES</span><b' + (+A.NC_MAYOR ? ' style="color:#9B2C22"' : '') + '>' + ((+A.NC_MAYOR || 0) + (+A.NC_MENOR || 0)) + '</b><small class="mu">' + (A.NC_MAYOR || 0) + ' mayores · ' + (A.NC_MENOR || 0) + ' menores</small></div><div class="card kpi"><span>OBSERVACIONES</span><b>' + (A.OBSERVACIONES_N || 0) + '</b><small class="mu">' + (A.MEJORAS_N || 0) + ' oportunidades de mejora</small></div></div>' +
+    '<div class="tb5"><div class="kpi2"><span>Resultado</span><b style="font-size:20px">' + esc(A.RESULTADO || '—') + '</b><small class="mu">' + audChip(A.ESTADO) + '</small></div><div class="kpi2"><span>Cumplimiento</span><b>' + esc(A.CUMPLIMIENTO || '—') + '</b><small class="mu">' + (A.CRITICOS_OK ? 'críticos cumplidos: ' + esc(A.CRITICOS_OK) : 'conformes sobre los que aplican') + (A.CATEGORIA ? ' · cat. ' + esc(String(A.CATEGORIA).split(' ')[0]) : '') + '</small></div>' +
+      '<div class="kpi2"><span>No conformidades</span><b' + (+A.NC_MAYOR ? ' style="color:#9B2C22"' : '') + '>' + ((+A.NC_MAYOR || 0) + (+A.NC_MENOR || 0)) + '</b><small class="mu">' + (A.NC_MAYOR || 0) + ' mayores · ' + (A.NC_MENOR || 0) + ' menores</small></div><div class="kpi2"><span>Observaciones</span><b>' + (A.OBSERVACIONES_N || 0) + '</b><small class="mu">' + (A.MEJORAS_N || 0) + ' oportunidades de mejora</small></div></div>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:8px"><h2>Cumplimiento por eje</h2>' + R.ejes.map(e => '<div style="display:grid;grid-template-columns:minmax(160px,240px) minmax(0,1fr) 60px;gap:12px;align-items:center" class="peq"><span>' + esc(e.eje) + '</span>' +
       '<div style="position:relative;height:12px;background:var(--gr);border-radius:999px"><div style="position:absolute;left:0;top:0;height:12px;width:' + e.pct + '%;background:' + (e.pct < 70 ? '#B45309' : 'var(--az)') + ';border-radius:999px"></div>' + (e.anterior != null ? '<div title="Anterior: ' + e.anterior + ' %" style="position:absolute;top:-3px;left:calc(' + e.anterior + '% - 1px);width:2px;height:18px;background:var(--pa)"></div>' : '') + '</div><b style="text-align:right">' + e.pct + ' %</b></div>').join('') +
       '<span class="mu peq">' + (R.anterior ? 'La marca celeste es la auditoría anterior del mismo tipo.' : 'Es la primera auditoría de este tipo: no hay comparación.') + '</span></section>' +
@@ -2787,6 +2855,8 @@ function router() {
   return inicio();
 }
 window.addEventListener('hashchange', router);
+// Al abrir el portal (pestaña nueva) arranca en el Tablero; los enlaces directos a una ficha o un registro se respetan
+try { if (!sessionStorage.getItem('portalAbierto')) { sessionStorage.setItem('portalAbierto', '1'); if (location.hash && location.hash.indexOf('/') < 0 && !/^#?(inicio)?$/.test(location.hash)) history.replaceState(null, '', '#inicio'); } } catch (e) {}
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ov').hidden) { $('ov').hidden = true; $('ov').innerHTML = ''; } });
 router();
 </script>
