@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MIPyV — Registro de visita</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0D313F">
+<style>
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU7NShXDpFA.woff2') format('woff2');
+  font-weight: 400 800;
+}
+:root{
+  --azul-humphreys:#0D313F;
+  --azul-patagonia:#5894A7;
+  --azul-claro:#EAF1F2;
+  --verde-ok:#2E9E5B;
+  --amarillo-alerta:#E3A426;
+  --rojo-no:#C0453A;
+  --texto:#1A1A1A;
+  --gris-borde:#D8E1E3;
+  --blanco:#FFFFFF;
+  --radio:18px;
+
+  /* color de módulo — por defecto MIPyV (azul institucional) */
+  --mod-primary:#0D313F;
+  --mod-accent:#5894A7;
+  --mod-claro:#EAF1F2;
+  font-size: 16px;
+}
+body.mode-saneamiento{
+  --mod-primary:#2E5233;
+  --mod-accent:#6E8E4E;
+  --mod-claro:#EEF2E7;
+}
+body.mode-hys{
+  --mod-primary:#3B6A7A;
+  --mod-accent:#5894A7;
+  --mod-claro:#EAF3F6;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mod-primary); font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:var(--texto); transition:background .3s ease;}
+#app{position:relative; width:100%; height:100%; max-width:560px; margin:0 auto; background:var(--blanco); display:flex; flex-direction:column; overflow:hidden;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; background:var(--mod-primary); color:#fff; flex:0 0 auto; transition:background .3s ease;
+}
+.topbar .brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.05rem;}
+.dot{width:10px; height:10px; border-radius:50%; background:var(--verde-ok);}
+.dot.offline{background:var(--amarillo-alerta);}
+.top-actions{display:flex; gap:8px;}
+.top-actions button{
+  background:rgba(255,255,255,.12); border:none; color:#fff; font-family:inherit;
+  padding:8px 14px; border-radius:999px; font-size:.85rem; font-weight:700;
+}
+#helpBtn{
+  width:36px; height:36px; padding:0; font-size:1.1rem; font-weight:900;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---------- PROGRESS ---------- */
+.progress-wrap{padding:10px 18px 0; flex:0 0 auto;}
+.progress-track{height:6px; border-radius:99px; background:var(--gris-borde); overflow:hidden;}
+.progress-fill{height:100%; background:var(--mod-accent); border-radius:99px; transition:width .35s ease, background .3s ease;}
+
+/* ---------- SCREENS ---------- */
+.screens{flex:1 1 auto; overflow-y:auto; padding:18px; -webkit-overflow-scrolling:touch;}
+.screen{display:none;}
+.screen.active{display:block; animation:fade .25s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.step-title{font-size:1.5rem; font-weight:800; color:var(--mod-primary); margin:4px 0 4px;}
+.step-sub{font-size:.95rem; color:#5A5A5A; margin:0 0 18px;}
+
+/* ---------- HOME / MODULE SELECT ---------- */
+.module-card{
+  width:100%; border:none; border-radius:22px; padding:26px 20px; margin-bottom:16px;
+  display:flex; align-items:center; gap:18px; font-family:inherit; color:#fff; text-align:left;
+}
+.module-card svg{width:52px; height:52px; flex:0 0 auto;}
+.module-card .mc-title{font-size:1.2rem; font-weight:800; margin-bottom:2px;}
+.module-card .mc-sub{font-size:.85rem; opacity:.9; font-weight:600;}
+.module-card.mipyv{background:linear-gradient(135deg,#0D313F,#1A4A5E);}
+.module-card.saneamiento{background:linear-gradient(135deg,#2E5233,#4E7A3E);}
+.module-card.hys{background:linear-gradient(135deg,#3B6A7A,#5894A7);}
+.module-card .mc-emoji{font-size:2.6rem; line-height:1; width:52px; text-align:center; flex:0 0 auto;}
+.module-card:active{transform:scale(.98);}
+
+/* ---------- GRID BUTTONS (icon based) ---------- */
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.tile{
+  border:2px solid var(--gris-borde); background:var(--blanco); border-radius:var(--radio);
+  padding:16px 10px 12px; display:flex; flex-direction:column; align-items:center; gap:8px;
+  font-family:inherit; cursor:pointer; transition:all .12s ease; min-height:118px; justify-content:center;
+}
+.tile svg{width:44px; height:44px;}
+.tile .label{font-size:.9rem; font-weight:700; text-align:center; line-height:1.15; color:var(--texto);}
+.tile:active{transform:scale(.96);}
+.tile.selected{border-color:var(--mod-accent); background:var(--mod-claro);}
+.tile.big{min-height:150px;}
+.tile.big svg{width:58px; height:58px;}
+
+.person-tile{grid-column:span 1;}
+.person-tile .avatar{
+  width:64px; height:64px; border-radius:50%; background:var(--mod-accent); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:800;
+}
+
+/* search / filter chip row (visual, minimal text) */
+.chip-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.chip{
+  border:2px solid var(--gris-borde); background:#fff; border-radius:999px; padding:9px 16px;
+  font-family:inherit; font-weight:700; font-size:.85rem; color:var(--mod-primary);
+}
+.chip.active{background:var(--mod-primary); color:#fff; border-color:var(--mod-primary);}
+
+/* ---------- SUMMARY CONFIRM CARD ---------- */
+.summary-card{background:var(--mod-claro); border-radius:var(--radio); padding:16px; margin-bottom:12px; display:flex; gap:12px; align-items:center;}
+.summary-card svg{width:34px; height:34px; flex:0 0 auto;}
+.summary-card .txt b{display:block; font-size:.75rem; color:#5A5A5A; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+.summary-card .txt span{font-size:1rem; font-weight:800; color:var(--mod-primary);}
+
+/* ---------- BOTTOM ACTIONS ---------- */
+.bottom-bar{flex:0 0 auto; padding:14px 18px 22px; border-top:1px solid var(--gris-borde); display:flex; gap:10px; background:#fff;}
+.btn{
+  flex:1; border:none; border-radius:16px; padding:16px; font-family:inherit; font-weight:800; font-size:1.05rem;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary{background:var(--mod-primary); color:#fff;}
+.btn-primary:active{filter:brightness(.85);}
+.btn-secondary{background:var(--mod-claro); color:var(--mod-primary); flex:0 0 76px;}
+.btn:disabled{opacity:.4;}
+
+/* semaforo buttons */
+.result-btn{
+  width:100%; border:none; border-radius:var(--radio); padding:22px; margin-bottom:14px;
+  display:flex; align-items:center; gap:16px; font-family:inherit; font-weight:800; font-size:1.15rem; color:#fff;
+}
+.result-ok{background:var(--verde-ok);}
+.result-followup{background:var(--amarillo-alerta);}
+.result-blocked{background:var(--rojo-no);}
+.result-btn svg{width:36px; height:36px; flex:0 0 auto;}
+
+/* EPP checkbox tiles */
+.epp-tile{position:relative;}
+.epp-check{position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:6px; border:2px solid var(--gris-borde); background:#fff;}
+.tile.selected .epp-check{background:var(--verde-ok); border-color:var(--verde-ok);}
+.tile.selected .epp-check::after{content:'✓'; color:#fff; font-size:.85rem; font-weight:900; display:flex; align-items:center; justify-content:center; height:100%;}
+
+/* cantidad de EPP (aparece cuando el ítem está seleccionado) */
+.epp-qty{
+  display:none; align-items:center; justify-content:center; gap:10px; margin-top:6px;
+  background:var(--mod-claro); border-radius:999px; padding:4px 8px;
+}
+.tile.selected .epp-qty{display:flex;}
+.epp-qty button{
+  width:26px; height:26px; border-radius:50%; border:none; background:var(--mod-primary); color:#fff;
+  font-size:1rem; font-weight:900; font-family:inherit; display:flex; align-items:center; justify-content:center; padding:0;
+}
+.epp-qty span{font-weight:800; font-size:.95rem; color:var(--mod-primary); min-width:16px; text-align:center;}
+
+/* dosis autofill card */
+.autofill-card{background:var(--mod-claro); border-radius:var(--radio); padding:18px; text-align:center;}
+.autofill-card .big-num{font-size:1.4rem; font-weight:800; color:var(--mod-primary); margin:6px 0;}
+.autofill-card .lbl{font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:#5A5A5A; font-weight:700;}
+.autofill-divider{height:1px; background:var(--gris-borde); margin:14px 0;}
+
+/* photo */
+.photo-box{
+  border:2px dashed var(--gris-borde); border-radius:var(--radio); aspect-ratio:4/3; display:flex;
+  flex-direction:column; align-items:center; justify-content:center; gap:10px; color:var(--mod-accent);
+  font-weight:800; overflow:hidden; position:relative; background:var(--mod-claro);
+}
+.photo-box img{width:100%; height:100%; object-fit:cover; position:absolute; inset:0;}
+.photo-box svg{width:48px; height:48px;}
+
+/* multi-photo grid (hasta 5) */
+.foto-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.foto-slot{
+  aspect-ratio:1/1; border-radius:14px; position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.foto-slot.add{
+  border:2px dashed var(--gris-borde); background:var(--mod-claro); color:var(--mod-accent);
+  font-family:inherit; flex-direction:column; gap:2px;
+}
+.foto-slot.add span{font-size:1.8rem; font-weight:800; line-height:1;}
+.foto-slot.add small{font-size:.7rem; font-weight:700;}
+.foto-slot.filled{border:2px solid var(--gris-borde);}
+.foto-slot.filled img{width:100%; height:100%; object-fit:cover;}
+.foto-remove{
+  position:absolute; top:4px; right:4px; width:24px; height:24px; border-radius:50%;
+  background:rgba(0,0,0,.55); color:#fff; border:none; font-size:1rem; font-weight:800;
+  display:flex; align-items:center; justify-content:center; padding:0; line-height:1;
+}
+
+/* multi-select task tiles (saneamiento) */
+.tile.multi.selected{border-color:var(--verde-ok); background:#EAF7EF;}
+.tile.multi .epp-check{position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:6px; border:2px solid var(--gris-borde); background:#fff;}
+.tile.multi.selected .epp-check{background:var(--verde-ok); border-color:var(--verde-ok);}
+.tile.multi.selected .epp-check::after{content:'✓'; color:#fff; font-size:.85rem; font-weight:900; display:flex; align-items:center; justify-content:center; height:100%;}
+
+/* otras tareas de HyS */
+.tile .emoji{font-size:2.4rem; line-height:1;}
+.tile.multi{position:relative;}
+.hint-rojo{display:none; margin-top:12px; padding:12px; border-radius:12px; background:#FDECEA; color:#8A1C12; font-weight:600;}
+.ext-card{border:2px solid var(--gris-borde); border-radius:var(--radio); padding:14px; margin-bottom:16px; background:#fff;}
+.ext-card.completo{border-color:var(--verde-ok);}
+.ext-card h4{margin:0 0 10px; font-size:1.05rem; color:var(--mod-primary); font-weight:800;}
+.ext-preg{margin:10px 0 6px; font-weight:700; font-size:.95rem;}
+.sino{display:flex; gap:10px;}
+.sino button{flex:1; min-height:52px; border-radius:14px; border:2px solid var(--gris-borde); background:#fff; font-family:inherit; font-size:1.05rem; font-weight:800; color:var(--texto);}
+.sino button.si.on{background:var(--verde-ok); border-color:var(--verde-ok); color:#fff;}
+.sino button.no.on{background:var(--rojo-no); border-color:var(--rojo-no); color:#fff;}
+.ext-card input[type=month]{width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
+.ext-sinfecha{margin-top:8px;}
+.auto-hallazgos{background:#FDECEA; color:#8A1C12; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-weight:600; font-size:.92rem; white-space:pre-line;}
+.campo-texto{width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;}
+
+/* trabajo abierto list card */
+.job-card{
+  width:100%; text-align:left; border:2px solid var(--gris-borde); background:#fff; border-radius:var(--radio);
+  padding:16px; margin-bottom:12px; font-family:inherit;
+}
+.job-card b{display:block; font-size:1rem; color:var(--mod-primary); margin-bottom:3px;}
+.job-card span{font-size:.82rem; color:#5A5A5A;}
+.job-card.selected{border-color:var(--mod-accent); background:var(--mod-claro);}
+
+/* safety recommendation cards */
+.seg-card{
+  border-radius:var(--radio); padding:16px 18px; margin-bottom:14px; background:var(--mod-claro);
+  border-left:5px solid var(--mod-accent);
+}
+.seg-card h4{margin:0 0 10px; font-size:1rem; color:var(--mod-primary); font-weight:800;}
+.seg-card ul{margin:0; padding-left:20px;}
+.seg-card li{font-size:.92rem; line-height:1.5; margin-bottom:6px; color:var(--texto);}
+
+/* final send screen */
+.center-flow{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:30px;}
+.center-flow svg{width:80px; height:80px; margin-bottom:10px;}
+
+/* sync queue badge */
+.queue-badge{
+  position:absolute; top:10px; right:16px; background:var(--amarillo-alerta); color:#1A1A1A;
+  font-size:.7rem; font-weight:800; padding:3px 9px; border-radius:999px; display:none;
+}
+.queue-badge.show{display:block;}
+
+::-webkit-scrollbar{display:none;}
+
+/* help overlay */
+.help-overlay{
+  position:fixed; inset:0; background:rgba(13,49,63,.72); display:none;
+  align-items:center; justify-content:center; z-index:999; padding:24px;
+}
+.help-overlay.show{display:flex;}
+.help-card{
+  background:#fff; border-radius:24px; padding:32px 26px; max-width:400px; width:100%;
+  text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
+}
+.help-icon{
+  width:56px; height:56px; border-radius:50%; background:var(--mod-primary); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:900;
+  margin:0 auto 18px;
+}
+.help-text{font-size:1.15rem; line-height:1.5; color:var(--texto); margin-bottom:24px; font-weight:600;}
+
+/* detalle extra condicional (chips que piden explicación) */
+.detalle-extra-box{margin-top:10px;}
+.detalle-extra-box .lbl-extra{font-size:.85rem; font-weight:700; color:var(--mod-primary); margin-bottom:4px;}
+.detalle-extra-box textarea{
+  width:100%; min-height:64px; border:2px solid var(--amarillo-alerta); border-radius:14px; padding:12px;
+  font-family:inherit; font-size:.95rem; resize:vertical; margin-bottom:10px; background:#FFFBF0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot" id="netDot"></span>
+      <span id="brandLabel">Red HZT</span>
+    </div>
+    <div class="top-actions">
+      <button id="helpBtn" type="button" title="Ayuda">?</button>
+      <button id="homeBtn" type="button" title="Inicio">🏠</button>
+      <button id="syncBtn" type="button">Sincronizar</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:9%"></div></div>
+  </div>
+
+  <div class="screens" id="screens">
+
+    <!-- 0. HOME — ELEGIR MÓDULO -->
+    <section class="screen active" data-step="home">
+      <div class="step-title">¿Qué vas a registrar?</div>
+      <div class="step-sub">Tocá el módulo</div>
+      <button class="module-card mipyv" type="button" id="goMipyv">
+        <span id="iconBug"></span>
+        <div>
+          <div class="mc-title">MIPyV</div>
+          <div class="mc-sub">Control de plagas y vectores</div>
+        </div>
+      </button>
+      <button class="module-card saneamiento" type="button" id="goSaneamiento">
+        <span id="iconBroom"></span>
+        <div>
+          <div class="mc-title">Limpieza y Saneamiento</div>
+          <div class="mc-sub">Predios, cañerías, tanques de agua — CAPs</div>
+        </div>
+      </button>
+      <button class="module-card hys" type="button" id="goHys">
+        <span class="mc-emoji">🧯</span>
+        <div>
+          <div class="mc-title">Otra tarea de Higiene y Seguridad</div>
+          <div class="mc-sub">Extintores, señalización, recorridas y más</div>
+        </div>
+      </button>
+      <div id="appVersion" style="text-align:center; font-size:.8rem; opacity:.6; margin-top:18px;"></div>
+    </section>
+
+    <!-- QUIEN SOS (compartido) -->
+    <section class="screen" data-step="quien">
+      <div class="step-title">¿Quién sos?</div>
+      <div class="step-sub">Tocá tu nombre</div>
+      <div class="grid" id="operarioGrid"></div>
+    </section>
+
+    <!-- ACOMPAÑANTE (compartido) -->
+    <section class="screen" data-step="acompanante">
+      <div class="step-title">¿Trabajaste solo/a hoy?</div>
+      <div class="step-sub">Para que quede registrado si estuvieron los dos</div>
+      <button class="tile big" id="soloBtn" style="width:100%; margin-bottom:14px; min-height:100px;" type="button">
+        <div class="label">Trabajé solo/a</div>
+      </button>
+      <button class="tile big" id="acompanadoBtn" style="width:100%; min-height:100px;" type="button">
+        <div class="label" id="acompanadoLabel">Trabajé con el otro</div>
+      </button>
+    </section>
+
+    <!-- HORARIO (compartido) -->
+    <section class="screen" data-step="horario">
+      <div class="step-title">Horario de trabajo</div>
+      <div class="step-sub">Tocá para elegir la hora</div>
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de inicio</div>
+      <input type="time" id="horaInicio" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de finalización</div>
+      <input type="time" id="horaFin" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      <div id="horarioAcompananteWrap" style="display:none; margin-top:20px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaInicioAcompLabel">Hora de inicio del otro operario</div>
+        <input type="time" id="horaInicioAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaFinAcompLabel">Hora de finalización del otro operario</div>
+        <input type="time" id="horaFinAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      </div>
+    </section>
+
+    <!-- ============ MIPyV ============ -->
+
+    <section class="screen" data-step="m-tipo">
+      <div class="step-title">¿Intervención nueva o en curso?</div>
+      <div class="step-sub">Si ya volviste antes por esta misma plaga, continuá el mismo protocolo</div>
+      <button class="tile big" id="mNuevaBtn" style="width:100%; margin-bottom:14px; min-height:110px;" type="button">
+        <span id="iconNuevaMipyv"></span>
+        <div class="label">Intervención nueva</div>
+      </button>
+      <button class="tile big" id="mContinuarBtn" style="width:100%; min-height:110px;" type="button">
+        <span id="iconContinuarMipyv"></span>
+        <div class="label">Continuar una abierta</div>
+      </button>
+    </section>
+
+    <section class="screen" data-step="m-continuar-lista">
+      <div class="step-title">Intervenciones abiertas</div>
+      <div class="step-sub">Elegí la que vas a continuar</div>
+      <div id="intervencionesAbiertasList"></div>
+      <div id="sinIntervencionesMsg" class="step-sub" style="display:none;">No hay intervenciones abiertas guardadas en este celular. Tocá "Sincronizar" con conexión antes de este paso, así se trae lo que haya cargado el otro operario.</div>
+    </section>
+
+    <section class="screen" data-step="m-establecimiento">
+      <div class="step-title">¿Dónde estás?</div>
+      <div class="step-sub">Elegí el establecimiento</div>
+      <div class="chip-row" id="tipoChips"></div>
+      <div class="grid" id="establecimientoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-sector">
+      <div class="step-title">¿Qué sector?</div>
+      <div class="step-sub" id="sectorSub">Elegí dónde interviniste</div>
+      <div class="grid cols-3" id="sectorGrid"></div>
+      <div id="sectorLibreWrap" style="display:none;">
+        <div class="chip-row" id="sectorChipsSugeridos"></div>
+        <input type="text" id="sectorInput" placeholder="Escribí el sector (ej: Consultorio, Depósito...)"
+          style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; margin-top:6px;">
+      </div>
+    </section>
+
+    <section class="screen" data-step="m-plaga">
+      <div class="step-title">¿Qué plaga viste?</div>
+      <div class="step-sub">Tocá la imagen que corresponde</div>
+      <div class="grid" id="plagaGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-producto">
+      <div class="step-title">¿Qué producto usaste?</div>
+      <div class="step-sub">Tocá el envase que usaste</div>
+      <div class="grid" id="productoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="seguridadCards"></div>
+    </section>
+
+    <section class="screen" data-step="m-dosis">
+      <div class="step-title">Dosis y frecuencia</div>
+      <div class="step-sub">Confirmá lo que ya está definido</div>
+      <div class="autofill-card">
+        <div class="lbl">Dosis</div>
+        <div class="big-num" id="dosisTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Frecuencia</div>
+        <div class="big-num" id="frecTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Puntos críticos sugeridos</div>
+        <div class="big-num" id="puntosTxt" style="font-size:1rem;">—</div>
+      </div>
+    </section>
+
+    <section class="screen" data-step="m-epp">
+      <div class="step-title">EPP usado</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
+      <div class="grid" id="eppGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-resultado">
+      <div class="step-title">¿Cómo quedó?</div>
+      <div class="step-sub">Elegí una opción</div>
+      <button class="result-btn result-ok" data-resultado="Resuelto" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Resuelto
+      </button>
+      <button class="result-btn result-followup" data-resultado="Requiere otra visita" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.71 3.86a2 2 0 00-3.42 0z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Necesita otra visita
+      </button>
+      <button class="result-btn result-blocked" data-resultado="No se pudo acceder al sector" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2"/><path d="M4.9 4.9l14.2 14.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        No pude acceder
+      </button>
+    </section>
+
+    <section class="screen" data-step="m-foto">
+      <div class="step-title">Fotos del sector</div>
+      <div class="step-sub">Sacá hasta 5 fotos como respaldo</div>
+      <div class="foto-grid" id="fotoGrid"></div>
+      <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">
+    </section>
+
+    <section class="screen" data-step="m-obs">
+      <div class="step-title">Observaciones</div>
+      <div class="step-sub">Opcional — tocá si aplica</div>
+      <div class="chip-row" id="obsChips"></div>
+      <div class="lbl" style="margin-top:14px; margin-bottom:6px;">Notas del operador (opcional)</div>
+      <textarea id="notasOperador" placeholder="Escribí acá cualquier detalle adicional..."
+        style="width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;"></textarea>
+    </section>
+
+    <section class="screen" data-step="m-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="summaryList"></div>
+    </section>
+
+    <section class="screen" data-step="m-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="sentSub">Visita registrada</div>
+        <button class="btn btn-primary" id="newVisitBtn" type="button" style="max-width:220px;">Cargar otra visita</button>
+      </div>
+    </section>
+
+    <!-- ============ SANEAMIENTO ============ -->
+
+    <section class="screen" data-step="s-tipo">
+      <div class="step-title">¿Trabajo nuevo o en curso?</div>
+      <div class="step-sub">La tarea puede llevar más de un día</div>
+      <button class="tile big" id="sNuevoBtn" style="width:100%; margin-bottom:14px; min-height:110px;" type="button">
+        <span id="iconNuevo"></span>
+        <div class="label">Iniciar trabajo nuevo</div>
+      </button>
+      <button class="tile big" id="sContinuarBtn" style="width:100%; min-height:110px;" type="button">
+        <span id="iconContinuar"></span>
+        <div class="label">Continuar un trabajo abierto</div>
+      </button>
+    </section>
+
+    <section class="screen" data-step="s-cap-nuevo">
+      <div class="step-title">¿En qué CAP?</div>
+      <div class="step-sub">Se registra hoy como fecha de inicio</div>
+      <div class="grid cols-3" id="capGridNuevo"></div>
+    </section>
+
+    <section class="screen" data-step="s-cap-continuar">
+      <div class="step-title">Trabajos abiertos</div>
+      <div class="step-sub">Elegí el que vas a continuar</div>
+      <div id="trabajosAbiertosList"></div>
+      <div id="sinTrabajosMsg" class="step-sub" style="display:none;">No hay trabajos abiertos guardados en este celular. Si Javier o Paulo empezaron uno desde otro teléfono, tocá "Sincronizar" con conexión antes de este paso.</div>
+    </section>
+
+    <section class="screen" data-step="s-tareas">
+      <div class="step-title">¿Qué hiciste hoy?</div>
+      <div class="step-sub">Tocá todas las que correspondan</div>
+      <div class="grid" id="tareasGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-producto">
+      <div class="step-title">¿Qué producto usaste?</div>
+      <div class="step-sub">Tocá el envase que usaste</div>
+      <div class="grid" id="sProductoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="sSeguridadCards"></div>
+    </section>
+
+    <section class="screen" data-step="s-dosis">
+      <div class="step-title">Dosis y frecuencia</div>
+      <div class="step-sub">Confirmá lo que ya está definido</div>
+      <div class="autofill-card">
+        <div class="lbl">Dosis</div>
+        <div class="big-num" id="sDosisTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Frecuencia</div>
+        <div class="big-num" id="sFrecTxt">—</div>
+      </div>
+    </section>
+
+    <section class="screen" data-step="s-epp">
+      <div class="step-title">EPP usado</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
+      <div class="grid" id="sEppGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-detalle">
+      <div class="step-title">Detalle del día</div>
+      <div class="step-sub">Tocá lo que aplique y sacá hasta 5 fotos</div>
+      <div class="chip-row" id="detalleChips"></div>
+      <div id="detalleExtra"></div>
+      <div class="foto-grid" id="sFotoGrid" style="margin-top:6px;"></div>
+      <input type="file" accept="image/*" capture="environment" id="sPhotoInput" style="display:none">
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Notas del día (opcional)</div>
+      <textarea id="notasSaneamiento" placeholder="Escribí acá cualquier detalle adicional..."
+        style="width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;"></textarea>
+    </section>
+
+    <section class="screen" data-step="s-cierre">
+      <div class="step-title">¿Seguís otro día o terminaste?</div>
+      <div class="step-sub">En este CAP</div>
+      <button class="result-btn result-followup" data-cierre="continua" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.71 3.86a2 2 0 00-3.42 0z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Continúa otro día
+      </button>
+      <button class="result-btn result-ok" data-cierre="terminado" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Terminado
+      </button>
+    </section>
+
+    <section class="screen" data-step="s-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="sSummaryList"></div>
+    </section>
+
+    <section class="screen" data-step="s-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="sSentSub">Avance registrado</div>
+        <button class="btn btn-primary" id="sNewBtn" type="button" style="max-width:240px;">Cargar otro avance</button>
+      </div>
+    </section>
+
+    <!-- ============ OTRAS TAREAS DE HIGIENE Y SEGURIDAD ============ -->
+
+    <section class="screen" data-step="h-tipo">
+      <div class="step-title">¿Qué tarea hiciste?</div>
+      <div class="step-sub">Tocá una</div>
+      <div class="grid" id="tipoTareaGrid"></div>
+    </section>
+
+    <section class="screen" data-step="h-lugares">
+      <div class="step-title">¿Dónde?</div>
+      <div class="step-sub">Tocá todos los lugares donde hiciste la tarea (podés tocar varios)</div>
+      <div class="chip-row" id="hTipoChips"></div>
+      <div class="grid" id="hLugarGrid"></div>
+      <div class="step-sub" id="hLugaresCuenta" style="margin-top:14px; font-weight:700;"></div>
+    </section>
+
+    <section class="screen" data-step="h-extintores">
+      <div class="step-title">Control de extintores</div>
+      <div class="step-sub">Contestá todo, en cada lugar</div>
+      <div id="extintoresList"></div>
+    </section>
+
+    <section class="screen" data-step="h-detalle">
+      <div class="step-title">¿Qué hiciste?</div>
+      <div class="step-sub" id="hDetalleSub">Contalo con tus palabras</div>
+      <textarea id="hDetalle" class="campo-texto" placeholder="Escribí acá..."></textarea>
+      <div class="hint-rojo" id="hDetalleAviso">Escribí qué hiciste para poder seguir.</div>
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Fotos (hasta 5)</div>
+      <div class="foto-grid" id="hFotoGrid"></div>
+      <input type="file" accept="image/*" capture="environment" id="hPhotoInput" style="display:none">
+    </section>
+
+    <section class="screen" data-step="h-hallazgos">
+      <div class="step-title">¿Encontraste algo mal?</div>
+      <div class="step-sub">Opcional — si está todo bien, tocá "Siguiente"</div>
+      <div class="auto-hallazgos" id="hAutoHallazgos" style="display:none;"></div>
+      <div class="lbl" style="margin-bottom:6px;">Problemas que encontraste</div>
+      <textarea id="hHallazgos" class="campo-texto" placeholder="Ej.: cartel de salida roto, matafuego tapado con cajas..."></textarea>
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Observaciones</div>
+      <textarea id="hObservaciones" class="campo-texto" placeholder="Cualquier otra cosa que quieras contar..."></textarea>
+    </section>
+
+    <section class="screen" data-step="h-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="hSummaryList"></div>
+    </section>
+
+    <section class="screen" data-step="h-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="hSentSub">Tarea registrada</div>
+        <button class="btn btn-primary" id="hNewBtn" type="button" style="max-width:240px;">Cargar otra tarea</button>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="bottom-bar" id="bottomBar">
+    <button class="btn btn-secondary" id="backBtn" type="button">←</button>
+    <button class="btn btn-primary" id="nextBtn" type="button">Siguiente</button>
+  </div>
+
+  <div class="queue-badge" id="queueBadge">0 sin enviar</div>
+
+  <div class="help-overlay" id="helpOverlay">
+    <div class="help-card">
+      <div class="help-icon">?</div>
+      <div class="help-text" id="helpText">Ayuda</div>
+      <button class="btn btn-primary" id="helpCloseBtn" type="button" style="max-width:200px;">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script src="version.js"></script>
+<script src="data.js"></script>
+<script src="icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
