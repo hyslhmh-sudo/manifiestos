@@ -234,6 +234,7 @@ function dgmInforme_(m, x) {
   else { const n = docNumero_({ est: X.cod, bloque: 'GEN', tipo: 'DG', asunto: TIT + ' · ' + (X.E.nombre || X.cod), origen: 'Sistema', idOrigen: A.ID_DIAG, pedidoPor: Session.getActiveUser().getEmail() }); if (!n.ok) return n; codigo = n.codigo; }
   const hoyD = new Date(), hoy = Utilities.formatDate(hoyD, TZ, 'dd/MM/yyyy'), fTxt = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : 's/d', fRel = fTxt(A.FECHA);
   const nombre = X.E.nombre || D.nombre || X.cod, H = dgmHallazgos_(X, cfg), crit = H.filter(h => h.critico);
+  const conArt = /^(Hospital|Centro|Puesto|Servicio)\b/.test(nombre), deN = (conArt ? 'del ' : 'de ') + nombre, enN = (conArt ? 'en el ' : 'en ') + nombre;
   const nose = R.filter(r => /(^|\|)No se sabe|No se midió|No se pudo observar/.test(String(r.valor || r.resp || ''))).map(r => ({ it: porId[r.item], r: r }));
   const bloques = Object.keys(calc.porSeccion).filter(s => !/^0 ·|Comentarios/.test(s)).map(s => [s, calc.porSeccion[s]]).sort((a, b) => b[1] - a[1]);
   const sinLetra = s => String(s).replace(/^[0-9A-Z]+\d? · /, '');
@@ -278,9 +279,9 @@ function dgmInforme_(m, x) {
 
     // ---------------- RESUMEN EJECUTIVO (prosa, sin tablas)
     H1('Resumen ejecutivo');
-    const mejores = bloques.filter(s => s[1] >= 60).slice(0, 2).map(s => minus(sinLetra(s[0]))), peores = bloques.filter(s => s[1] < 60).slice(-2).reverse().map(s => minus(sinLetra(s[0])));
+    const mejores = bloques.filter(s => s[1] >= 60).slice(0, 2).map(s => '«' + minus(sinLetra(s[0])) + '»'), peores = bloques.filter(s => s[1] < 60).slice(-2).reverse().map(s => '«' + minus(sinLetra(s[0])) + '»');
     const critTxt = crit.slice(0, 4).map(h => minus(String(h.it.ITEM).replace(/^¿|\?$/g, '')));
-    P_('El ' + fRel + ' se realizó el diagnóstico de la ' + TEMA + ' de ' + nombre + ', en el marco de las funciones del Servicio de Higiene y Seguridad Laboral' + nota('competencias', COMP) + '. ' +
+    P_('El ' + fRel + ' se realizó el diagnóstico de la ' + TEMA + ' ' + deN + ', en el marco de las funciones del Servicio de Higiene y Seguridad Laboral' + nota('competencias', COMP) + '. ' +
       'El cumplimiento general fue del ' + (calc.pct === '' ? 's/d' : pc(calc.pct) + ' %') + '. ' + (mejores.length ? 'Los mejores resultados están en ' + lista(mejores) + '. ' : '') + (peores.length ? 'Las brechas mayores se concentran en ' + lista(peores) + '. ' : '') +
       (crit.length ? (crit.length > 1 ? 'Se registraron ' + crit.length + ' hallazgos críticos, que conviene atender dentro de los ' + cfg.plazo.Q1 + ' días: ' : 'Se registró un hallazgo crítico, que conviene atender dentro de los ' + cfg.plazo.Q1 + ' días: ') + critTxt.join('; ') + '.' : 'No se registraron hallazgos críticos.'));
     P_((H.length ? 'El informe propone ' + H.length + (H.length > 1 ? ' mejoras, ordenadas' : ' mejora, ordenada') + ' por prioridad y plazo, que se registrarán en el plan de acción para su seguimiento. ' : 'No surgen mejoras a proponer en esta instancia. ') +
@@ -291,7 +292,7 @@ function dgmInforme_(m, x) {
     H1('1. Presentación');
     if (m === 'agua') P_('El agua para consumo de un establecimiento de salud la usan pacientes con defensas bajas y el personal, y se emplea en la higiene y en la preparación de alimentos. Las normas exigen que sea apta para el consumo' + notaN('19587') + notaN('523') + ' y que los tanques y cisternas se limpien y desinfecten con una frecuencia definida y registrada' + notaN('DPSB') + '. La limpieza de reservorios, además, expone a quien la realiza a trabajo en altura, espacios confinados y productos químicos.');
     else P_('La presencia de plagas en un establecimiento de salud es un riesgo para pacientes, personal y alimentos. El manejo integrado de plagas (MIP) prioriza la prevención —condiciones del edificio, orden, limpieza y residuos— y usa productos solo cuando hace falta, registrados' + notaN('ANMAT') + ' y aplicados por personal capacitado y protegido' + notaN('19587') + '.');
-    P_('El presente informe tiene por objeto poner en conocimiento de la Dirección la situación de partida (línea de base) de la ' + TEMA + ' en ' + nombre + ', con propuestas de mejora ordenadas por prioridad. Registra lo encontrado sin valoración de las personas, para poder medir después los cambios.');
+    P_('El presente informe tiene por objeto poner en conocimiento de la Dirección la situación de partida (línea de base) de la ' + TEMA + ' ' + enN + ', con propuestas de mejora ordenadas por prioridad. Registra lo encontrado sin valoración de las personas, para poder medir después los cambios.');
 
     // ---------------- 2. MÉTODO DE TRABAJO
     H1('2. Método de trabajo');
@@ -314,8 +315,8 @@ function dgmInforme_(m, x) {
         its.forEach(it => { const r = R.find(q => q.item === it.ID && (q.sitio || 'Establecimiento') === lug); if (!r) return;
           if (it.TIPO === 'TEXTO') { if (r.valor) partes.push((it.ID === 'LUG01' ? 'comentarios' : minus(it.ITEM)) + ': ' + String(r.valor)); return; }
           const val = String(r.valor || r.resp || ''); if (!val) return;
-          partes.push(String(it.ITEM).replace(/^¿|\?$/g, '').replace(/\s*\([^)]*\)\s*$/, '') + ': ' + respTxt(r) + (r.obs ? ' (' + r.obs + ')' : '')); });
-        if (partes.length) lineas.push((lug === 'Establecimiento' ? '' : lug + '. ') + lbMay_(partes.join('; ')) + '.');
+          partes.push(String(it.ITEM).replace(/\?\s*¿/g, ', ').replace(/[¿?]/g, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/:\s/g, ', ') + ': ' + respTxt(r) + (r.obs ? ' (' + r.obs + ')' : '')); });
+        if (partes.length) lineas.push((lug === 'Establecimiento' ? '' : lug + '. ') + lbMay_(partes.map((x, i) => i ? minus(x) : x).join('; ')) + '.');
       });
       if (!lineas.length) return;
       nS++; H2('3.' + nS + ' ' + sinLetra(sec)); lineas.forEach(l => P_(l));
@@ -340,7 +341,7 @@ function dgmInforme_(m, x) {
 
     // ---------------- 5. CONCLUSIÓN
     H1('5. Conclusión');
-    P_('La línea de base de la ' + TEMA + ' de ' + nombre + ' registra un cumplimiento general del ' + (calc.pct === '' ? 's/d' : pc(calc.pct) + ' %') + (crit.length ? ', con ' + crit.length + (crit.length > 1 ? ' hallazgos críticos' : ' hallazgo crítico') : ', sin hallazgos críticos') + (nose.length ? ' y ' + nose.length + (nose.length > 1 ? ' datos' : ' dato') + ' a relevar' : '') + '. ' +
+    P_('La línea de base de la ' + TEMA + ' ' + deN + ' registra un cumplimiento general del ' + (calc.pct === '' ? 's/d' : pc(calc.pct) + ' %') + (crit.length ? ', con ' + crit.length + (crit.length > 1 ? ' hallazgos críticos' : ' hallazgo crítico') : ', sin hallazgos críticos') + (nose.length ? ' y ' + nose.length + (nose.length > 1 ? ' datos' : ' dato') + ' a relevar' : '') + '. ' +
       (peores.length ? 'Los bloques con mayor margen de mejora son ' + lista(peores) + '. ' : '') +
       (crit.length ? 'Resolver primero los hallazgos críticos reduce el riesgo principal; el resto de las mejoras puede planificarse según los recursos disponibles. ' : 'Las mejoras propuestas permiten sostener y mejorar el nivel de cumplimiento. ') +
       'Estos resultados son el punto de partida para acordar las medidas y medir su avance en los próximos relevamientos.');
@@ -379,9 +380,10 @@ function dgmInforme_(m, x) {
 // Texto del correo de envío (no se envía: se copia desde el portal)
 function dgmCorreo_(X, cfg, codigo, H) {
   const C = cfg.C, calc = X.calc, nombre = X.E.nombre || X.D.nombre || X.cod, fRel = String(X.A.FECHA).slice(0, 10).split('-').reverse().join('/');
+  const deN = (/^(Hospital|Centro|Puesto|Servicio)\b/.test(nombre) ? 'del ' : 'de ') + nombre;
   H = H || dgmHallazgos_(X, cfg); const crit = H.filter(h => h.critico).length, TEMA = X.m === 'agua' ? 'gestión del agua para consumo' : 'manejo integrado de plagas';
   return { asunto: codigo + ' · Diagnóstico de ' + (X.m === 'agua' ? 'agua' : 'plagas') + ' · ' + nombre,
-    cuerpo: 'Sr./Sra. Director/a:\n\nEn el marco de las funciones del Servicio de Higiene y Seguridad Laboral¹, se remite el diagnóstico de la ' + TEMA + ' de ' + nombre + ', relevado el ' + fRel + '.\n\n' +
+    cuerpo: 'Sr./Sra. Director/a:\n\nEn el marco de las funciones del Servicio de Higiene y Seguridad Laboral¹, se remite el diagnóstico de la ' + TEMA + ' ' + deN + ', relevado el ' + fRel + '.\n\n' +
       'El cumplimiento general fue del ' + (calc.pct === '' ? 's/d' : pc(calc.pct) + ' %') + '. ' + (crit ? 'Se identificaron ' + crit + ' hallazgo(s) crítico(s), detallados en el punto 4.2, que conviene atender dentro de los ' + cfg.plazo.Q1 + ' días.' : 'No se identificaron hallazgos críticos.') +
       (H.length ? ' En el punto 6 se proponen ' + H.length + ' mejora(s) ordenadas por prioridad, para confirmar responsables y plazos.' : '') + '\n\n' +
       (C.TEXTO_CIERRE || 'Quedo a disposición por cualquier consulta, requerimiento o ampliación de lo informado.') + '\n\nSaludos cordiales.\n\n' + (C.FIRMA_NOMBRE || 'Belén Pellegrini') + '\nServicio de Higiene y Seguridad Laboral\nCelular: ' + (C.CONTACTO_CELULAR || '2804389910') + ' · ' + (C.CONTACTO_CORREO || 'belenpellegrini.hys@gmail.com') +
