@@ -651,8 +651,8 @@ function pasoCert() {
     f('ftrat', campoFecha('ftrat', 'C', ERR.ftrat)) +
     '<div class="field"><div class="lab"><label>' + esc(AYUDA.cvol.t) + ' (opcional)</label>' + q('cvol') + '</div>' + C.res.map((r, i) => {
       const n = (corrCfg().find(x => x.c === r.corriente) || { n: r.corriente }).n;
-      return '<div style="margin-top:8px"><small class="mu">' + esc(n) + '</small><div style="display:flex;gap:6px"><input data-cv="' + i + '" type="number" min="0" step="0.1" inputmode="decimal" value="' + esc(r.vol) + '" style="min-width:0;flex:1"' + (ERR['cvol' + i] ? ' class="bad"' : '') + '>' +
-        '<select data-cu="' + i + '" style="width:72px;flex:none">' + ['dm³', 'kg'].map(u => '<option' + (u === r.uni ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' + (ERR['cvol' + i] ? '<div class="err">' + esc(ERR['cvol' + i]) + '</div>' : '') + '</div>';
+      return '<div style="margin-top:8px"><small class="mu">' + esc(n) + '</small><div style="display:flex;gap:6px"><input data-cv="' + i + '" type="number" min="0" step="0.1" inputmode="decimal" value="' + esc(r.vol) + '" style="min-width:0;flex:1;padding-left:8px;padding-right:4px"' + (ERR['cvol' + i] ? ' class="bad"' : '') + '>' +
+        '<select data-cu="' + i + '" style="width:64px;flex:none;padding-left:6px;padding-right:2px">' + ['dm³', 'kg'].map(u => '<option' + (u === r.uni ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' + (ERR['cvol' + i] ? '<div class="err">' + esc(ERR['cvol' + i]) + '</div>' : '') + '</div>';
     }).join('') + '</div>' +
     bloqueFoto(C, 'cfoto', C.mesA && C.mesM ? C.mesA + '-' + C.mesM + '-01' : '', 'fotoC', 'cert');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarCert">Guardar certificado</button>');
