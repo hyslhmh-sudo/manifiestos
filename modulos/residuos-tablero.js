@@ -18,7 +18,7 @@ async function resDatos(fresco) {
     try { const r = await api('p_res_tablero', { fresco: !!fresco }, 180000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); REST = r; LS.set('resTab', r); resActualizarRes(r); }
     catch (e) { if (!REST) { marco('#res', '<div class="aviso error">' + esc(e.message || 'No se pudo leer el tablero de residuos.') + '</div>'); return false; } }
   } else if (!resDatos.pidio) {   // datos guardados en el equipo: se muestran ya y se actualizan por detrás
-    resDatos.pidio = true; api('p_res_tablero', {}, 180000).then(r => { if (r && r.ok) { REST = r; LS.set('resTab', r); resActualizarRes(r); if (location.hash.split('/')[0] === '#res' && $('ov').hidden) resTablero(); } }).catch(() => {});
+    resDatos.pidio = true; api('p_res_tablero', {}, 180000).then(r => { if (r && r.ok) { REST = r; LS.set('resTab', r); resActualizarRes(r); if ($('ov').hidden) { if (location.hash === '#res') resTablero(); else if (/^#res\//.test(location.hash)) resEst(decodeURIComponent(location.hash.split('/')[1])); } } }).catch(() => {});
   }
   return true;
 }
@@ -77,8 +77,10 @@ async function resTablero(fresco) {
 async function resEst(cod) {
   if (!(await resDatos(false))) return;
   const T = REST, e = T.establecimientos.find(x => x.cod === cod), mesAct = T.hoy.slice(0, 7);
-  if (!e) return marco('#res', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos › Tablero</a></span><h1>' + esc(cod) + '</h1></div></div><div class="card"><p class="mu" style="margin:0">Sin manifiestos cargados en los últimos 12 meses. <a class="link" href="#ficha/' + encodeURIComponent(cod) + '">Abrir la ficha</a></p></div>');
+  const cargarCto = () => { if (typeof rcoDatos === 'function') rcoDatos(false).then(T => { const b = $('resEstCto'); if (b) b.innerHTML = '<h2>Contrato y costo</h2>' + rcoEstTabla(T, cod); }).catch(() => { const b = $('resEstCto'); if (b) b.innerHTML = '<h2>Contrato y costo</h2><p class="mu peq" style="margin:0">No se pudo leer el contrato.</p>'; }); };
+  if (!e) { marco('#res', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos › Tablero</a></span><h1>' + esc(cod) + '</h1></div></div><div class="card"><p class="mu" style="margin:0">Sin manifiestos cargados en los últimos 12 meses. <a class="link" href="#ficha/' + encodeURIComponent(cod) + '">Abrir la ficha</a></p></div>' + '<section class="card" id="resEstCto"><h2>Contrato y costo</h2><p class="mu peq" style="margin:0">Leyendo el contrato…</p></section>'); return cargarCto(); }
   const fotoDe = m => e.fotos.find(f => f.mes === m);
+  const contrato = '<section class="card" id="resEstCto"><h2>Contrato y costo</h2><p class="mu peq" style="margin:0">Leyendo el contrato…</p></section>';
   marco('#res', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos › Tablero</a> › ' + esc(e.cod) + '</span><h1>' + esc(e.nombre) + '</h1><span class="mu peq">Último retiro cargado: ' + (e.ultimo ? fechaTxt(e.ultimo) + ' (' + e.dias + ' días)' : 'ninguno') + '</span></div>' +
     '<div class="filtros"><a class="btn sec" href="#ficha/' + encodeURIComponent(e.cod) + '">Ficha</a><a class="btn sec" href="#diag/' + encodeURIComponent(e.cod) + '">Diagnóstico</a><a class="btn sec" href="#aud">Auditorías</a></div></div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Mes por mes</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th>Retiros</th><th>Y1</th><th>Y3</th><th>Certificado</th><th>Fotos</th></tr></thead><tbody>' +
@@ -87,5 +89,6 @@ async function resEst(cod) {
           '<td>' + (c ? '<span class="chip ok mini">N.º ' + esc(c) + '</span>' : sc ? '<span class="chip ' + sc.nivel + ' mini">' + (sc.nivel === 'wa' ? 'Pendiente' : 'Falta') + '</span>' : m >= mesAct ? '<span class="mu peq">mes en curso</span>' : '<span class="mu">—</span>') + '</td>' +
           '<td>' + (f ? '<span class="chip ' + (f.vencida ? 'er' : 'wa') + ' mini">' + f.n + ' sin foto</span>' : '<span class="mu">—</span>') + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
     '<section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Sitios</h2><span class="mu peq">Último manifiesto de cada sitio y frecuencia de retiro pactada (BASE COMÚN › SITIOS).</span></div><div style="overflow-x:auto"><table><thead><tr><th>Sitio</th><th>Último</th><th>Frecuencia</th></tr></thead><tbody>' +
-      e.sitios.map(s => '<tr><td><b>' + esc(s.sitio) + '</b></td><td>' + fechaTxt(s.ultimo) + '<br><span class="chip ' + (s.atrasado ? (s.dias > 30 ? 'er' : 'wa') : 'ok') + ' mini">' + s.dias + ' días</span></td><td class="peq">' + esc(s.frecuencia) + '<div class="mu">esperable: hasta ' + s.limite + ' días</div></td></tr>').join('') + '</tbody></table></div></section></div>');
+      e.sitios.map(s => '<tr><td><b>' + esc(s.sitio) + '</b></td><td>' + fechaTxt(s.ultimo) + '<br><span class="chip ' + (s.atrasado ? (s.dias > 30 ? 'er' : 'wa') : 'ok') + ' mini">' + s.dias + ' días</span></td><td class="peq">' + esc(s.frecuencia) + '<div class="mu">esperable: hasta ' + s.limite + ' días</div></td></tr>').join('') + '</tbody></table></div></section></div>' + contrato);
+  cargarCto();
 }
