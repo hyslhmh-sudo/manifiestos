@@ -24,6 +24,8 @@ function portalAccion_(d) {
     case 'p_tablero': return tbTablero_(x.fresco);   // tablero de control (Tablero.gs)
     case 'p_res_tablero': return typeof resTablero_ === 'function' ? resTablero_(x.fresco) : { ok: false, mensaje: 'Falta instalar ResiduosTablero.gs.' };   // 1 · Residuos: tablero general (14.22)
     case 'p_res_frecuencias': return typeof resFrecuencias_ === 'function' ? resFrecuencias_(x) : { ok: false, mensaje: 'Falta instalar ResiduosContratos.gs.' };   // frecuencias de retiro (14.23)
+    case 'p_res_inf_opciones': return typeof resInfOpciones_ === 'function' ? resInfOpciones_() : { ok: false, mensaje: 'Falta instalar ResiduosInforme.gs.' };   // informe de frecuencia de retiro (14.26)
+    case 'p_res_informe': return typeof resInforme_ === 'function' ? resInforme_(x) : { ok: false, mensaje: 'Falta instalar ResiduosInforme.gs.' };
     case 'p_res_costos': return typeof resCostos_ === 'function' ? resCostos_(x) : { ok: false, mensaje: 'Falta instalar ResiduosContratos.gs.' };   // contrato y costos (14.23)
     case 'p_bib_listar': return bibListar_();       // biblioteca HyS
     case 'p_bib_guardar': return bibGuardar_(x);
