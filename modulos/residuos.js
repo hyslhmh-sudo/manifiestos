@@ -4,10 +4,13 @@
 let AU = { cod: LS.get('audCod', 'HZT'), A: null, R: null };
 const audChip = e => '<span class="chip ' + (/cerrada|^conforme$/i.test(e) ? 'ok' : /mayor/i.test(e) ? 'er' : /para verificar|hallazgos|menor/i.test(e) ? 'wa' : 'gr') + '">' + esc(e) + '</span>';
 const AUD_OP = { C: ['Conforme', '#E3F0F4', '#0D4A63'], NC: ['No conforme', '#FBE3D3', '#8A3B0B'], Obs: ['Observación', '#ECE8F3', '#4A3A73'], NA: ['No aplica', '#EEF1F2', '#4F616B'] };
-async function audLista() {
+// Muestra primero lo guardado en el equipo y lo actualiza por detrás (14.22); si cambió, se vuelve a dibujar
+async function audLista(yaPedido) {
   if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { cargando('#aud'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
-  cargando('#aud', 'Leyendo las auditorías…');
-  let R; try { R = await api('p_aud_listar', { cod: AU.cod }); } catch (e) { return; }
+  const kL = 'audLista_' + (AU.cod || 'todos'); let R = LS.get(kL, null);
+  const pedir = () => api('p_aud_listar', { cod: AU.cod }).then(r => { if (r && r.ok) { const cambio = JSON.stringify(r) !== JSON.stringify(LS.get(kL, null)); LS.set(kL, r); return { r: r, cambio: cambio }; } return r ? { r: r } : null; });
+  if (!R) { cargando('#aud', 'Leyendo las auditorías…'); try { const x = await pedir(); if (!x) return; R = x.r; } catch (e) { return; } }
+  else if (!yaPedido) pedir().then(x => { if (x && x.cambio && location.hash === '#aud' && $('ov').hidden) audLista(true); }).catch(() => {});
   if (!R.ok) return toast(R.mensaje || 'No se pudieron leer las auditorías.');
   const K = R.kpis, L = R.auditorias, kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small class="mu">' + s + '</small></div>';
   marco('#aud', '<div class="cab"><div><span class="mu peq">1 · Residuos</span><h1>Auditorías de gestión de residuos</h1><span class="mu">Verificación periódica con evidencia. Criterios: Ley XI N.º 35 (Código Ambiental del Chubut) y Ley 24.051 por adhesión.</span></div>' +

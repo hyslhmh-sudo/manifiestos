@@ -11,3 +11,4 @@ El código que funciona es el del editor de Apps Script; estas copias sirven par
 Estas copias no llevan claves ni contraseñas: las claves van en las propiedades del script o en las planillas.
 Detalle en el MANUAL DEL SISTEMA HyS, sección 20.
 - `ResiduosTablero.gs` (14.22, 13/10/2026): tablero general de residuos (acción `p_res_tablero`, despachada en Portal.gs). Portal.gs 14.22: libros abiertos una vez por ejecución y resumen de la matriz con el personal guardado aparte (`pResumenTrab_`).
+- `ResiduosContratos.gs` (14.23): contratos de residuos (hojas CONTRATOS, CONTRATO_GRUPOS y CONTRATO_ALCANCE del libro general, se crean solas con el contrato Impeesa 2026), frecuencias de retiro (`p_res_frecuencias`) y costos del contrato (`p_res_costos`). Diag.gs y Auditoria.gs (solo en el editor): caché de capacitación, perfiles y lugares (14.22).

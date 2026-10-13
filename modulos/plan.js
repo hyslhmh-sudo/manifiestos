@@ -4,9 +4,12 @@
 const PL_CHIP = { 'Cumplida': 'ok', 'En curso': 'pa', 'Pendiente': 'gr', 'Vencida': 'er', 'Sin respuesta': 'wa', 'Sin enviar': 'gr', 'Descartada': 'gr' };
 const plChip = e => '<span class="chip ' + (PL_CHIP[e] || 'gr') + '">' + esc(e) + '</span>';
 const plF = f => f ? String(f).slice(0, 10).split('-').reverse().join('/') : '—';
-async function planLista() {
-  cargando('#plan', 'Leyendo los planes de acción…');
-  let R; try { R = await api('p_plan_listar', {}); } catch (e) { return; }
+// Muestra primero lo guardado en el equipo y lo actualiza por detrás (14.22); si cambió, se vuelve a dibujar
+async function planLista(yaPedido) {
+  let R = LS.get('planLista', null);
+  const pedir = () => api('p_plan_listar', {}).then(r => { if (r && r.ok) { const cambio = JSON.stringify(r) !== JSON.stringify(LS.get('planLista', null)); LS.set('planLista', r); return { r: r, cambio: cambio }; } return null; });
+  if (!R) { cargando('#plan', 'Leyendo los planes de acción…'); try { const x = await pedir(); if (!x) return; R = x.r; } catch (e) { return; } }
+  else if (!yaPedido) pedir().then(x => { if (x && x.cambio && location.hash.split('/')[0] === '#plan' && !location.hash.split('/')[1] && $('ov').hidden) planLista(true); }).catch(() => {});
   const L = R.informes || [];
   marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos · Agua · Plagas · Cocinas</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido (diagnósticos y auditorías de residuos, diagnósticos de agua y de plagas, relevamientos de cocina). Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Establecimiento</th><th>Informe</th><th>Enviado</th><th>Recom.</th><th>Cumplidas</th><th>En curso</th><th>Vencidas</th><th>Sin respuesta</th><th></th></tr></thead><tbody>' +
