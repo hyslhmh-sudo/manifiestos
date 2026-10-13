@@ -190,3 +190,55 @@ async function bandeja(propuesta) {
       try { const r = await api('p_bj_aplicar', { id: id, indices: idx }, 120000); if (!r.ok) return toast(r.mensaje); toast(r.aplicados + ' cambio(s) aplicado(s).'); bandeja(); } catch (e) {} };
   });
 }
+
+
+// ------------------------------------------------------------------ 2 · Documentos › Notas enviadas y recibidas (solo lectura; 12/10/2026)
+// Lee el libro DOCUMENTOS · Sistema HyS (hojas REGISTRO y RECIBIDAS) con la acción p_notas (Notas_portal.gs).
+// Cargar, registrar envío y respuesta o anular se sigue haciendo en la aplicación de notas o en la planilla.
+let NT = { R: null, tab: 'env', sitio: '', alerta: '', anio: 0, q: '' };
+const NT_ALERTA = { sin_enviar: ['gr', 'Sin enviar'], esperando: ['wa', 'Esperando respuesta'], por_vencer: ['wa', 'Vence en 7 días o menos'], vencida: ['er', 'Respuesta vencida'],
+  respondida: ['ok', 'Respondida'], pendiente: ['wa', 'Pendiente de respuesta'], '': ['gr', '—'] };
+async function notas(tab, fresco) {
+  if (tab === 'env' || tab === 'rec') NT.tab = tab;
+  if (!NT.R || fresco) {
+    cargando('#notas', 'Leyendo las notas…');
+    try { NT.R = await api('p_notas', { anio: NT.anio }, 120000); } catch (e) { return; }
+    if (!NT.R.ok) return marco('#notas', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Notas</h1></div></div><section class="card"><p>' + esc(NT.R.mensaje || NT.R.error || 'No se pudieron leer las notas.') + '</p></section>');
+  }
+  const R = NT.R, S = R.resumen || {}, env = NT.tab === 'env', H = R.hojas || {};
+  const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
+  const chip = a => { const c = NT_ALERTA[a] || NT_ALERTA['']; return '<span class="chip ' + c[0] + '">' + esc(c[1]) + '</span>'; };
+  const q = NT.q.toLowerCase();
+  const L = (env ? R.enviadas : R.recibidas).filter(n => (!NT.sitio || n.sitio === NT.sitio) && (!NT.alerta || n.alerta === NT.alerta) &&
+    (!q || [n.codigo, n.asunto, n.destinatario, n.remitente, n.problematica, n.ref].join(' ').toLowerCase().indexOf(q) >= 0));
+  const alertasTab = env ? ['sin_enviar', 'esperando', 'por_vencer', 'vencida', 'respondida'] : ['pendiente', 'por_vencer', 'vencida', 'respondida'];
+  const link = (u, t) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + t + '</a>' : '';
+  const filaEnv = n => '<tr><td><b>' + esc(n.codigo || '—') + '</b><div class="mu peq">' + esc(n.tipo) + '</div></td><td>' + esc(n.fecha || '—') + '</td><td>' + esc(n.asunto || 's/d') +
+    '<div class="mu peq">' + esc([n.destinatario, n.problematica].filter(Boolean).join(' · ')) + '</div>' + (n.respuesta ? '<div class="peq"><b>Respuesta:</b> ' + esc(n.respuesta) + '</div>' : '') + '</td><td class="peq">' + esc(n.sitio || '—') + '</td>' +
+    '<td class="peq">' + (n.envio ? esc(n.envio) + (n.medio ? '<div class="mu">' + esc(n.medio) + '</div>' : '') : '<span class="mu">—</span>') + '</td><td class="peq">' + esc(n.vence || '—') + '</td>' +
+    '<td>' + chip(n.alerta) + '<div class="mu peq">' + esc(n.estado) + '</div></td><td class="peq">' + ([link(n.archivo, 'Documento'), link(n.adjuntos, 'Adjuntos')].filter(Boolean).join(' · ') || '<span class="mu">—</span>') + '</td></tr>';
+  const filaRec = n => '<tr><td><b>' + esc(n.codigo || '—') + '</b>' + (n.ref ? '<div class="mu peq">Ref. ' + esc(n.ref) + '</div>' : '') + '</td><td>' + esc(n.fecha || '—') + '</td><td>' + esc(n.asunto || 's/d') +
+    '<div class="mu peq">' + esc([n.remitente, n.firmante, n.problematica].filter(Boolean).join(' · ')) + '</div>' + (n.respondeA ? '<div class="peq">Responde a ' + esc(n.respondeA) + '</div>' : '') + '</td><td class="peq">' + esc(n.sitio || '—') + '</td>' +
+    '<td class="peq">' + (n.requiere ? 'Sí' : 'No') + '</td><td class="peq">' + esc(n.vence || '—') + '</td><td>' + chip(n.alerta) + '<div class="mu peq">' + esc(n.estado) + '</div></td><td class="peq">' + (link(n.archivo, 'Escaneo') || '<span class="mu">—</span>') + '</td></tr>';
+  const vacio = env ? 'No hay notas enviadas con estos filtros. Las notas se crean en «Nueva nota» y quedan en la hoja REGISTRO.' : 'No hay notas recibidas con estos filtros. Se cargan en «Nota recibida» y quedan en la hoja RECIBIDAS.';
+  marco('#notas', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Notas enviadas y recibidas</h1><span class="mu">Lo que está en el libro DOCUMENTOS · Sistema HyS. Para cargar o cambiar algo, usá los botones de la derecha o la planilla.</span></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><button class="btn sec" id="ntAct">Actualizar</button></div></div>' +
+    (R.avisos || []).map(a => '<section class="card" style="border-left:4px solid #8A5200">' + esc(a) + '</section>').join('') +
+    '<div class="tb5">' + kpi('Enviadas', S.enviadas || 0, (S.sinEnviar || 0) + ' sin enviar') + kpi('Esperando respuesta', S.esperando || 0, 'enviadas, dentro del plazo') + kpi('Enviadas vencidas', S.vencidasEnv || 0, 'sin respuesta y con plazo cumplido', S.vencidasEnv ? '#9B2C22' : '') +
+      kpi('Recibidas', S.recibidas || 0, (S.pendientes || 0) + ' pendientes de respuesta') + kpi('Recibidas vencidas', S.vencidasRec || 0, 'requieren respuesta nuestra', S.vencidasRec ? '#9B2C22' : '') + '</div>' +
+    '<div class="tabs"><button class="btn ' + (env ? 'pri' : 'sec') + '" data-nt="env">Enviadas (' + (R.enviadas || []).length + ')</button><button class="btn ' + (!env ? 'pri' : 'sec') + '" data-nt="rec">Recibidas (' + (R.recibidas || []).length + ')</button></div>' +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end"><div class="filtros">' +
+      '<label class="f">Buscar<input class="c" id="ntQ" type="search" placeholder="Asunto, código, servicio…" value="' + esc(NT.q) + '"></label>' +
+      '<label class="f">Sitio<select class="c" id="ntSit"><option value="">Todos</option>' + (R.sitios || []).map(s => '<option' + (s === NT.sitio ? ' selected' : '') + '>' + esc(s) + '</option>').join('') + '</select></label>' +
+      '<label class="f">Situación<select class="c" id="ntAl"><option value="">Todas</option>' + alertasTab.map(a => '<option value="' + a + '"' + (a === NT.alerta ? ' selected' : '') + '>' + esc(NT_ALERTA[a][1]) + '</option>').join('') + '</select></label>' +
+      '<label class="f">Año<select class="c" id="ntAn"><option value="0">Todos</option>' + (R.anios || []).map(y => '<option' + (y === NT.anio ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></label></div></div>' +
+    (L.length ? '<table><thead><tr><th>Código</th><th>' + (env ? 'Fecha' : 'Recibida') + '</th><th>Asunto</th><th>Sitio</th><th>' + (env ? 'Envío' : '¿Requiere respuesta?') + '</th><th>Vence</th><th>Situación</th><th>Archivo</th></tr></thead><tbody>' +
+      L.map(env ? filaEnv : filaRec).join('') + '</tbody></table>' : '<div class="vacio">' + vacio + '</div>') + '</section>' +
+    '<section class="card peq mu">Planilla: <a href="' + esc(env ? H.registro : H.recibidas) + '" target="_blank" rel="noopener">DOCUMENTOS · Sistema HyS › ' + (env ? 'REGISTRO' : 'RECIBIDAS') + '</a>. «Vence en 7 días o menos» y «vencida» se calculan con la fecha de «Vence».</section>');
+  document.querySelectorAll('[data-nt]').forEach(b => b.onclick = () => { NT.alerta = ''; location.hash = '#notas/' + b.dataset.nt; });
+  $('ntAct').onclick = () => notas(NT.tab, true);
+  $('ntSit').onchange = e => { NT.sitio = e.target.value; notas(); };
+  $('ntAl').onchange = e => { NT.alerta = e.target.value; notas(); };
+  $('ntAn').onchange = e => { NT.anio = Number(e.target.value) || 0; notas(NT.tab, true); };
+  $('ntQ').onchange = e => { NT.q = e.target.value.trim(); notas(); };
+}
