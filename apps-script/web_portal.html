@@ -466,7 +466,7 @@ const AYUDA = {
   '#m8libros': ['Libros para la red', ['Generar: elegí el establecimiento y sus servicios; el libro queda en la carpeta del módulo › LIBROS DE LA RED. Compartilo vos con el referente como editor.', 'El referente completa solo las columnas amarillas (respuesta, observación y foto) y te avisa.', 'Importar: pegá el enlace del libro completo. Se crea un relevamiento por servicio y, si lo marcás, sus hallazgos.']],
   '#inicio': ['Tablero de control', ['Muestra el estado de toda la red. Cada número, gráfico y aviso se toca y lleva al detalle.', '«Requiere atención»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos. Incluye agua, plagas, residuos, auditorías, documentos y, del módulo 6, las personas de cocina con carnet o libreta vencidos o por vencer.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
   '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
-  '#ficha': ['Ficha del establecimiento', ['Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento».', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.']],
+  '#ficha': ['Ficha del establecimiento', ['«Estado del establecimiento» (arriba): matriz de urgencia × gravedad con los temas a atender. Actuar ya = urgente y grave; Resolver rápido = urgente y leve; Planificar = no urgente y grave; Vigilar = no urgente y leve. Usa los datos del tablero de control.', 'Los botones de temas (Residuos, Agua, Plagas, Cocina, Documentos, Personal y RAR, Infraestructura) muestran la matriz solo de ese tema, sus datos principales y accesos a sus pantallas. «Otro establecimiento» cambia de ficha sin volver a la lista.', 'Qué cuenta como urgente: agua NO APTA, limpiezas y análisis vencidos, más de 10 días sin retiro (grave si pasa de 30), acciones vencidas o que vencen en 7 días, revisiones de plagas atrasadas, carnets de cocina vencidos y documentos vencidos. Qué cuenta como grave sin ser urgente: sin diagnóstico de residuos, puntos críticos o menos de 50 % de cumplimiento, sin inventario de agua y tanques o canillas sin registro.', 'Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento».', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.']],
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
   '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa (y al menos un lugar, solo si hay puntos por lugar activos en ITEMS).', '«Generar informe» arma la línea de base a la Dirección (Google Doc y PDF con número HYSL): portada, índice, resumen ejecutivo, presentación, método, hechos, análisis, conclusión, 6. Recomendaciones (ordenadas por prioridad y plazo), firma y anexo de fotos. Las recomendaciones salen de la columna ACCION de la planilla DIAGNÓSTICO DE RESIDUOS (hoja ITEMS) y pasan solas al plan de acción y a «Acciones».']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
@@ -632,7 +632,7 @@ async function inicio(fresco) {
     : '<div class="mu">Todavía no hay establecimientos con datos en esta área.</div>';
   const estadoBarra = (l) => [[cnt(l, 'aldia'), '#1E6B42'], [cnt(l, 'porvencer'), '#B7791F'], [cnt(l, 'vencida'), '#B4361F'], [cnt(l, 'sin'), '#B8C4CA']];
   marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
-    '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
+    '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><label class="f">Ver un establecimiento<select class="c" id="tbEst">' + selectorEst('', false) + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
       kpi('#acciones', 'Acciones vencidas', venc.length, 'de ' + acc.length + ' abiertas (todos los temas)', venc.length ? '#B4361F' : '') +
       kpi('#est', 'Residuos', atr.length, 'con más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
@@ -651,6 +651,7 @@ async function inicio(fresco) {
       card('Diagnóstico de residuos por área', ['#diag', 'Ver'], grHoriz(diagA, 100)) +
       card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') + '</div>');
   $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
+  $('tbEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
   $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
 }
 let CAMBIO_RES = false;
@@ -764,6 +765,7 @@ async function ficha(cod) {
     fila('Responsable', c.v[2]) + fila('Contacto', [c.v[3], c.v[4]].filter(x => x && x !== 's/d').join(' · ')) + fila('Reuniones', c.v[5]) + fila('Última reunión', c.v[6] ? fechaTxt(c.v[6]) : '') + '</dl></div>').join('');
   marco(desde || '#ficha', '<div class="cab"><div><a href="' + (desde || '#est') + '" class="peq" style="font-weight:700;text-decoration:none">‹ Volver a ' + (desde === '#agua' ? 'Agua' : desde === '#plagas' ? 'Plagas' : 'establecimientos') + '</a><h1>' + esc(d.NOMBRE_OFICIAL) + '</h1><span class="mu">' + esc(d.CODIGO) + ' · ' + esc(d.AREA_PROGRAMATICA) + ' · ' + esc(d.TIPO) + (d.CABECERA_DE_AREA === 'Sí' ? ' · cabecera' : '') + '</span></div>' +
     '<div class="filtros">' + chipEstado(FICHA.estadoApp) + (d.LIBRO_RESIDUOS && d.LIBRO_RESIDUOS !== 's/d' ? '<a class="btn sec" href="' + esc(d.LIBRO_RESIDUOS) + '" target="_blank" rel="noopener">Libro de residuos ↗</a>' : '') + (d.CARPETA && d.CARPETA !== 's/d' ? '<a class="btn sec" href="' + esc(d.CARPETA) + '" target="_blank" rel="noopener" title="Carpeta en Drive: DDJJ, informes, NTE, fotos y documentos del establecimiento">Carpeta y documentos ↗</a>' : '') + '<a class="btn sec" href="#diag/' + encodeURIComponent(d.CODIGO) + '">Diagnóstico de residuos</a><a class="btn sec" href="#cocdiag/' + encodeURIComponent(d.CODIGO) + '">Cocina</a><a class="btn pri" href="#trab/' + encodeURIComponent(d.CODIGO) + '">Trabajadores (' + FICHA.trabajadores.total + ')</a></div></div>' +
+    '<section class="card" id="fEstado" style="display:flex;flex-direction:column;gap:6px"></section>' +
     '<div class="grid g3">' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Datos</h2><button class="link" id="edDatos">Editar</button></div><dl class="datos" style="margin-top:10px">' + fila('Localidad', d.LOCALIDAD) + fila('Dirección', d.DIRECCION) + fila('Teléfonos', d.TELEFONOS) + fila('Código SISA', d.CODIGO_SISA) + fila('Director/a', d.DIRECTOR) + fila('Empresa de residuos', d.EMPRESA_RESIDUOS) + fila('Servicio de HyS', d.SERVICIO_HYS) + fila('Capacitados', FICHA.trabajadores.activos ? FICHA.trabajadores.capacitados + ' de ' + FICHA.trabajadores.activos + ' (' + Math.round(100 * FICHA.trabajadores.capacitados / FICHA.trabajadores.activos) + ' %)' : '') + '</dl></section>' +
     '<section class="card"><div style="display:flex;justify-content:space-between"><h2>Red HyS</h2><button class="link" id="nuevaRed">Agregar persona</button></div><div style="margin-top:6px">' + (red || '<p class="mu">Sin personas cargadas.</p>') + '</div></section>' +
@@ -779,6 +781,7 @@ async function ficha(cod) {
     '<section class="card" id="fMi"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Agua, plagas y documentos</h2><button class="btn sec" id="fMiBtn">Ver</button></div><div class="mu peq">Tanques, canillas, análisis, casos de plagas y documentos propios, con sus pendientes.</div></section>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimos manifiestos</h2></div><table><thead><tr><th>Fecha</th><th>Sitio</th><th>N.º</th><th>Corriente</th><th>Cantidad</th><th>Origen</th></tr></thead><tbody>' +
     R.manifiestos.map(m => '<tr><td>' + fechaTxt(m.fecha) + '</td><td>' + esc(m.sitio) + '</td><td>' + esc(m.nro) + '</td><td>' + esc(m.corriente) + '</td><td>' + esc(m.cantidad) + ' ' + esc(m.unidad) + '</td><td class="peq">' + esc(m.origen) + '</td></tr>').join('') + '</tbody></table>' + (R.manifiestos.length ? '' : '<div class="vacio">Sin manifiestos registrados.</div>') + '</section>');
+  estadoEst(d.CODIGO);   // matriz urgencia × gravedad y vistas por tema (modulos/estado-est.js)
   $('fMiBtn').onclick = () => fichaMi(d.CODIGO);
   if (desde) { fichaMi(d.CODIGO); const box = $('fMi'); if (box) box.scrollIntoView({ block: 'start' }); }
   $('fRegVer').onclick = () => fichaReg(d.CODIGO);
@@ -3564,6 +3567,139 @@ async function m8Libros() {
       if (r.ok) M8 = null; } catch (e) {}
     b.disabled = false; b.textContent = 'Importar';
   };
+}
+</script>
+<script>
+// Portal HyS · Estado del establecimiento (ficha): matriz urgencia × gravedad y vistas por tema
+// Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
+// No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero) y del resumen (p_resumen), filtrados por establecimiento.
+// Cuadrantes (mismo vocabulario que los plazos técnicos de los informes): Actuar ya (urgente y grave), Resolver rápido (urgente y leve),
+// Planificar (no urgente y grave), Vigilar (no urgente y leve). Las reglas están en eeItems().
+let EE = { vista: 'matriz' };
+const EE_CUAD = [
+  { k: 'AY', t: 'Actuar ya', s: 'Urgente y grave', col: '#B4361F', fondo: '#FBEDEA' },
+  { k: 'RR', t: 'Resolver rápido', s: 'Urgente y leve', col: '#B7791F', fondo: '#FDF5E6' },
+  { k: 'PL', t: 'Planificar', s: 'No urgente y grave', col: '#0D313F', fondo: '#EAF1F4' },
+  { k: 'VI', t: 'Vigilar', s: 'No urgente y leve', col: '#5894A7', fondo: '#F2F6F8' }
+];
+const EE_TEMAS = ['Residuos', 'Agua', 'Plagas', 'Cocina', 'Documentos', 'Personal y RAR', 'Infraestructura'];
+// Estilos propios: matriz 2 × 2 (una columna en el celular) y vista por tema con panel lateral
+function eeEstilos() { if (document.getElementById('eeCss')) return; const st = document.createElement('style'); st.id = 'eeCss';
+  st.textContent = '.ee-m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ee-v{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;align-items:start}@media (max-width:760px){.ee-m{grid-template-columns:1fr}}@media (max-width:1000px){.ee-v{grid-template-columns:1fr}}';
+  document.head.appendChild(st); }
+const eeCuad = (urg, grave) => urg ? (grave ? 'AY' : 'RR') : (grave ? 'PL' : 'VI');
+
+// Arma la lista de temas a atender de un establecimiento: { tema, cuad, texto, detalle, ir }
+function eeItems(cod, f) {
+  const T = TB || {}, hoy = new Date().toISOString().slice(0, 10), sem = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const L = [], add = (tema, urg, grave, texto, detalle, ir) => L.push({ tema: tema, cuad: eeCuad(urg, grave), texto: texto, detalle: detalle || '', ir: ir || '' });
+  const de = l => (l || []).filter(x => x.cod === cod), fc = '#ficha/' + encodeURIComponent(cod);
+  // Residuos
+  const activo = /^activ/i.test(f.estado || '');
+  if (f.diasSinRetiro != null && f.diasSinRetiro > 30) add('Residuos', true, true, f.diasSinRetiro + ' días sin retiro de residuos', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), fc);
+  else if (f.diasSinRetiro != null && f.diasSinRetiro > 10) add('Residuos', true, false, f.diasSinRetiro + ' días sin retiro de residuos', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), fc);
+  else if (activo && f.diasSinRetiro == null) add('Residuos', false, false, 'Sin retiros registrados', 'Habilitado en la aplicación, todavía sin manifiestos', fc);
+  const dg = f.diag;
+  if (!dg || dg.pct === '' || dg.pct == null) add('Residuos', false, true, 'Sin diagnóstico de residuos', 'Falta la línea de base', '#diag/' + encodeURIComponent(cod));
+  else {
+    if (dg.estado === 'Enviado') add('Residuos', true, false, 'Diagnóstico enviado por el referente', 'Revisar y cerrar', '#diag/' + encodeURIComponent(cod));
+    if (Number(dg.criticos) > 0) add('Residuos', false, true, dg.criticos + ' punto(s) crítico(s) en el diagnóstico', 'Cumplimiento ' + Math.round(dg.pct) + ' %', '#diag/' + encodeURIComponent(cod));
+    else if (Number(dg.pct) < 50) add('Residuos', false, true, 'Diagnóstico de residuos con ' + Math.round(dg.pct) + ' % de cumplimiento', 'Menos de la mitad de los requisitos', '#diag/' + encodeURIComponent(cod));
+  }
+  de((T.auditorias || {}).paraVerificar).forEach(a => add('Residuos', true, false, 'Auditoría interna para verificar', a.id, '#audr/' + encodeURIComponent(a.id)));
+  // Acciones abiertas de todos los módulos, agrupadas por tema y cuadrante
+  const temaDe = o => /agua/i.test(o) ? 'Agua' : /plaga/i.test(o) ? 'Plagas' : /infraestr|servicios/i.test(o) ? 'Infraestructura' : 'Residuos';
+  const grupos = {};
+  de(T.acciones).forEach(a => {
+    const ay = /actuar/i.test(a.prioridad || ''), pronto = !a.vencida && a.limite && a.limite <= sem;
+    const urg = a.vencida || ay || pronto, grave = a.vencida ? (ay || /resolver/i.test(a.prioridad || '') || !a.prioridad) : (ay || /resolver/i.test(a.prioridad || ''));
+    const k = temaDe(a.origen || '') + '|' + eeCuad(urg, grave) + '|' + (a.vencida ? 'v' : pronto ? 'p' : 'a');
+    (grupos[k] = grupos[k] || []).push(a);
+  });
+  Object.keys(grupos).forEach(k => { const [tema, cuad, tipo] = k.split('|'), l = grupos[k];
+    L.push({ tema: tema, cuad: cuad, texto: l.length + ' acción(es) ' + (tipo === 'v' ? 'vencida(s)' : tipo === 'p' ? 'que vencen en 7 días' : 'abierta(s)'),
+      detalle: l.slice(0, 2).map(a => a.que || a.origen).filter(Boolean).join(' · ') + (l.length > 2 ? ' · …' : ''), ir: '#acciones' }); });
+  // Agua
+  de(T.noApta).forEach(a => add('Agua', true, true, 'Agua NO APTA en ' + a.punto, 'Limpiar y tomar nueva muestra antes del ' + fechaTxt(a.limite), fc));
+  const tq = de(T.tanques), pt = de(T.puntos), n = (l, e) => l.filter(x => x.estado === e).length;
+  if (n(tq, 'vencida')) add('Agua', true, true, n(tq, 'vencida') + ' tanque(s) con la limpieza vencida', 'Registrar la limpieza con el F-AGU-01', fc);
+  if (n(pt, 'vencida')) add('Agua', true, true, n(pt, 'vencida') + ' canilla(s) con el análisis bacteriológico vencido', 'Tomar muestra según el proceso provincial', fc);
+  if (n(tq, 'porvencer') + n(pt, 'porvencer')) add('Agua', false, false, (n(tq, 'porvencer') + n(pt, 'porvencer')) + ' limpieza(s) o análisis por vencer', 'Programar', fc);
+  if (n(tq, 'sin') + n(pt, 'sin')) add('Agua', false, true, (n(tq, 'sin') + n(pt, 'sin')) + ' tanque(s) o canilla(s) sin registro', 'Cargar la última limpieza o el último análisis', fc);
+  if (activo && !tq.length && !pt.length) add('Agua', false, true, 'Sin inventario de tanques y canillas', 'Cargar desde «Mi establecimiento» o el diagnóstico de agua', '#aguadiag');
+  // Plagas
+  de(T.plagas).forEach(p => {
+    if (p.revision && p.revision < hoy) add('Plagas', true, true, 'Revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#plagas');
+    else if (p.revision === hoy) add('Plagas', true, false, 'Revisión de plagas hoy', p.caso + ' · ' + p.plaga, '#plagas');
+    else add('Plagas', false, false, 'Caso de plagas abierto', p.caso + ' · ' + p.plaga + (p.revision ? ' · revisión ' + fechaTxt(p.revision) : ''), '#plagas');
+  });
+  // Cocina
+  de(T.cocina).forEach(c => {
+    if (c.vencidos) add('Cocina', true, true, c.vencidos + ' persona(s) de cocina sin carnet o libreta vigente', 'Vencido o faltante', '#cocper/' + encodeURIComponent(cod));
+    if (c.porVencer) add('Cocina', false, false, c.porVencer + ' carnet(s) o libreta(s) vencen en 60 días', 'Personas de cocina', '#cocper/' + encodeURIComponent(cod));
+  });
+  // Documentos propios del establecimiento
+  de((T.docsEst || {}).avisos).forEach(d => add('Documentos', d.estado === 'vencido', false, (d.codigo || 'Documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), d.titulo || '', '#docest/' + encodeURIComponent(cod)));
+  return L;
+}
+
+async function estadoEst(cod) {
+  const box = $('fEstado'); if (!box) return;
+  if (!TB) TB = LS.get('tab', null);
+  if (!TB || TB.vacio) {
+    box.innerHTML = '<h2>Estado del establecimiento</h2><div class="mu">Leyendo los datos del tablero…</div>';
+    try { const r = await api('p_tablero', {}, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {}
+    if (!$('fEstado')) return;   // se cambió de pantalla mientras leía
+  }
+  eeDibujar(cod);
+}
+
+function eeDibujar(cod) {
+  const box = $('fEstado'); if (!box) return; eeEstilos();
+  const f = (RES && RES.filas.find(x => x.cod === cod)) || {}, L = eeItems(cod, f), V = EE.vista;
+  const item = x => '<a class="at" href="' + esc(x.ir || '#') + '" style="display:block;padding:6px 0;border-bottom:1px solid var(--ln);text-decoration:none;color:inherit"><b class="peq">' + esc(x.texto) + '</b>' +
+    '<div class="mu peq">' + esc((V === 'matriz' ? x.tema + (x.detalle ? ' · ' : '') : '') + x.detalle) + '</div></a>';
+  const cuenta = k => L.filter(x => x.cuad === k).length;
+  const matriz = lista => '<div class="ee-m">' + EE_CUAD.map(c => { const l = lista.filter(x => x.cuad === c.k);
+    return '<div style="border:1px solid var(--ln);border-top:4px solid ' + c.col + ';border-radius:12px;padding:12px 14px;background:' + c.fondo + ';min-height:120px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b style="color:' + c.col + '">' + c.t + '</b><b style="font-size:20px;color:' + c.col + '">' + l.length + '</b></div>' +
+      '<div class="mu peq" style="margin-bottom:6px">' + c.s + '</div>' + (l.length ? l.map(item).join('') : '<div class="mu peq">Nada en este cuadrante.</div>') + '</div>'; }).join('') + '</div>';
+  const nTema = t => L.filter(x => x.tema === t && (x.cuad === 'AY' || x.cuad === 'RR')).length;
+  const tabs = '<div class="tabs" style="margin:12px 0"><button class="btn ' + (V === 'matriz' ? 'pri' : 'sec') + '" data-ee="matriz">Todos los temas</button>' +
+    EE_TEMAS.map(t => '<button class="btn ' + (V === t ? 'pri' : 'sec') + '" data-ee="' + esc(t) + '">' + esc(t) + (nTema(t) ? ' <span class="chip er">' + nTema(t) + '</span>' : '') + '</button>').join('') + '</div>';
+  const btn = (h, t) => '<a class="btn sec" href="' + esc(h) + '">' + t + '</a>';
+  const ce = encodeURIComponent(cod);
+  const dato = (k, v) => '<dt>' + k + '</dt><dd>' + v + '</dd>';
+  let cuerpo;
+  if (V === 'matriz') cuerpo = matriz(L) + (L.length ? '' : '<p class="mu peq" style="margin-top:8px">Sin temas pendientes con los datos cargados. Si el establecimiento todavía no carga datos en el sistema, los cuadrantes quedan vacíos aunque haya problemas: revisá cada tema.</p>');
+  else {
+    const lt = L.filter(x => x.tema === V);
+    const extra = {
+      'Residuos': ['<dl class="datos">' + dato('Último retiro', fechaTxt(f.ultimoRetiro)) + dato('Días sin retiro', f.diasSinRetiro == null ? 's/d' : String(f.diasSinRetiro)) + dato('Retiros este mes', f.retirosMes == null ? 's/d' : String(f.retirosMes)) + dato('Diagnóstico', chipDiag(f.diag)) + '</dl>',
+        btn('#diag/' + ce, 'Diagnóstico') + btn('#aud', 'Auditorías') + btn('#plan', 'Plan de acción') + '<button class="btn sec" id="eeReg">Registros cargados</button>'],
+      'Agua': ['<dl class="datos">' + dato('Tanques y cisternas', String((TB.tanques || []).filter(x => x.cod === cod).length)) + dato('Canillas (bacteriológico)', String((TB.puntos || []).filter(x => x.cod === cod).length)) + dato('NO APTA', String((TB.noApta || []).filter(x => x.cod === cod).length)) + '</dl>',
+        '<button class="btn sec" id="eeMi">Ver tanques, canillas y análisis</button>' + btn('#agua', 'Tablero de agua') + btn('#aguadiag', 'Diagnóstico de agua')],
+      'Plagas': ['<dl class="datos">' + dato('Casos abiertos', String((TB.plagas || []).filter(x => x.cod === cod).length)) + '</dl>',
+        '<button class="btn sec" id="eeMi">Ver casos de plagas</button>' + btn('#plagas', 'Tablero de plagas') + btn('#plgdiag', 'Diagnóstico de plagas')],
+      'Cocina': ['', btn('#cocper/' + ce, 'Personas de cocina') + btn('#cocdiag/' + ce, 'Relevamiento BPM / HACCP')],
+      'Documentos': ['', btn('#docest/' + ce, 'Documentos propios') + btn('#notas', 'Notas enviadas y recibidas')],
+      'Personal y RAR': ['<dl class="datos">' + dato('Personal en la base', f.trabajadores == null ? 's/d' : String(f.trabajadores)) + dato('Capacitados / activos', f.activos ? (f.capacitados || 0) + ' de ' + f.activos : 's/d') + '</dl>',
+        btn('#trab/' + ce, 'Personas') + btn('#sin', 'Siniestros') + btn('#nte', 'NTE · nómina de expuestos')],
+      'Infraestructura': ['', btn('#m8', 'Servicios e infraestructura')]
+    }[V] || ['', ''];
+    const sinReglas = V === 'Personal y RAR' || V === 'Infraestructura' ? '<p class="mu peq">Este tema todavía no suma avisos a la matriz: se consulta en su pantalla.</p>' : '';
+    cuerpo = '<div class="ee-v"><div>' + matriz(lt) + sinReglas + '</div>' +
+      '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">' + esc(V) + '</h3>' + extra[0] + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + extra[1] + '</div></section></div>';
+  }
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end"><div><h2 style="margin:0">Estado del establecimiento</h2>' +
+      '<span class="mu peq">Urgencia × gravedad con los datos del tablero' + (TB && TB.actualizado ? ' al ' + esc(new Date(TB.actualizado).toLocaleString('es-AR')) : '') + ' · ' + cuenta('AY') + ' para actuar ya · ' + cuenta('RR') + ' para resolver rápido</span></div>' +
+      '<div class="filtros"><label class="f">Otro establecimiento<select class="c" id="eeSel">' + selectorEst(cod, false) + '</select></label><button class="btn sec" id="eeAct">Actualizar</button></div></div>' +
+    tabs + cuerpo;
+  box.querySelectorAll('[data-ee]').forEach(b => b.onclick = () => { EE.vista = b.dataset.ee; eeDibujar(cod); });
+  $('eeSel').onchange = e => { if (e.target.value && e.target.value !== cod) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
+  $('eeAct').onclick = async () => { box.querySelector('h2').textContent = 'Actualizando…'; try { const r = await api('p_tablero', { fresco: true }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {} eeDibujar(cod); };
+  if ($('eeReg')) $('eeReg').onclick = () => { const s = $('fReg'); if (s) { fichaReg(cod); s.scrollIntoView({ block: 'start' }); } };
+  if ($('eeMi')) $('eeMi').onclick = () => { const s = $('fMi'); if (s) { fichaMi(cod); s.scrollIntoView({ block: 'start' }); } };
 }
 </script>
 <script>
