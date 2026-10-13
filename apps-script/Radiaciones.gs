@@ -1,6 +1,6 @@
 /**
  * SISTEMA HyS · MÓDULO 9 · RADIACIONES IONIZANTES (rayos X: radiología, tomografía, arco en C y odontológicos)
- * Versión 0 (13/10/2026). Para toda la red. Carga: Higiene y Seguridad y secretaría desde el portal; los referentes de
+ * Versión 0 (13/10/2026); 0.1 (13/10/2026): sitios (edificios, CAPS, sede ex ADOS) con columna SITIO y hoja SITIOS_RX. Para toda la red. Carga: Higiene y Seguridad y secretaría desde el portal; los referentes de
  * radiaciones se habilitan más adelante (BASE COMÚN › HABILITACION / ACCESOS).
  *
  * Libro propio «RADIACIONES IONIZANTES · Sistema HyS» (propiedad RAD_ID). Hojas (todo editable a mano):
@@ -28,15 +28,17 @@ const RAD = {
   P_LIBRO: 'RAD_ID', P_CARPETA: 'RAD_CARPETA',
   H_PER: ['ID', 'ESTABLECIMIENTO', 'DNI', 'CUIL', 'APELLIDO_Y_NOMBRE', 'SERVICIO', 'FUNCION', 'SECTOR_EXPOSICION', 'DOSIMETRO_NRO', 'TIPO_DOSIMETRO', 'PROVEEDOR',
     'ESTADO_DOSIMETRO', 'INICIO_EXPOSICION', 'ALTA_DOSIMETRO', 'BAJA_DOSIMETRO', 'MOTIVO_BAJA', 'AUTORIZACION_INDIVIDUAL', 'AUTORIZACION_NRO', 'AUTORIZACION_VENCE',
-    'EN_NTE', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
+    'EN_NTE', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO'],
   H_MOV: ['FECHA', 'ID_PERSONA', 'ESTABLECIMIENTO', 'DNI', 'APELLIDO_Y_NOMBRE', 'TIPO', 'DOSIMETRO_NRO', 'DETALLE', 'DOCUMENTO', 'CARGADO_POR', 'CARGADO'],
-  H_CON: ['ID', 'ESTABLECIMIENTO', 'PERIODO', 'PROVEEDOR', 'FECHA_RECEPCION', 'ARCHIVO', 'CON_ANORMALES', 'OBSERVACIONES', 'ESTADO', 'CARGADO_POR', 'CARGADO'],
+  H_CON: ['ID', 'ESTABLECIMIENTO', 'PERIODO', 'PROVEEDOR', 'FECHA_RECEPCION', 'ARCHIVO', 'CON_ANORMALES', 'OBSERVACIONES', 'ESTADO', 'CARGADO_POR', 'CARGADO', 'SITIO'],
   H_EVE: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'ID_PERSONA', 'DNI', 'APELLIDO_Y_NOMBRE', 'TIPO', 'PERIODO', 'DOSIS_MSV', 'DESCRIPCION', 'ACCIONES', 'COMUNICADO_A',
-    'FECHA_COMUNICACION', 'ESTADO', 'ARCHIVO', 'CARGADO_POR', 'ACTUALIZADO'],
-  H_SAL: ['ID', 'ESTABLECIMIENTO', 'EDIFICIO', 'SALA', 'TIPO_EQUIPO', 'MARCA', 'MODELO', 'SERIE', 'ANIO', 'HABILITACION_NRO', 'HABILITACION_FECHA', 'HABILITACION_VENCE',
+    'FECHA_COMUNICACION', 'ESTADO', 'ARCHIVO', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO'],
+  H_SAL: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'SALA', 'TIPO_EQUIPO', 'MARCA', 'MODELO', 'SERIE', 'ANIO', 'HABILITACION_NRO', 'HABILITACION_FECHA', 'HABILITACION_VENCE',
     'RESPONSABLE_INSTALACION', 'RESPONSABLE_USO', 'PLANO_BLINDAJE', 'MEMORIA_BLINDAJE', 'LEVANTAMIENTO_FECHA', 'LEVANTAMIENTO_PROXIMO', 'CONTROL_CALIDAD_FECHA',
     'CONTROL_CALIDAD_PROXIMO', 'SENALIZACION', 'LUZ_ADVERTENCIA', 'EPP_PLOMADO', 'EPP_CONTROL_FECHA', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
-  H_DOC: ['ID', 'ESTABLECIMIENTO', 'ID_SALA', 'TIPO', 'TITULO', 'FECHA', 'VENCE', 'ARCHIVO', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'CARGADO'],
+  H_DOC: ['ID', 'ESTABLECIMIENTO', 'ID_SALA', 'TIPO', 'TITULO', 'FECHA', 'VENCE', 'ARCHIVO', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'CARGADO', 'SITIO'],
+  H_SIT: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'NOMBRE_OFICIAL', 'TIPO_SITIO', 'RAYOS_X', 'EQUIPOS', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
+  RX_SITIO: ['Sí', 'No', 'A confirmar'],
   H_REQ: ['ID', 'ALCANCE', 'REQUISITO', 'NORMA', 'COMO_SE_CUMPLE', 'DOC_TIPO', 'ACTIVO'],
   SECTORES: ['Radiología', 'Tomografía', 'Mamografía', 'Quirófano (arco en C)', 'Hemodinamia / intervencionismo', 'Odontología', 'Traumatología', 'Otro'],
   TIPOS_DOSI: ['Cuerpo entero', 'Anillo (extremidades)', 'Cristalino', 'Muñeca', 'Otro'],
@@ -80,10 +82,60 @@ function construirModuloRadiaciones() {
     lista_(sh, 3, 2000, RAD.TIPOS_DOC); lista_(sh, 8, 2000, ['Vigente', 'Reemplazado', 'Anulado']); sh.getRange(6, 6, 2000, 2).setNumberFormat('dd/mm/yyyy'); });
   hoja('REQUISITOS', sh => { encabezar_(sh, 'Requisitos legales', 'Lo que pide la norma y cómo se acredita en el sistema. DOC_TIPO: el tipo de documento que lo acredita (si lo hay). Se pueden agregar filas o poner ACTIVO = No.', RAD.H_REQ);
     sh.getRange(6, 1, RAD_REQ.length, RAD.H_REQ.length).setValues(RAD_REQ); lista_(sh, 6, 200, ['Sí', 'No']); sh.setColumnWidth(3, 380); sh.setColumnWidth(4, 260); sh.setColumnWidth(5, 300); });
+  hoja('SITIOS_RX', sh => { encabezar_(sh, 'Sitios con radiaciones ionizantes', 'Una fila por sitio de cada establecimiento (los sitios salen de BASE COMÚN › SITIOS: edificios, CAPS, sede ex ADOS y dispositivos). RAYOS_X: Sí, No o A confirmar. EQUIPOS: qué hay (rayos X, tomografía, arco en C, odontológico).', RAD.H_SIT,
+    ['', 'Código del establecimiento.', 'Nombre corto del sitio (igual que en BASE COMÚN › SITIOS).', '', 'Edificio, CAPS, Dispositivo…', 'Sí · No · A confirmar', '', '', '', '']);
+    lista_(sh, 5, 2000, RAD.RX_SITIO); sh.setColumnWidth(3, 200); sh.setColumnWidth(7, 260); });
+  // Versión 0.1 (13/10/2026): columna SITIO en las hojas de datos (los encabezados se reescriben; los datos no se tocan)
+  [['PERSONAL_EXPUESTO', RAD.H_PER], ['CONTROLES', RAD.H_CON], ['EVENTOS', RAD.H_EVE], ['SALAS_EQUIPOS', RAD.H_SAL], ['DOCUMENTOS', RAD.H_DOC]].forEach(([n, H]) => {
+    const sh = ss.getSheetByName(n); sh.getRange(5, 1, 1, H.length).setValues([H]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground(BASES.AZUL).setWrap(true).setVerticalAlignment('middle'); });
+  const sembrados = radSembrarSitios_(ss);
+  const ay = ss.getSheetByName('AYUDA'); if (ay) { ay.clear(); ay.getRange(1, 1, RAD_AYUDA.length, 2).setValues(RAD_AYUDA); ay.getRange(1, 1).setFontSize(16).setFontWeight('bold'); ay.getRange(1, 1, RAD_AYUDA.length, 2).setWrap(true).setVerticalAlignment('top'); }
   hoja('AYUDA', sh => { sh.getRange(1, 1, RAD_AYUDA.length, 2).setValues(RAD_AYUDA); sh.getRange(1, 1).setFontSize(16).setFontWeight('bold'); sh.setColumnWidth(1, 220); sh.setColumnWidth(2, 720); sh.getRange(1, 1, RAD_AYUDA.length, 2).setWrap(true).setVerticalAlignment('top'); });
   const h1 = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1'); if (h1 && ss.getSheets().length > 1) ss.deleteSheet(h1);
-  Logger.log('Módulo 9 listo. Libro: ' + ss.getUrl() + ' · Carpeta: ' + dir.getUrl());
+  Logger.log('Módulo 9 listo (' + sembrados + ' sitios nuevos en SITIOS_RX). Libro: ' + ss.getUrl() + ' · Carpeta: ' + dir.getUrl());
   return { ok: true, libro: ss.getUrl(), carpeta: dir.getUrl() };
+}
+// Sitios: copia en SITIOS_RX los sitios de BASE COMÚN › SITIOS que todavía no están (no toca los que ya existen).
+// Red Trelew (dato de Belén, 13/10/2026): HZT Central (rayos X y tomógrafo), sede ex ADOS y CAPS (odontológicos) y HMH (rayos X digital y quirófano) con rayos X = Sí.
+// El resto de la provincia queda «A confirmar». Un establecimiento sin sitios en BASE COMÚN recibe una fila con su nombre.
+function radSembrarSitios_(ss) {
+  const sh = ss.getSheetByName('SITIOS_RX'), ya = {};
+  pTabla_(sh, RAD.H_SIT.length).forEach(r => ya[limpio_(r.v[1]) + '|' + sinTildes_(r.v[2])] = true);
+  const S = pTabla_(pBC_().getSheetByName('SITIOS'), 7), E = pEstablecimientos_().filas, filas = [], hoy = new Date();
+  const regla = (cod, sitio, tipo) => {
+    if (cod === 'HZT' && /central/i.test(sitio)) return ['Sí', 'Rayos X y tomografía', ''];
+    if (cod === 'HZT' && /ados/i.test(sitio)) return ['Sí', 'Odontológico', 'Confirmar tipo y cantidad de equipos.'];
+    if (cod === 'HZT' && /CAPS/i.test(tipo)) return ['Sí', 'Odontológico', 'Confirmar tipo de equipo.'];
+    if (cod === 'HMH' && /edificio/i.test(tipo)) return ['Sí', 'Rayos X digital; arco en C (quirófano)', 'Confirmar arco en C.'];
+    return ['A confirmar', '', ''];
+  };
+  let n = 0;
+  E.forEach(e => {
+    const cod = limpio_(e.v[0]); if (!cod) return;
+    let mios = S.filter(r => limpio_(r.v[0]) === cod).map(r => ({ sitio: limpio_(r.v[1]), oficial: limpio_(r.v[2]), tipo: limpio_(r.v[4]) }));
+    if (!mios.length) mios = [{ sitio: limpio_(e.v[1]), oficial: limpio_(e.v[1]), tipo: 'Edificio' }];
+    mios.forEach(m => { if (!m.sitio || ya[cod + '|' + sinTildes_(m.sitio)]) return; const r = regla(cod, m.sitio, m.tipo); n++;
+      filas.push(['RS-' + cod + '-' + ('000' + n).slice(-4), cod, m.sitio, m.oficial, m.tipo || 's/d', r[0], r[1], r[2], 'Sistema (carga inicial)', hoy]); ya[cod + '|' + sinTildes_(m.sitio)] = true; });
+  });
+  if (filas.length) sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, filas.length, RAD.H_SIT.length).setValues(filas);
+  return filas.length;
+}
+// Sitios de un establecimiento: los de SITIOS_RX más los de BASE COMÚN que todavía no están (como «A confirmar»)
+function radSitiosEst_(cod, sitRx) {
+  const L = sitRx.filter(s => s.ESTABLECIMIENTO === cod), ya = {}; L.forEach(s => ya[sinTildes_(s.SITIO)] = true);
+  pTabla_(pBC_().getSheetByName('SITIOS'), 7).filter(r => limpio_(r.v[0]) === cod && !ya[sinTildes_(r.v[1])])
+    .forEach(r => L.push({ ID: '', ESTABLECIMIENTO: cod, SITIO: limpio_(r.v[1]), NOMBRE_OFICIAL: limpio_(r.v[2]), TIPO_SITIO: limpio_(r.v[4]), RAYOS_X: 'A confirmar', EQUIPOS: '', OBSERVACIONES: '' }));
+  return L;
+}
+function radSitioGuardar_(x, quien) {
+  const cod = limpio_(x.ESTABLECIMIENTO), sitio = limpio_(x.SITIO); if (!cod || !sitio) return { ok: false, mensaje: 'Falta el establecimiento o el nombre del sitio.' };
+  if (RAD.RX_SITIO.indexOf(x.RAYOS_X) < 0) return { ok: false, mensaje: 'Elegí si el sitio tiene rayos X: Sí, No o A confirmar.' };
+  const L = radLeer_('SITIOS_RX', RAD.H_SIT), antes = x.ID ? L.find(s => s.ID === x.ID) : L.find(s => limpio_(s.ESTABLECIMIENTO) === cod && sinTildes_(s.SITIO) === sinTildes_(sitio));
+  const s = {}; RAD.H_SIT.forEach(h => s[h] = x[h] != null ? x[h] : antes ? antes[h] : '');
+  s.ID = antes ? antes.ID : radId_('RS', cod); s.ESTABLECIMIENTO = cod; s.SITIO = sitio; s.CARGADO_POR = limpio_(quien) || 'Portal'; s.ACTUALIZADO = new Date();
+  if (antes) radActualizar_('SITIOS_RX', RAD.H_SIT, antes.fila, s); else radAgregar_('SITIOS_RX', RAD.H_SIT, s);
+  CacheService.getScriptCache().remove('rad_tablero');
+  return { ok: true, id: s.ID };
 }
 const RAD_REQ = [
   ['R01', 'Instalación y equipo', 'Cada equipo e instalación de rayos X habilitado por la autoridad de salud pública de la jurisdicción', 'Ley 17.557, art. 2; Dto. 6320/68, art. 6', 'Habilitación cargada y vigente en SALAS_EQUIPOS', 'Habilitación de la instalación / equipo', 'Sí'],
@@ -109,6 +161,7 @@ const RAD_AYUDA = [
   ['Ayuda · Módulo 9 · Radiaciones ionizantes', ''],
   ['Qué es', 'El registro de rayos X de toda la red: personal expuesto y sus dosímetros, controles mensuales, eventos, salas y equipos, documentos y requisitos legales. Versión 0.'],
   ['Desde dónde se carga', 'Portal HyS › 9 · Radiaciones ionizantes. Todo se puede cargar y corregir también acá, en cada hoja (las filas empiezan en la 6).'],
+  ['SITIOS_RX', 'Un renglón por sitio de cada establecimiento (edificio, CAPS, sede ex ADOS, dispositivos), copiado de BASE COMÚN › SITIOS. RAYOS_X = Sí, No o A confirmar, y qué equipos hay. Red Trelew: HZT Central, sede ex ADOS, CAPS y HMH cargados con Sí; el resto de la provincia, A confirmar. Las personas, los equipos, los eventos y los documentos llevan su SITIO.'],
   ['PERSONAL_EXPUESTO', 'Una fila por persona. Al cargar el DNI, el portal trae nombre, CUIL, servicio y función de la BASE DE TRABAJADORES. La baja del dosímetro no borra la fila: cambia el estado y queda en MOVIMIENTOS. Una persona puede pedir la baja y volver a darse de alta (Reactivación): se usa la misma fila.'],
   ['MOVIMIENTOS', 'Historial automático de cada alta, baja, reactivación, cambio de dosímetro y extravío.'],
   ['CONTROLES', 'Cada mes se sube el PDF del servicio de dosimetría por establecimiento. El sistema no lee el PDF: si trae valores anormales, se marca y se carga el evento.'],
@@ -202,10 +255,11 @@ function radControlGuardar_(x, quien) {
   if (!/^\d{4}-\d{2}$/.test(per)) return { ok: false, mensaje: 'Elegí el mes del control.' };
   if (!x.archivo && !x.ID) return { ok: false, mensaje: 'Falta el PDF del control.' };
   const L = radLeer_('CONTROLES', RAD.H_CON); let antes = x.ID ? L.find(c => c.ID === x.ID) : null;
-  if (!antes && L.some(c => limpio_(c.ESTABLECIMIENTO) === cod && limpio_(c.PERIODO) === per && c.ESTADO !== 'Anulado')) return { ok: false, mensaje: 'Ya hay un control cargado para ' + per + '. Abrilo para reemplazar el PDF o corregirlo.' };
-  const url = x.archivo ? radArchivo_(cod, x.archivo, ['Dosimetría', per.slice(0, 4)], 'Control dosimétrico ' + cod + ' ' + per) : (antes ? antes.ARCHIVO : '');
+  const sit = limpio_(x.SITIO);
+  if (!antes && L.some(c => limpio_(c.ESTABLECIMIENTO) === cod && limpio_(c.PERIODO) === per && limpio_(c.SITIO) === sit && c.ESTADO !== 'Anulado')) return { ok: false, mensaje: 'Ya hay un control cargado para ' + per + (sit ? ' en ' + sit : '') + '. Abrilo para reemplazar el PDF o corregirlo.' };
+  const url = x.archivo ? radArchivo_(cod, x.archivo, ['Dosimetría', per.slice(0, 4)], 'Control dosimétrico ' + cod + (sit ? ' ' + sit : '') + ' ' + per) : (antes ? antes.ARCHIVO : '');
   const c = { ID: antes ? antes.ID : radId_('DC', cod), ESTABLECIMIENTO: cod, PERIODO: per, PROVEEDOR: limpio_(x.PROVEEDOR), FECHA_RECEPCION: radFecha_(x.FECHA_RECEPCION) || new Date(),
-    ARCHIVO: url, CON_ANORMALES: /^(Sí|No)$/.test(x.CON_ANORMALES) ? x.CON_ANORMALES : 's/d', OBSERVACIONES: limpio_(x.OBSERVACIONES), ESTADO: x.ESTADO === 'Anulado' ? 'Anulado' : 'Vigente', CARGADO_POR: limpio_(quien) || 'Portal', CARGADO: new Date() };
+    ARCHIVO: url, CON_ANORMALES: /^(Sí|No)$/.test(x.CON_ANORMALES) ? x.CON_ANORMALES : 's/d', OBSERVACIONES: limpio_(x.OBSERVACIONES), ESTADO: x.ESTADO === 'Anulado' ? 'Anulado' : 'Vigente', CARGADO_POR: limpio_(quien) || 'Portal', CARGADO: new Date(), SITIO: sit };
   if (antes) radActualizar_('CONTROLES', RAD.H_CON, antes.fila, c); else radAgregar_('CONTROLES', RAD.H_CON, c);
   CacheService.getScriptCache().remove('rad_tablero');
   return { ok: true, id: c.ID, archivo: url, aviso: c.CON_ANORMALES === 'Sí' ? 'Marcaste valores anormales: cargá el evento de cada persona en «Eventos».' : '' };
@@ -244,14 +298,14 @@ function radSalaGuardar_(x, quien) {
   s.ID = antes ? antes.ID : radId_('EQ', cod); s.ESTABLECIMIENTO = cod;
   ['HABILITACION_FECHA', 'HABILITACION_VENCE', 'LEVANTAMIENTO_FECHA', 'LEVANTAMIENTO_PROXIMO', 'CONTROL_CALIDAD_FECHA', 'CONTROL_CALIDAD_PROXIMO', 'EPP_CONTROL_FECHA'].forEach(k => s[k] = radFecha_(s[k]));
   ['SENALIZACION', 'LUZ_ADVERTENCIA'].forEach(k => { if (!s[k]) s[k] = 's/d'; }); if (!s.ESTADO) s.ESTADO = 'En uso';
-  const etiqueta = [s.TIPO_EQUIPO, s.SALA].filter(Boolean).join(' ');
+  const etiqueta = [s.TIPO_EQUIPO, s.SITIO, s.SALA].filter(Boolean).join(' ');
   if (x.planoArchivo) s.PLANO_BLINDAJE = radArchivo_(cod, x.planoArchivo, ['Salas y equipos'], 'Plano ' + etiqueta);
   if (x.memoriaArchivo) s.MEMORIA_BLINDAJE = radArchivo_(cod, x.memoriaArchivo, ['Salas y equipos'], 'Memoria de blindaje ' + etiqueta);
   s.CARGADO_POR = limpio_(quien) || 'Portal'; s.ACTUALIZADO = new Date();
   if (antes) radActualizar_('SALAS_EQUIPOS', RAD.H_SAL, antes.fila, s); else radAgregar_('SALAS_EQUIPOS', RAD.H_SAL, s);
   // Plano y memoria también quedan en DOCUMENTOS, para el control de requisitos
-  if (x.planoArchivo) radAgregar_('DOCUMENTOS', RAD.H_DOC, { ID: radId_('RD', cod), ESTABLECIMIENTO: cod, ID_SALA: s.ID, TIPO: 'Plano de ubicación y plomado', TITULO: 'Plano ' + etiqueta, FECHA: new Date(), ARCHIVO: s.PLANO_BLINDAJE, ESTADO: 'Vigente', CARGADO_POR: s.CARGADO_POR, CARGADO: new Date() });
-  if (x.memoriaArchivo) radAgregar_('DOCUMENTOS', RAD.H_DOC, { ID: radId_('RD', cod), ESTABLECIMIENTO: cod, ID_SALA: s.ID, TIPO: 'Memoria de cálculo de blindaje', TITULO: 'Memoria de blindaje ' + etiqueta, FECHA: new Date(), ARCHIVO: s.MEMORIA_BLINDAJE, ESTADO: 'Vigente', CARGADO_POR: s.CARGADO_POR, CARGADO: new Date() });
+  if (x.planoArchivo) radAgregar_('DOCUMENTOS', RAD.H_DOC, { ID: radId_('RD', cod), ESTABLECIMIENTO: cod, ID_SALA: s.ID, TIPO: 'Plano de ubicación y plomado', TITULO: 'Plano ' + etiqueta, FECHA: new Date(), ARCHIVO: s.PLANO_BLINDAJE, ESTADO: 'Vigente', CARGADO_POR: s.CARGADO_POR, CARGADO: new Date(), SITIO: s.SITIO });
+  if (x.memoriaArchivo) radAgregar_('DOCUMENTOS', RAD.H_DOC, { ID: radId_('RD', cod), ESTABLECIMIENTO: cod, ID_SALA: s.ID, TIPO: 'Memoria de cálculo de blindaje', TITULO: 'Memoria de blindaje ' + etiqueta, FECHA: new Date(), ARCHIVO: s.MEMORIA_BLINDAJE, ESTADO: 'Vigente', CARGADO_POR: s.CARGADO_POR, CARGADO: new Date(), SITIO: s.SITIO });
   CacheService.getScriptCache().remove('rad_tablero');
   return { ok: true, id: s.ID, aviso: antes && antes.ESTADO !== 'Baja' && s.ESTADO === 'Baja' ? 'La baja, venta o cesión del equipo se comunica a la autoridad dentro de los 30 días (Dto. 6320/68, art. 37): cargá la comunicación en Documentos.' : '' };
 }
@@ -282,7 +336,8 @@ function radResumenEst_(cod, D, hoy) {
   const hab = sal.map(s => radEstadoFecha_(s.HABILITACION_VENCE, hoy));
   const docs = D.doc.filter(d => d.ESTABLECIMIENTO === cod && d.ESTADO === 'Vigente');
   const req = D.req.filter(r => r.ACTIVO !== 'No' && r.DOC_TIPO), cumplidos = req.filter(r => docs.some(d => d.TIPO === r.DOC_TIPO));
-  return { personas: per.length, activos: act.length, bajas: per.filter(p => /^Baja/.test(p.ESTADO_DOSIMETRO)).length, extraviados: per.filter(p => p.ESTADO_DOSIMETRO === 'Extraviado').length,
+  const sit = D.sit.filter(s => s.ESTABLECIMIENTO === cod);
+  return { sitiosRx: sit.filter(s => s.RAYOS_X === 'Sí').length, sitiosConfirmar: sit.filter(s => s.RAYOS_X === 'A confirmar').length, personas: per.length, activos: act.length, bajas: per.filter(p => /^Baja/.test(p.ESTADO_DOSIMETRO)).length, extraviados: per.filter(p => p.ESTADO_DOSIMETRO === 'Extraviado').length,
     sinAutorizacion: act.filter(p => p.AUTORIZACION_INDIVIDUAL !== 'Sí').length, ultimoControl: con.map(c => c.PERIODO).sort().pop() || '', faltanMeses: faltan,
     eventosAbiertos: eve.length, anormalesAbiertos: eve.filter(e => /anormal|accidental/i.test(e.TIPO)).length, equipos: sal.length,
     habVencidas: hab.filter(h => h === 'vencido').length, habSinDato: hab.filter(h => h === 'sd').length, habPorVencer: hab.filter(h => h === 'porvencer').length,
@@ -294,17 +349,19 @@ function radDatos_() {
     eve: radLeer_('EVENTOS', RAD.H_EVE).map(e => Object.assign(e, { ESTABLECIMIENTO: limpio_(e.ESTABLECIMIENTO) })),
     sal: radLeer_('SALAS_EQUIPOS', RAD.H_SAL).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })),
     doc: radLeer_('DOCUMENTOS', RAD.H_DOC).map(d => Object.assign(d, { ESTABLECIMIENTO: limpio_(d.ESTABLECIMIENTO) })),
-    req: radLeer_('REQUISITOS', RAD.H_REQ) };
+    req: radLeer_('REQUISITOS', RAD.H_REQ),
+    sit: (pRad_().getSheetByName('SITIOS_RX') ? radLeer_('SITIOS_RX', RAD.H_SIT) : []).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })) };
 }
 function radTablero_(fresco) {
   const c = CacheService.getScriptCache(); if (!fresco) { const k = c.get('rad_tablero'); if (k) return JSON.parse(k); }
   const D = radDatos_(), hoy = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), E = pEstablecimientos_();
   const est = E.filas.map(f => { const cod = limpio_(f.v[0]); return { cod: cod, nombre: f.v[1], tipo: limpio_(f.v[3]), area: f.v[4], r: radResumenEst_(cod, D, hoy) }; });
-  const conDatos = est.filter(e => e.r.personas || e.r.equipos);
+  const conDatos = est.filter(e => e.r.personas || e.r.equipos || e.r.sitiosRx);
   const out = { ok: true, hoy: hoy, establecimientos: est, libro: pRad_().getUrl(), carpeta: DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty(RAD.P_CARPETA)).getUrl(),
     totales: { establecimientos: conDatos.length, activos: D.per.filter(p => p.ESTADO_DOSIMETRO === 'Activo').length, extraviados: D.per.filter(p => p.ESTADO_DOSIMETRO === 'Extraviado').length,
       eventosAbiertos: D.eve.filter(e => !/Cerrado|Anulado/.test(e.ESTADO)).length, equipos: D.sal.filter(s => s.ESTADO !== 'Baja').length,
-      habVencidas: est.reduce((a, e) => a + e.r.habVencidas, 0), faltanControles: est.filter(e => e.r.faltanMeses.length).length } };
+      habVencidas: est.reduce((a, e) => a + e.r.habVencidas, 0), faltanControles: est.filter(e => e.r.faltanMeses.length).length,
+      sitiosRx: D.sit.filter(s => s.RAYOS_X === 'Sí').length, sitiosConfirmar: D.sit.filter(s => s.RAYOS_X === 'A confirmar').length } };
   try { c.put('rad_tablero', JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
@@ -318,8 +375,8 @@ function radDetalle_(cod) {
   return { ok: true, cod: cod, hoy: hoy, resumen: radResumenEst_(cod, D, hoy), personal: de(D.per), movimientos: mov,
     controles: de(D.con).sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))), meses: radMeses_(12),
     eventos: de(D.eve).reverse(), salas: de(D.sal).map(s => Object.assign(s, { hab: radEstadoFecha_(s.HABILITACION_VENCE, hoy), lev: radEstadoFecha_(s.LEVANTAMIENTO_PROXIMO, hoy), cc: radEstadoFecha_(s.CONTROL_CALIDAD_PROXIMO, hoy) })),
-    documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod),
-    listas: { sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC },
+    documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), sitios: radSitiosEst_(cod, D.sit),
+    listas: { rxSitio: RAD.RX_SITIO, sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC },
     carpeta: radCarpetaEst_(cod).getUrl(), libro: pRad_().getUrl() };
 }
 
@@ -336,6 +393,7 @@ function radPortal_(accion, x) {
     case 'p_rad_evento_guardar': return conLock_(() => radEventoGuardar_(x, quien));
     case 'p_rad_sala_guardar': return conLock_(() => radSalaGuardar_(x, quien));
     case 'p_rad_doc_guardar': return conLock_(() => radDocGuardar_(x, quien));
+    case 'p_rad_sitio_guardar': return conLock_(() => radSitioGuardar_(x, quien));
   }
   return { ok: false, error: 'Acción desconocida.' };
 }
