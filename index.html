@@ -202,6 +202,7 @@ const AYUDA = {
   cfoto: { t: 'Foto del certificado', que: 'Una foto del certificado completo y que se lea. Apoyalo sobre una mesa, con buena luz.', donde: 'Toda la hoja del certificado.', ej: 'Foto de frente, sin sombras', s: null },
   ncert: { t: 'Número de certificado', que: 'El número del certificado de tratamiento que entrega la empresa. Cada empresa tiene su propio modelo de certificado.', donde: 'En el certificado de tratamiento de la empresa.', ej: 'CT-2025-0193', s: null },
   ftrat: { t: 'Fecha de tratamiento', que: 'La fecha de tratamiento que figura en el certificado. Cada empresa tiene su propio modelo de certificado.', donde: 'En el certificado de tratamiento de la empresa.', ej: '20/05/2025', s: null },
+  cvol: { t: 'Cantidad tratada', que: 'Lo que dice el certificado que se trató en el mes, para cada corriente. Escribí el número en dm³ (1 dm³ = 1 litro); si el certificado lo da en kg, cambiá la unidad a «kg». Si una corriente no figura, dejala vacía. No es obligatorio.', donde: 'En el certificado de tratamiento, donde figuran las cantidades o el volumen tratado.', ej: '3.840 dm³', s: null },
   mes: { t: 'Mes y año del certificado', que: 'La empresa entrega un certificado por mes, que cubre todos los retiros de ese mes. Elegí el mes y el año que figuran en el certificado.', donde: 'En el certificado de tratamiento de la empresa, donde dice el período.', ej: 'Mayo de 2025', s: null },
 };
 
@@ -636,6 +637,7 @@ function listo(msg, tipo) {
 function nuevoCertificado(prev) {
   const emp = CFG && CFG.empresas ? CFG.empresas : ['Impeesa'];
   C = prev || { tipo: 'certificado', idLocal: idNuevo(), empresa: emp.length === 1 ? emp[0] : '', mesM: '', mesA: '', mes: '', ncert: '', ftrat: '', foto: '' };
+  C.res = corrCfg().map(x => { const e = (C.res || []).find(r => r.corriente === x.c) || {}; return { corriente: x.c, vol: e.vol == null ? '' : String(e.vol), uni: e.uni || 'dm³' }; });
   ERR = {}; VISTA = 'cert'; pasoCert();
 }
 function pasoCert() {
@@ -647,6 +649,11 @@ function pasoCert() {
       '</select><select data-cm="a"' + (ERR.mes ? ' class="bad"' : '') + '><option value="">Año…</option>' + ANIOS().map(y => '<option' + (C.mesA === y ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>') +
     f('ncert', '<input id="f_ncert" value="' + esc(C.ncert) + '" data-c="ncert"' + (ERR.ncert ? ' class="bad"' : '') + '>') +
     f('ftrat', campoFecha('ftrat', 'C', ERR.ftrat)) +
+    '<div class="field"><div class="lab"><label>' + esc(AYUDA.cvol.t) + ' (opcional)</label>' + q('cvol') + '</div>' + C.res.map((r, i) => {
+      const n = (corrCfg().find(x => x.c === r.corriente) || { n: r.corriente }).n;
+      return '<div style="margin-top:8px"><small class="mu">' + esc(n) + '</small><div style="display:flex;gap:6px"><input data-cv="' + i + '" type="number" min="0" step="0.1" inputmode="decimal" value="' + esc(r.vol) + '" style="min-width:0;flex:1"' + (ERR['cvol' + i] ? ' class="bad"' : '') + '>' +
+        '<select data-cu="' + i + '" style="width:72px;flex:none">' + ['dm³', 'kg'].map(u => '<option' + (u === r.uni ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' + (ERR['cvol' + i] ? '<div class="err">' + esc(ERR['cvol' + i]) + '</div>' : '') + '</div>';
+    }).join('') + '</div>' +
     bloqueFoto(C, 'cfoto', C.mesA && C.mesM ? C.mesA + '-' + C.mesM + '-01' : '', 'fotoC', 'cert');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarCert">Guardar certificado</button>');
   window.scrollTo(0, 0);
@@ -660,8 +667,11 @@ function guardarCert() {
   else if ((CFG && CFG.certificados || []).some(x => x.ncert === C.ncert.trim() && C.reemplaza !== 'cert:' + x.ncert)) ERR.ncert = 'Ese certificado ya está registrado.';
   if (!C.ftrat) ERR.ftrat = 'Falta la fecha de tratamiento.'; else if (C.ftrat > hoyISO()) ERR.ftrat = 'La fecha no puede ser posterior a hoy.';
   if (!C.foto && !C.fotoUrl && C.mes && C.mes + '-01' >= OBLIG()) ERR.foto = 'Desde 2027 la foto o el escaneo del certificado es obligatorio.';
+  C.res.forEach((r, i) => { const v = String(r.vol).trim(); if (v === '') return;
+    if (!(Number(v) > 0)) ERR['cvol' + i] = 'Escribí un número mayor que cero, o dejalo vacío.';
+    else if (Number(v) > (r.uni === 'kg' ? 50000 : 300000)) ERR['cvol' + i] = 'Revisá la cantidad: parece demasiado para un mes.'; });
   if (Object.keys(ERR).length) return pasoCert();
-  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, foto: C.foto, fotoUrl: C.foto ? '' : (C.fotoUrl || ''), reemplaza: C.reemplaza || '', persona: SES.persona }, 'Certificado ' + C.ncert.trim());
+  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, res: C.res.filter(r => String(r.vol).trim() !== '').map(r => ({ corriente: r.corriente, vol: String(r.vol).trim(), uni: r.uni })), foto: C.foto, fotoUrl: C.foto ? '' : (C.fotoUrl || ''), reemplaza: C.reemplaza || '', persona: SES.persona }, 'Certificado ' + C.ncert.trim());
 }
 
 // ------------------------------------------------------------------ Lote de escaneados
@@ -713,7 +723,7 @@ function consulta() {
   let h = '<h1>Mis cargas</h1>';
   if (loc.length) h += '<h2>En este equipo</h2><div class="lista">' + loc.map(c => {
     const d = c.datos, mi = c.tipo.indexOf('m_') === 0, t = mi ? esc(d._txt) : c.tipo === 'manifiesto' ? 'Manifiesto ' + esc(d.nro) : 'Certificado ' + esc(d.ncert);
-    const s = mi ? 'Cargado el ' + fechaTxt(c.creado.slice(0, 10)) : c.tipo === 'manifiesto' ? fechaTxt(d.fecha) + ' · ' + esc(d.sitio) + ' · ' + res(d.res) : mesTxt(d.mes);
+    const s = mi ? 'Cargado el ' + fechaTxt(c.creado.slice(0, 10)) : c.tipo === 'manifiesto' ? fechaTxt(d.fecha) + ' · ' + esc(d.sitio) + ' · ' + res(d.res) : mesTxt(d.mes) + (d.res && d.res.length ? ' · ' + res(d.res) : '');
     return '<div class="item"><div><b>' + t + '</b><small>' + s + (c.estado === 'error' ? '<br><span style="color:var(--er)">' + esc(c.mensaje) + '</span>' : '') + '</small>' +
       (c.estado === 'error' ? '<div style="margin-top:6px">' + (mi ? '' : '<button class="link" data-act="corregirLocal" data-arg="' + esc(d.idLocal) + '">Corregir</button> · ') + '<button class="link" data-act="descartar" data-arg="' + esc(d.idLocal) + '">Descartar</button></div>' : '') +
       '</div>' + (c.estado === 'error' ? '<span class="tag er">No registrada</span>' : '<span class="tag wa">Por enviar</span>') + '</div>';
@@ -721,7 +731,7 @@ function consulta() {
   h += '<h2>Registradas en el sistema</h2><div class="grid2"><div class="field"><select data-chg="filtro"><option value="todos"' + (FILTRO === 'todos' ? ' selected' : '') + '>Manifiestos y certificados</option><option value="man"' + (FILTRO === 'man' ? ' selected' : '') + '>Solo manifiestos</option><option value="cert"' + (FILTRO === 'cert' ? ' selected' : '') + '>Solo certificados</option></select></div></div>';
   const lst = [];
   if (FILTRO !== 'cert') srv.forEach(u => lst.push({ f: u.fecha, h: item('Manifiesto ' + esc(u.nro), fechaTxt(u.fecha) + ' · ' + esc(u.sitio) + ' · ' + res(u.res), '<span class="tag ok">' + (u.origen === 'App' ? 'Registrado' : 'Histórico') + '</span>') }));
-  if (FILTRO !== 'man') cer.forEach(c => lst.push({ f: c.mes + '-28', h: item('Certificado ' + esc(c.ncert), mesTxt(c.mes) + ' · ' + esc(c.empresa), '<span class="tag ok">Registrado</span>') }));
+  if (FILTRO !== 'man') cer.forEach(c => lst.push({ f: c.mes + '-28', h: item('Certificado ' + esc(c.ncert), mesTxt(c.mes) + ' · ' + esc(c.empresa) + (c.res && c.res.length ? ' · ' + res(c.res) : ''), '<span class="tag ok">Registrado</span>') }));
   lst.sort((a, b) => b.f.localeCompare(a.f));
   h += lst.length ? '<div class="lista">' + lst.slice(0, 60).map(x => x.h).join('') + '</div><p class="mu" style="font-size:13px">Se muestran las últimas cargas registradas.</p>' : '<p class="mu">Todavía no hay cargas registradas' + (navigator.onLine ? '.' : ' (sin señal: se actualiza al volver la conexión).') + '</p>';
   $('app').innerHTML = h;
@@ -777,7 +787,7 @@ const ACT = {
   calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
   corregirLocal: b => { const c = COLA.find(x => x.datos.idLocal === b.dataset.arg); if (!c) return; COLA = COLA.filter(x => x !== c); guardarCola();
     if (c.tipo === 'manifiesto') { const d = c.datos; nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, firma: d.firma, original: d.original, foto: d.foto, obs: d.obs, res: corrCfg().map(x => Object.assign(nuevoRes(x.c, d.sitio), d.res.find(r => r.corriente === x.c) || {})) }); }
-    else { const d = c.datos; nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: d.mes.slice(5, 7), mesA: d.mes.slice(0, 4), ncert: d.ncert, ftrat: d.ftrat, foto: d.foto }); } },
+    else { const d = c.datos; nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: d.mes.slice(5, 7), mesA: d.mes.slice(0, 4), ncert: d.ncert, ftrat: d.ftrat, res: d.res || [], foto: d.foto }); } },
   descartar: b => preguntar('¿Descartar esta carga? No se va a registrar.', 'Sí, descartar', () => { COLA = COLA.filter(x => x.datos.idLocal !== b.dataset.arg); guardarCola(); consulta(); pintarRed(); }),
 };
 document.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && ACT[b.dataset.act] && !b.disabled) { e.preventDefault(); ACT[b.dataset.act](b); } });
@@ -797,6 +807,7 @@ document.addEventListener('change', e => {
   else if (t.dataset.chg === 'regL') { REGL = t.value; registros(); }
   else if (t.dataset.chg === 'regFoto') regFoto(t);
   else if (t.dataset.cm && C) { C[t.dataset.cm === 'm' ? 'mesM' : 'mesA'] = t.value; }
+  else if (t.dataset.cu != null && C && C.res) C.res[Number(t.dataset.cu)].uni = t.value;
   else if (t.dataset.c && C) C[t.dataset.c] = t.value;
   else if (t.dataset.l2 === 'recordar') LOG.recordar = t.checked;
   else if (t.dataset.l) LOG[t.dataset.l] = t.value;
@@ -807,6 +818,7 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.dataset.fecha) escribirFecha(t);
   if (t.dataset.c && C) C[t.dataset.c] = t.value;
+  if (t.dataset.cv != null && C && C.res) C.res[Number(t.dataset.cv)].vol = t.value;
   if (t.dataset.l) LOG[t.dataset.l] = t.value;
   if (t.dataset.o && OTRA) OTRA[t.dataset.o] = t.value;
   if (t.dataset.k && M && t.dataset.i == null && !t.dataset.recalc) M[t.dataset.k] = t.value;
@@ -1344,7 +1356,7 @@ function regCorregir(i) {
     const res = corrCfg().map(x => { const e = (d.res || []).find(z => z.corriente === x.c), n = nuevoRes(x.c, d.sitio); if (e) Object.assign(n, { cant: String(e.cant == null ? '' : e.cant), tam: String(e.tam == null ? '' : e.tam), vol: String(e.vol == null ? '' : e.vol), uni: e.uni || 'dm³' }); return n; });
     return nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, _fecha: String(d.fecha).split('-').reverse().join('/'), res: res, firma: d.firma || '', original: d.original || '', foto: '', fotoUrl: r.url || '', obs: d.obs || '', reemplaza: r.id, _nroOrig: d.nro, _sitioOrig: d.sitio });
   }
-  if (r.tipo === 'certificado') { const m = String(d.mes || '').split('-'); return nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: m[1] || '', mesA: m[0] || '', mes: d.mes, ncert: d.ncert, ftrat: d.ftrat, _ftrat: d.ftrat ? d.ftrat.split('-').reverse().join('/') : '', foto: '', fotoUrl: r.url || '', reemplaza: r.id }); }
+  if (r.tipo === 'certificado') { const m = String(d.mes || '').split('-'); return nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: m[1] || '', mesA: m[0] || '', mes: d.mes, ncert: d.ncert, ftrat: d.ftrat, res: d.res || [], _ftrat: d.ftrat ? d.ftrat.split('-').reverse().join('/') : '', foto: '', fotoUrl: r.url || '', reemplaza: r.id }); }
   const base = { _corr: true, fotoUrl: r.url || '', reemplaza: r.id };
   if (r.tipo === 'limpieza') { F = Object.assign({ _f: 'lim' }, toma(['CODIGO_TANQUE', 'FECHA', 'PROCEDIMIENTO', 'HORA_CORTE', 'HORA_REHABILITACION', 'HORAS_CERRADO', 'DESINFECTANTE', 'CONCENTRACION_GL', 'VOLUMEN_L', 'CLORO_PPM', 'TURBIDEZ_NTU', 'TAPA', 'MUESTRA_TOMADA', 'OBSERVACIONES']), base); return aguaLimpieza(); }
   if (r.tipo === 'analisis') { F = Object.assign({ _f: 'ana' }, toma(['CODIGO_PUNTO', 'FECHA_TOMA', 'TIPO', 'MOTIVO', 'LABORATORIO', 'CLORO_PPM', 'RESULTADO', 'FECHA_RESULTADO', 'OBSERVACIONES']), base); return aguaAnalisis(); }
@@ -1574,7 +1586,7 @@ const AYG = [
   { m: '', t: 'Fotos y PDF que se lean', p: ['Documento completo, con los cuatro bordes, derecho y de frente, apoyado sobre una mesa.', 'Buena luz, sin sombras, reflejos ni dedos encima.', 'Que se lean el número, la fecha, las cantidades y las firmas al agrandar.', 'Varias hojas: escanealas como un solo PDF (Google Drive › + › Escanear). Hasta 6 MB.', 'Después de guardar, abrilo con «Ver» desde «Mis registros» para comprobarlo.'] },
   { m: 'Residuos', t: 'Cargar un manifiesto', p: ['Inicio › Residuos › «Cargar un manifiesto». Son 4 pasos: Retiro, Residuos, Control del papel y Revisión.', 'Número tal como está impreso (solo números) y fecha de recolección.', 'Completá solo las corrientes que figuran (Y1 bolsa roja, Y3 medicamentos): contenedor, cantidad y tamaño; los dm³ se calculan solos.', 'Revisá el resumen, corregí lo que haga falta y tocá «Guardar manifiesto».'] },
   { m: 'Residuos', t: 'Foto del manifiesto: plazo', p: ['Se puede guardar sin foto, pero hay que subirla antes del día 10 del mes siguiente: «Mis registros» › «Subir foto», o con el lote .zip del mes.', 'Desde 2027, si no se sube a tiempo, no se pueden cargar manifiestos nuevos.'] },
-  { m: 'Residuos', t: 'Certificado de tratamiento', p: ['Inicio › Residuos › «Cargar un certificado»: uno por mes, cubre todos los retiros del mes.', 'Empresa, mes y año, número y fecha de tratamiento; la foto es obligatoria desde 2027.', '«Ver avance por mes» muestra qué meses tienen retiros y certificado.'] },
+  { m: 'Residuos', t: 'Certificado de tratamiento', p: ['Inicio › Residuos › «Cargar un certificado»: uno por mes, cubre todos los retiros del mes.', 'Empresa, mes y año, número y fecha de tratamiento; la cantidad tratada por corriente (dm³ o kg) es opcional; la foto es obligatoria desde 2027.', '«Ver avance por mes» muestra qué meses tienen retiros y certificado.'] },
   { m: 'Residuos', t: 'Enviar escaneados (lote .zip)', p: ['Desde una computadora: poné los escaneos del mes en una carpeta (si cada archivo se llama con el número de manifiesto, se une solo).', 'Clic derecho › Enviar a › Carpeta comprimida (.zip); hasta 20 MB cada una.', 'Inicio › Residuos › «Enviar escaneados», elegí mes y año, la carpeta, y «Enviar». No cierres hasta ver el resultado.'] },
   { m: 'Agua', t: 'Tanques, cisternas y canillas', p: ['Inicio › Agua › «Mis tanques y canillas». Se cargan una sola vez; para cambiar algo, «Cambiar datos». Necesita señal.'] },
   { m: 'Agua', t: 'Limpieza de tanque', p: ['Completá y hacé firmar el formulario F-AGU-01.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento y datos del formulario (mínimo 6 horas cerrado).', 'La foto del F-AGU-01 firmado es obligatoria.'] },
