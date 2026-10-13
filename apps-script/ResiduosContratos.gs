@@ -8,14 +8,13 @@
  * Carga inicial: contrato Impeesa S.A. 2026 (Expte. 3466/25 SS, Res. 43/26 SS, desde el 01/07/2026, 6 meses prorrogables).
  * p_res_frecuencias: retiros por establecimiento y sitio (por mes, por año, promedio mensual, días entre retiros) contra la frecuencia del contrato.
  * p_res_costos: costo mensual estimado por grupo desde el inicio del contrato vigente: cupo × precio («saldo según contrato» si no se llega al
- *   cupo, cláusula SÉPTIMA) + excedente × precio del excedente. Solo con lo que cargan los establecimientos (Y1, en dm³; kg → dm³ con 0,25 kg/dm³).
+ *   cupo, cláusula SÉPTIMA) + excedente × precio del excedente. Solo con lo que cargan los establecimientos (Y1, en dm³: Impeesa factura por dm³).
  * Normativa: Ley 24.051 y Dto. 831/93; Ley XI N.º 35 (Código Ambiental del Chubut); contrato y Anexo I.
  */
 const RCT = {
   H_CON: ['ID', 'EMPRESA', 'OBJETO', 'EXPEDIENTE', 'RESOLUCION', 'DESDE', 'HASTA', 'PRORROGA', 'CUPO_TOTAL_DM3_MES', 'ARCHIVO', 'ESTADO', 'OBSERVACIONES'],
   H_GRU: ['ID_CONTRATO', 'GRUPO', 'SERVICIO', 'CUPO_DM3_MES', 'PRECIO_DM3', 'PRECIO_EXCEDENTE_DM3', 'DESDE', 'HASTA', 'OBSERVACIONES'],
   H_ALC: ['ID_CONTRATO', 'GRUPO', 'ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'FRECUENCIA_CONTRATO', 'ORIGEN_FRECUENCIA', 'OBSERVACIONES'],
-  KG_DM3: 0.25,   // kg por dm³ (Y1), el mismo factor de la DDJJ de residuos peligrosos
   ARCHIVO_IMP26: 'https://drive.google.com/file/d/1ncvg3XSE97RqYlWHI1L7vs11aPfwCw8R/view'
 };
 // Retiros por mes esperables según la frecuencia escrita
@@ -90,9 +89,9 @@ function rctRetiros_(g, desde) {
   if (n > 0) gm.getRange(6, 1, n, 13).getValues().forEach(r => {
     const cod = porNombre[sinTildes_(r[0])]; if (!cod) return; const f = resFecha_(r[3]); if (!f || f < desde) return;
     const sitio = limpio_(r[1]) || info[cod].nombre, k = cod + '|' + sitio + '|' + limpio_(r[6]) + '|' + f;
-    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, estimado: false };
+    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, enKg: false };
     let cant = Number(String(r[9]).replace(',', '.')) || 0; const uni = sinTildes_(r[10]);
-    if (/kg/.test(uni)) { cant = cant / RCT.KG_DM3; x.estimado = true; }
+    if (/kg/.test(uni)) { x.enKg = true; return; }   // Impeesa factura por dm³: lo cargado en kg no se suma al volumen
     if (limpio_(r[7]) === 'Y1') x.y1 += cant; else if (limpio_(r[7]) === 'Y3') x.y3 += cant;
   });
   return { retiros: Object.keys(R).map(k => R[k]), info: info };
@@ -155,7 +154,7 @@ function resCostos_(x) {
   const miembros = {}; grupos.forEach(gr => miembros[gr] = Array.from(new Set(c.alcance.filter(a => a.GRUPO === gr).map(a => a.ESTABLECIMIENTO))));
   const vol = {}, porEst = {};
   L.retiros.forEach(r => { const m = r.fecha.slice(0, 7); if (m > hastaC.slice(0, 7)) return; const u = rctUbicar_([c], r.cod, r.sitio, r.tipo, m); if (!u) return;
-    const k = u.grupo + '|' + m, v = vol[k] = vol[k] || { y1: 0, y3: 0, retiros: 0, estimado: false, ests: {} }; v.y1 += r.y1; v.y3 += r.y3; v.retiros++; if (r.estimado) v.estimado = true; v.ests[r.cod] = 1;
+    const k = u.grupo + '|' + m, v = vol[k] = vol[k] || { y1: 0, y3: 0, retiros: 0, enKg: 0, ests: {} }; v.y1 += r.y1; v.y3 += r.y3; v.retiros++; if (r.enKg) v.enKg++; v.ests[r.cod] = 1;
     const e = porEst[r.cod] = porEst[r.cod] || { cod: r.cod, nombre: (L.info[r.cod] || {}).nombre || r.cod, grupo: u.grupo, porMes: {}, y1: 0 }; e.porMes[m] = (e.porMes[m] || 0) + r.y1; e.y1 += r.y1; });
   const filas = [];
   grupos.forEach(gr => meses.forEach(m => {
@@ -163,10 +162,10 @@ function resCostos_(x) {
     const cupo = p.CUPO_DM3_MES, exc = Math.max(0, v.y1 - cupo), costo = cupo * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3;
     filas.push({ grupo: gr, mes: m, enCurso: m === hoy.slice(0, 7), servicio: p.SERVICIO, cupo: cupo, precio: p.PRECIO_DM3, precioExc: p.PRECIO_EXCEDENTE_DM3, volumen: Math.round(v.y1), y3: Math.round(v.y3), retiros: v.retiros,
       usoCupo: cupo ? Math.round(1000 * v.y1 / cupo) / 10 : null, excedente: Math.round(exc), costo: Math.round(costo), costoVolumen: Math.round(Math.min(v.y1, cupo) * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3),
-      sinUso: Math.round(Math.max(0, cupo - v.y1) * p.PRECIO_DM3), costoDm3Real: v.y1 ? Math.round(costo / v.y1) : null, cargan: Object.keys(v.ests).length, miembros: miembros[gr].length, estimado: !!v.estimado });
+      sinUso: Math.round(Math.max(0, cupo - v.y1) * p.PRECIO_DM3), costoDm3Real: v.y1 ? Math.round(costo / v.y1) : null, cargan: Object.keys(v.ests).length, miembros: miembros[gr].length, enKg: v.enKg || 0 });
   }));
   const ests = Object.keys(porEst).map(k => { const e = porEst[k], p = precioDe(e.grupo, hastaC.slice(0, 7)); e.y1 = Math.round(e.y1); e.valorPrecio = p ? Math.round(e.y1 * p.PRECIO_DM3) : null; return e; }).sort((a, b) => b.y1 - a.y1);
   return { ok: true, hoy: hoy, contrato: { id: c.ID, empresa: c.EMPRESA, objeto: c.OBJETO, expediente: c.EXPEDIENTE, resolucion: c.RESOLUCION, desde: c.DESDE, hasta: c.HASTA, prorroga: c.PRORROGA, archivo: c.ARCHIVO, estado: c.ESTADO, observaciones: c.OBSERVACIONES },
     contratos: C.map(k => ({ id: k.ID, empresa: k.EMPRESA, desde: k.DESDE, hasta: k.HASTA, estado: k.ESTADO })), grupos: grupos.map(gr => ({ grupo: gr, servicio: (precioDe(gr, hastaC.slice(0, 7)) || {}).SERVICIO || '', miembros: miembros[gr].map(cd => ({ cod: cd, nombre: (L.info[cd] || {}).nombre || cd })) })),
-    meses: meses, filas: filas, establecimientos: ests, hojaContratos: K.url, kgDm3: RCT.KG_DM3, actualizado: new Date().toISOString() };
+    meses: meses, filas: filas, establecimientos: ests, hojaContratos: K.url, actualizado: new Date().toISOString() };
 }
