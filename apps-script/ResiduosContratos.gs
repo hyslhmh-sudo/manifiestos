@@ -14,7 +14,7 @@
 const RCT = {
   H_CON: ['ID', 'EMPRESA', 'OBJETO', 'EXPEDIENTE', 'RESOLUCION', 'DESDE', 'HASTA', 'PRORROGA', 'CUPO_TOTAL_DM3_MES', 'ARCHIVO', 'ESTADO', 'OBSERVACIONES'],
   H_GRU: ['ID_CONTRATO', 'GRUPO', 'SERVICIO', 'CUPO_DM3_MES', 'PRECIO_DM3', 'PRECIO_EXCEDENTE_DM3', 'DESDE', 'HASTA', 'OBSERVACIONES'],
-  H_ALC: ['ID_CONTRATO', 'GRUPO', 'ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'FRECUENCIA_CONTRATO', 'OBSERVACIONES'],
+  H_ALC: ['ID_CONTRATO', 'GRUPO', 'ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'FRECUENCIA_CONTRATO', 'ORIGEN_FRECUENCIA', 'OBSERVACIONES'],
   KG_DM3: 0.25,   // kg por dm³ (Y1), el mismo factor de la DDJJ de residuos peligrosos
   ARCHIVO_IMP26: 'https://drive.google.com/file/d/1ncvg3XSE97RqYlWHI1L7vs11aPfwCw8R/view'
 };
@@ -34,7 +34,7 @@ function rctHojas_(g) {
   const hoja = (n, H, tit, sub) => { let sh = g.getSheetByName(n); if (!sh) { sh = g.insertSheet(n); encabezar_(sh, tit, sub, H); } return sh; };
   const C = hoja('CONTRATOS', RCT.H_CON, 'Contratos de residuos peligrosos', 'Un contrato por fila. ESTADO: Vigente o Anterior. Fechas dd/mm/aaaa. Los precios y cupos van en CONTRATO_GRUPOS; quién entra y con qué frecuencia, en CONTRATO_ALCANCE.');
   const G = hoja('CONTRATO_GRUPOS', RCT.H_GRU, 'Grupos de precio de cada contrato', 'Cupo mensual en dm³, precio por dm³ (IVA incluido) y precio del excedente. Si el precio cambia, agregá otra fila del mismo grupo con la fecha DESDE nueva.');
-  const A = hoja('CONTRATO_ALCANCE', RCT.H_ALC, 'Alcance y frecuencia de retiro por contrato', 'Establecimiento (código de la BASE COMÚN). SITIO vacío = todo el establecimiento; TIPO_SITIO (CAPS, Dispositivo, Edificio) = todos los sitios de ese tipo. FRECUENCIA_CONTRATO: Diaria (lun a sáb), 3 días por semana, Semanal, Quincenal, Mensual o s/d.');
+  const A = hoja('CONTRATO_ALCANCE', RCT.H_ALC, 'Alcance y frecuencia de retiro por contrato', 'Establecimiento (código de la BASE COMÚN). SITIO vacío = todo el establecimiento; TIPO_SITIO (CAPS, Dispositivo, Edificio) = todos los sitios de ese tipo. FRECUENCIA_CONTRATO: Diaria (lun a sáb), 3 días por semana, Semanal, Quincenal, Mensual o s/d. ORIGEN_FRECUENCIA: Contrato (lo dice el contrato) o Deducción (supuesto de Higiene y Seguridad, no figura en el contrato).');
   if (C.getLastRow() < 6) {
     const desde = new Date(2026, 6, 1), hasta = new Date(2026, 11, 31);
     C.getRange(6, 1, 1, RCT.H_CON.length).setValues([['IMP-2026', 'Impeesa S.A.', 'Recolección, tratamiento y disposición final de residuos patogénicos (grupo 1); tratamiento y disposición final (grupo 2)',
@@ -44,18 +44,20 @@ function rctHojas_(g) {
       ['IMP-2026', '1', 'Recolección, tratamiento y disposición final', 32000, 807, 766.69, desde, '', 'HZ Trelew, HZ Puerto Madryn, Subzonal Rawson y rurales de Gaiman y Dolavon (cláusula TERCERA)'],
       ['IMP-2026', '2', 'Tratamiento y disposición final', 108660, 864.37, 821.05, desde, '', 'HZ Esquel y establecimientos de las UGD Norte, Noreste, Noroeste y Sur (cláusula TERCERA)']]);
     G.getRange(6, 7, 2, 2).setNumberFormat('dd/mm/yyyy'); C.getRange(6, 6, 1, 2).setNumberFormat('dd/mm/yyyy');
+    const DED = 'DEDUCCIÓN, no por contrato: el Anexo I solo fija frecuencias dentro del ejido de Trelew; ';
     const filas = [
-      ['IMP-2026', '1', 'HZT', 'HZT Central', '', 'Diaria (lun a sáb)', 'Anexo I: diaria, salvo domingos y feriados, en el Hospital Zonal de Trelew'],
-      ['IMP-2026', '1', 'HZT', '', 'CAPS', '3 días por semana', 'Anexo I: centros de salud del ejido de Trelew'],
-      ['IMP-2026', '1', 'HZT', '', '', 's/d (revisar)', 'Otros sitios del HZT: no figuran en el Anexo I'],
-      ['IMP-2026', '1', 'HMH', '', '', 'Diaria (lun a sáb)', 'Parte del Hospital Zonal de Trelew (misma Dirección): a confirmar'],
-      ['IMP-2026', '1', 'HZPM', '', '', 's/d (revisar)', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
-      ['IMP-2026', '1', 'HSST', '', '', 's/d (revisar)', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
-      ['IMP-2026', '1', 'Gaiman', '', '', 's/d (revisar)', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
-      ['IMP-2026', '1', 'Dolavon', '', '', 's/d (revisar)', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
-      ['IMP-2026', '2', 'HZE', '', '', 's/d (revisar)', 'Solo tratamiento y disposición final']];
+      ['IMP-2026', '1', 'HZT', 'HZT Central', '', 'Diaria (lun a sáb)', 'Contrato', 'Anexo I: diaria, salvo domingos y feriados, en el Hospital Zonal de Trelew'],
+      ['IMP-2026', '1', 'HZT', '', 'CAPS', '3 días por semana', 'Contrato', 'Anexo I: tres días por semana en los centros de salud del ejido de Trelew'],
+      ['IMP-2026', '1', 'HZT', '', '', 's/d (revisar)', '', 'Otros sitios del HZT: no figuran en el Anexo I'],
+      ['IMP-2026', '1', 'HMH', '', '', 'Diaria (lun a sáb)', 'Deducción', 'DEDUCCIÓN, no por contrato: el contrato no nombra al HMH; se toma como parte del Hospital Zonal de Trelew (misma Dirección). Cambiar si corresponde'],
+      ['IMP-2026', '1', 'HSST', '', '', 'Diaria (lun a sáb)', 'Deducción', DED + 'se asume la misma frecuencia que el Hospital Zonal de Trelew porque el Subzonal Rawson está en el mismo grupo del contrato. Cambiar si corresponde'],
+      ['IMP-2026', '1', 'HSST', '', 'CAPS', '3 días por semana', 'Deducción', DED + 'se asume la misma frecuencia que los centros de salud de Trelew. Cambiar si corresponde'],
+      ['IMP-2026', '1', 'HZPM', '', '', 's/d (revisar)', '', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
+      ['IMP-2026', '1', 'Gaiman', '', '', 's/d (revisar)', '', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
+      ['IMP-2026', '1', 'Dolavon', '', '', 's/d (revisar)', '', 'Fuera del ejido de Trelew: el Anexo I no fija frecuencia'],
+      ['IMP-2026', '2', 'HZE', '', '', 's/d (revisar)', '', 'Solo tratamiento y disposición final']];
     const g1 = { HZT: 1, HMH: 1, HZPM: 1, HSST: 1, Gaiman: 1, Dolavon: 1, HZE: 1 };
-    pEstablecimientos_().filas.forEach(f => { const c = limpio_(f.v[0]); if (c && !g1[c]) filas.push(['IMP-2026', '2', c, '', '', 's/d (revisar)', 'UGD Norte, Noreste, Noroeste o Sur: a confirmar si está incluido en el contrato']); });
+    pEstablecimientos_().filas.forEach(f => { const c = limpio_(f.v[0]); if (c && !g1[c]) filas.push(['IMP-2026', '2', c, '', '', 's/d (revisar)', 'Deducción', 'DEDUCCIÓN, no por contrato: UGD Norte, Noreste, Noroeste o Sur: a confirmar si está incluido en el contrato']); });
     A.getRange(6, 1, filas.length, RCT.H_ALC.length).setValues(filas);
   }
   return { C: C, G: G, A: A };
@@ -75,7 +77,7 @@ function rctUbicar_(C, cod, sitio, tipo, mes) {
   for (const c of vig) {
     const A = c.alcance.filter(a => a.ESTABLECIMIENTO === cod); if (!A.length) continue;
     const a = A.find(x => x.SITIO && sinTildes_(x.SITIO) === sinTildes_(sitio)) || A.find(x => !x.SITIO && x.TIPO_SITIO && sinTildes_(x.TIPO_SITIO) === sinTildes_(tipo)) || A.find(x => !x.SITIO && !x.TIPO_SITIO);
-    if (a) return { contrato: c.ID, empresa: c.EMPRESA, grupo: a.GRUPO, frecuencia: a.FRECUENCIA_CONTRATO || 's/d (revisar)', esperados: rctEsperados_(a.FRECUENCIA_CONTRATO) };
+    if (a) return { contrato: c.ID, empresa: c.EMPRESA, grupo: a.GRUPO, frecuencia: a.FRECUENCIA_CONTRATO || 's/d (revisar)', esperados: rctEsperados_(a.FRECUENCIA_CONTRATO), deduccion: /deduc/i.test(sinTildes_(a.ORIGEN_FRECUENCIA)), nota: limpio_(a.OBSERVACIONES) };
   }
   return null;
 }
@@ -122,7 +124,7 @@ function resFrecuencias_(x) {
     return { cod: s.cod, nombre: (L.info[s.cod] || {}).nombre || s.cod, area: (L.info[s.cod] || {}).area || '', sitio: s.sitio, tipo: s.tipo || 's/d', porMes: s.porMes, porAnio: s.porAnio,
       total: F.length, promedioMes: prom, mesesBase: base.length, intervaloProm: gaps.length ? Math.round(10 * gaps.reduce((a, b) => a + b, 0) / gaps.length) / 10 : null,
       intervaloMax: gaps.length ? Math.max(...gaps) : null, porSemana: prom == null ? null : Math.round(10 * prom / 4.33) / 10, ultimo: F[F.length - 1],
-      y1: Math.round(s.y1), y3: Math.round(s.y3), contrato: u.contrato || '', empresa: u.empresa || '', grupo: u.grupo || '', frecuencia: u.frecuencia || 'Sin contrato cargado',
+      y1: Math.round(s.y1), y3: Math.round(s.y3), contrato: u.contrato || '', empresa: u.empresa || '', grupo: u.grupo || '', frecuencia: u.frecuencia || 'Sin contrato cargado', deduccion: !!u.deduccion, nota: u.nota || '',
       esperadosMes: u.esperados || null, cumplimiento: u.esperados && prom != null ? Math.round(100 * prom / u.esperados) : null };
   }).sort((a, b) => (a.nombre + a.sitio).localeCompare(b.nombre + b.sitio));
   // Por establecimiento
@@ -134,7 +136,7 @@ function resFrecuencias_(x) {
     e.promedioMes = base.length ? Math.round(10 * tot / base.length) / 10 : null; e.contratos = Object.keys(e.contratos); return e; }).sort((a, b) => a.nombre.localeCompare(b.nombre));
   // Sin manifiestos en el período, pero dentro de un contrato
   const conDatos = {}; ests.forEach(e => conDatos[e.cod] = 1);
-  const sinDatos = []; C.filter(c => c.ESTADO === 'Vigente').forEach(c => c.alcance.forEach(a => { if (!conDatos[a.ESTABLECIMIENTO] && !sinDatos.some(s => s.cod === a.ESTABLECIMIENTO)) sinDatos.push({ cod: a.ESTABLECIMIENTO, nombre: (L.info[a.ESTABLECIMIENTO] || {}).nombre || a.ESTABLECIMIENTO, area: (L.info[a.ESTABLECIMIENTO] || {}).area || '', contrato: c.ID, grupo: a.GRUPO, frecuencia: a.FRECUENCIA_CONTRATO }); }));
+  const sinDatos = []; C.filter(c => c.ESTADO === 'Vigente').forEach(c => c.alcance.forEach(a => { if (!conDatos[a.ESTABLECIMIENTO] && !sinDatos.some(s => s.cod === a.ESTABLECIMIENTO)) sinDatos.push({ cod: a.ESTABLECIMIENTO, nombre: (L.info[a.ESTABLECIMIENTO] || {}).nombre || a.ESTABLECIMIENTO, area: (L.info[a.ESTABLECIMIENTO] || {}).area || '', contrato: c.ID, grupo: a.GRUPO, frecuencia: a.FRECUENCIA_CONTRATO, deduccion: /deduc/i.test(sinTildes_(a.ORIGEN_FRECUENCIA)) }); }));
   const out = { ok: true, huella: huella, desde: desde, hasta: hasta, meses: meses, hoy: hoy, sitios: sitios, establecimientos: ests, sinDatos: sinDatos,
     contratos: C.map(c => ({ id: c.ID, empresa: c.EMPRESA, desde: c.DESDE, hasta: c.HASTA, estado: c.ESTADO, archivo: c.ARCHIVO })), hojaContratos: K.url, actualizado: new Date().toISOString() };
   try { cache.put(kc, JSON.stringify(out), 600); } catch (e) {}
