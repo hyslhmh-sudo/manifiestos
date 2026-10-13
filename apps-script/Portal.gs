@@ -93,6 +93,7 @@ function portalAccion_(d) {
       if (String(d.accion).indexOf('p_acc_') === 0) return typeof accPortal_ === 'function' ? accPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // pantalla «Accesos» (Accesos.gs)
       if (String(d.accion).indexOf('p_dgm_') === 0) return typeof dgmPortal_ === 'function' ? dgmPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // diagnóstico de agua y plagas (DiagModulos.gs)
       if (String(d.accion).indexOf('p_coc_') === 0) return typeof cocPortal_ === 'function' ? cocPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Modulo6.gs.' };
+      if (String(d.accion).indexOf('p_rad_') === 0) return typeof radPortal_ === 'function' ? radPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Radiaciones.gs (módulo 9).' };   // 9 · Radiaciones ionizantes
   }
   return { ok: false, error: 'Acción desconocida.' };
 }
