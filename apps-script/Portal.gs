@@ -22,6 +22,7 @@ function portalAccion_(d) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
     case 'p_resumen': return pResumen_(x.fresco);
     case 'p_tablero': return tbTablero_(x.fresco);   // tablero de control (Tablero.gs)
+    case 'p_res_tablero': return typeof resTablero_ === 'function' ? resTablero_(x.fresco) : { ok: false, mensaje: 'Falta instalar ResiduosTablero.gs.' };   // 1 · Residuos: tablero general (14.22)
     case 'p_bib_listar': return bibListar_();       // biblioteca HyS
     case 'p_bib_guardar': return bibGuardar_(x);
     case 'p_bib_cambiar': return bibCambiar_(x);
@@ -97,8 +98,10 @@ function portalAccion_(d) {
   }
   return { ok: false, error: 'Acción desconocida.' };
 }
-const pBC_ = () => SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_COMUN_ID'));
-const pBT_ = () => SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_TRABAJADORES_ID'));
+// Cada libro se abre una sola vez por ejecución (14.22): abrirlo de nuevo cuesta entre medio y un segundo cada vez.
+let P_BC_ = null, P_BT_ = null;
+const pBC_ = () => P_BC_ || (P_BC_ = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_COMUN_ID')));
+const pBT_ = () => P_BT_ || (P_BT_ = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_TRABAJADORES_ID')));
 const pFecha_ = v => v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : String(v || '');
 function pTabla_(sh, nCols) {   // filas desde la 6, con su número de fila
   const n = sh.getLastRow() - 5; if (n < 1) return [];
@@ -129,21 +132,15 @@ function sysGuardar_(nombre, obj) {
 function sysLeer_(nombre) {
   try { const it = sysCarpeta_().getFilesByName(nombre + '.json'); return it.hasNext() ? JSON.parse(it.next().getBlob().getDataAsString()) : null; } catch (e) { return null; }
 }
+// Resumen de la matriz (14.22). Lo pesado (personal por establecimiento: 45 hojas y capacitaciones) se guarda aparte y solo se
+// recalcula si cambió la BASE DE TRABAJADORES, de noche (actualizarPortal) o con fresco = 'todo'. Residuos y diagnóstico se leen en el
+// momento: tarda pocos segundos y queda al día después de cada manifiesto (antes, al borrarse la memoria, volvía la copia de la noche).
 function pResumen_(fresco) {
   const cache = CacheService.getScriptCache();
-  if (!fresco) { const c = cache.get('p_resumen'); if (c) return JSON.parse(c);
-    const g = sysLeer_('resumen'); if (g) { try { cache.put('p_resumen', JSON.stringify(g), 21600); } catch (e) {} return g; } }
+  if (!fresco) { const c = cache.get('p_resumen'); if (c) return JSON.parse(c); }
   const E = pEstablecimientos_(), claves = clavesEstados_();
-  // Trabajadores por establecimiento
-  const capDni = pCapsDnis_();
+  const T = pResumenTrab_(fresco === 'todo'), trab = T.trab;
   let diag = {}; try { if (PropertiesService.getScriptProperties().getProperty('DIAG_RES_ID')) diag = pDiagLista_(); } catch (e) {}
-  const bt = pBT_(), trab = {};
-  bt.getSheets().forEach(sh => {
-    const cod = sh.getName(); if (sh.getLastRow() < 6 || ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS'].indexOf(cod) >= 0) return;
-    const v = sh.getRange(6, 2, sh.getLastRow() - 5, 19).getValues();
-    const act = v.filter(r => r[0] !== '' && (r[18] === 'Activo' || r[18] === ''));
-    trab[cod] = { total: v.filter(r => r[0] !== '').length, activos: act.length, capacitados: act.filter(r => capDni[pDni_(r[0])]).length };
-  });
   // Residuos: último retiro y retiros (Y1) del mes, desde el libro general
   const g = SpreadsheetApp.openById(CFG.GENERAL), gm = g.getSheetByName('MANIFIESTOS'), n = gm.getLastRow() - 5;
   const porNombre = {}; E.filas.forEach(f => porNombre[limpio_(f.v[1])] = limpio_(f.v[0]));
@@ -162,10 +159,31 @@ function pResumen_(fresco) {
       trabajadores: t.total, activos: t.activos, capacitados: t.capacitados || 0, ultimoRetiro: r.ultimo, retirosMes: r.mes, diasSinRetiro: dias };
   });
   const out = { ok: true, filas: filas, nc: trab['NC'] || { total: 0 }, sinAsignar: (trab['SIN_ASIGNAR'] || { total: 0 }).total, actualizado: new Date().toISOString(),
-    enlaces: { baseComun: pBC_().getUrl(), baseTrabajadores: bt.getUrl(), general: g.getUrl() } };
+    personalAl: T.calculado, enlaces: { baseComun: pBC_().getUrl(), baseTrabajadores: T.url, general: g.getUrl() } };
   try { cache.put('p_resumen', JSON.stringify(out), 21600); } catch (e) {}
-  sysGuardar_('resumen', out);
+  if (fresco === 'todo') sysGuardar_('resumen', out);
   return out;
+}
+// Personal por establecimiento (lo más pesado: 45 hojas y capacitaciones). Se guarda en la memoria y en Drive; se recalcula de noche
+// (actualizarPortal), con fresco = 'todo' o si no hay copia. Los números de personal pueden tener hasta un día de atraso.
+function pResumenTrab_(forzar) {
+  const cache = CacheService.getScriptCache();
+  if (!forzar) {
+    let o = null; try { o = JSON.parse(cache.get('p_resumen_trab') || 'null'); } catch (e) {}
+    if (o && o.trab) return o;
+    o = sysLeer_('resumen_trab'); if (o && o.trab) { try { cache.put('p_resumen_trab', JSON.stringify(o), 21600); } catch (e) {} return o; }
+  }
+  const capDni = pCapsDnis_(), bt = pBT_(), trab = {};
+  bt.getSheets().forEach(sh => {
+    const cod = sh.getName(); if (sh.getLastRow() < 6 || ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS'].indexOf(cod) >= 0) return;
+    const v = sh.getRange(6, 2, sh.getLastRow() - 5, 19).getValues();
+    const act = v.filter(r => r[0] !== '' && (r[18] === 'Activo' || r[18] === ''));
+    trab[cod] = { total: v.filter(r => r[0] !== '').length, activos: act.length, capacitados: act.filter(r => capDni[pDni_(r[0])]).length };
+  });
+  const o = { trab: trab, calculado: new Date().toISOString(), url: bt.getUrl() };
+  try { cache.put('p_resumen_trab', JSON.stringify(o), 21600); } catch (e) {}
+  sysGuardar_('resumen_trab', o);
+  return o;
 }
 function clavesEstados_() {
   const m = {}; SpreadsheetApp.openById(CFG.CLAVES).getSheets()[0].getDataRange().getValues().slice(1).forEach(r => { if (r[1]) m[limpio_(r[1])] = limpio_(r[4]); });
@@ -548,7 +566,7 @@ function pCapsDe_(dni) {
 // Para ver datos nuevos durante el día: menú Sistema HyS › Bases y libros › Actualizar ahora…, o «Actualizar» en el portal.
 function actualizarPortal() {   // resumen de la matriz (lo más pesado)
   const c = CacheService.getScriptCache(); c.remove('caps_dnis');
-  pCapsDnis_(); pResumen_(true);
+  pCapsDnis_(); pResumen_('todo');
 }
 function actualizarTableroControl() {   // tablero de control
   try { tbTablero_(true); } catch (e) { Logger.log(e); }

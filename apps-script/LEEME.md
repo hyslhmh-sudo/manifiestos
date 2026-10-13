@@ -10,3 +10,4 @@ El código que funciona es el del editor de Apps Script; estas copias sirven par
 
 Estas copias no llevan claves ni contraseñas: las claves van en las propiedades del script o en las planillas.
 Detalle en el MANUAL DEL SISTEMA HyS, sección 20.
+- `ResiduosTablero.gs` (14.22, 13/10/2026): tablero general de residuos (acción `p_res_tablero`, despachada en Portal.gs). Portal.gs 14.22: libros abiertos una vez por ejecución y resumen de la matriz con el personal guardado aparte (`pResumenTrab_`).
