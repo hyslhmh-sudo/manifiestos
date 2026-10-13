@@ -19,7 +19,7 @@
  * Normativa: Ley 17.557 (arts. 1, 2 y 9); Dto. 6320/68 (arts. 6, 10, 12, 15, 17, 20, 21, 22, 25 a 27, 29 a 31, 33 a 37);
  * normas de seguridad radiosanitaria de la autoridad de salud (Dto. 6320/68, art. 19); Ley 19.587 y Dto. 351/79;
  * Res. SRT 37/10 (exámenes periódicos según agente), Res. SRT 81/19 (agentes cancerígenos: radiaciones ionizantes),
- * Res. SRT 905/15. No envía correos. No borra filas: lo que se quita queda «Anulado» o «Baja».
+ * Res. SRT 905/15. No envía correos. «Mi establecimiento» (módulo Radiaciones en ACCESOS): acciones r_… (radRed_). No borra filas: lo que se quita queda «Anulado» o «Baja».
  * Instalación: ejecutar una vez construirModuloRadiaciones().
  */
 const RAD = {
@@ -378,6 +378,32 @@ function radDetalle_(cod) {
     documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), sitios: radSitiosEst_(cod, D.sit),
     listas: { rxSitio: RAD.RX_SITIO, sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC },
     carpeta: radCarpetaEst_(cod).getUrl(), libro: pRad_().getUrl() };
+}
+
+// ------------------------------------------------------------------ «MI ESTABLECIMIENTO» (DNI y clave personal, módulo «Radiaciones» en ACCESOS): acciones «r_…»
+// Desde Código.gs › doPost (después de validar acceso y módulo). Carga de la secretaría y, más adelante, de los referentes:
+// personal con dosímetro (altas, bajas a pedido o por fin de exposición, reactivaciones) y eventos. Controles mensuales y
+// documentos los carga Higiene y Seguridad desde el portal.
+function radRed_(d) {
+  if (!PropertiesService.getScriptProperties().getProperty(RAD.P_LIBRO)) return { ok: false, mensaje: 'El módulo de radiaciones todavía no está habilitado.' };
+  const x = d.datos || {}, cod = limpio_(d.est), quien = x.quien || 'Mi establecimiento';
+  switch (d.accion) {
+    case 'r_datos': {
+      const D = radDatos_(), de = l => l.filter(o => o.ESTABLECIMIENTO === cod);
+      return { ok: true, personal: de(D.per), eventos: de(D.eve).reverse().slice(0, 60), sitios: radSitiosEst_(cod, D.sit).filter(s => s.RAYOS_X !== 'No').map(s => s.SITIO),
+        sugeridas: radSugeridas_(cod), listas: { sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, tiposEve: RAD.TIPOS_EVE } };
+    }
+    case 'r_dni': return { ok: true, persona: radDniBase_(x.dni) };
+    case 'r_persona_guardar': {
+      if (x.ID) { const p = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(o => o.ID === x.ID); if (!p || limpio_(p.ESTABLECIMIENTO) !== cod) return { ok: false, mensaje: 'Esa persona no es de este establecimiento.' }; }
+      x.ESTABLECIMIENTO = cod; return conLock_(() => radPersonaGuardar_(x, quien));
+    }
+    case 'r_evento_guardar': {
+      if (x.ID) { const e = radLeer_('EVENTOS', RAD.H_EVE).find(o => o.ID === x.ID); if (!e || limpio_(e.ESTABLECIMIENTO) !== cod) return { ok: false, mensaje: 'Ese evento no es de este establecimiento.' }; }
+      x.ESTABLECIMIENTO = cod; return conLock_(() => radEventoGuardar_(x, quien));
+    }
+  }
+  return { ok: false, error: 'Acción desconocida.' };
 }
 
 // ------------------------------------------------------------------ ENTRADA DEL PORTAL (clave de Higiene y Seguridad): acciones «p_rad_…»

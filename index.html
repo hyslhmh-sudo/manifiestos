@@ -857,6 +857,7 @@ function inicio() {
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
     '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
@@ -1422,6 +1423,147 @@ async function kGuardar() {
   try { const r = await api('k_persona_guardar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); F = null; KP = null; cocPers(true); }
   catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); }
 }
+// ------------------------------------------------------------------ Radiaciones ionizantes (módulo 9 · Radiaciones.gs): personal con dosímetro y eventos
+// Solo con DNI y clave personal y el módulo «Radiaciones» marcado en Accesos. Los controles mensuales y los documentos los carga Higiene y Seguridad.
+let RX = null;   // { personal, eventos, sitios, sugeridas, listas } del establecimiento
+const RX_BAJA = /^Baja/;
+async function rxCargar(fresco, titulo) {
+  if (RX && !fresco) return true;
+  if (!navigator.onLine) { $('app').innerHTML = miTit(titulo) + '<p class="mu">Para ver y cargar radiaciones hace falta señal.</p>'; miVolver(); return false; }
+  $('app').innerHTML = miTit(titulo) + '<p class="mu">Cargando…</p>'; bar(null);
+  try { const r = await api('r_datos', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RX = r; return true; }
+  catch (e) { $('app').innerHTML = miTit(titulo) + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return false; }
+}
+async function rxPers(fresco) {
+  VISTA = 'mi'; MIV = { f: () => rxPers() }; vista('wide');
+  if (!(await rxCargar(fresco, 'Personal con dosímetro'))) return;
+  const act = RX.personal.filter(p => !RX_BAJA.test(p.ESTADO_DOSIMETRO)), baja = RX.personal.filter(p => RX_BAJA.test(p.ESTADO_DOSIMETRO));
+  const tag = e => '<span class="tag ' + (e === 'Activo' ? 'ok' : e === 'Extraviado' ? 'er' : RX_BAJA.test(e) ? 'gr' : 'wa') + '">' + esc(e || 's/d') + '</span>';
+  const item = p => '<div class="item"><div><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><small>' + esc([p.SITIO, p.SECTOR_EXPOSICION, p.DOSIMETRO_NRO ? 'Dosímetro ' + p.DOSIMETRO_NRO : 'Sin número de dosímetro'].filter(Boolean).join(' · ')) +
+    (p.BAJA_DOSIMETRO && RX_BAJA.test(p.ESTADO_DOSIMETRO) ? '<br>Baja: ' + fechaTxt(p.BAJA_DOSIMETRO) + (p.MOTIVO_BAJA ? ' · ' + esc(p.MOTIVO_BAJA) : '') : '') + '</small>' +
+    '<button class="link" data-act="rxEditar" data-arg="' + esc(p.ID) + '">Actualizar datos</button> · ' + (RX_BAJA.test(p.ESTADO_DOSIMETRO) ? '<button class="link" data-act="rxReact" data-arg="' + esc(p.ID) + '">Volver a dar de alta</button>' : '<button class="link" data-act="rxBaja" data-arg="' + esc(p.ID) + '">Dar de baja el dosímetro</button>') + '</div>' + tag(p.ESTADO_DOSIMETRO) + '</div>';
+  $('app').innerHTML = miTit('Personal con dosímetro', 'Personas expuestas a rayos X (radiología, tomografía, arco en C, odontológicos). Cada alta o baja queda en el historial.') +
+    '<div class="notice ok"><b>' + act.length + ' en uso</b>' + (baja.length ? ' · ' + baja.length + ' dado(s) de baja' : '') + '</div>' +
+    (act.length ? '<div class="lista">' + act.map(item).join('') + '</div>' : '<p class="mu">Todavía no hay personas cargadas.</p>') +
+    '<div class="menu"><button class="big main" data-act="rxEditar" data-arg=""><b>+ Dar de alta una persona</b><span>Con su DNI y el número de dosímetro</span></button></div>' +
+    (baja.length ? '<h2>Dados de baja</h2><div class="lista">' + baja.map(item).join('') + '</div>' : '') +
+    ((RX.sugeridas || []).length ? '<h2>En la base de personal</h2><p class="mu" style="margin-top:-6px">Personas de imágenes, rayos, tomografía, odontología o hemodinamia que todavía no están en la lista. Tocá una para darla de alta.</p><div class="lista">' +
+      RX.sugeridas.slice(0, 30).map((s, i) => '<button class="item" data-act="rxSug" data-arg="' + i + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(s.nombre) + '</b><small>' + esc([s.funcion, s.servicio].filter(Boolean).join(' · ')) + '</small></div></button>').join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px"><button class="link" data-act="rxAct">Actualizar la lista</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+const rxSitios = () => [['', 'Elegí…']].concat(RX.sitios || []);
+function rxEditar(id, base) {
+  const p = id ? RX.personal.find(x => x.ID === id) : null;
+  F = p ? Object.assign({ _f: 'rx' }, p) : Object.assign({ _f: 'rx', ESTADO_DOSIMETRO: 'Activo', AUTORIZACION_INDIVIDUAL: 's/d', ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10) }, base || {});
+  delete F.fila; MIV = { f: formRX }; formRX();
+}
+function formRX() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit(F.ID ? 'Actualizar datos de ' + F.APELLIDO_Y_NOMBRE : 'Dar de alta una persona') + fErr +
+    fInp('DNI', 'DNI', 'number', 'Solo números') + '<p style="margin:-6px 0 10px"><button class="link" data-act="rxDni">Buscar el DNI en la base de personal</button></p>' +
+    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre', 'text', 'Ej.: Pérez, Ana') + fSel('SITIO', 'Sitio (edificio, CAPS, sede)', rxSitios()) +
+    fSel('SECTOR_EXPOSICION', 'Sector donde se expone', [['', 'Elegí…']].concat(RX.listas.sectores)) +
+    '<h2>Dosímetro</h2>' + fInp('DOSIMETRO_NRO', 'Número de dosímetro', 'text', 'Como figura en el dosímetro') + fSel('TIPO_DOSIMETRO', 'Tipo', [['', 'Elegí…']].concat(RX.listas.tiposDosi)) +
+    fInp('PROVEEDOR', 'Servicio de dosimetría', 'text', 'Empresa que lee los dosímetros') + '<div class="grid2">' + fInp('INICIO_EXPOSICION', 'Empieza a exponerse', 'date') + fInp('ALTA_DOSIMETRO', 'Alta del dosímetro', 'date') + '</div>' +
+    (F.ID && F.ESTADO_DOSIMETRO !== 'Extraviado' ? '' : F.ID ? '<div class="notice">El dosímetro figura extraviado. Cuando llegue el nuevo, cargá su número y marcá «Dosímetro repuesto».</div>' + fSeg('REPUESTO', '¿Dosímetro repuesto?', ['Sí', 'No']) : '') +
+    '<h2>Autorización individual</h2>' + fSeg('AUTORIZACION_INDIVIDUAL', '¿Tiene autorización individual de la autoridad sanitaria?', ['Sí', 'No', 's/d']) +
+    (F.AUTORIZACION_INDIVIDUAL === 'Sí' ? '<div class="grid2">' + fInp('AUTORIZACION_NRO', 'Número', 'text') + fInp('AUTORIZACION_VENCE', 'Vence', 'date') + '</div>' : '') +
+    fFoto('doc', 'Documento (opcional)', 'Autorización individual, nota de alta u otro papel') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardar">Guardar</button>');
+}
+function formRXBaja() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Dar de baja el dosímetro', esc(F.APELLIDO_Y_NOMBRE) + ' · la persona no se borra: queda «de baja» y se puede volver a dar de alta.') + fErr +
+    fSeg('TIPO_BAJA', 'Tipo de baja', ['Baja a pedido del trabajador', 'Baja por fin de exposición']) + fInp('BAJA_DOSIMETRO', 'Fecha de baja', 'date') + fTxt('MOTIVO_BAJA', 'Motivo', 'Ej.: licencia, cambio de servicio, lo pidió por nota') +
+    fFoto('doc', 'Nota o pedido firmado (opcional)');
+  bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardarBaja">Guardar la baja</button>');
+}
+function formRXReact() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Volver a dar de alta', esc(F.APELLIDO_Y_NOMBRE) + (F.BAJA_ANT ? ' · baja anterior: ' + fechaTxt(F.BAJA_ANT) : '')) + fErr +
+    fInp('ALTA_DOSIMETRO', 'Fecha de la nueva alta', 'date') + fInp('DOSIMETRO_NRO', 'Número de dosímetro', 'text') + fSel('SITIO', 'Sitio', rxSitios()) +
+    fSel('SECTOR_EXPOSICION', 'Sector donde se expone', [['', 'Elegí…']].concat(RX.listas.sectores)) + fTxt('DETALLE', 'Detalle (opcional)') + fFoto('doc', 'Nota o pedido (opcional)');
+  bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardarReact">Guardar el alta</button>');
+}
+async function rxEnviar(accion, d, act) {
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const b = document.querySelector('[data-act="' + act + '"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  d.quien = SES.persona.nombre; if (F.doc) d.archivo = miArch(F, 'doc');
+  const antes = ESPERA_MS; if (d.archivo) ESPERA_MS = 120000;
+  try { const r = await api(accion, d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); return r; }
+  catch (e) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); return null; }
+}
+async function rxGuardar() {
+  if (!F.APELLIDO_Y_NOMBRE) return miErr('Falta el apellido y nombre.');
+  if (!F.SITIO) return miErr('Elegí el sitio.');
+  const d = {}; ['ID', 'DNI', 'CUIL', 'APELLIDO_Y_NOMBRE', 'SERVICIO', 'FUNCION', 'SITIO', 'SECTOR_EXPOSICION', 'DOSIMETRO_NRO', 'TIPO_DOSIMETRO', 'PROVEEDOR', 'INICIO_EXPOSICION', 'ALTA_DOSIMETRO',
+    'AUTORIZACION_INDIVIDUAL', 'AUTORIZACION_NRO', 'AUTORIZACION_VENCE', 'OBSERVACIONES'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+  if (F.REPUESTO === 'Sí') { d.ESTADO_DOSIMETRO = 'Activo'; d.movimiento = { tipo: 'Cambio de dosímetro', detalle: 'Repuesto por extravío · nuevo ' + (F.DOSIMETRO_NRO || 's/d') }; }
+  const r = await rxEnviar('r_persona_guardar', d, 'rxGuardar'); if (!r) return;
+  F = null; RX = null; rxListo(r.avisoComunicar);
+}
+async function rxGuardarBaja() {
+  if (!F.TIPO_BAJA || !F.BAJA_DOSIMETRO) return miErr('Elegí el tipo de baja y la fecha.');
+  const r = await rxEnviar('r_persona_guardar', { ID: F.ID, APELLIDO_Y_NOMBRE: F.APELLIDO_Y_NOMBRE, DNI: F.DNI, ESTADO_DOSIMETRO: F.TIPO_BAJA, BAJA_DOSIMETRO: F.BAJA_DOSIMETRO, MOTIVO_BAJA: F.MOTIVO_BAJA || '', movimiento: { tipo: F.TIPO_BAJA, detalle: F.MOTIVO_BAJA || '' } }, 'rxGuardarBaja'); if (!r) return;
+  F = null; RX = null; rxListo(r.avisoComunicar);
+}
+async function rxGuardarReact() {
+  if (!F.ALTA_DOSIMETRO) return miErr('Falta la fecha de la nueva alta.');
+  const r = await rxEnviar('r_persona_guardar', { ID: F.ID, APELLIDO_Y_NOMBRE: F.APELLIDO_Y_NOMBRE, DNI: F.DNI, ESTADO_DOSIMETRO: 'Activo', ALTA_DOSIMETRO: F.ALTA_DOSIMETRO, DOSIMETRO_NRO: F.DOSIMETRO_NRO || '', SITIO: F.SITIO || '', SECTOR_EXPOSICION: F.SECTOR_EXPOSICION || '',
+    BAJA_DOSIMETRO: '', MOTIVO_BAJA: '', movimiento: { tipo: 'Reactivación', detalle: (F.DETALLE || '') + (F.BAJA_ANT ? ' (baja anterior ' + fechaTxt(F.BAJA_ANT) + ')' : '') } }, 'rxGuardarReact'); if (!r) return;
+  F = null; RX = null; rxListo(r.avisoComunicar);
+}
+function rxListo(aviso, volver) {
+  vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Guardado.</b><br>Ya está registrado en el sistema.</div>' + (aviso ? '<div class="notice">' + esc(aviso) + ' Avisale a Higiene y Seguridad.</div>' : '') +
+    '<div class="menu"><button class="big main" data-act="' + (volver || 'rxPers') + '"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';
+  bar(null);
+}
+async function rxDni() {
+  const dni = String(F.DNI || '').replace(/\D/g, ''); if (dni.length < 7) return miErr('Escribí el DNI completo.');
+  try { const r = await api('r_dni', { dni: dni }); if (!r.ok || !r.persona) return miErr('No está en la base de personal: completá los datos a mano.');
+    const P = r.persona; F.APELLIDO_Y_NOMBRE = F.APELLIDO_Y_NOMBRE || P.nombre; F.CUIL = P.cuil; F.SERVICIO = P.servicio; F.FUNCION = P.funcion; formRX(); }
+  catch (e) { miErr('No se pudo buscar. Probá de nuevo.'); }
+}
+// Eventos
+async function rxEve(fresco) {
+  VISTA = 'mi'; MIV = { f: () => rxEve() }; vista('wide');
+  if (!(await rxCargar(fresco, 'Eventos de radiaciones'))) return;
+  const L = RX.eventos, ab = L.filter(e => !/Cerrado|Anulado/.test(e.ESTADO));
+  $('app').innerHTML = miTit('Eventos de radiaciones', 'Extravío de dosímetro, dosímetro dañado o no devuelto, registro anormal o exposición accidental.') +
+    (ab.length ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>' + ab.length + ' abierto(s)</b></div>' : '<div class="notice ok"><b>No hay eventos abiertos.</b></div>') +
+    '<div class="menu"><button class="big main" data-act="rxEveEditar" data-arg=""><b>+ Registrar un evento</b><span>Avisá a Higiene y Seguridad en el día</span></button></div>' +
+    (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="rxEveEditar" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(e.TIPO) + '</b><small>' + fechaTxt(e.FECHA) + ' · ' + esc([e.APELLIDO_Y_NOMBRE, e.SITIO].filter(Boolean).join(' · ') || 'Sin persona') + '</small></div><span class="tag ' + (/Cerrado/.test(e.ESTADO) ? 'ok' : /Anulado/.test(e.ESTADO) ? 'gr' : 'er') + '">' + esc(e.ESTADO) + '</span></button>').join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px"><button class="link" data-act="rxEveAct">Actualizar la lista</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function rxEveEditar(id) {
+  const e = id ? RX.eventos.find(x => x.ID === id) : null;
+  F = e ? Object.assign({ _f: 'rxe' }, e) : { _f: 'rxe', FECHA: new Date().toISOString().slice(0, 10), ESTADO: 'Abierto' }; delete F.fila;
+  MIV = { f: formRXEve }; formRXEve();
+}
+function formRXEve() {
+  VISTA = 'mi'; vista('form'); const pers = [['', 'Ninguna / no corresponde']].concat(RX.personal.map(p => [p.ID, p.APELLIDO_Y_NOMBRE + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '')]));
+  $('app').innerHTML = miTit(F.ID ? 'Evento · ' + F.TIPO : 'Registrar un evento') + fErr +
+    fSel('TIPO', 'Qué pasó', [['', 'Elegí…']].concat(RX.listas.tiposEve)) + fInp('FECHA', 'Fecha', 'date') + fSel('SITIO', 'Sitio', rxSitios()) + fSel('ID_PERSONA', 'Persona', pers) +
+    (/anormal|accidental/i.test(F.TIPO || '') ? '<div class="grid2">' + fInp('PERIODO', 'Mes del control', 'month') + fInp('DOSIS_MSV', 'Dosis informada (mSv)', 'number') + '</div>' : '') +
+    fTxt('DESCRIPCION', 'Descripción', 'Qué pasó, dónde y cuándo') + fTxt('ACCIONES', 'Qué se hizo') +
+    (F.ID ? fSeg('ESTADO', 'Estado', ['Abierto', 'En seguimiento', 'Cerrado']) : '') + fFoto('doc', 'Archivo (opcional)', 'Denuncia de extravío, nota o informe');
+  bar('<button class="btn sec" data-act="rxEveVolver">Cancelar</button><button class="btn pri" data-act="rxEveGuardar">Guardar</button>');
+}
+async function rxEveGuardar() {
+  if (!F.TIPO) return miErr('Elegí qué pasó.');
+  const d = {}; ['ID', 'TIPO', 'FECHA', 'SITIO', 'ID_PERSONA', 'PERIODO', 'DOSIS_MSV', 'DESCRIPCION', 'ACCIONES', 'ESTADO'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+  const r = await rxEnviar('r_evento_guardar', d, 'rxEveGuardar'); if (!r) return;
+  F = null; RX = null; rxListo(r.aviso, 'rxEve');
+}
+Object.assign(ACT, { rxPers: () => { F = null; rxPers(); }, rxAct: () => rxPers(true), rxVolver: () => { F = null; rxPers(); }, rxEditar: b => rxEditar(b.dataset.arg), rxGuardar: () => rxGuardar(), rxDni: () => rxDni(),
+  rxSug: b => { const s = RX.sugeridas[Number(b.dataset.arg)]; rxEditar('', { DNI: s.dni, CUIL: s.cuil, APELLIDO_Y_NOMBRE: s.nombre, FUNCION: s.funcion, SERVICIO: s.servicio }); },
+  rxBaja: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxb', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, TIPO_BAJA: 'Baja a pedido del trabajador', BAJA_DOSIMETRO: new Date().toISOString().slice(0, 10) }; MIV = { f: formRXBaja }; formRXBaja(); },
+  rxReact: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxr', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, BAJA_ANT: p.BAJA_DOSIMETRO, ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10), DOSIMETRO_NRO: p.DOSIMETRO_NRO, SITIO: p.SITIO, SECTOR_EXPOSICION: p.SECTOR_EXPOSICION }; MIV = { f: formRXReact }; formRXReact(); },
+  rxGuardarBaja: () => rxGuardarBaja(), rxGuardarReact: () => rxGuardarReact(),
+  rxEve: () => { F = null; rxEve(); }, rxEveAct: () => rxEve(true), rxEveVolver: () => { F = null; rxEve(); }, rxEveEditar: b => rxEveEditar(b.dataset.arg), rxEveGuardar: () => rxEveGuardar() });
+
 // ------------------------------------------------------------------ Ayuda general con buscador (botón «Ayuda» de arriba)
 const AYG = [
   { m: '', t: 'Entrar y salir', p: ['Elegí el establecimiento, escribí tu DNI (si tenés clave personal) y tu clave, y tocá «Ingresar».', 'Si tu establecimiento todavía usa la clave común, dejá el DNI vacío y escribí la clave común.', '«Recordar la clave en este equipo» solo en la computadora del servicio, nunca en un equipo compartido.', 'Para salir, tocá «Salir» arriba a la derecha.'] },
@@ -1441,6 +1583,8 @@ const AYG = [
   { m: 'Cocina', t: 'Cocina', p: ['«Personas de cocina»: carnet de manipulador y libreta sanitaria de cada persona, con su vencimiento y la foto o PDF.', '«Relevamiento de cocina»: buenas prácticas (BPM) y HACCP, con fotos de cada lugar.'] },
   { m: 'Accidentes', t: 'Cargar un siniestro nuevo', p: ['Inicio › Siniestros › «Cargar un siniestro nuevo». Copiá los datos de la denuncia del Autoseguro en el mismo orden.', 'N.º de siniestro: el que empieza con CH. Con el DNI se completan nombre, servicio y función.', 'CIE 10 y diagnóstico como figuran (si no los trae, s/d): son datos de salud reservados.', 'Adjuntá el PDF o las fotos de la denuncia (hasta 8 archivos).'] },
   { m: 'Accidentes', t: 'Novedades, correcciones y anulaciones de siniestros', p: ['Inicio › Siniestros › «Siniestros y novedades»: tocá uno y «+ Cargar novedad» (alta, reingreso, parte, rechazo…), con su comprobante.', '«Corregir datos» o «Corregir» en una novedad; «Anular» solo si se cargó dos veces o no corresponde (pide motivo).', 'Una vez por mes revisá que los abiertos sigan abiertos.'] },
+  { m: 'Radiaciones', t: 'Personal con dosímetro', p: ['Inicio › Radiaciones › «Personal con dosímetro»: la lista de quienes usan dosímetro en este establecimiento.', '«+ Dar de alta una persona»: DNI («Buscar el DNI» completa los datos de la base de personal), sitio, sector y número de dosímetro. También se puede tocar una persona de «En la base de personal».', '«Dar de baja el dosímetro»: a pedido del trabajador o por fin de exposición, con fecha y motivo. La persona no se borra.', '«Volver a dar de alta»: cuando la persona vuelve a usar dosímetro. Queda en la misma fila, con el historial.', 'Cada alta o baja hay que comunicarla a la autoridad sanitaria (Dto. 6320/68, art. 22): avisale a Higiene y Seguridad.'] },
+  { m: 'Radiaciones', t: 'Eventos de radiaciones', p: ['Inicio › Radiaciones › «Eventos» › «+ Registrar un evento»: extravío de dosímetro, dosímetro dañado o no devuelto, registro anormal o exposición accidental.', 'Un extravío deja el dosímetro de la persona como «Extraviado». Cuando llegue el nuevo, en «Personal con dosímetro» › «Actualizar datos», cargá el número nuevo y marcá «Dosímetro repuesto».', 'Avisá a Higiene y Seguridad en el día: la exposición accidental se notifica de inmediato a la autoridad (Dto. 6320/68, art. 20).'] },
   { m: 'Documentos', t: 'Formularios, contratos y documentos', p: ['«Formularios para imprimir» y «Contratos y documentación»: «Ver» o «Descargar».', '«Manuales, guías, POE, protocolos y PTS»: «Abrir» para leer; «+ Cargar un documento» para subir uno nuevo, solo en PDF, con nombre completo, tipo, código, versión, vigencia y vencimiento.', 'Si cargás uno con el mismo código o nombre, el anterior queda «Reemplazado».'] },
   { m: 'Notas', t: 'Notas recibidas y envío y respuesta', p: ['Inicio › Notas › «Registrar una nota recibida»: fecha, número, quién la manda, asunto, si requiere respuesta y el escaneo de todas las hojas.', '«Envío y respuesta»: tocá una nota para registrar cuándo se envió y qué respondieron. Revisala una vez por semana.', 'Se abre en otra pestaña con la cuenta de Google habilitada por Higiene y Seguridad.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
