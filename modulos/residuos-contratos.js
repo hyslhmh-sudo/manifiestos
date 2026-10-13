@@ -67,7 +67,8 @@ const sinTildesJs = s => String(s || '').toLowerCase().normalize('NFD').replace(
 
 // ------------------------------------------------------------------ Contrato y costos (por establecimiento)
 // No se suman totales de la red: que un establecimiento no cargue manifiestos no significa que no genere residuos.
-// Cada establecimiento ve su volumen Y1 (dm³) valorizado al precio de su grupo; el detalle está también en la vista de cada hospital (#res/COD).
+// Volumen facturable = dm³ de todas las corrientes del manifiesto (Y1 + Y3; Impeesa factura ambas), valorizado al precio de su grupo.
+// En cada establecimiento y mes se marca si su volumen solo ya supera el cupo mensual del grupo. Detalle también en #res/COD.
 async function rcoDatos(fresco) {
   const clave = 'resCostos_' + (RCOF.contrato || 'vigente');
   if (RCO && !fresco && RCO._clave === clave) return RCO;
@@ -75,35 +76,48 @@ async function rcoDatos(fresco) {
   if (g) { RCO = g; api('p_res_costos', { contrato: RCOF.contrato }, 180000).then(r => { if (r && r.ok) { r._clave = clave; const cambio = JSON.stringify(r.establecimientos) !== JSON.stringify(RCO.establecimientos); RCO = r; LS.set(clave, r); if (cambio && $('ov').hidden) { if (location.hash === '#rescosto') resCostos(); else if (/^#res\//.test(location.hash)) resEst(decodeURIComponent(location.hash.split('/')[1])); } } }).catch(() => {}); return RCO; }
   const r = await api('p_res_costos', { contrato: RCOF.contrato }, 180000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer el contrato.'); r._clave = clave; RCO = r; LS.set(clave, r); return r;
 }
-const rcoPrecio = (T, grupo, mes) => { const f = T.filas.find(x => x.grupo === grupo && x.mes === mes) || T.filas.filter(x => x.grupo === grupo).slice(-1)[0]; return f ? f.precio : null; };
-// Tarjeta de contrato y costo de un establecimiento (para la vista del hospital y para la lista)
+const rcoFila = (T, grupo, mes) => T.filas.find(x => x.grupo === grupo && x.mes === mes) || T.filas.filter(x => x.grupo === grupo).slice(-1)[0] || null;
+const rcoPrecio = (T, grupo, mes) => { const f = rcoFila(T, grupo, mes); return f ? f.precio : null; };
+const rcoCupo = (T, grupo, mes) => { const f = rcoFila(T, grupo, mes); return f ? f.cupo : null; };
+const rcoTot = (e, m) => e.porMes[m] || 0;   // Y1 + Y3 (y otras corrientes) en dm³
+const rcoPct = (v, cupo) => cupo ? Math.round(100 * v / cupo) : null;
+const rcoChip = (v, cupo) => { const p = rcoPct(v, cupo); if (p === null || !v) return '<span class="mu">—</span>';
+  return p > 100 ? '<span class="chip er">Excede · ' + p + ' %</span>' : '<span class="chip ' + (p >= 80 ? 'wa' : 'ok') + '">' + p + ' %</span>'; };
+// Tarjeta de contrato y costo de un establecimiento (para la vista del hospital)
 function rcoEstTabla(T, cod) {
   const g = T.grupos.find(x => x.miembros.some(m => m.cod === cod)); if (!g) return '<p class="mu peq" style="margin:0">Este establecimiento no figura en el contrato ' + esc(T.contrato.id) + ' (libro general, hoja CONTRATO_ALCANCE).</p>';
   const e = T.establecimientos.find(x => x.cod === cod), f0 = T.filas.filter(x => x.grupo === g.grupo).slice(-1)[0] || {};
   const cab = '<p class="peq" style="margin:0 0 8px">' + esc(T.contrato.empresa) + ' · ' + esc(T.contrato.id) + ' · grupo ' + esc(g.grupo) + ' (' + esc(g.servicio) + ') · ' + rcPrecio(f0.precio) + ' por dm³ · cupo del grupo ' + rcNum(f0.cupo) + ' dm³/mes, compartido con ' + (g.miembros.length - 1) + ' establecimiento(s)</p>';
   if (!e) return cab + '<p class="mu peq" style="margin:0">Sin manifiestos cargados desde ' + RES_MES(T.meses[0]) + '. No se puede calcular su volumen ni su costo; no significa que no genere residuos.</p>';
-  let tot = 0;
-  const filas = T.meses.map(m => { const v = e.porMes[m] || 0, p = rcoPrecio(T, g.grupo, m), val = v && p ? v * p : 0; tot += val;
-    return '<tr' + (m === T.hoy.slice(0, 7) ? ' style="opacity:.6"' : '') + '><td><b>' + RES_MES(m) + '</b>' + (m === T.hoy.slice(0, 7) ? ' <span class="mu peq">en curso</span>' : '') + '</td><td>' + (v ? rcNum(v) + ' dm³' : '<span class="mu">sin cargas</span>') + '</td><td>' + rcPrecio(p) + '</td><td>' + (val ? '<b>' + rcPesos(val) + '</b>' : '—') + '</td></tr>'; }).join('');
-  return cab + '<div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th>Volumen Y1</th><th>Precio por dm³</th><th>Valor al precio del contrato</th></tr></thead><tbody>' + filas +
-    '<tr><td><b>Total</b></td><td><b>' + rcNum(e.y1) + ' dm³</b></td><td></td><td><b>' + rcPesos(tot) + '</b></td></tr></tbody></table></div>';
+  const Y1 = e.porMesY1 || {}, Y3 = e.porMesY3 || {}, hoyM = T.hoy.slice(0, 7);
+  let tot = 0, sobre = 0, cerrados = 0;
+  const filas = T.meses.map(m => { const v = rcoTot(e, m), p = rcoPrecio(T, g.grupo, m), cupo = rcoCupo(T, g.grupo, m), val = v && p ? v * p : 0; tot += val;
+    if (m !== hoyM && v) { cerrados++; if (cupo && v > cupo) sobre++; }
+    const n = x => x ? rcNum(x) : '<span class="mu">—</span>';
+    return '<tr' + (m === hoyM ? ' style="opacity:.6"' : '') + '><td><b>' + RES_MES(m) + '</b>' + (m === hoyM ? ' <span class="mu peq">en curso</span>' : '') + '</td><td>' + n(Y1[m]) + '</td><td>' + n(Y3[m]) + '</td><td>' + (v ? '<b>' + rcNum(v) + ' dm³</b>' : '<span class="mu">sin cargas</span>') + '</td><td>' + rcoChip(v, cupo) + '</td><td>' + rcPrecio(p) + '</td><td>' + (val ? '<b>' + rcPesos(val) + '</b>' : '—') + '</td></tr>'; }).join('');
+  const res = cerrados ? '<p class="peq" style="margin:8px 0 0">' + (sobre ? '<span class="chip er">Excede el cupo</span> En ' + sobre + ' de ' + cerrados + ' mes(es) cerrados, este establecimiento solo superó el cupo mensual de todo el grupo (' + rcNum(f0.cupo) + ' dm³).' : '<span class="chip ok">Dentro del cupo</span> Ningún mes cerrado supera, por sí solo, el cupo mensual del grupo. El cupo es compartido: el grupo puede excederse igual si se suman los demás.') + '</p>' : '';
+  return cab + '<div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th>Y1 (dm³)</th><th>Y3 (dm³)</th><th>Total facturable</th><th>% del cupo del grupo</th><th>Precio por dm³</th><th>Valor al precio del contrato</th></tr></thead><tbody>' + filas +
+    '<tr><td><b>Total</b></td><td>' + rcNum(e.y1) + '</td><td>' + rcNum(e.y3 || 0) + '</td><td><b>' + rcNum(e.tot != null ? e.tot : e.y1) + ' dm³</b></td><td></td><td></td><td><b>' + rcPesos(tot) + '</b></td></tr></tbody></table></div>' + res +
+    '<p class="mu peq" style="margin:6px 0 0">Total facturable = Y1 + Y3 (Impeesa factura ambas corrientes por dm³). % del cupo: volumen de este establecimiento sobre el cupo mensual de todo el grupo.</p>';
 }
 async function resCostos(fresco) {
   let T; try { if (!RCO || fresco) cargando('#rescosto', 'Leyendo el contrato…'); T = await rcoDatos(fresco); } catch (e) { return marco('#rescosto', '<div class="aviso error">' + esc(e.message) + '</div>'); }
   const C = T.contrato, est = cod => T.establecimientos.find(x => x.cod === cod);
-  const valor = (cod, gr) => { const e = est(cod); return e ? T.meses.reduce((a, m) => a + (e.porMes[m] || 0) * (rcoPrecio(T, gr, m) || 0), 0) : null; };
-  marco('#rescosto', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos</a></span><h1>Contrato y costos</h1><span class="mu peq">Volumen Y1 de cada establecimiento desde el inicio del contrato, valorizado al precio por dm³ de su grupo. Tocá un establecimiento para ver su detalle mes por mes.</span></div>' +
+  const valor = (cod, gr) => { const e = est(cod); return e ? T.meses.reduce((a, m) => a + rcoTot(e, m) * (rcoPrecio(T, gr, m) || 0), 0) : null; };
+  const hoyM = T.hoy.slice(0, 7), sobre = (e, gr) => T.meses.filter(m => m !== hoyM && rcoCupo(T, gr, m) && rcoTot(e, m) > rcoCupo(T, gr, m)).length, cerr = e => T.meses.filter(m => m !== hoyM && rcoTot(e, m)).length;
+  const celda = (e, gr, m) => { const v = rcoTot(e, m), c = rcoCupo(T, gr, m); if (!v) return '<td><span class="mu">—</span></td>'; const x = c && v > c; return '<td' + (x ? ' style="color:var(--er,#b42318);font-weight:700" title="Supera el cupo mensual del grupo (' + rcNum(c) + ' dm³)"' : '') + '>' + rcNum(v) + (x ? ' ▲' : '') + '</td>'; };
+  marco('#rescosto', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos</a></span><h1>Contrato y costos</h1><span class="mu peq">Volumen facturable (Y1 + Y3, en dm³) de cada establecimiento desde el inicio del contrato, valorizado al precio por dm³ de su grupo. ▲ = ese mes el establecimiento solo supera el cupo de todo el grupo. Tocá un establecimiento para ver su detalle mes por mes.</span></div>' +
     '<div class="filtros"><label class="f">Contrato<select class="c" id="rcC">' + T.contratos.map(k => '<option value="' + esc(k.id) + '"' + (k.id === C.id ? ' selected' : '') + '>' + esc(k.empresa + ' · ' + k.id + ' (' + (k.estado || '') + ')') + '</option>').join('') + '</select></label>' +
     '<a class="link" href="' + esc(T.hojaContratos) + '" target="_blank" rel="noopener">Contratos (planilla) ↗</a><button class="btn sec" id="rcAct">Actualizar</button></div></div>' +
     '<section class="card"><h2>' + esc(C.empresa) + ' · ' + esc(C.id) + '</h2><p class="peq" style="margin:4px 0">' + esc(C.objeto) + '</p><p class="mu peq" style="margin:0">Expediente ' + esc(C.expediente || 's/d') + ' · ' + esc(C.resolucion || 's/d') + ' · vigencia ' + fechaTxt(C.desde) + ' a ' + (C.hasta ? fechaTxt(C.hasta) : 's/d') + (C.prorroga ? ' · ' + esc(C.prorroga) : '') + (C.archivo ? ' · <a class="link" href="' + esc(C.archivo) + '" target="_blank" rel="noopener">Contrato (PDF) ↗</a>' : '') + '</p>' +
       (C.observaciones ? '<p class="mu peq" style="margin:6px 0 0">' + esc(C.observaciones) + '</p>' : '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:10px;margin-top:10px">' + T.grupos.map(g => { const f = T.filas.filter(x => x.grupo === g.grupo).slice(-1)[0] || {};
         return '<div style="border:1px solid var(--ln);border-radius:10px;padding:10px 12px"><b>Grupo ' + esc(g.grupo) + ' · ' + esc(g.servicio) + '</b><div class="peq">' + rcPrecio(f.precio) + '/dm³ · excedente ' + rcPrecio(f.precioExc) + '/dm³ · cupo ' + rcNum(f.cupo) + ' dm³/mes para todo el grupo</div><div class="mu peq">' + g.miembros.length + ' establecimiento(s)</div></div>'; }).join('') + '</div></section>' +
-    T.grupos.map(g => '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Grupo ' + esc(g.grupo) + '</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th>' + T.meses.map(m => '<th>' + RES_MES(m) + '</th>').join('') + '<th>Total Y1</th><th>Valor al precio</th></tr></thead><tbody>' +
+    T.grupos.map(g => '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Grupo ' + esc(g.grupo) + '</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th>' + T.meses.map(m => '<th>' + RES_MES(m) + '</th>').join('') + '<th>Total (Y1 + Y3)</th><th>Meses sobre el cupo</th><th>Valor al precio</th></tr></thead><tbody>' +
       g.miembros.slice().sort((a, b) => (est(b.cod) ? 1 : 0) - (est(a.cod) ? 1 : 0) || a.nombre.localeCompare(b.nombre)).map(m => { const e = est(m.cod);
-        return '<tr class="cl" data-cod="' + esc(m.cod) + '"><td><b>' + esc(m.nombre) + '</b></td>' + (e ? T.meses.map(x => '<td>' + (e.porMes[x] ? rcNum(e.porMes[x]) : '<span class="mu">—</span>') + '</td>').join('') + '<td><b>' + rcNum(e.y1) + ' dm³</b></td><td>' + rcPesos(valor(m.cod, g.grupo)) + '</td>'
-          : '<td colspan="' + (T.meses.length + 2) + '" class="mu peq">Sin manifiestos cargados en el sistema (no significa que no genere residuos)</td>') + '</tr>'; }).join('') + '</tbody></table></div></section>').join('') +
-    '<p class="mu peq">Valor al precio del contrato: dm³ de Y1 de los manifiestos cargados × precio por dm³ del grupo (cláusula TERCERA). El cupo y el excedente (cláusula SÉPTIMA) son de todo el grupo y se facturan en conjunto: no se reparten por establecimiento, y no se pueden calcular mientras haya establecimientos que no cargan sus manifiestos. La factura se controla con la Planilla de Control de Residuos (Anexo I). Los precios y cupos se cambian en el libro general, hoja CONTRATO_GRUPOS.</p>');
+        return '<tr class="cl" data-cod="' + esc(m.cod) + '"><td><b>' + esc(m.nombre) + '</b></td>' + (e ? T.meses.map(x => celda(e, g.grupo, x)).join('') + '<td><b>' + rcNum(e.tot != null ? e.tot : e.y1) + ' dm³</b><div class="mu peq">Y1 ' + rcNum(e.y1) + ' · Y3 ' + rcNum(e.y3 || 0) + (e.enKg ? ' · ' + e.enKg + ' retiro(s) cargado(s) en kg, sin volumen' : '') + '</div></td><td>' + (cerr(e) ? (sobre(e, g.grupo) ? '<span class="chip er">Excede · ' + sobre(e, g.grupo) + ' de ' + cerr(e) + '</span>' : '<span class="chip ok">No excede</span>') : '<span class="mu">—</span>') + '</td><td>' + rcPesos(valor(m.cod, g.grupo)) + '</td>'
+          : '<td colspan="' + (T.meses.length + 3) + '" class="mu peq">Sin manifiestos cargados en el sistema (no significa que no genere residuos)</td>') + '</tr>'; }).join('') + '</tbody></table></div></section>').join('') +
+    '<p class="mu peq">Valor al precio del contrato: dm³ de Y1 + Y3 de los manifiestos cargados (Impeesa factura ambas corrientes) × precio por dm³ del grupo (cláusula TERCERA). «Meses sobre el cupo»: meses cerrados en que ese establecimiento solo superó el cupo mensual de todo el grupo. El cupo y el excedente (cláusula SÉPTIMA) son de todo el grupo y se facturan en conjunto: no se reparten por establecimiento, y no se pueden calcular mientras haya establecimientos que no cargan sus manifiestos. La factura se controla con la Planilla de Control de Residuos (Anexo I). Los precios y cupos se cambian en el libro general, hoja CONTRATO_GRUPOS.</p>');
   $('rcAct').onclick = () => resCostos(true);
   $('rcC').onchange = e => { RCOF.contrato = e.target.value; resCostos(); };
   document.querySelectorAll('#main tr.cl[data-cod]').forEach(tr => tr.onclick = () => location.hash = '#res/' + encodeURIComponent(tr.dataset.cod));

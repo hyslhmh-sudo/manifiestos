@@ -8,7 +8,7 @@
  * Carga inicial: contrato Impeesa S.A. 2026 (Expte. 3466/25 SS, Res. 43/26 SS, desde el 01/07/2026, 6 meses prorrogables).
  * p_res_frecuencias: retiros por establecimiento y sitio (por mes, por año, promedio mensual, días entre retiros) contra la frecuencia del contrato.
  * p_res_costos: costo mensual estimado por grupo desde el inicio del contrato vigente: cupo × precio («saldo según contrato» si no se llega al
- *   cupo, cláusula SÉPTIMA) + excedente × precio del excedente. Solo con lo que cargan los establecimientos (Y1, en dm³: Impeesa factura por dm³).
+ *   cupo, cláusula SÉPTIMA) + excedente × precio del excedente. Volumen facturable: todas las corrientes del manifiesto (Y1 + Y3 y otras) en dm³, como factura Impeesa.
  * Normativa: Ley 24.051 y Dto. 831/93; Ley XI N.º 35 (Código Ambiental del Chubut); contrato y Anexo I.
  */
 const RCT = {
@@ -89,10 +89,10 @@ function rctRetiros_(g, desde) {
   if (n > 0) gm.getRange(6, 1, n, 13).getValues().forEach(r => {
     const cod = porNombre[sinTildes_(r[0])]; if (!cod) return; const f = resFecha_(r[3]); if (!f || f < desde) return;
     const sitio = limpio_(r[1]) || info[cod].nombre, k = cod + '|' + sitio + '|' + limpio_(r[6]) + '|' + f;
-    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, enKg: false };
+    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, otras: 0, enKg: false };
     let cant = Number(String(r[9]).replace(',', '.')) || 0; const uni = sinTildes_(r[10]);
     if (/kg/.test(uni)) { x.enKg = true; return; }   // Impeesa factura por dm³: lo cargado en kg no se suma al volumen
-    if (limpio_(r[7]) === 'Y1') x.y1 += cant; else if (limpio_(r[7]) === 'Y3') x.y3 += cant;
+    const cor = limpio_(r[7]); if (cor === 'Y1') x.y1 += cant; else if (cor === 'Y3') x.y3 += cant; else if (cor) x.otras += cant;
   });
   return { retiros: Object.keys(R).map(k => R[k]), info: info };
 }
@@ -154,17 +154,17 @@ function resCostos_(x) {
   const miembros = {}; grupos.forEach(gr => miembros[gr] = Array.from(new Set(c.alcance.filter(a => a.GRUPO === gr).map(a => a.ESTABLECIMIENTO))));
   const vol = {}, porEst = {};
   L.retiros.forEach(r => { const m = r.fecha.slice(0, 7); if (m > hastaC.slice(0, 7)) return; const u = rctUbicar_([c], r.cod, r.sitio, r.tipo, m); if (!u) return;
-    const k = u.grupo + '|' + m, v = vol[k] = vol[k] || { y1: 0, y3: 0, retiros: 0, enKg: 0, ests: {} }; v.y1 += r.y1; v.y3 += r.y3; v.retiros++; if (r.enKg) v.enKg++; v.ests[r.cod] = 1;
-    const e = porEst[r.cod] = porEst[r.cod] || { cod: r.cod, nombre: (L.info[r.cod] || {}).nombre || r.cod, grupo: u.grupo, porMes: {}, y1: 0 }; e.porMes[m] = (e.porMes[m] || 0) + r.y1; e.y1 += r.y1; });
+    const k = u.grupo + '|' + m, v = vol[k] = vol[k] || { tot: 0, y1: 0, y3: 0, retiros: 0, enKg: 0, ests: {} }; const tt = r.y1 + r.y3 + r.otras; v.tot += tt; v.y1 += r.y1; v.y3 += r.y3; v.retiros++; if (r.enKg) v.enKg++; v.ests[r.cod] = 1;
+    const e = porEst[r.cod] = porEst[r.cod] || { cod: r.cod, nombre: (L.info[r.cod] || {}).nombre || r.cod, grupo: u.grupo, porMes: {}, porMesY1: {}, porMesY3: {}, tot: 0, y1: 0, y3: 0 }; e.porMes[m] = (e.porMes[m] || 0) + tt; e.porMesY1[m] = (e.porMesY1[m] || 0) + r.y1; e.porMesY3[m] = (e.porMesY3[m] || 0) + r.y3; e.tot += tt; e.y1 += r.y1; e.y3 += r.y3; if (r.enKg) e.enKg = (e.enKg || 0) + 1; });
   const filas = [];
   grupos.forEach(gr => meses.forEach(m => {
-    const p = precioDe(gr, m), v = vol[gr + '|' + m] || { y1: 0, y3: 0, retiros: 0, ests: {} }; if (!p) return;
-    const cupo = p.CUPO_DM3_MES, exc = Math.max(0, v.y1 - cupo), costo = cupo * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3;
-    filas.push({ grupo: gr, mes: m, enCurso: m === hoy.slice(0, 7), servicio: p.SERVICIO, cupo: cupo, precio: p.PRECIO_DM3, precioExc: p.PRECIO_EXCEDENTE_DM3, volumen: Math.round(v.y1), y3: Math.round(v.y3), retiros: v.retiros,
-      usoCupo: cupo ? Math.round(1000 * v.y1 / cupo) / 10 : null, excedente: Math.round(exc), costo: Math.round(costo), costoVolumen: Math.round(Math.min(v.y1, cupo) * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3),
-      sinUso: Math.round(Math.max(0, cupo - v.y1) * p.PRECIO_DM3), costoDm3Real: v.y1 ? Math.round(costo / v.y1) : null, cargan: Object.keys(v.ests).length, miembros: miembros[gr].length, enKg: v.enKg || 0 });
+    const p = precioDe(gr, m), v = vol[gr + '|' + m] || { tot: 0, y1: 0, y3: 0, retiros: 0, ests: {} }; if (!p) return;
+    const cupo = p.CUPO_DM3_MES, exc = Math.max(0, v.tot - cupo), costo = cupo * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3;
+    filas.push({ grupo: gr, mes: m, enCurso: m === hoy.slice(0, 7), servicio: p.SERVICIO, cupo: cupo, precio: p.PRECIO_DM3, precioExc: p.PRECIO_EXCEDENTE_DM3, volumen: Math.round(v.tot), y1: Math.round(v.y1), y3: Math.round(v.y3), retiros: v.retiros,
+      usoCupo: cupo ? Math.round(1000 * v.tot / cupo) / 10 : null, excedente: Math.round(exc), costo: Math.round(costo), costoVolumen: Math.round(Math.min(v.tot, cupo) * p.PRECIO_DM3 + exc * p.PRECIO_EXCEDENTE_DM3),
+      sinUso: Math.round(Math.max(0, cupo - v.tot) * p.PRECIO_DM3), costoDm3Real: v.tot ? Math.round(costo / v.tot) : null, cargan: Object.keys(v.ests).length, miembros: miembros[gr].length, enKg: v.enKg || 0 });
   }));
-  const ests = Object.keys(porEst).map(k => { const e = porEst[k], p = precioDe(e.grupo, hastaC.slice(0, 7)); e.y1 = Math.round(e.y1); e.valorPrecio = p ? Math.round(e.y1 * p.PRECIO_DM3) : null; return e; }).sort((a, b) => b.y1 - a.y1);
+  const ests = Object.keys(porEst).map(k => { const e = porEst[k], p = precioDe(e.grupo, hastaC.slice(0, 7)); e.y1 = Math.round(e.y1); e.y3 = Math.round(e.y3); e.tot = Math.round(e.tot); e.valorPrecio = p ? Math.round(e.tot * p.PRECIO_DM3) : null; return e; }).sort((a, b) => b.tot - a.tot);
   return { ok: true, hoy: hoy, contrato: { id: c.ID, empresa: c.EMPRESA, objeto: c.OBJETO, expediente: c.EXPEDIENTE, resolucion: c.RESOLUCION, desde: c.DESDE, hasta: c.HASTA, prorroga: c.PRORROGA, archivo: c.ARCHIVO, estado: c.ESTADO, observaciones: c.OBSERVACIONES },
     contratos: C.map(k => ({ id: k.ID, empresa: k.EMPRESA, desde: k.DESDE, hasta: k.HASTA, estado: k.ESTADO })), grupos: grupos.map(gr => ({ grupo: gr, servicio: (precioDe(gr, hastaC.slice(0, 7)) || {}).SERVICIO || '', miembros: miembros[gr].map(cd => ({ cod: cd, nombre: (L.info[cd] || {}).nombre || cd })) })),
     meses: meses, filas: filas, establecimientos: ests, hojaContratos: K.url, actualizado: new Date().toISOString() };
