@@ -1,6 +1,6 @@
 // Portal HyS · Estado del establecimiento (ficha): matriz urgencia × gravedad y vistas por tema
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero) y del resumen (p_resumen), filtrados por establecimiento.
+// No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero), del resumen (p_resumen), de siniestros (p_sin_lista) y del módulo 8 (m8_datos), filtrados por establecimiento.
 // Cuadrantes (mismo vocabulario que los plazos técnicos de los informes): Actuar ya (urgente y grave), Resolver rápido (urgente y leve),
 // Planificar (no urgente y grave), Vigilar (no urgente y leve). Las reglas están en eeItems().
 let EE = { vista: 'matriz' };
@@ -68,6 +68,28 @@ function eeItems(cod, f) {
   });
   // Documentos propios del establecimiento
   de((T.docsEst || {}).avisos).forEach(d => add('Documentos', d.estado === 'vencido', false, (d.codigo || 'Documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), d.titulo || '', '#docest/' + encodeURIComponent(cod)));
+  // Personal y RAR: siniestros (4 · Personal y RAR › Siniestros, acción p_sin_lista). Se leen aparte: si todavía no llegaron, no suman.
+  const hace = d => d ? Math.max(0, Math.floor((Date.now() - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 864e5)) : 0;
+  const SL = typeof SINP !== 'undefined' && SINP && SINP.lista ? SINP.lista : [];
+  SL.filter(s => s.est === cod || (f.nombre && s.est === f.nombre)).forEach(s => {
+    const ir = '#sin/' + encodeURIComponent(s.id);
+    if (s.estadoHys === 'Pendiente de análisis') { const d = hace(s.fecha); add('Personal y RAR', d > 15, true, 'Investigación de siniestro pendiente', (s.nro || '') + ' · ' + (s.tipo || '') + ' · hace ' + d + ' días', ir); }
+    if ((s.avisos || []).length) add('Personal y RAR', true, false, 'Siniestro con avisos', (s.nro || '') + ' · ' + s.avisos.join(' · '), ir);
+    if (s.estado === 'En ILT') add('Personal y RAR', false, false, 'Persona en ILT (con baja)', (s.nro || '') + (s.dias ? ' · ' + s.dias + ' días de baja' : ''), ir);
+  });
+  // Infraestructura: hallazgos abiertos del módulo 8, con la misma regla que las acciones de los otros módulos
+  if (typeof M8 !== 'undefined' && M8 && M8.ok) {
+    const estDe = {}; (M8.relevamientos || []).forEach(x => estDe[x.id] = x.est || ((M8.servicios || []).find(v => v.id === x.servicio) || {}).est);
+    const g8 = {};
+    (M8.hallazgos || []).filter(h => !/cerr|cumpl|descart|resuelto/i.test(h.estado || '') && estDe[h.rel] === cod).forEach(h => {
+      const venc = !!h.limite && h.limite < hoy, ay = /actuar/i.test(h.prioridad || ''), pronto = !venc && h.limite && h.limite <= sem;
+      const urg = venc || ay || pronto, grave = venc ? (ay || /resolver/i.test(h.prioridad || '') || !h.prioridad) : (ay || /resolver/i.test(h.prioridad || ''));
+      const k = eeCuad(urg, grave) + '|' + (venc ? 'v' : pronto ? 'p' : 'a'); (g8[k] = g8[k] || []).push(h);
+    });
+    Object.keys(g8).forEach(k => { const [cuad, tipo] = k.split('|'), l = g8[k];
+      L.push({ tema: 'Infraestructura', cuad: cuad, texto: l.length + ' hallazgo(s) ' + (tipo === 'v' ? 'vencido(s)' : tipo === 'p' ? 'que vencen en 7 días' : 'abierto(s)') + ' del módulo 8',
+        detalle: l.slice(0, 2).map(h => [h.servicio, h.item || h.cod].filter(Boolean).join(': ')).join(' · ') + (l.length > 2 ? ' · …' : ''), ir: '#m8plan' }); });
+  }
   return L;
 }
 
@@ -79,7 +101,17 @@ async function estadoEst(cod) {
     try { const r = await api('p_tablero', {}, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {}
     if (!$('fEstado')) return;   // se cambió de pantalla mientras leía
   }
-  eeDibujar(cod);
+  EE.cod = cod; eeDibujar(cod);
+  eeExtras(cod, false);
+}
+// Siniestros y módulo 8 se leen aparte (no frenan la matriz): al llegar, se redibuja si la ficha sigue abierta
+async function eeExtras(cod, fresco) {
+  const pedir = [];
+  if (fresco || typeof SINP === 'undefined' || !SINP) pedir.push(api('p_sin_lista', {}, 120000).then(r => { if (r && r.ok) SINP = r; }).catch(() => {}));
+  if (typeof m8url === 'function' && m8url() && (fresco || typeof M8 === 'undefined' || !M8)) pedir.push(m8api('m8_datos').then(d => { if (d && d.ok) M8 = d; }).catch(() => {}));
+  if (!pedir.length) return;
+  EE.leyendo = true; await Promise.all(pedir); EE.leyendo = false;
+  if ($('fEstado') && EE.cod === cod) eeDibujar(cod);
 }
 
 function eeDibujar(cod) {
@@ -98,6 +130,9 @@ function eeDibujar(cod) {
   const btn = (h, t) => '<a class="btn sec" href="' + esc(h) + '">' + t + '</a>';
   const ce = encodeURIComponent(cod);
   const dato = (k, v) => '<dt>' + k + '</dt><dd>' + v + '</dd>';
+  const sinE = typeof SINP !== 'undefined' && SINP && SINP.lista ? SINP.lista.filter(x => x.est === cod || (f.nombre && x.est === f.nombre)) : null;
+  let m8E = null; if (typeof M8 !== 'undefined' && M8 && M8.ok) { const estDe = {}; (M8.relevamientos || []).forEach(x => estDe[x.id] = x.est || ((M8.servicios || []).find(v => v.id === x.servicio) || {}).est);
+    m8E = (M8.hallazgos || []).filter(h => !/cerr|cumpl|descart|resuelto/i.test(h.estado || '') && estDe[h.rel] === cod); }
   let cuerpo;
   if (V === 'matriz') cuerpo = matriz(L) + (L.length ? '' : '<p class="mu peq" style="margin-top:8px">Sin temas pendientes con los datos cargados. Si el establecimiento todavía no carga datos en el sistema, los cuadrantes quedan vacíos aunque haya problemas: revisá cada tema.</p>');
   else {
@@ -111,11 +146,11 @@ function eeDibujar(cod) {
         '<button class="btn sec" id="eeMi">Ver casos de plagas</button>' + btn('#plagas', 'Tablero de plagas') + btn('#plgdiag', 'Diagnóstico de plagas')],
       'Cocina': ['', btn('#cocper/' + ce, 'Personas de cocina') + btn('#cocdiag/' + ce, 'Relevamiento BPM / HACCP')],
       'Documentos': ['', btn('#docest/' + ce, 'Documentos propios') + btn('#notas', 'Notas enviadas y recibidas')],
-      'Personal y RAR': ['<dl class="datos">' + dato('Personal en la base', f.trabajadores == null ? 's/d' : String(f.trabajadores)) + dato('Capacitados / activos', f.activos ? (f.capacitados || 0) + ' de ' + f.activos : 's/d') + '</dl>',
+      'Personal y RAR': ['<dl class="datos">' + (sinE ? dato('Siniestros abiertos', String(sinE.filter(x => x.abierto).length)) + dato('En ILT hoy', String(sinE.filter(x => x.estado === 'En ILT').length)) + dato('Investigación pendiente', String(sinE.filter(x => x.estadoHys === 'Pendiente de análisis').length)) : dato('Siniestros', EE.leyendo ? 'leyendo…' : 's/d')) + dato('Personal en la base', f.trabajadores == null ? 's/d' : String(f.trabajadores)) + dato('Capacitados / activos', f.activos ? (f.capacitados || 0) + ' de ' + f.activos : 's/d') + '</dl>',
         btn('#trab/' + ce, 'Personas') + btn('#sin', 'Siniestros') + btn('#nte', 'NTE · nómina de expuestos')],
-      'Infraestructura': ['', btn('#m8', 'Servicios e infraestructura')]
+      'Infraestructura': [m8E ? '<dl class="datos">' + dato('Hallazgos abiertos', String(m8E.length)) + dato('Vencidos', String(m8E.filter(h => h.limite && h.limite < new Date().toISOString().slice(0, 10)).length)) + '</dl>' : '<p class="mu peq">' + (EE.leyendo ? 'Leyendo el módulo 8…' : 'Sin datos del módulo 8.') + '</p>', btn('#m8', 'Servicios e infraestructura') + btn('#m8plan', 'Hallazgos y plan')]
     }[V] || ['', ''];
-    const sinReglas = V === 'Personal y RAR' || V === 'Infraestructura' ? '<p class="mu peq">Este tema todavía no suma avisos a la matriz: se consulta en su pantalla.</p>' : '';
+    const sinReglas = EE.leyendo && (V === 'Personal y RAR' || V === 'Infraestructura') ? '<p class="mu peq">Leyendo siniestros y hallazgos del módulo 8…</p>' : '';
     cuerpo = '<div class="ee-v"><div>' + matriz(lt) + sinReglas + '</div>' +
       '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">' + esc(V) + '</h3>' + extra[0] + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + extra[1] + '</div></section></div>';
   }
@@ -125,7 +160,7 @@ function eeDibujar(cod) {
     tabs + cuerpo;
   box.querySelectorAll('[data-ee]').forEach(b => b.onclick = () => { EE.vista = b.dataset.ee; eeDibujar(cod); });
   $('eeSel').onchange = e => { if (e.target.value && e.target.value !== cod) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
-  $('eeAct').onclick = async () => { box.querySelector('h2').textContent = 'Actualizando…'; try { const r = await api('p_tablero', { fresco: true }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {} eeDibujar(cod); };
+  $('eeAct').onclick = async () => { box.querySelector('h2').textContent = 'Actualizando…'; try { const r = await api('p_tablero', { fresco: true }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {} eeDibujar(cod); eeExtras(cod, true); };
   if ($('eeReg')) $('eeReg').onclick = () => { const s = $('fReg'); if (s) { fichaReg(cod); s.scrollIntoView({ block: 'start' }); } };
   if ($('eeMi')) $('eeMi').onclick = () => { const s = $('fMi'); if (s) { fichaMi(cod); s.scrollIntoView({ block: 'start' }); } };
 }
