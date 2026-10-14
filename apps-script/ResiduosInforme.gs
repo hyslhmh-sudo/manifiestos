@@ -12,7 +12,7 @@
  * Entrada: Portal.gs › case 'p_res_inf_opciones' y 'p_res_informe'.
  */
 const RINF = {
-  LOGO_ENC: '1xuFHOjKMz2f5mLhFVEc7ZOhnjH8-8_Uy',   // logo HZT / HMH (encabezado)
+  MODELO: '1MDc2eRXqj37O-nmi5HrYHxXfyuo16E4tIMx8b6NTyOs',   // MODELO · Informe técnico HySL: encabezado con logos HZT/HMH y pie (código, servicio, logo HySL, «Página X de Y»)
   LOGO_PIE: '1DnztPPclcsCNA23DDlAF-90Uchf6QdzN',   // logo de HySL («Hospitales más seguros para las personas»)
   TRELEW: ['HZT', 'HMH'],                          // con estos, paleta azul y logo HZT/HMH; con otros, colores de la Secretaría de Salud
   SS: { AZUL: '#21708C', ACENTO: '#FF682C', TEXTO: '#343A40' },
@@ -103,7 +103,10 @@ function resInfDocumento_(x, R) {
   const notas = [], yaNota = {}, nota = (k, t) => { if (yaNota[k]) return '[[NOTA' + yaNota[k] + ']]'; notas.push(t); yaNota[k] = notas.length; return '[[NOTA' + notas.length + ']]'; };
   let doc;
   try {
-    doc = DocumentApp.create(titulo); DriveApp.getFileById(doc.getId()).moveTo(carpeta);
+    // Se parte del modelo de informe técnico (encabezado y pie institucionales) y se reemplaza el cuerpo
+    let deModelo = true;
+    try { doc = DocumentApp.openById(DriveApp.getFileById(RINF.MODELO).makeCopy(titulo, carpeta).getId()); doc.getBody().clear(); }
+    catch (e) { deModelo = false; doc = DocumentApp.create(titulo); DriveApp.getFileById(doc.getId()).moveTo(carpeta); }
     const b = doc.getBody(); b.setPageWidth(595.3).setPageHeight(841.9).setMarginTop(56).setMarginBottom(56).setMarginLeft(62).setMarginRight(57);
     const AT = DocumentApp.Attribute, IZQ = DocumentApp.HorizontalAlignment.LEFT;
     const estilo = o => { const a = {}; a[AT.FONT_FAMILY] = INF2.FUENTE; a[AT.FONT_SIZE] = o.tam || 10.5; a[AT.FOREGROUND_COLOR] = o.color || COL.TEXTO; a[AT.BOLD] = !!o.neg; a[AT.ITALIC] = !!o.it; return a; };
@@ -162,12 +165,13 @@ function resInfDocumento_(x, R) {
     H2('3.1 Retiros por sitio');
     TAB([['Establecimiento · sitio', 'Frecuencia pactada', 'Esperados', 'Realizados', 'Cumplimiento', 'Intervalo prom. / máx. (días)', 'Último retiro']].concat(R.sitios.map(s =>
       [s.nombre === s.sitio ? s.sitio : (R.establecimientos.length > 1 ? s.nombre + ' · ' : '') + s.sitio, s.frecuencia + (/deduc/i.test(s.origen) ? ' (deducción)' : ''), s.esperados == null ? 's/d' : num(s.esperados), num(s.retiros), pc(s.cumplimiento),
-        s.intervaloProm == null ? '—' : num(s.intervaloProm) + ' / ' + num(s.intervaloMax), s.ultimo ? fTxt(s.ultimo) : 'Sin retiros'])), [120, 80, 50, 50, 55, 65, 55],
+        s.intervaloProm == null ? '—' : num(s.intervaloProm) + ' / ' + num(s.intervaloMax), s.ultimo ? fTxt(s.ultimo) : 'Sin retiros'])), [105, 75, 57, 57, 62, 64, 55],
       R.sitios.map((s, i) => s.cumplimiento != null && s.cumplimiento < 80 || !s.retiros ? i + 1 : null).filter(i => i));
     if (R.meses.length > 1) {
       H2('3.2 Retiros por mes');
       const ms = R.meses.slice(-12);
-      TAB([['Sitio'].concat(ms.map(m => m.slice(5, 7) + '/' + m.slice(2, 4)))].concat(R.sitios.map(s => [s.sitio].concat(ms.map(m => s.porMes[m] ? String(s.porMes[m]) : '—')))), [110].concat(ms.map(() => Math.floor(360 / ms.length))));
+      const MC = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      TAB([['Sitio'].concat(ms.map(m => MC[Number(m.slice(5, 7)) - 1] + (ms.some(k => k.slice(0, 4) !== ms[0].slice(0, 4)) ? ' ' + m.slice(2, 4) : '')))].concat(R.sitios.map(s => [s.sitio].concat(ms.map(m => s.porMes[m] ? String(s.porMes[m]) : '—')))), [110].concat(ms.map(() => Math.floor(360 / ms.length))));
       if (R.meses.length > 12) G('Se muestran los últimos 12 meses del período; el detalle completo está en el anexo.');
     }
 
@@ -218,8 +222,9 @@ function resInfDocumento_(x, R) {
     }
 
     // ---------------- ENCABEZADO Y PIE
-    if (trelew) { try { const h = doc.addHeader(), hp = h.getParagraphs()[0]; hp.setAlignment(IZQ); const im = hp.appendInlineImage(DriveApp.getFileById(RINF.LOGO_ENC).getBlob()), w = 170; im.setHeight(Math.round(im.getHeight() * w / im.getWidth())); im.setWidth(w); } catch (e) {} }
-    try { const pie = doc.addFooter(), p0 = pie.getParagraphs()[0]; p0.setText(codigo); p0.setAttributes(estilo({ tam: 7.5, color: COL.ACENTO })); p0.setAlignment(IZQ);
+    if (deModelo) { try { doc.getFooter().replaceText('\\{\\{CODIGO\\}\\}', codigo); } catch (e) {}
+      if (!trelew) { try { doc.getHeader().clear(); } catch (e) {} } }   // el logo HZT/HMH del modelo solo va en informes de la red Trelew
+    else try { const pie = doc.addFooter(), p0 = pie.getParagraphs()[0]; p0.setText(codigo); p0.setAttributes(estilo({ tam: 7.5, color: COL.ACENTO })); p0.setAlignment(IZQ);
       const pl = pie.appendParagraph(''); pl.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pl.appendInlineImage(DriveApp.getFileById(RINF.LOGO_PIE).getBlob()), w = 260; img.setHeight(Math.round(img.getHeight() * w / img.getWidth())); img.setWidth(w); } catch (e) {}
     doc.saveAndClose();
   } catch (err) { try { if (doc) DriveApp.getFileById(doc.getId()).setTrashed(true); } catch (e) {} throw err; }
