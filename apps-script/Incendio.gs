@@ -17,7 +17,7 @@
  * pero la alarma recién aparece a los 3 meses, pedido de Belén 14/10/2026).
  * Carga inicial: importarExtintoresIncendio() lee la planilla «Inventario de Extintores» de Belén (INC.FUENTE) y no pisa lo ya cargado.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL). No envía correos.
- * Instalación: ejecutar una vez construirModuloIncendio() y después importarExtintoresIncendio().
+ * Instalación: ejecutar una vez construirModuloIncendio() (la primera vez también importa la planilla; importarExtintoresIncendio() se puede volver a ejecutar sin duplicar).
  */
 const INC = {
   SIS: '16AIJZcmxG9EBM3-D-J4vRtvruHK9DVrA',   // SISTEMA HyS
@@ -75,6 +75,7 @@ function construirModuloIncendio() {
     sh.getRange(2, 1, INC_AYUDA.length - 1, 1).setFontWeight('bold').setFontColor('#0D313F'); sh.setColumnWidth(1, 220); sh.setColumnWidth(2, 760); sh.getRange(1, 2, INC_AYUDA.length, 1).setWrap(true); });
   const s1 = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1'); if (s1 && ss.getSheets().length > 1) ss.deleteSheet(s1);
   try { ss.getSheets().forEach(sh => sh.getDataRange().setFontFamily('Plus Jakarta Sans')); } catch (e) {}
+  if (ss.getSheetByName('EXTINTORES').getLastRow() < 6) { try { importarExtintoresIncendio(); } catch (e) { Logger.log('No se pudo importar: ' + e.message); } }   // la primera vez trae la planilla de Belén
   Logger.log('Módulo 10 listo: ' + ss.getUrl() + ' · carpeta ' + dir.getUrl());
   return { ok: true, libro: ss.getUrl(), carpeta: dir.getUrl() };
 }
