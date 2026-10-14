@@ -62,7 +62,7 @@ function resInfCalcular_(x) {
     const sinRetiroFinal = R.length ? dif(R[R.length - 1].fecha, hasta) : null;
     if (R.length && sinRetiroFinal > lim) fuera.push({ desde: R[R.length - 1].fecha, nrosDesde: R[R.length - 1].nros, hasta: '', nrosHasta: [], dias: sinRetiroFinal, abierto: true });
     const gaps = R.slice(1).map(d => d.desdeAnt), cuenta = {}; R.forEach(d => cuenta[d.fecha.slice(0, 7)] = (cuenta[d.fecha.slice(0, 7)] || 0) + 1);
-    return { cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, origen: origen, limite: lim, esperados: esperados,
+    return { cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, noAplica: /no corresponde|no aplica/i.test(sinTildes_(frec)), origen: origen, limite: lim, esperados: esperados,
       retiros: R.length, manifiestos: R.reduce((a, d) => a + d.nros.length, 0), cumplimiento: esperados ? Math.round(100 * R.length / esperados) : null,
       intervaloProm: gaps.length ? Math.round(10 * gaps.reduce((a, b) => a + b, 0) / gaps.length) / 10 : null, intervaloMax: gaps.length ? Math.max.apply(null, gaps) : null,
       primero: R.length ? R[0].fecha : '', ultimo: R.length ? R[R.length - 1].fecha : '', sinRetiroFinal: sinRetiroFinal, fuera: fuera, porMes: cuenta,
@@ -121,7 +121,7 @@ function resInfDocumento_(x, R) {
     const COMP = nota('comp', 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo y Decreto N.º 351/79; Resolución SRT N.º 905/2015, Anexo I (funciones del Servicio de Higiene y Seguridad en el Trabajo).');
     const MANI = nota('mani', 'Ley N.º 24.051 de Residuos Peligrosos, arts. 12 y 13 (manifiesto), y Decreto N.º 831/93; Ley XI N.º 35 (Código Ambiental de la Provincia del Chubut).');
     const ANEXO = nota('anexo', 'Contrato vigente de recolección, tratamiento y disposición final de residuos patogénicos, Anexo I «Forma de ejecución de los trabajos · De las frecuencias de recolección». Cuando el contrato no fija la frecuencia de un sitio, se usa la frecuencia registrada en BASE COMÚN › SITIOS.');
-    const T = R.totales, conEsp = R.sitios.filter(s => s.esperados), bajos = R.sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80), sinRet = R.sitios.filter(s => !s.retiros);
+    const T = R.totales, conEsp = R.sitios.filter(s => s.esperados), bajos = R.sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80), sinRet = R.sitios.filter(s => !s.retiros && !s.noAplica);
 
     // ---------------- PORTADA
     const enc = b.getParagraphs()[0]; enc.setText(trelew ? 'Hospital Zonal Trelew «Dr. Adolfo Margara» · Hospital María Humphreys' : 'Secretaría de Salud de la Provincia del Chubut'); enc.setAttributes(estilo({ tam: 11, neg: true, color: COL.AZUL })); enc.setAlignment(IZQ);
@@ -132,7 +132,7 @@ function resInfDocumento_(x, R) {
     TAB([['Informe N.º', codigo], ['Período', periodoTxt + (R.hastaPedido > R.hasta ? ' (datos hasta el ' + fTxt(R.hasta) + ')' : '')], ['Establecimientos y sitios', alcance],
       ['Destinatario', [x.destinatario, x.cargo].filter(Boolean).join(' · ') || 's/d (revisar)'], ['Fecha del informe', fTxt(R.hoy)],
       ['Elaboró', 'Belén Pellegrini · Licenciada en Higiene, Seguridad y Medio Ambiente del Trabajo, M.P. LCOHSECH0383']], [150, 320]);
-    G('Borrador generado por el sistema HyS (versión 0). Los textos en color e itálica son guía: revisarlos y borrarlos antes de firmar. Números de página: Insertar › Números de página.');
+    G('Borrador generado por el sistema HyS (versión 0). Los textos en color e itálica son guía: revisarlos y borrarlos antes de firmar.' + (deModelo ? '' : ' Números de página: Insertar › Números de página.'));
     b.appendPageBreak();
     // ---------------- ÍNDICE
     H1('Índice'); G('Para tener el índice con números de página: Insertar › Índice, y borrar esta lista.');
@@ -164,9 +164,9 @@ function resInfDocumento_(x, R) {
     H1('3. Descripción de los hechos');
     H2('3.1 Retiros por sitio');
     TAB([['Establecimiento · sitio', 'Frecuencia pactada', 'Esperados', 'Realizados', 'Cumplimiento', 'Intervalo prom. / máx. (días)', 'Último retiro']].concat(R.sitios.map(s =>
-      [s.nombre === s.sitio ? s.sitio : (R.establecimientos.length > 1 ? s.nombre + ' · ' : '') + s.sitio, s.frecuencia + (/deduc/i.test(s.origen) ? ' (deducción)' : ''), s.esperados == null ? 's/d' : num(s.esperados), num(s.retiros), pc(s.cumplimiento),
+      [s.nombre === s.sitio ? s.sitio : (R.establecimientos.length > 1 ? s.cod + ' · ' : '') + s.sitio, s.frecuencia + (/deduc/i.test(s.origen) ? ' (deducción)' : ''), s.esperados == null ? 's/d' : num(s.esperados), num(s.retiros), pc(s.cumplimiento),
         s.intervaloProm == null ? '—' : num(s.intervaloProm) + ' / ' + num(s.intervaloMax), s.ultimo ? fTxt(s.ultimo) : 'Sin retiros'])), [105, 75, 57, 57, 62, 64, 55],
-      R.sitios.map((s, i) => s.cumplimiento != null && s.cumplimiento < 80 || !s.retiros ? i + 1 : null).filter(i => i));
+      R.sitios.map((s, i) => s.cumplimiento != null && s.cumplimiento < 80 || (!s.retiros && !s.noAplica) ? i + 1 : null).filter(i => i));
     if (R.meses.length > 1) {
       H2('3.2 Retiros por mes');
       const ms = R.meses.slice(-12);
@@ -180,13 +180,13 @@ function resInfDocumento_(x, R) {
     H2('4.1 Cumplimiento de la frecuencia');
     if (conEsp.length) P_('De los ' + conEsp.length + ' sitios con frecuencia definida, ' + conEsp.filter(s => s.cumplimiento >= 80).length + ' alcanzaron al menos el 80 % de los retiros esperados y ' + bajos.length + ' quedaron por debajo. ' + (bajos.length ? 'Los de menor cumplimiento son ' + bajos.slice().sort((a, b) => a.cumplimiento - b.cumplimiento).slice(0, 5).map(s => s.sitio + ' (' + num(s.retiros) + ' de ' + num(s.esperados) + ')').join(', ') + '.' : ''));
     else P_('Ningún sitio incluido tiene una frecuencia pactada que permita calcular el cumplimiento.');
-    const sd = R.sitios.filter(s => !s.esperados); if (sd.length) P_('Sin frecuencia definida: ' + sd.map(s => s.sitio).join(', ') + '. Para estos sitios se informan solo los retiros realizados.');
+    const sd = R.sitios.filter(s => !s.esperados && !s.noAplica), na = R.sitios.filter(s => s.noAplica); if (na.length) P_('Sin retiro por la empresa (frecuencia «no corresponde»): ' + na.map(s => s.sitio).join(', ') + '.'); if (sd.length) P_('Sin frecuencia definida: ' + sd.map(s => s.sitio).join(', ') + '. Para estos sitios se informan solo los retiros realizados.');
     H2('4.2 Intervalos mayores que el admisible');
     const F = []; R.sitios.forEach(s => s.fuera.forEach(f => F.push([s.sitio, fTxt(f.desde) + (f.nrosDesde.length ? ' (N.º ' + f.nrosDesde.join(', ') + ')' : ''), f.abierto ? 'Sin retiro hasta el ' + fTxt(R.hasta) : fTxt(f.hasta) + (f.nrosHasta.length ? ' (N.º ' + f.nrosHasta.join(', ') + ')' : ''), String(f.dias), String(s.limite)])));
     if (F.length) { P_('Cada fila muestra el retiro anterior y el siguiente, con sus números de manifiesto, y los días transcurridos:'); TAB([['Sitio', 'Retiro anterior', 'Retiro siguiente', 'Días', 'Admisible']].concat(F), [100, 120, 135, 45, 55]); }
     else P_('No se registraron intervalos mayores que el admisible.');
     H2('4.3 Sitios sin retiros en el período');
-    P_(sinRet.length ? sinRet.map(s => s.sitio + (R.establecimientos.length > 1 ? ' (' + s.nombre + ')' : '')).join(', ') + '. Puede tratarse de falta de retiro o de manifiestos no cargados: corresponde verificarlo con el establecimiento.' : 'Todos los sitios incluidos registran retiros en el período.');
+    P_(sinRet.length ? sinRet.map(s => s.sitio + (R.establecimientos.length > 1 ? ' (' + s.cod + ')' : '')).join(', ') + '. Puede tratarse de falta de retiro o de manifiestos no cargados: corresponde verificarlo con el establecimiento.' : 'Todos los sitios incluidos registran retiros en el período.');
 
     // ---------------- 5. CONCLUSIÓN
     H1('5. Conclusión');
