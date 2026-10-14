@@ -55,7 +55,9 @@ function portalAccion_(d) {
     case 'p_bib_cambiar': return bibCambiar_(x);
     case 'p_registros': return regListar_(limpio_(x.cod), true, 24);   // Registros.gs: todo lo cargado, sin plazo para Higiene y Seguridad
     case 'p_anular': return conLock_(() => regAnular_(limpio_(x.cod), x, true));
-    case 'p_mi': return miTablero_(limpio_(x.cod), { portal: true });   // agua, plagas y documentos de un establecimiento (Establecimiento.gs)
+    case 'p_mi': return miTablero_(limpio_(x.cod), { portal: true });
+    case 'p_reservorio': return conLock_(() => miGuardarInv_(limpio_(x.cod), 'RESERVORIOS', 'CODIGO_TANQUE', /cisterna/i.test(x.TIPO) ? 'C' : 'T', Object.assign({}, x, { quien: 'Portal HyS' })));   // tanques desde la ficha (14.52)
+    case 'p_punto': return conLock_(() => miGuardarInv_(limpio_(x.cod), 'PUNTOS_MUESTREO', 'CODIGO_PUNTO', 'P', Object.assign({}, x, { quien: 'Portal HyS' })));   // canillas desde la ficha   // agua, plagas y documentos de un establecimiento (Establecimiento.gs)
     case 'p_ficha': return pFicha_(x.cod);
     case 'p_trab': return pTrab_(x);
     case 'p_trab_guardar': return conLock_(() => pTrabGuardar_(x));
