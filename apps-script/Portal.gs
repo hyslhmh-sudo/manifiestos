@@ -20,11 +20,13 @@ function cacheGet_(k) {
 }
 function pcGen_() { const c = CacheService.getScriptCache(); let g = c.get('pc_gen'); if (!g) { g = String(Date.now()); c.put('pc_gen', g, 21600); } return g; }
 function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Date.now()), 21600); } catch (e) {} }
-const PC_LEER = ['p_ficha', 'p_mi', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
+// Clave de la caché: misma acción y mismos datos (sin «fresco», en orden) = misma respuesta.
+function pcClave_(accion, x) { const o = {}; Object.keys(x || {}).filter(k => k !== 'fresco').sort().forEach(k => o[k] = x[k]); return 'pc|' + pcGen_() + '|' + accion + '|' + JSON.stringify(o); }
+const PC_LEER = ['p_ficha', 'p_mi', 'p_res_tablero', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
 const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op)$/;
 function portal_(d) {
   if (!esMaestra_(d.clave)) return { ok: false, error: 'clave', mensaje: 'La clave de Higiene y Seguridad no es correcta.' };
-  const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? 'pc|' + pcGen_() + '|' + d.accion + '|' + JSON.stringify(x0) : '';
+  const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? pcClave_(d.accion, x0) : '';
   if (usaCache) { const c = cacheGet_(kc); if (c) return c; }
   const t0 = Date.now(), r = portalAccion_(d);
   if (usaCache && r && r.ok !== false) cachePut_(kc, r, 900);
@@ -600,6 +602,32 @@ function actualizarTableroControl() {   // tablero de control
 }
 function actualizarTableroDiagnostico() {
   try { if (PropertiesService.getScriptProperties().getProperty('DIAG_RES_ID')) generarTableroDiagnostico(); } catch (e) { Logger.log(e); }
+}
+// 14.51 · Precalentado: deja calculadas las pantallas pesadas del portal antes de que se abran (7 h y 13 h).
+// Quedan guardadas hasta 6 horas o hasta que alguien cargue algo (en ese caso se recalculan al abrirlas).
+// Establecimientos: propiedad del script PRECALENTAR_EST (códigos separados por coma); si no está, HMH, HZT y HSST.
+function precalentarPortal() {
+  const t0 = Date.now(), c = CacheService.getScriptCache(), g = pcGen_(), hechos = [];
+  c.put('pc_gen', g, 21600);   // que la generación dure lo mismo que lo precalculado
+  const ests = String(PropertiesService.getScriptProperties().getProperty('PRECALENTAR_EST') || 'HMH,HZT,HSST').split(',').map(x => x.trim()).filter(String);
+  const lista = [['p_tablero', {}], ['p_res_tablero', {}]];
+  ests.forEach(e => { lista.push(['p_ficha', { cod: e }]); lista.push(['p_mi', { cod: e }]); });
+  ests.forEach(e => { lista.push(['p_rad_detalle', { cod: e }]); lista.push(['p_inc_detalle', { cod: e }]); });
+  lista.push(['p_rgrl_datos', {}], ['p_res_inf_opciones', {}], ['p_coc_tablero', {}]);
+  for (const [a, x] of lista) {
+    if (Date.now() - t0 > 270000) break;   // margen ante el límite de 6 minutos de Google
+    try { const t = Date.now(), r = portalAccion_({ accion: a, datos: x });
+      if (r && r.ok !== false && PC_LEER.indexOf(a) >= 0) cachePut_(pcClave_(a, x), r, 21600);
+      hechos.push(a + (x.cod ? ' ' + x.cod : '') + ' ' + Math.round((Date.now() - t) / 100) / 10 + ' s'); } catch (e) { hechos.push(a + ' error: ' + e.message); }
+  }
+  Logger.log('Precalentado (' + Math.round((Date.now() - t0) / 1000) + ' s): ' + hechos.join(' · '));
+  return hechos;
+}
+function instalarPrecalentado() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'precalentarPortal').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('precalentarPortal').timeBased().everyDays(1).atHour(7).nearMinute(0).create();
+  ScriptApp.newTrigger('precalentarPortal').timeBased().everyDays(1).atHour(13).nearMinute(0).create();
+  Logger.log('Listo: precalentado del portal todos los días a las 7 h y a las 13 h.');
 }
 // Instala (o reinstala) las tres tareas diarias. Borra antes las tareas viejas de estas funciones (las de cada 30 min / 1 h / 2 h).
 function instalarActualizacionPortal() {
