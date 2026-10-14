@@ -16,7 +16,7 @@
  * Aviso por correo (regla de Belén 14/10/2026): si un control marca algo que dificulta o impide usar un extintor (casillas de problemas,
  * una verificación en «No» o estado Sobrecarga, Recargar o Fuera de servicio), queda un problema abierto en la hoja FALLAS. TODOS van
  * juntos en un solo correo por establecimiento a SITIOS_INC › CORREOS_FALLA (HMH: Ing. Erick Velázquez, SOMI, e Ing. Ezequiel Nieto,
- * Mantenimiento HMH), a las 19 h del día en que aparecen problemas nuevos y, mientras queden abiertos, cada 3 días (activador diario
+ * Mantenimiento HMH), a las 6 h del día siguiente a que aparecen problemas nuevos y, mientras queden abiertos, cada 3 días (activador diario
  * resumenFallasIncendio). El correo lista nuevos, los que siguen sin resolver (con los días) y los resueltos desde el anterior.
  * Instalación de los avisos: ejecutar una vez prepararAvisosIncendio() (permiso de Gmail, hoja FALLAS y activador). Única excepción a «no enviar correos automáticos».
  * Agregar extintores: HyS (portal), Melani, SOMI y MAREM («Mi establecimiento») y Javier Tramaleo (MIPyV); datos y 3 fotos obligatorios.
@@ -48,7 +48,7 @@ const INC = {
   PROBLEMAS: ['No está (desapareció o lo sacaron)', 'Se usó (descargado total o parcialmente)', 'Poca presión (aguja en la zona roja de la izquierda)', 'Demasiada presión (aguja en la zona roja de la derecha)',
     'Precinto o seguro roto o faltante', 'Manguera, boquilla, válvula o manija dañada', 'Golpeado, oxidado o con pérdida', 'Tapado u obstruido (no se puede agarrar)',
     'Sin cartel o señalización', 'Sin tarjeta (marbete) o ilegible', 'Carga vencida', 'Otro (contalo en observaciones)'],
-  REMITENTE: 'belenpellegrini.hys@gmail.com', DIAS_RECORDATORIO: 3, HORA_RESUMEN: 19,   // un solo correo por día con todos los extintores (19 h)
+  REMITENTE: 'belenpellegrini.hys@gmail.com', DIAS_RECORDATORIO: 3, HORA_RESUMEN: 6,   // un solo correo por día con todos los extintores (6 h, pedido de Belén 14/10/2026)
   H_FAL: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'ID_EXTINTOR', 'PROBLEMAS', 'DETECTO', 'ID_CONTROL', 'ESTADO', 'ULTIMO_AVISO', 'AVISOS', 'RESUELTO', 'RESUELTO_POR', 'RESOLUCION', 'HISTORIAL', 'CIERRE_AVISADO'],
   TIPOS: ['ABC', 'BC', 'K', 'D', 'Otro'],
   AGENTES: ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 's/d'],
@@ -333,12 +333,12 @@ function incCorreosFalla_(cod, sitio) {
   return String((s && s.CORREOS_FALLA) || '').split(/[,;\s]+/).map(m => m.trim()).filter(m => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m));
 }
 // Problemas abiertos: hoja FALLAS (una fila por problema de un extintor). Los avisos van TODOS JUNTOS (pedido de Belén 14/10/2026):
-// un solo correo por establecimiento, a las 19 h (activador diario resumenFallasIncendio), el día en que hay problemas nuevos o
+// un solo correo por establecimiento, a las 6 h (activador diario resumenFallasIncendio), el día siguiente a que hay problemas nuevos o
 // cerrados y, mientras queden abiertos, cada 3 días. Lista: nuevos, los que siguen sin resolver (con los días) y los resueltos.
 function incHojaFallas_() {
   const ss = pInc_(); let sh = ss.getSheetByName('FALLAS'); if (sh) return sh;
   sh = ss.insertSheet('FALLAS');
-  encabezar_(sh, 'Extintores con problemas (avisos por correo)', 'Una fila por problema detectado en un extintor. Todos los problemas van juntos en un solo correo a SITIOS_INC › CORREOS_FALLA: a las 19 h del día en que aparecen y, mientras ESTADO = Abierta, cada 3 días. Para cerrarla: «Marcar resuelto» en el portal o en la aplicación (o ESTADO = Resuelta acá, con la fecha en RESUELTO).', INC.H_FAL,
+  encabezar_(sh, 'Extintores con problemas (avisos por correo)', 'Una fila por problema detectado en un extintor. Todos los problemas van juntos en un solo correo a SITIOS_INC › CORREOS_FALLA: a las 6 h del día siguiente a que aparecen y, mientras ESTADO = Abierta, cada 3 días. Para cerrarla: «Marcar resuelto» en el portal o en la aplicación (o ESTADO = Resuelta acá, con la fecha en RESUELTO).', INC.H_FAL,
     ['Lo pone el sistema.', 'Día que se detectó.', 'Código del establecimiento.', 'Lugar.', 'Extintor (EXTINTORES › ID).', 'Lo que se marcó.', 'Quién lo detectó.', 'Control que lo detectó.', 'Abierta · Resuelta', 'Último correo en que fue.', 'Cantidad de correos.', 'Día que se resolvió.', 'Quién lo marcó resuelto.', 'Qué se hizo.', 'Lo pone el sistema.', 'Día en que se avisó el cierre.'], [0, 9, 10, 14, 15]);
   lista_(sh, 8, 2000, ['Abierta', 'Resuelta']); [2, 10, 12, 16].forEach(c => sh.getRange(6, c, 2000, 1).setNumberFormat('dd/mm/yyyy'));
   sh.setColumnWidth(6, 320); sh.setColumnWidth(15, 320);
@@ -352,7 +352,7 @@ function incRegistrarFalla_(e, fallas, d) {
   const cod = limpio_(e.ESTABLECIMIENTO), para = incCorreosFalla_(cod, e.SITIO); if (!para.length) return '';
   const hoy = incHoy_(), ab = (incHojaFallas_(), incFallasAbiertas_()).find(f => f.ID_EXTINTOR === e.ID);
   const linea = incTxt_(incISO_(d.fecha) || hoy) + ' · ' + d.quien + ': ' + fallas.join('; ') + (d.obs ? ' (' + d.obs + ')' : '');
-  const va = 'Va en el correo de hoy (' + INC.HORA_RESUMEN + ' h) a ' + para.join(', ') + ', junto con los demás extintores con problemas.';
+  const va = 'Va en el próximo correo (' + INC.HORA_RESUMEN + ' h) a ' + para.join(', ') + ', junto con los demás extintores con problemas.';
   if (ab) {
     const previos = String(ab.PROBLEMAS || '').split(' · '), nuevos = fallas.filter(f => previos.indexOf(f) < 0);
     const o = Object.assign({}, ab); delete o.fila; o.HISTORIAL = (linea + (o.HISTORIAL ? '\n' + o.HISTORIAL : '')).slice(0, 3000);
@@ -385,11 +385,11 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E) {
     (nuevos.length ? '<p style="margin:14px 0 4px"><b>Nuevos (' + nuevos.length + ')</b></p>' + tabla(nuevos, ['Detectado', f => esc_(incTxt_(incISO_(f.FECHA))) + '<br><span style="color:#4F616B">' + esc_(f.DETECTO || '') + '</span>']) : '') +
     (siguen.length ? '<p style="margin:14px 0 4px"><b>Siguen sin resolver (' + siguen.length + ')</b></p>' + tabla(siguen.sort((a, b) => dias(b) - dias(a)), ['Hace', f => '<b>' + dias(f) + (dias(f) === 1 ? ' día' : ' días') + '</b><br><span style="color:#4F616B">desde el ' + esc_(incTxt_(incISO_(f.FECHA))) + '</span>']) : '') +
     (resueltos.length ? '<p style="margin:14px 0 4px"><b>Resueltos (' + resueltos.length + ')</b></p>' + tabla(resueltos, ['Resuelto', f => esc_(incTxt_(incISO_(f.RESUELTO))) + '<br><span style="color:#4F616B">' + esc_([f.RESUELTO_POR, f.RESOLUCION].filter(Boolean).join(': ')) + '</span>']) : '') +
-    '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Aviso automático del Sistema HyS (módulo 10 · Protección contra incendios).</span></p>' +
+    '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH</p>' +
     '<p><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px"></p></div>';
   const lin = f => { const e = ext(f.ID_EXTINTOR); return '- ' + nombre(e) + ' · ' + ubic(e) + ': ' + String(f.PROBLEMAS || '').split(' · ').join(', '); };
   const texto = intro + (nuevos.length ? '\n\nNuevos:\n' + nuevos.map(lin).join('\n') : '') + (siguen.length ? '\n\nSiguen sin resolver:\n' + siguen.map(f => lin(f) + ' (hace ' + dias(f) + ' días)').join('\n') : '') +
-    (resueltos.length ? '\n\nResueltos:\n' + resueltos.map(lin).join('\n') : '') + '\n\n' + norma + '\n\nServicio de Higiene y Seguridad Laboral · HZT / HMH\nAviso automático del Sistema HyS.';
+    (resueltos.length ? '\n\nResueltos:\n' + resueltos.map(lin).join('\n') : '') + '\n\n' + norma + '\n\nServicio de Higiene y Seguridad Laboral · HZT / HMH';
   try {
     const op = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' };
     try { op.inlineImages = { logo: DriveApp.getFileById(DGM_LOGO_PIE).getBlob() }; } catch (x) { op.htmlBody = html.replace(/<p><img[^>]*><\/p>/, ''); }
@@ -399,7 +399,7 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E) {
     return 'Enviado ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ');
   } catch (err) { return 'No se pudo enviar: ' + (err.message || err); }
 }
-// Activador diario (19 h): arma y manda el correo único de cada establecimiento. fuerza = true lo manda aunque no toque (botón del portal).
+// Activador diario (6 h): arma y manda el correo único de cada establecimiento. fuerza = true lo manda aunque no toque (botón del portal).
 function resumenFallasIncendio(fuerza) {
   if (!PropertiesService.getScriptProperties().getProperty(INC.P_LIBRO)) return { ok: false, mensaje: 'Módulo no instalado.' };
   const hoy = incHoy_(), lim = incSumarDias_(hoy, -INC.DIAS_RECORDATORIO), E = incLeer_('EXTINTORES', INC.H_EXT), F = incFallasTodas_(), props = PropertiesService.getScriptProperties(), out = [];
@@ -432,7 +432,7 @@ function incResolverFalla_(x, quien, codPermitido) {
   incEscribir_('FALLAS', INC.H_FAL, f.fila, incFechasFalla_(o)); CacheService.getScriptCache().remove('inc_tablero');
   return { ok: true, aviso: incISO_(f.ULTIMO_AVISO) ? 'El cierre va en el próximo correo (' + INC.HORA_RESUMEN + ' h).' : '' };
 }
-// Ejecutar una vez desde el editor: da el permiso de Gmail, crea la hoja FALLAS y el activador diario del correo (19 h). No envía nada.
+// Ejecutar una vez desde el editor: da el permiso de Gmail, crea la hoja FALLAS y el activador diario del correo (6 h). No envía nada.
 function prepararAvisosIncendio() {
   incHojaFallas_();
   ScriptApp.getProjectTriggers().filter(t => ['recordarFallasIncendio', 'resumenFallasIncendio'].indexOf(t.getHandlerFunction()) >= 0).forEach(t => ScriptApp.deleteTrigger(t));

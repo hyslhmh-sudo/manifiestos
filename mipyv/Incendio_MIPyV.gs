@@ -108,7 +108,7 @@ function guardarControlExtintor_(data) {
   return { resultado: resultado };
 }
 const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización', VTO: 'Carga vencida', SINTARJETA: 'Sin tarjeta (marbete) o ilegible' };
-// Deja el problema abierto en la hoja FALLAS del sistema HyS. No manda correo: el sistema HyS manda uno solo por día (19 h) con todos
+// Deja el problema abierto en la hoja FALLAS del sistema HyS. No manda correo: el sistema HyS manda uno solo por día (6 h) con todos
 // los extintores con problemas y, mientras sigan abiertos, cada 3 días (Incendio.gs › resumenFallasIncendio). Pedido de Belén 14/10/2026.
 function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
   const S = incTabla_(libro.getSheetByName('SITIOS_INC')).filas.filter((z) => String(z.ESTABLECIMIENTO).trim() === String(e.ESTABLECIMIENTO).trim() && z.ACTIVO !== 'No');
@@ -119,7 +119,7 @@ function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
   const linea = hoy + ' · ' + quien + ': ' + fallas.join('; ') + (obs ? ' (' + obs + ')' : '');
   const ab = F.filas.find((z) => String(z.ID_EXTINTOR) === String(e.ID) && !/^resuel/i.test(String(z.ESTADO || '')));
   const setF = (fila, o) => Object.keys(o).forEach((k) => { const j = F.H.indexOf(k); if (j >= 0) shF.getRange(fila, j + 1).setValue(o[k]); });
-  const va = 'Va en el correo de hoy (19 h) a ' + para.join(', ') + ', junto con los demás extintores con problemas.';
+  const va = 'Va en el próximo correo (6 h) a ' + para.join(', ') + ', junto con los demás extintores con problemas.';
   if (ab) {
     const previos = String(ab.PROBLEMAS || '').split(' · ').filter(Boolean), nuevos = fallas.filter((f) => previos.indexOf(f) < 0), o = { HISTORIAL: (linea + (ab.HISTORIAL ? '\n' + ab.HISTORIAL : '')).slice(0, 3000) };
     if (nuevos.length) { o.PROBLEMAS = previos.concat(nuevos).join(' · '); o.ULTIMO_AVISO = ''; }

@@ -1633,7 +1633,7 @@ async function incResolverGuardar() {
   const b = document.querySelector('[data-act="incResolverGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   try { const r = await api('i_resolver', { ID_EXTINTOR: F._e.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
     F = null; INCX = null; vista('form');
-    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Problema marcado como resuelto.</b><br>Deja de ir en el correo de extintores con problemas' + (r.aviso ? ' y el cierre se avisa en el próximo correo (19 h).' : '.') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Problema marcado como resuelto.</b><br>Deja de ir en el correo de extintores con problemas' + (r.aviso ? ' y el cierre se avisa en el próximo correo (6 h).' : '.') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { if (b) { b.disabled = false; b.textContent = 'Marcar resuelto'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
 }
 // Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios (Incendio.gs › i_ext_alta)
@@ -1682,7 +1682,7 @@ function formInc() {
     fSeg('VTO_NOSE', '¿La tarjeta no se lee o no tiene?', ['No se lee']) +
     fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica', 'date', '', 'Está en la tarjeta o grabado en el cilindro. Si no figura, dejalo vacío.') +
     fChk('PROBLEMAS', '¿Tiene algún problema? Marcá todos los que veas (si no tiene ninguno, no marques nada)', (INCX.listas && INCX.listas.problemas) || []) +
-    (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa a SOMI y a Mantenimiento del HMH en un solo correo con todos los extintores con problemas (ese día a las 19 h y cada 3 días hasta que se marque resuelto).</p>' : '') +
+    (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa a SOMI y a Mantenimiento del HMH en un solo correo con todos los extintores con problemas (al día siguiente a las 6 h y cada 3 días hasta que se marque resuelto).</p>' : '') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
 }

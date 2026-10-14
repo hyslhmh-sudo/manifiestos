@@ -121,7 +121,7 @@ function incSrvMail_(cod, titulo, filas, novs) {
     '<table style="border-collapse:collapse;font-size:14px">' + filas.map(r => '<tr><td style="padding:4px 12px 4px 0;color:#4F616B;vertical-align:top">' + esc_(r[0]) + '</td><td style="padding:4px 0">' + esc_(r[1]) + '</td></tr>').join('') + '</table>' +
     '<p style="margin:12px 0 6px"><b>Novedades</b></p><ul style="margin:0 0 12px">' + novs.map(n => '<li><b>' + esc_(n.TIPO) + '</b>' + (n.DETALLE ? ': ' + esc_(n.DETALLE) : '') + (n.FOTO ? ' · <a href="' + n.FOTO + '">foto</a>' : '') + '</li>').join('') + '</ul>' +
     '<p style="color:#4F616B;font-size:12px">Protección contra incendios: medios de escape, señalización, extintores, instalaciones fijas, detección y alarma (Ley 19.587; Dto. 351/79, cap. 18). Se ven y se marcan resueltas en el portal (10 · Novedades y recorridas).</p>' +
-    '<p>Sistema HyS · Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Aviso automático. Registro: ' + esc_(novs.map(n => n.ID).join(', ')) + '.</span></p><p><img src="cid:logo" alt="HySL" style="width:220px"></p></div>';
+    '<p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Registro: ' + esc_(novs.map(n => n.ID).join(', ')) + '.</span></p><p><img src="cid:logo" alt="HySL" style="width:220px"></p></div>';
   const texto = titulo + ' · ' + nom + '\n\n' + filas.map(r => r[0] + ': ' + r[1]).join('\n') + '\n\nNovedades:\n- ' + novs.map(n => n.TIPO + (n.DETALLE ? ': ' + n.DETALLE : '') + (n.FOTO ? ' (foto: ' + n.FOTO + ')' : '')).join('\n- ');
   try {
     const op = { htmlBody: html, name: 'Sistema HyS · Protección contra incendios' };
