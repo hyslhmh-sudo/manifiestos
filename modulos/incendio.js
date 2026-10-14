@@ -38,8 +38,9 @@ async function incTablero(fresco) {
     Object.keys(grupos).sort((a, b) => a === 'HMH' ? -1 : b === 'HMH' ? 1 : a.localeCompare(b)).map(c => '<tr><td colspan="6" style="background:var(--pa1);font-weight:700;color:var(--az)">' + esc(incNom(c)) + '</td></tr>' + grupos[c].map(fila).join('')).join('') +
     '</tbody></table></div></section>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 20).join('') : '<div class="mu">Nada pendiente.</div>') +
-    '<p class="mu peq" style="margin-top:8px">Los vencimientos (carga y prueba hidráulica) avisan 30 días antes. El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
+    '<p class="mu peq" style="margin-top:8px">Extintores con problemas: un solo correo por día (19 h) con todos, a SOMI y Mantenimiento, y cada 3 días mientras queden sin resolver. <button class="link" id="icResumen">Mandar el correo ahora</button></p><p class="mu peq">Los vencimientos (carga y prueba hidráulica) avisan 30 días antes. El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
   $('icAct').onclick = () => incTablero(true);
+  $('icResumen').onclick = async () => { if (!confirm('¿Mandar ahora el correo con todos los extintores con problemas abiertos?')) return; const r = await api('p_inc_resumen', {}, 180000); toast(r.ok ? (r.enviados && r.enviados.length ? r.enviados.join(' · ') : 'No hay extintores con problemas para avisar.') : (r.mensaje || 'No se pudo mandar.')); };
   document.querySelectorAll('tr.cl[data-h]').forEach(tr => tr.onclick = () => location.hash = tr.dataset.h);
 }
 
@@ -90,8 +91,8 @@ async function incEst(a, fresco) {
   document.querySelectorAll('[data-resol]').forEach(b => b.onclick = () => { const e = D.extintores[+b.dataset.resol];
     modal('Problema resuelto · ' + (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID), [['RESOLUCION', 'Qué se hizo (opcional)', null, 1]], {}, async out => {
       const r = await api('p_inc_resolver', { ID_EXTINTOR: e.ID, RESOLUCION: out.RESOLUCION || '' }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-      incRecargar(D, 'Problema marcado como resuelto.' + (r.aviso ? ' Correo de cierre: ' + r.aviso : '')); return '';
-    }, '<p class="mu peq" style="margin:0">Problemas: ' + esc(e.falla.PROBLEMAS || '') + '. Detectado el ' + fechaTxt(e.falla.FECHA) + ' por ' + esc(e.falla.DETECTO || 's/d') + '. Al marcarlo resuelto se dejan de mandar los recordatorios y se avisa el cierre por correo.</p>'); });
+      incRecargar(D, 'Problema marcado como resuelto.' + (r.aviso ? ' ' + r.aviso : '')); return '';
+    }, '<p class="mu peq" style="margin:0">Problemas: ' + esc(e.falla.PROBLEMAS || '') + '. Detectado el ' + fechaTxt(e.falla.FECHA) + ' por ' + esc(e.falla.DETECTO || 's/d') + '. Al marcarlo resuelto deja de ir en el correo y el cierre se avisa en el próximo correo.</p>'); });
   document.querySelectorAll('[data-verif]').forEach(b => b.onclick = () => { b.disabled = true; verificar([b.dataset.verif]); });
   document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => incControlForm(D, D.extintores[+b.dataset.ctl]));
   document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => incExtForm(D, D.extintores[+b.dataset.edit]));

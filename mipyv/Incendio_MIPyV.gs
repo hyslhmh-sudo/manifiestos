@@ -14,8 +14,8 @@
  *    El cambio se anota en CAMBIOS y el extintor queda «Pendiente» en VERIFICACION hasta que Belén lo verifica en el portal.
  *    Si el lugar nuevo es de otro establecimiento, no lo mueve: lo anota para que lo revise HyS.
  * Aviso por correo: si un control queda con algo en «No» y el lugar tiene CORREOS_FALLA en SITIOS_INC (hoy HMH: SOMI y Mantenimiento),
- *    avisa con enviarCorreo() (sale desde el remitente configurado de MIPyV) y deja el problema abierto en la hoja FALLAS del sistema HyS,
- *    que manda los recordatorios cada 3 días hasta que se marque resuelto. Regla de Belén 14/10/2026.
+ *    deja el problema abierto en la hoja FALLAS del sistema HyS, que manda un solo correo por día con todos los extintores con problemas
+ *    y, mientras sigan abiertos, cada 3 días (no manda un correo por extintor). Regla de Belén 14/10/2026.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18.
  */
 const INC_LIBRO_ID = '10lyFIV8UDQGGiNu3DegHiyxqR5xinSgn82XFmO5VWw0';   // PROTECCIÓN CONTRA INCENDIOS · Sistema HyS
@@ -108,43 +108,28 @@ function guardarControlExtintor_(data) {
   return { resultado: resultado };
 }
 const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización', VTO: 'Carga vencida', SINTARJETA: 'Sin tarjeta (marbete) o ilegible' };
+// Deja el problema abierto en la hoja FALLAS del sistema HyS. No manda correo: el sistema HyS manda uno solo por día (19 h) con todos
+// los extintores con problemas y, mientras sigan abiertos, cada 3 días (Incendio.gs › resumenFallasIncendio). Pedido de Belén 14/10/2026.
 function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
   const S = incTabla_(libro.getSheetByName('SITIOS_INC')).filas.filter((z) => String(z.ESTABLECIMIENTO).trim() === String(e.ESTABLECIMIENTO).trim() && z.ACTIVO !== 'No');
   const sit = S.find((z) => incNorm_(z.SITIO) === incNorm_(e.SITIO)) || S.find((z) => String(z.CORREOS_FALLA || '').trim());
   const para = String((sit && sit.CORREOS_FALLA) || '').split(/[,;\s]+/).filter((m) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)); if (!para.length) return '';
-  const fallas = mal.map((k) => INC_NO_FALLA[k]), hoy = Utilities.formatDate(fecha, ZONA_HORARIA, 'dd/MM/yyyy');
+  const shF = libro.getSheetByName('FALLAS'); if (!shF) return 'Falta la hoja FALLAS (ejecutar prepararAvisosIncendio en el Sistema HyS).';
+  const F = incTabla_(shF), fallas = mal.map((k) => INC_NO_FALLA[k]), hoy = Utilities.formatDate(fecha, ZONA_HORARIA, 'dd/MM/yyyy');
   const linea = hoy + ' · ' + quien + ': ' + fallas.join('; ') + (obs ? ' (' + obs + ')' : '');
-  // Problema abierto en la hoja FALLAS del sistema HyS (desde ahí salen los recordatorios cada 3 días hasta que se marque resuelto)
-  const shF = libro.getSheetByName('FALLAS'); let F = null, ab = null, previos = [];
-  if (shF) { F = incTabla_(shF); ab = F.filas.find((z) => String(z.ID_EXTINTOR) === String(e.ID) && !/^resuel/i.test(String(z.ESTADO || ''))); }
+  const ab = F.filas.find((z) => String(z.ID_EXTINTOR) === String(e.ID) && !/^resuel/i.test(String(z.ESTADO || '')));
   const setF = (fila, o) => Object.keys(o).forEach((k) => { const j = F.H.indexOf(k); if (j >= 0) shF.getRange(fila, j + 1).setValue(o[k]); });
-  let nuevos = fallas, idFalla = id;
+  const va = 'Va en el correo de hoy (19 h) a ' + para.join(', ') + ', junto con los demás extintores con problemas.';
   if (ab) {
-    previos = String(ab.PROBLEMAS || '').split(' · ').filter(Boolean); nuevos = fallas.filter((f) => previos.indexOf(f) < 0); idFalla = ab.ID;
-    setF(ab._fila, { HISTORIAL: (linea + (ab.HISTORIAL ? '\n' + ab.HISTORIAL : '')).slice(0, 3000), PROBLEMAS: previos.concat(nuevos).join(' · ') });
-    if (!nuevos.length) return 'Ya tenía un problema abierto: se sigue recordando cada 3 días.';
+    const previos = String(ab.PROBLEMAS || '').split(' · ').filter(Boolean), nuevos = fallas.filter((f) => previos.indexOf(f) < 0), o = { HISTORIAL: (linea + (ab.HISTORIAL ? '\n' + ab.HISTORIAL : '')).slice(0, 3000) };
+    if (nuevos.length) { o.PROBLEMAS = previos.concat(nuevos).join(' · '); o.ULTIMO_AVISO = ''; }
+    setF(ab._fila, o);
+    return nuevos.length ? va : 'Ya tenía un problema abierto: sigue en el correo cada 3 días hasta que se marque resuelto.';
   }
-  const todos = previos.concat(nuevos), ext = (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID;
-  const ubic = [e.SITIO, e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ');
-  const intro = (ab ? 'Se registraron nuevos problemas en un extintor que ya tenía un aviso abierto.' : 'Se registró en el Sistema HyS un problema en un extintor que dificulta o impide su uso.') + ' Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto.';
-  const datos = [['Extintor', ext], ['Ubicación', ubic], ['Tipo', [e.TIPO, e.AGENTE, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' · ')], ['N.º de inventario', e.NRO_INVENTARIO || 's/d'],
-    ['Detectado', hoy + ' · ' + quien], ['Observaciones', obs || '—']];
-  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C"><p>' + intro + '</p><p><b>Problemas detectados</b></p><ul>' + todos.map((f) => '<li><b>' + f + '</b></li>').join('') + '</ul>' +
-    datos.map((r) => r[0] + ': ' + r[1]).join('<br>') + '<p>Fotos: ' + INC_FOTOS.filter(([k]) => links[k]).map(([k, et]) => '<a href="' + links[k] + '">' + et + '</a>').join(' · ') + '</p>' +
-    '<p style="color:#4F616B;font-size:12px">Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Aviso automático del Sistema HyS (MIPyV). Registro: ' + idFalla + '.</span></p></div>';
-  let r;
-  try {
-    enviarCorreo({ to: para.join(','), subject: (ab ? 'Actualización · ' : '') + String(e.ESTABLECIMIENTO).trim() + ' · Extintor con problemas: ' + ext, body: intro + '\n\n- ' + todos.join('\n- ') + '\n\n' + datos.map((x) => x[0] + ': ' + x[1]).join('\n'), htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' });
-    r = 'Enviado ' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ');
-  } catch (err) { r = 'No se pudo enviar: ' + (err.message || err); }
-  const enviado = /^Enviado/.test(r), hoyD = new Date(Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyyy-MM-dd') + 'T12:00:00');
-  if (shF && ab && enviado) setF(ab._fila, { ULTIMO_AVISO: hoyD, AVISOS: (Number(ab.AVISOS) || 0) + 1 });
-  if (shF && !ab) {
-    const o = { ID: 'FAL-' + String(e.ESTABLECIMIENTO).trim() + '-' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyMMddHHmmss'), FECHA: hoyD, ESTABLECIMIENTO: String(e.ESTABLECIMIENTO).trim(), SITIO: e.SITIO, ID_EXTINTOR: e.ID,
-      PROBLEMAS: fallas.join(' · '), DETECTO: quien, ID_CONTROL: id, ESTADO: 'Abierta', ULTIMO_AVISO: enviado ? hoyD : '', AVISOS: enviado ? 1 : 0, HISTORIAL: linea };
-    shF.getRange(Math.max(shF.getLastRow(), 5) + 1, 1, 1, F.H.length).setValues([F.H.map((h) => o[h] == null ? '' : o[h])]);
-  }
-  return r;
+  const o = { ID: 'FAL-' + String(e.ESTABLECIMIENTO).trim() + '-' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyMMddHHmmss'), FECHA: new Date(Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM-dd') + 'T12:00:00'),
+    ESTABLECIMIENTO: String(e.ESTABLECIMIENTO).trim(), SITIO: e.SITIO, ID_EXTINTOR: e.ID, PROBLEMAS: fallas.join(' · '), DETECTO: quien, ID_CONTROL: id, ESTADO: 'Abierta', AVISOS: 0, HISTORIAL: linea };
+  shF.getRange(Math.max(shF.getLastRow(), 5) + 1, 1, 1, F.H.length).setValues([F.H.map((h) => o[h] == null ? '' : o[h])]);
+  return va;
 }
 
 // Lugar de MIPyV (id_establecimiento) → establecimiento y sitio del sistema HyS
