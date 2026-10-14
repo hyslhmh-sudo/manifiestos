@@ -359,6 +359,7 @@ function ingreso(msg) {
     campo('hospital', '<select id="f_hospital" data-l="est"' + (ERR.hospital ? ' class="bad"' : '') + '><option value="">Elegí…</option>' + lista.map(h => '<option value="' + h.id + '"' + (h.id === LOG.est ? ' selected' : '') + '>' + esc(h.nombre) + '</option>').join('') + '</select>', ERR.hospital) +
     campo('dni', '<input id="f_dni" type="text" inputmode="numeric" data-l="dni" autocomplete="username" placeholder="Solo números" value="' + esc(LOG.dni || '') + '">') +
     campo('clave', '<input id="f_clave" type="password" data-l="clave" autocomplete="current-password" value="' + esc(LOG.clave) + '"' + (ERR.clave ? ' class="bad"' : '') + '>', ERR.clave) +
+    '<p class="mu" style="font-size:13px;margin:-4px 0 8px">¿Entrás por una empresa (SOMI, MAREM)? Dejá el DNI vacío y usá la clave de la empresa.</p>' +
     '<label style="display:flex;gap:10px;align-items:center;margin:4px 0 8px"><input type="checkbox" data-l2="recordar"' + (LOG.recordar ? ' checked' : '') + ' style="width:22px;height:22px"> Recordar la clave en este equipo (solo en equipos de uso del servicio)</label>' +
     (Object.keys(rec).length ? '<h2>Entrar directo</h2><div class="menu">' + Object.keys(rec).map(id => '<div style="position:relative"><button class="big" style="width:100%" data-act="entrarRec" data-arg="' + esc(id) + '"><b>' + esc((lista.find(h => h.id === id) || { nombre: id }).nombre) + '</b><span>Clave guardada en este equipo</span></button><button class="link" style="position:absolute;top:8px;right:12px;font-size:13px" data-act="olvidarClave" data-arg="' + esc(id) + '">Olvidar</button></div>').join('') + '</div>' : '');
   $('app').innerHTML += '<p class="mu" style="font-size:13px;margin-top:24px"><button class="link" data-act="modoHys">Acceso de Higiene y Seguridad</button></p>';
@@ -414,6 +415,7 @@ async function entrar() {
     // Acceso por persona (Accesos.gs): módulos asignados y, con clave personal, la persona que carga
     const A = CFG && CFG.acceso; ses.modulos = A && A.modulos ? A.modulos : null;
     if (A && A.nombre && dni) ses.persona = { nombre: A.nombre, funcion: A.rol || '', dni: dni, ests: [ses.est], propia: true };
+    if (A && A.servicio) { ses.servicio = A.servicio; ses.persona = { nombre: A.servicio, funcion: 'Empresa de servicio', ests: [ses.est], propia: true }; }   // clave por servicio (SOMI, MAREM)
     if (LOG.recordar) { const r = LS.get('recordados', {}); r[ses.est] = { clave: ses.clave, dni: dni }; LS.set('recordados', r); }
     if (PERSONA_PREV && !ses.persona) { const pp = personas().find(x => (x.dni && x.dni === PERSONA_PREV.dni) || x.nombre === PERSONA_PREV.nombre); if (pp && cargaEn(pp, ses.est)) ses.persona = pp; PERSONA_PREV = null; }
     SES = ses; LS.set('ses', SES); LOG = { est: '', clave: '', dni: '' }; MI = null; miCargar(true); SES.persona ? inicio() : quienCarga();
@@ -865,8 +867,8 @@ function inicio() {
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · ' + (SES.persona.propia ? '' : '<button class="link" data-act="quienCarga">Cambiar de persona</button> · ') + '<button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
     (err ? '<button class="notice" data-act="consulta" style="display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Tocá acá para verlas y corregirlas o descartarlas.</button>' : '') +
     (puede('Residuos') ? remCartel() : '') +
-    '<h2>Lo que tenés pendiente</h2>' +
-    (!MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
+    (SES.servicio ? '<div class="notice">Entraste con la clave de <b>' + esc(SES.servicio) + '</b>. Cada vez que registres algo, el sistema te va a pedir tu DNI, nombre y correo.</div>' : '<h2>Lo que tenés pendiente</h2>') +
+    (SES.servicio ? '' : !MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
@@ -875,7 +877,7 @@ function inicio() {
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
-    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos · agregar o corregir extintores', true) + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos · agregar o corregir extintores', true) + tile('incRec', 'Recorrida de seguridad', 'Salidas, puertas, luces, carteles, hidrantes, alarma…') + tile('incNov', 'Informar una novedad', 'Principio de incendio, alarma, olor a quemado, uso de un extintor…') + tile('incNovLista', 'Novedades', 'Lo que está abierto y lo resuelto') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
@@ -1614,7 +1616,8 @@ function formIncEdit() {
 async function incEditGuardar() {
   if (!String(F.SECTOR || '').trim() || !String(F.UBICACION || '').trim()) return miErr('El sector y la ubicación no pueden quedar vacíos.');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { ID: F.ID, quien: SES.persona.nombre }; ['NRO_EXTINTOR', 'SITIO', 'PLANTA', 'SECTOR', 'UBICACION'].forEach(k => d[k] = String(F[k] || '').trim());
+  if (SES.servicio && !F._ident) return pedirIdentidad(incEditGuardar);
+  const d = { ID: F.ID, quien: SES.persona.nombre, identidad: F._ident || null }; ['NRO_EXTINTOR', 'SITIO', 'PLANTA', 'SECTOR', 'UBICACION'].forEach(k => d[k] = String(F[k] || '').trim());
   const b = document.querySelector('[data-act="incEditGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   try { const r = await api('i_ext_editar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
     F = null; INCX = null; vista('form');
@@ -1630,8 +1633,9 @@ function formIncResolver() {
 }
 async function incResolverGuardar() {
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  if (SES.servicio && !F._ident) return pedirIdentidad(incResolverGuardar);
   const b = document.querySelector('[data-act="incResolverGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
-  try { const r = await api('i_resolver', { ID_EXTINTOR: F._e.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+  try { const r = await api('i_resolver', { ID_EXTINTOR: F._e.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre, identidad: F._ident || null }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
     F = null; INCX = null; vista('form');
     $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Problema marcado como resuelto.</b><br>Deja de ir en el correo de extintores con problemas' + (r.aviso ? ' y el cierre se avisa en el próximo correo (6 h).' : '.') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { if (b) { b.disabled = false; b.textContent = 'Marcar resuelto'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
@@ -1656,7 +1660,8 @@ async function incAltaGuardar() {
   const faltan = (INCX.listas.requeridos || []).filter(r => !String(F[r[0]] || '').trim()).map(r => r[1]); if (faltan.length) return miErr('Falta completar: ' + faltan.join(', ') + '.');
   const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { quien: SES.persona.nombre, fotos: {} };
+  if (SES.servicio && !F._ident) return pedirIdentidad(incAltaGuardar);
+  const d = { quien: SES.persona.nombre, fotos: {}, identidad: F._ident || null };
   ['SITIO', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA', 'NRO_EXTINTOR', 'PRUEBA_HIDRAULICA_VENCE', 'OBSERVACIONES'].forEach(k => d[k] = String(F[k] || '').trim());
   INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
   const b = document.querySelector('[data-act="incAltaGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
@@ -1676,7 +1681,7 @@ function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
   $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
     '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
-    (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Va en el correo a SOMI y Mantenimiento (uno solo con todos los extintores) cada 3 días hasta que se marque resuelto.<br><button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button></div>' : '') +
+    (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Va en el correo a SOMI y Mantenimiento (uno solo con todos los extintores) cada 3 días hasta que se marque resuelto.<br>' + (INCX && INCX.puedeResolver === false ? '' : '<button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button>') + '</div>' : '') +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
     '<h2>Vencimientos (mirá la tarjeta)</h2>' + fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete). Si no coincide con lo que dice la tarjeta, corregilo. Obligatorio.') +
     fSeg('VTO_NOSE', '¿La tarjeta no se lee o no tiene?', ['No se lee']) +
@@ -1691,7 +1696,8 @@ async function incGuardar() {
   const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
   if (!F.VTO_CARGA && F.VTO_NOSE !== 'No se lee') return miErr('Falta el vencimiento de la carga (está en la tarjeta). Si no se lee, tocá «No se lee».');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, VTO_CARGA: F.VTO_NOSE === 'No se lee' ? 's/d (no se lee)' : F.VTO_CARGA, PRUEBA_HIDRAULICA_VENCE: F.PRUEBA_HIDRAULICA_VENCE || '', OBSERVACIONES: F.OBSERVACIONES || '', PROBLEMAS: String(F.PROBLEMAS || '').split(' · ').filter(Boolean), quien: SES.persona.nombre, fotos: {} };
+  if (SES.servicio && !F._ident) return pedirIdentidad(incGuardar);
+  const d = { identidad: F._ident || null, ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, VTO_CARGA: F.VTO_NOSE === 'No se lee' ? 's/d (no se lee)' : F.VTO_CARGA, PRUEBA_HIDRAULICA_VENCE: F.PRUEBA_HIDRAULICA_VENCE || '', OBSERVACIONES: F.OBSERVACIONES || '', PROBLEMAS: String(F.PROBLEMAS || '').split(' · ').filter(Boolean), quien: SES.persona.nombre, fotos: {} };
   INC_CHQ.forEach(c => d[c[0]] = F[c[0]]); INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
   const b = document.querySelector('[data-act="incGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   const antes = ESPERA_MS; ESPERA_MS = 180000;
@@ -1701,6 +1707,135 @@ async function incGuardar() {
       '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
+// ------------------------------------------------------------------ Empresas de servicio (SOMI, MAREM): quién hace cada registro (IncendioServicios.gs)
+// Con la clave por servicio, antes de guardar se pide el DNI; se busca en la base de personal y se confirma o se actualizan nombre y correo.
+let IDN = null;
+function pedirIdentidad(siguiente) {
+  const prev = LS.get('idn_' + SES.servicio, null);
+  IDN = { paso: 'dni', dni: prev ? prev.dni : '', sig: siguiente, volver: MIV && MIV.f, ap: '', no: '', mail: '', encontrado: false, editar: false };
+  formIdentidad();
+}
+function formIdentidad() {
+  VISTA = 'mi'; vista('form');
+  const inp = (k, t, tipo, ph) => '<div class="field"><div class="lab"><label>' + t + '</label></div><input data-idn="' + k + '" type="' + (tipo || 'text') + '" value="' + esc(IDN[k] || '') + '" placeholder="' + esc(ph || '') + '"' + (tipo === 'tel' ? ' inputmode="numeric"' : '') + '></div>';
+  let h = miTit('¿Quién hace este registro?', 'Entraste con la clave de ' + esc(SES.servicio) + ': cada registro queda a nombre de quien lo hace.') + fErr;
+  if (IDN.paso === 'dni') h += inp('dni', 'Tu DNI (sin puntos)', 'tel', 'Ej.: 30123456');
+  else if (IDN.encontrado && !IDN.editar) h += '<div class="notice ok"><b>' + esc(IDN.ap + ', ' + IDN.no) + '</b><br>DNI ' + esc(IDN.dni) + (IDN.mail ? ' · ' + esc(IDN.mail) : '') + '</div><p class="mu" style="font-size:13px">¿Son tus datos? Si cambió algo (por ejemplo, el correo), tocá «Actualizar datos».</p>';
+  else h += (IDN.encontrado ? '<p class="mu">' + (IDN.mail ? 'Corregí lo que haga falta.' : 'Te encontramos en la base de personal: completá tu correo y revisá el resto.') + '</p>' : '<div class="notice">No encontramos ese DNI en la base de personal. Completá tus datos: Higiene y Seguridad los suma.</div>') +
+    inp('ap', 'Apellido') + inp('no', 'Nombre') + inp('mail', 'Correo', 'email', 'nombre@correo.com');
+  $('app').innerHTML = h;
+  const volver = '<button class="btn sec" data-act="idnVolver">Volver</button>';
+  bar(IDN.paso === 'dni' ? volver + '<button class="btn pri" data-act="idnBuscar">Continuar</button>'
+    : IDN.encontrado && !IDN.editar ? volver + '<button class="btn sec" data-act="idnEditar">Actualizar datos</button><button class="btn pri" data-act="idnOk">Soy yo, guardar</button>'
+    : volver + '<button class="btn pri" data-act="idnOk">Guardar</button>');
+  document.querySelectorAll('[data-idn]').forEach(i => i.oninput = () => { IDN[i.dataset.idn] = i.value; });
+}
+async function idnBuscar() {
+  const dni = String(IDN.dni || '').replace(/\D/g, ''); if (!/^\d{7,8}$/.test(dni)) return miErr('Escribí tu DNI sin puntos (7 u 8 números).');
+  if (!navigator.onLine) return miErr('Hace falta señal.');
+  try { const r = await api('i_persona', { dni: dni }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo buscar.');
+    Object.assign(IDN, { paso: 'datos', dni: dni, encontrado: !!r.encontrado, ap: r.apellido || '', no: r.nombre || '', mail: r.mail || '', editar: !!r.encontrado && !r.mail }); formIdentidad();
+  } catch (x) { miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
+}
+function idnOk() {
+  if (String(IDN.ap || '').trim().length < 2 || String(IDN.no || '').trim().length < 2) return miErr('Completá el apellido y el nombre.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(IDN.mail || '').trim())) return miErr('Escribí un correo válido (ejemplo: nombre@correo.com).');
+  const id = { dni: IDN.dni, apellido: IDN.ap.trim(), nombre: IDN.no.trim(), mail: IDN.mail.trim().toLowerCase() };
+  LS.set('idn_' + SES.servicio, { dni: id.dni }); F._ident = id; const sig = IDN.sig; IDN = null; sig();
+}
+
+// ------------------------------------------------------------------ Recorrida de seguridad contra incendios (MAREM y todos los del módulo)
+const INC_PUNTOS = [['SALIDAS', 'Salidas, pasillos y escaleras libres', 'Sin obstáculos; puertas de salida sin cadenas ni trabas.'], ['CORTAFUEGO', 'Puertas cortafuego cerradas y funcionando', 'No trabadas abiertas con cuñas u objetos; cierran solas.'],
+  ['LUCES', 'Luces de emergencia funcionando', 'Al apretar el botón de prueba, encienden.'], ['CARTELES', 'Carteles de salida y de evacuación visibles', 'Se ven, no están tapados ni rotos.'],
+  ['BIE', 'Bocas de incendio (hidrantes) accesibles y completas', 'Gabinete sin obstáculos, con manguera y lanza, vidrio sano.'], ['ALARMA', 'Central de alarma sin fallas y pulsadores accesibles', 'La pantalla de la central no marca falla; pulsadores a la vista.'],
+  ['EXTINTORES', 'Extintores a la vista y accesibles', 'Mirada rápida (no reemplaza el control mensual).'], ['COMBUSTIBLE', 'Sin material combustible acumulado', 'Sin cajas, colchones o residuos en pasillos ni junto a tableros.'],
+  ['ELECTRICO', 'Tableros cerrados y sin riesgo eléctrico', 'Sin olor a quemado, sin zapatillas en cadena ni estufas no autorizadas.'], ['GASES', 'Tubos de gases y garrafas seguros', 'Sujetos con cadena, ordenados y sin pérdidas.'],
+  ['FUMAR', 'Nadie fumando en lugares prohibidos', ''], ['PLANOS', 'Planos de evacuación colocados', 'A la vista, en su lugar.']];
+const INC_TIPOS_NOV = ['Principio de incendio', 'Alarma de incendio activada', 'Olor a quemado o humo', 'Se usó un extintor', 'Salida o pasillo obstruido', 'Instalación contra incendio dañada', 'Otra'];
+function incRec() { F = { _f: 'incRec', SECTOR: '', OBSERVACIONES: '' }; MIV = { f: formIncRec }; formIncRec(); }
+function formIncRec() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Recorrida de seguridad', 'Contra incendios · contestá cada punto. Si algo da «No», sacá una foto y contá qué pasa.') + fErr +
+    fInp('SECTOR', 'Sector que recorriste', 'text', 'Ej.: Planta baja · Guardia y pasillo central') +
+    INC_PUNTOS.map(p => fSeg('P_' + p[0], p[1] + (p[2] ? '<span class="mu" style="display:block;font-size:13px;font-weight:400">' + esc(p[2]) + '</span>' : ''), ['Sí', 'No']) +
+      (F['P_' + p[0]] === 'No' ? '<div style="margin:-6px 0 14px 12px;padding-left:12px;border-left:3px solid var(--er)">' + fFoto('F_' + p[0], 'Foto (obligatoria)', 'Que se vea el problema') + fTxt('D_' + p[0], '¿Qué pasa? (opcional)', 'Ej.: la puerta está trabada con una silla') + '</div>' : '')).join('') +
+    fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Algo más que quieras contar');
+  bar('<button class="btn sec" data-act="incVolverIni">Cancelar</button><button class="btn pri" data-act="incRecGuardar">Guardar recorrida</button>');
+}
+async function incRecGuardar() {
+  if (!String(F.SECTOR || '').trim()) return miErr('Escribí el sector que recorriste.');
+  const falta = INC_PUNTOS.filter(p => !F['P_' + p[0]]).map(p => p[1]); if (falta.length) return miErr('Falta responder: ' + falta.join(', ') + '.');
+  const sinF = INC_PUNTOS.filter(p => F['P_' + p[0]] === 'No' && !/^data:image\//.test(F['F_' + p[0]] || '')).map(p => p[1]); if (sinF.length) return miErr('Cada punto en «No» necesita una foto (no PDF). Falta: ' + sinF.join(', ') + '.');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  if (SES.servicio && !F._ident) return pedirIdentidad(incRecGuardar);
+  const d = { SECTOR: F.SECTOR.trim(), OBSERVACIONES: F.OBSERVACIONES || '', puntos: {}, detalles: {}, fotos: {}, quien: SES.persona.nombre, identidad: F._ident || null };
+  INC_PUNTOS.forEach(p => { d.puntos[p[0]] = F['P_' + p[0]]; if (F['P_' + p[0]] === 'No') { d.fotos[p[0]] = F['F_' + p[0]]; d.detalles[p[0]] = F['D_' + p[0]] || ''; } });
+  await incSrvEnviar('i_recorrida', d, r => '<div class="notice ok" style="margin-top:24px"><b>Recorrida guardada.</b><br>' + (r.novedades ? r.novedades + (r.novedades > 1 ? ' puntos quedaron como novedades' : ' punto quedó como novedad') + ': Higiene y Seguridad ya está avisada.' : 'Sin novedades: todo en orden.') + '</div>');
+}
+// ------------------------------------------------------------------ Informar una novedad
+async function incNov() {
+  F = { _f: 'incNov', TIPO: '', SECTOR: '', DETALLE: '' }; MIV = { f: formIncNov };
+  if (!INCX && navigator.onLine) { try { const r = await api('i_datos', {}); if (r.ok) INCX = r; } catch (e) {} }
+  formIncNov();
+}
+const incExtEtiqueta = e => ((e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' — ' + [e.SECTOR, e.UBICACION].filter(Boolean).join(' — ')).replace(/·/g, '-');   // sin «·» (fChk separa con «·»)
+function formIncNov() {
+  VISTA = 'mi'; vista('form'); const L = INCX ? INCX.extintores.filter(e => !e.est.baja) : [];
+  $('app').innerHTML = miTit('Informar una novedad', 'Protección contra incendios. Si hay fuego o humo, primero avisá según el plan de emergencia; esto se carga después.') + fErr +
+    fSeg('TIPO', '¿Qué pasó?', INC_TIPOS_NOV) +
+    (F.TIPO === 'Se usó un extintor' ? (L.length ? fChk('EXT', '¿Qué extintor (o extintores) se usaron?', L.map(incExtEtiqueta)) : '<div class="notice">No se pudo cargar la lista de extintores. Escribí cuál fue en el detalle.</div>') : '') +
+    fInp('SECTOR', '¿Dónde?', 'text', 'Ej.: Planta alta · pasillo de Esterilización') + fTxt('DETALLE', '¿Qué pasó? Contalo brevemente', 'Ej.: se activó la alarma del 1.er piso a las 14 h; no hubo fuego') +
+    fFoto('FOTO', 'Foto (si se puede)', 'Opcional');
+  bar('<button class="btn sec" data-act="incVolverIni">Cancelar</button><button class="btn pri" data-act="incNovGuardar">Informar</button>');
+}
+async function incNovGuardar() {
+  if (!F.TIPO) return miErr('Elegí qué pasó.'); if (!String(F.SECTOR || '').trim()) return miErr('Escribí dónde pasó.'); if (String(F.DETALLE || '').trim().length < 4) return miErr('Contá brevemente qué pasó.');
+  const L = INCX ? INCX.extintores : [], marcados = String(F.EXT || '').split(' · ').filter(Boolean), sel = L.filter(e => marcados.indexOf(incExtEtiqueta(e)) >= 0).map(e => e.ID);
+  if (F.TIPO === 'Se usó un extintor' && L.length && !sel.length) return miErr('Elegí el extintor que se usó.');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  if (SES.servicio && !F._ident) return pedirIdentidad(incNovGuardar);
+  const d = { TIPO: F.TIPO, SECTOR: F.SECTOR.trim(), DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', extintores: sel, quien: SES.persona.nombre, identidad: F._ident || null };
+  await incSrvEnviar('i_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>Higiene y Seguridad ya está avisada.' + (sel.length ? ' El extintor queda como «Se usó» hasta que se recargue.' : '') + '</div>');
+}
+async function incSrvEnviar(accion, d, ok) {
+  const b = document.querySelector('#bar .btn.pri'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const antes = ESPERA_MS; ESPERA_MS = 180000;
+  try { const r = await api(accion, d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; INCN = null; vista('form'); $('app').innerHTML = ok(r) + '<div class="menu"><button class="big main" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
+}
+// ------------------------------------------------------------------ Novedades abiertas y resueltas
+let INCN = null;
+async function incNovLista(fresco) {
+  VISTA = 'mi'; MIV = { f: () => incNovLista() }; vista('wide');
+  if (!INCN || fresco) { $('app').innerHTML = miTit('Novedades') + '<p class="mu">Cargando…</p>'; bar(null);
+    try { const r = await api('i_novedades', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); INCN = r; }
+    catch (e) { $('app').innerHTML = miTit('Novedades') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return; } }
+  const item = (n, abierta) => '<div class="item" style="align-items:flex-start"><div><b>' + esc(n.TIPO) + '</b><small>' + esc([fechaTxt(n.FECHA) + (n.HORA ? ' ' + n.HORA : ''), n.SECTOR, n.ORIGEN].filter(Boolean).join(' · ')) + (n.DETALLE ? '<br>' + esc(n.DETALLE) : '') +
+    (n.FOTO ? '<br><a href="' + esc(n.FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + (abierta ? '' : '<br>Resuelta ' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ': ' + esc(n.RESOLUCION) : '')) + '</small></div>' +
+    (abierta ? (INCN.puedeResolver ? '<button class="btn sec" data-act="incNovRes" data-arg="' + esc(n.ID) + '" style="flex:0 0 auto">Resuelta</button>' : '<span class="tag wa">Abierta</span>') : '<span class="tag ok">Resuelta</span>') + '</div>';
+  $('app').innerHTML = miTit('Novedades', 'Recorridas de seguridad y novedades de protección contra incendios.') +
+    '<h2>Abiertas (' + INCN.abiertas.length + ')</h2>' + (INCN.abiertas.length ? '<div class="lista">' + INCN.abiertas.map(n => item(n, true)).join('') + '</div>' : '<div class="notice ok">No hay novedades abiertas.</div>') +
+    (INCN.resueltas.length ? '<h2>Resueltas</h2><div class="lista">' + INCN.resueltas.map(n => item(n, false)).join('') + '</div>' : '') +
+    (INCN.recorridas.length ? '<h2>Últimas recorridas</h2><div class="lista">' + INCN.recorridas.map(r => '<div class="item"><div><b>' + esc(r.SECTOR) + '</b><small>' + esc(fechaTxt(r.FECHA) + (r.HORA ? ' ' + r.HORA : '') + ' · ' + r.RESULTADO) + (r.PUNTOS_NO ? '<br>' + esc(r.PUNTOS_NO) : '') + '</small></div><span class="tag ' + (/sin/i.test(r.RESULTADO) ? 'ok' : 'wa') + '">' + esc(r.RESULTADO) + '</span></div>').join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px"><button class="link" data-act="incNovAct">Actualizar</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function incNovRes(id) { const n = INCN.abiertas.find(x => x.ID === id); if (!n) return; F = { _f: 'incNovRes', ID: id, _n: n, RESOLUCION: '' }; MIV = { f: formIncNovRes }; formIncNovRes(); }
+function formIncNovRes() {
+  VISTA = 'mi'; vista('form'); const n = F._n;
+  $('app').innerHTML = miTit('Novedad resuelta', esc(n.TIPO + ' · ' + n.SECTOR)) + fErr + fTxt('RESOLUCION', 'Qué se hizo (opcional)', 'Ej.: se liberó el pasillo, se cambió la luz de emergencia');
+  bar('<button class="btn sec" data-act="incNovLista">Cancelar</button><button class="btn pri" data-act="incNovResGuardar">Marcar resuelta</button>');
+}
+async function incNovResGuardar() {
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  if (SES.servicio && !F._ident) return pedirIdentidad(incNovResGuardar);
+  await incSrvEnviar('i_nov_resolver', { ID: F.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre, identidad: F._ident || null }, () => '<div class="notice ok" style="margin-top:24px"><b>Novedad marcada como resuelta.</b></div>');
+}
+Object.assign(ACT, { idnBuscar: () => idnBuscar(), idnOk: () => idnOk(), idnEditar: () => { IDN.editar = true; formIdentidad(); }, idnVolver: () => { const v = IDN && IDN.volver; IDN = null; v ? v() : inicio(); },
+  incRec: () => incRec(), incRecGuardar: () => incRecGuardar(), incNov: () => incNov(), incNovGuardar: () => incNovGuardar(), incVolverIni: () => { F = null; inicio(); },
+  incNovLista: () => { F = null; incNovLista(); }, incNovAct: () => incNovLista(true), incNovRes: b => incNovRes(b.dataset.arg), incNovResGuardar: () => incNovResGuardar() });
+
 Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incResolver: () => incResolver(), incResolverGuardar: () => incResolverGuardar(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
 
 function rxListo(aviso, volver) {
@@ -1776,6 +1911,9 @@ const AYG = [
   { m: 'Radiaciones', t: 'Eventos de radiaciones', p: ['Inicio › Radiaciones › «Eventos» › «+ Registrar un evento»: extravío de dosímetro, dosímetro dañado o no devuelto, registro anormal o exposición accidental.', 'Un extravío deja el dosímetro de la persona como «Extraviado». Cuando llegue el nuevo, en «Personal con dosímetro» › «Actualizar datos», cargá el número nuevo y marcá «Dosímetro repuesto».', 'Avisá a Higiene y Seguridad en el día: la exposición accidental se notifica de inmediato a la autoridad (Dto. 6320/68, art. 20).'] },
   { m: 'Documentos', t: 'Formularios, contratos y documentos', p: ['«Formularios para imprimir» y «Contratos y documentación»: «Ver» o «Descargar».', '«Manuales, guías, POE, protocolos y PTS»: «Abrir» para leer; «+ Cargar un documento» para subir uno nuevo, solo en PDF, con nombre completo, tipo, código, versión, vigencia y vencimiento.', 'Si cargás uno con el mismo código o nombre, el anterior queda «Reemplazado».'] },
   { m: 'Notas', t: 'Notas recibidas y envío y respuesta', p: ['Inicio › Notas › «Registrar una nota recibida»: fecha, número, quién la manda, asunto, si requiere respuesta y el escaneo de todas las hojas.', '«Envío y respuesta»: tocá una nota para registrar cuándo se envió y qué respondieron. Revisala una vez por semana.', 'Se abre en otra pestaña con la cuenta de Google habilitada por Higiene y Seguridad.'] },
+  { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Si falta un extintor en la lista: «Agregar un extintor» (todos los datos y 3 fotos). Si el nombre o el lugar están mal: «Corregir el nombre o la ubicación» (Higiene y Seguridad lo verifica).', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
+  { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
+  { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
 ];
 function ayudaGeneral() {

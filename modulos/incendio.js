@@ -28,7 +28,7 @@ async function incTablero(fresco) {
       '<td>' + (r.cargaVencida ? '<span class="chip er">' + r.cargaVencida + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + (r.porVencer ? ' <span class="chip wa mini">' + r.porVencer + ' por vencer</span>' : '') + (r.cargaSd ? ' <span class="chip gr mini">' + r.cargaSd + ' sin dato</span>' : '') + '</td>' +
       '<td>' + (r.conObs ? '<span class="chip er">' + r.conObs + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + '</td>' +
       '<td>' + (L.ultimoControl ? fechaTxt(L.ultimoControl) : '<span class="mu">Nunca</span>') + (r.controlAtrasado ? ' <span class="chip er mini">' + r.controlAtrasado + ' con más de 3 meses</span>' : '') + '</td></tr>'; };
-  const at = (INCT.avisos || []).map(a => ['<a class="at" href="#incest/' + encodeURIComponent(a.cod) + '/' + encodeURIComponent(a.sitio) + '"><span class="tag ' + a.nivel + '">' + (a.nivel === 'er' ? 'Urgente' : a.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span><span><b>' + esc(a.sitio) + ': ' + esc(a.texto) + '</b><small>' + esc(incNom(a.cod)) + '</small></span></a>']);
+  const at = (INCT.avisos || []).map(a => ['<a class="at" href="' + (a.h || '#incest/' + encodeURIComponent(a.cod) + '/' + encodeURIComponent(a.sitio)) + '"><span class="tag ' + a.nivel + '">' + (a.nivel === 'er' ? 'Urgente' : a.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span><span><b>' + esc(a.sitio) + ': ' + esc(a.texto) + '</b><small>' + esc(incNom(a.cod)) + '</small></span></a>']);
   marco('#inc', '<div class="cab"><div><span class="mu peq">10 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual (3 fotos por extintor). Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
     '<div class="filtros">' + incLink(INCT.libro, 'Planilla del módulo') + ' ' + incLink(INCT.carpeta, 'Carpeta de fotos') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '') +
@@ -147,4 +147,26 @@ function incControlForm(D, e) {
     incRecargar(D, 'Control guardado: ' + r.resultado + '.' + (r.aviso ? ' Correo: ' + r.aviso : '')); return '';
   }, extra);
   incFotosOnchange(fotos);
+}
+
+// ------------------------------------------------------------------ Novedades y recorridas de seguridad (IncendioServicios.gs)
+// Lo que informa Seguridad (MAREM) y el resto: recorridas con puntos en «No» (con foto) y novedades. HyS las ve y las marca resueltas.
+let INCNP = null;
+async function incNovPortal(fresco) {
+  if (!INCNP || fresco) { cargando('#incnov', 'Leyendo las novedades…'); try { INCNP = await api('p_inc_novedades', {}, 120000); } catch (e) { return; } }
+  if (!INCNP.ok) { const r = INCNP; INCNP = null; return incNoInstalado('#incnov', r); }
+  const fila = (n, ab) => '<tr><td style="white-space:nowrap">' + fechaTxt(n.FECHA) + (n.HORA ? '<div class="mu peq">' + esc(n.HORA) + '</div>' : '') + '</td><td><b>' + esc(n.TIPO) + '</b><div class="mu peq">' + esc(n.ORIGEN || '') + (n.ID_EXTINTOR ? ' · ' + esc(n.ID_EXTINTOR) : '') + '</div></td>' +
+    '<td>' + esc(n.ESTABLECIMIENTO) + ' · ' + esc(n.SECTOR) + '</td><td class="peq" style="max-width:280px">' + esc(n.DETALLE || '') + (n.FOTO ? '<div>' + incLink(n.FOTO, 'Foto') + '</div>' : '') + '</td><td class="peq">' + esc(n.QUIEN || '') + '</td>' +
+    '<td>' + (ab ? '<button class="btn pri" data-nres="' + esc(n.ID) + '">Resuelta</button>' : '<span class="chip ok">Resuelta</span><div class="mu peq">' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ' · ' + esc(n.RESOLUCION) : '') + (n.RESUELTO_POR ? ' · ' + esc(n.RESUELTO_POR) : '') + '</div>') + '</td></tr>';
+  const tabla = (L, ab) => '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Qué</th><th>Dónde</th><th>Detalle</th><th>Quién</th><th></th></tr></thead><tbody>' + L.map(n => fila(n, ab)).join('') + '</tbody></table></div>';
+  marco('#incnov', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a></span><h1>Novedades y recorridas</h1><span class="mu peq">Recorridas de seguridad y novedades (principio de incendio, alarma, uso de un extintor, salidas obstruidas…). Se avisan por correo solo a Higiene y Seguridad.</span></div>' +
+    '<div class="filtros">' + incLink(INCNP.libro, 'Planilla del módulo') + '<button class="btn sec" id="inAct">Actualizar</button></div></div>' +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Abiertas (' + INCNP.abiertas.length + ')</h2></div>' + (INCNP.abiertas.length ? tabla(INCNP.abiertas, true) : '<p class="mu" style="padding:14px 18px">No hay novedades abiertas.</p>') + '</section>' +
+    (INCNP.recorridas.length ? '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimas recorridas</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Sector</th><th>Resultado</th><th>Puntos en «No»</th><th>Quién</th></tr></thead><tbody>' +
+      INCNP.recorridas.map(r => '<tr><td>' + fechaTxt(r.FECHA) + ' ' + esc(r.HORA || '') + '</td><td>' + esc(r.ESTABLECIMIENTO) + ' · ' + esc(r.SECTOR) + '</td><td><span class="chip ' + (/sin/i.test(r.RESULTADO) ? 'ok' : 'wa') + '">' + esc(r.RESULTADO) + '</span></td><td class="peq">' + esc(r.PUNTOS_NO || '—') + '</td><td class="peq">' + esc(r.QUIEN || '') + '</td></tr>').join('') + '</tbody></table></div></section>' : '') +
+    (INCNP.resueltas.length ? '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Resueltas</h2></div>' + tabla(INCNP.resueltas, false) + '</section>' : ''));
+  $('inAct').onclick = () => incNovPortal(true);
+  document.querySelectorAll('[data-nres]').forEach(b => b.onclick = () => { const n = INCNP.abiertas.find(x => x.ID === b.dataset.nres);
+    modal('Novedad resuelta · ' + n.TIPO, [['RESOLUCION', 'Qué se hizo (opcional)', null, 1]], {}, async out => { const r = await api('p_inc_nov_resolver', { ID: n.ID, RESOLUCION: out.RESOLUCION || '' }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      INCNP = null; INCT = null; TB = null; toast('Novedad marcada como resuelta.'); incNovPortal(true); return ''; }, '<p class="mu peq" style="margin:0">' + esc(n.SECTOR + ' · ' + (n.DETALLE || '')) + '</p>'); });
 }
