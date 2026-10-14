@@ -11,7 +11,7 @@
  *     de incendio (ACTIVO = No bloquea a esa persona).
  *  3. Recorrida de seguridad contra incendios (frecuencia libre): 12 puntos Sí/No por sector; cada «No» exige foto y abre una
  *     novedad. Botón «Informar una novedad» (principio de incendio, alarma, olor a quemado, uso de un extintor, etc.).
- *     Las novedades aparecen en el tablero de Belén («Requiere atención» y 10 · Novedades) y se avisan por correo SOLO a Belén
+ *     Las novedades aparecen en el tablero de Belén («Requiere atención» y 7 › Novedades y recorridas) y se avisan por correo SOLO a Belén
  *     (SITIOS_INC › CORREOS_NOVEDADES). Si se usó un extintor, además queda con el problema «Se usó» (circuito de extintores:
  *     correo a SOMI y Mantenimiento y recordatorio cada 3 días).
  *  4. Marcar «resuelto» (extintores y novedades): SOMI, Melani y Belén. MAREM no (INC_SRV.RESUELVEN).
@@ -120,7 +120,7 @@ function incSrvMail_(cod, titulo, filas, novs) {
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:640px"><p><b>' + esc_(titulo) + '</b> · ' + esc_(nom) + '</p>' +
     '<table style="border-collapse:collapse;font-size:14px">' + filas.map(r => '<tr><td style="padding:4px 12px 4px 0;color:#4F616B;vertical-align:top">' + esc_(r[0]) + '</td><td style="padding:4px 0">' + esc_(r[1]) + '</td></tr>').join('') + '</table>' +
     '<p style="margin:12px 0 6px"><b>Novedades</b></p><ul style="margin:0 0 12px">' + novs.map(n => '<li><b>' + esc_(n.TIPO) + '</b>' + (n.DETALLE ? ': ' + esc_(n.DETALLE) : '') + (n.FOTO ? ' · <a href="' + n.FOTO + '">foto</a>' : '') + '</li>').join('') + '</ul>' +
-    '<p style="color:#4F616B;font-size:12px">Protección contra incendios: medios de escape, señalización, extintores, instalaciones fijas, detección y alarma (Ley 19.587; Dto. 351/79, cap. 18). Se ven y se marcan resueltas en el portal (10 · Novedades y recorridas).</p>' +
+    '<p style="color:#4F616B;font-size:12px">Protección contra incendios: medios de escape, señalización, extintores, instalaciones fijas, detección y alarma (Ley 19.587; Dto. 351/79, cap. 18). Se ven y se marcan resueltas en el portal (7 · Protección contra incendios › Novedades y recorridas).</p>' +
     '<p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Registro: ' + esc_(novs.map(n => n.ID).join(', ')) + '.</span></p><p><img src="cid:logo" alt="HySL" style="width:220px"></p></div>';
   const texto = titulo + ' · ' + nom + '\n\n' + filas.map(r => r[0] + ': ' + r[1]).join('\n') + '\n\nNovedades:\n- ' + novs.map(n => n.TIPO + (n.DETALLE ? ': ' + n.DETALLE : '') + (n.FOTO ? ' (foto: ' + n.FOTO + ')' : '')).join('\n- ');
   try {
