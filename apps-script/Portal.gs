@@ -32,7 +32,7 @@ function portalAccion_(d) {
     case 'p_bib_cambiar': return bibCambiar_(x);
     case 'p_registros': return regListar_(limpio_(x.cod), true, 24);   // Registros.gs: todo lo cargado, sin plazo para Higiene y Seguridad
     case 'p_anular': return conLock_(() => regAnular_(limpio_(x.cod), x, true));
-    case 'p_mi': return miTablero_(limpio_(x.cod));   // agua, plagas y documentos de un establecimiento (Establecimiento.gs)
+    case 'p_mi': return miTablero_(limpio_(x.cod), { portal: true });   // agua, plagas y documentos de un establecimiento (Establecimiento.gs)
     case 'p_ficha': return pFicha_(x.cod);
     case 'p_trab': return pTrab_(x);
     case 'p_trab_guardar': return conLock_(() => pTrabGuardar_(x));
@@ -99,6 +99,7 @@ function portalAccion_(d) {
       if (String(d.accion).indexOf('p_dgm_') === 0) return typeof dgmPortal_ === 'function' ? dgmPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // diagnóstico de agua y plagas (DiagModulos.gs)
       if (String(d.accion).indexOf('p_coc_') === 0) return typeof cocPortal_ === 'function' ? cocPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Modulo6.gs.' };
       if (String(d.accion).indexOf('p_inc_') === 0) return typeof incPortal_ === 'function' ? incPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Incendio.gs (módulo 10).' };   // 10 · protección contra incendios
+      if (String(d.accion).indexOf('p_rgrl_') === 0) return typeof rgrlPortal_ === 'function' ? rgrlPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Rgrl.gs (módulo 8 › RGRL y mediciones).' };   // 8 · RGRL y mediciones
       if (String(d.accion).indexOf('p_rad_') === 0) return typeof radPortal_ === 'function' ? radPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Radiaciones.gs (módulo 9).' };   // 9 · Radiaciones ionizantes
   }
   return { ok: false, error: 'Acción desconocida.' };

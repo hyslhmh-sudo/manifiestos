@@ -20,6 +20,8 @@
  * normas de seguridad radiosanitaria de la autoridad de salud (Dto. 6320/68, art. 19); Ley 19.587 y Dto. 351/79;
  * Res. SRT 37/10 (exámenes periódicos según agente), Res. SRT 81/19 (agentes cancerígenos: radiaciones ionizantes),
  * Res. SRT 905/15. No envía correos. «Mi establecimiento» (módulo Radiaciones en ACCESOS): acciones r_… (radRed_). No borra filas: lo que se quita queda «Anulado» o «Baja».
+ * 0.2 (14/10/2026): cruce del personal expuesto con la BASE DE TRABAJADORES (radCruce_: en la base, de baja, en otro establecimiento
+ *   o con datos distintos) y carga de varios equipos iguales de una vez (CANTIDAD, p. ej. 2 arcos en C en quirófano).
  * Instalación: ejecutar una vez construirModuloRadiaciones().
  */
 const RAD = {
@@ -45,7 +47,7 @@ const RAD = {
   ESTADOS_DOSI: ['Activo', 'Baja a pedido del trabajador', 'Baja por fin de exposición', 'Extraviado', 'Suspendido', 'Sin dosímetro (s/d)'],
   TIPOS_MOV: ['Alta de exposición', 'Alta de dosímetro', 'Baja a pedido del trabajador', 'Baja por fin de exposición', 'Reactivación', 'Cambio de dosímetro', 'Extravío', 'Corrección de datos'],
   TIPOS_EVE: ['Registro anormal', 'Extravío de dosímetro', 'Dosímetro dañado', 'Dosímetro no devuelto', 'Exposición accidental', 'Otro'],
-  EQUIPOS: ['Radiología fija', 'Radiología rodante', 'Tomógrafo', 'Mamógrafo', 'Arco en C (radioscopia)', 'Odontológico intraoral', 'Odontológico panorámico / cefalométrico', 'Otro'],
+  EQUIPOS: ['Radiología fija', 'Radiología portátil (rodante)', 'Tomógrafo', 'Mamógrafo', 'Arco en C (radioscopia)', 'Odontológico intraoral', 'Odontológico panorámico / cefalométrico', 'Otro'],
   TIPOS_DOC: ['Habilitación de la instalación / equipo', 'Plano de ubicación y plomado', 'Memoria de cálculo de blindaje', 'Levantamiento radiométrico', 'Control de calidad del equipo',
     'Autorización individual (operador)', 'Designación de responsable de la instalación', 'Designación de responsable del uso', 'Nómina de personal con dosímetro (comunicación a la autoridad)',
     'Cartilla / registro individual de dosis', 'Comunicación de cambio de personal', 'Comunicación de exposición accidental', 'Comunicación de venta, cesión o baja de equipo',
@@ -207,6 +209,29 @@ function radDniBase_(dni) {
   const r = T.getRange(6, 1, n, 22).getValues().find(x => String(x[1]).replace(/\D/g, '') === dni);
   return r ? { dni: dni, cuil: limpio_(r[0]), nombre: [r[2], r[3]].filter(Boolean).join(', '), funcion: limpio_(r[5] || r[6]), servicio: limpio_(r[7]), est: limpio_(r[21]), estado: limpio_(r[19]) } : null;
 }
+// Índice de la BASE DE TRABAJADORES (hoja TODOS) por DNI, leído una sola vez
+function radBaseIndice_() {
+  const T = pBT_().getSheetByName('TODOS'), n = T.getLastRow() - 5, ix = {}; if (n < 1) return ix;
+  T.getRange(6, 1, n, 22).getValues().forEach(r => { const d = String(r[1]).replace(/\D/g, ''); if (d) ix[d] = { dni: d, cuil: limpio_(r[0]), nombre: [r[2], r[3]].filter(Boolean).join(', '),
+    funcion: limpio_(r[5] || r[6]), servicio: limpio_(r[7]), est: limpio_(r[21]), estado: limpio_(r[19]) }; });
+  return ix;
+}
+// Cruce del personal expuesto con la base: quién no está, quién figura de baja o en otro establecimiento y qué datos difieren
+function radCruce_(cod, per) {
+  const ix = radBaseIndice_(), norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  return per.filter(p => !/^Baja/.test(p.ESTADO_DOSIMETRO)).map(p => {
+    const d = String(p.DNI || '').replace(/\D/g, ''), b = d ? ix[d] : null, dif = [];
+    let estado = !d ? 'sin_dni' : !b ? 'no_base' : /baja|traslado|renuncia|jubil|fallec/i.test(b.estado) ? 'baja' : b.est && b.est !== cod ? 'otro_est' : 'ok';
+    if (b) {
+      if (b.nombre && norm(b.nombre) !== norm(p.APELLIDO_Y_NOMBRE)) dif.push(['APELLIDO_Y_NOMBRE', p.APELLIDO_Y_NOMBRE, b.nombre]);
+      if (b.cuil && String(b.cuil).replace(/\D/g, '') !== String(p.CUIL || '').replace(/\D/g, '')) dif.push(['CUIL', p.CUIL, b.cuil]);
+      if (b.servicio && norm(b.servicio) !== norm(p.SERVICIO)) dif.push(['SERVICIO', p.SERVICIO, b.servicio]);
+      if (b.funcion && norm(b.funcion) !== norm(p.FUNCION)) dif.push(['FUNCION', p.FUNCION, b.funcion]);
+      if (estado === 'ok' && dif.length) estado = 'difiere';
+    }
+    return { id: p.ID, nombre: p.APELLIDO_Y_NOMBRE, dni: d, estado: estado, base: b, dif: dif };
+  });
+}
 // Personas de la base que parecen expuestas (imágenes, rayos, tomografía, odontología, hemodinamia), para sumarlas rápido
 function radSugeridas_(cod) {
   const T = pBT_().getSheetByName('TODOS'), n = T.getLastRow() - 5; if (n < 1) return [];
@@ -294,6 +319,14 @@ function radSalaGuardar_(x, quien) {
   if (!limpio_(x.SALA) && !limpio_(x.TIPO_EQUIPO)) return { ok: false, mensaje: 'Completá al menos la sala o el tipo de equipo.' };
   const L = radLeer_('SALAS_EQUIPOS', RAD.H_SAL), antes = x.ID ? L.find(s => s.ID === x.ID) : null;
   if (x.ID && !antes) return { ok: false, mensaje: 'No se encontró el equipo: actualizá la lista.' };
+  // Varios equipos iguales de una vez (solo al agregar): una fila por equipo, con «N.º k de N» en las observaciones
+  const cant = antes ? 1 : Math.min(20, Math.max(1, parseInt(x.CANTIDAD, 10) || 1));
+  if (cant > 1) {
+    const ids = [];
+    for (let k = 1; k <= cant; k++) { const r = radSalaGuardar_(Object.assign({}, x, { CANTIDAD: 1, ID: '', OBSERVACIONES: ['Equipo ' + k + ' de ' + cant, limpio_(x.OBSERVACIONES)].filter(Boolean).join(' · '),
+      planoArchivo: k === 1 ? x.planoArchivo : null, memoriaArchivo: k === 1 ? x.memoriaArchivo : null }), quien); if (!r.ok) return r; ids.push(r.id); }
+    return { ok: true, id: ids[0], ids: ids, aviso: cant + ' equipos cargados: completá la marca, el modelo y el N.º de serie de cada uno con «Editar».' };
+  }
   const s = {}; RAD.H_SAL.forEach(h => s[h] = x[h] != null ? x[h] : antes ? antes[h] : '');
   s.ID = antes ? antes.ID : radId_('EQ', cod); s.ESTABLECIMIENTO = cod;
   ['HABILITACION_FECHA', 'HABILITACION_VENCE', 'LEVANTAMIENTO_FECHA', 'LEVANTAMIENTO_PROXIMO', 'CONTROL_CALIDAD_FECHA', 'CONTROL_CALIDAD_PROXIMO', 'EPP_CONTROL_FECHA'].forEach(k => s[k] = radFecha_(s[k]));
@@ -375,7 +408,7 @@ function radDetalle_(cod) {
   return { ok: true, cod: cod, hoy: hoy, resumen: radResumenEst_(cod, D, hoy), personal: de(D.per), movimientos: mov,
     controles: de(D.con).sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))), meses: radMeses_(12),
     eventos: de(D.eve).reverse(), salas: de(D.sal).map(s => Object.assign(s, { hab: radEstadoFecha_(s.HABILITACION_VENCE, hoy), lev: radEstadoFecha_(s.LEVANTAMIENTO_PROXIMO, hoy), cc: radEstadoFecha_(s.CONTROL_CALIDAD_PROXIMO, hoy) })),
-    documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), sitios: radSitiosEst_(cod, D.sit),
+    documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), cruce: radCruce_(cod, de(D.per)), sitios: radSitiosEst_(cod, D.sit),
     listas: { rxSitio: RAD.RX_SITIO, sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC },
     carpeta: radCarpetaEst_(cod).getUrl(), libro: pRad_().getUrl() };
 }

@@ -852,7 +852,7 @@ function repintarMi() { if (VISTA === 'inicio') inicio(); else if (MIV && MIV.f)
 const miTit = (t, sub) => '<h1>' + esc(t) + '</h1>' + (sub ? '<p class="mu" style="margin-top:-6px">' + sub + '</p>' : '') + (F && F._corr && VISTA === 'mi' && MIV && MIV.f !== registros ? '<div class="notice">Estás corrigiendo un registro: al guardar, ' + (F.CASO_EDITAR || F.ID_EDITAR ? 'se actualizan sus datos.' : 'reemplaza al anterior, que queda anulado.') + '</div>' : '');
 const miVolver = (act, txt) => bar('<button class="btn sec" data-act="' + (act || 'inicio') + '">' + (txt || 'Volver al inicio') + '</button>');
 const miNivel = n => n === 'er' ? 'er' : n === 'wa' ? 'wa' : 'ok';
-const miEstTxt = { vencida: ['Vencida', 'er'], porvencer: ['Por vencer', 'wa'], sin: ['Sin registro', 'wa'], aldia: ['Al día', 'ok'] };
+const miEstTxt = { vencida: ['Vencida', 'er'], porvencer: ['Por vencer', 'wa'], sin: ['Sin registro', 'wa'], aldia: ['Al día', 'ok'], unica: ['Muestra única', 'gr'], riego: ['Riego: no lleva limpieza obligatoria', 'gr'] };
 
 // Tablero de control (reemplaza al inicio anterior; los botones de manifiestos siguen igual)
 function inicio() {
@@ -1024,7 +1024,7 @@ function aguaInv() {
 }
 function aguaEditT(cod) {
   const t = cod ? MI.tanques.find(x => x.codigo === cod) : null;
-  F = t ? { CODIGO_TANQUE: t.codigo, ESTABLECIMIENTO: t.est, SITIO: t.sitio, UBICACION: t.ubicacion, TIPO: t.tipo, USO: t.uso, CAPACIDAD_L: t.capacidad, TAPA: t.tapa, ACCESO: t.acceso, QUIEN_LIMPIA: t.quienLimpia, FRECUENCIA_LIMPIEZA_MESES: t.frecuencia, OBSERVACIONES: t.obs, ESTADO: 'Activo' }
+  F = t ? { CODIGO_TANQUE: t.codigo, ESTABLECIMIENTO: t.est, SITIO: t.sitio, UBICACION: t.ubicacion, TIPO: t.tipo, USO: t.uso, CAPACIDAD_L: t.capacidad, MATERIAL: t.material || '', TAPA: t.tapa, ACCESO: t.acceso, QUIEN_LIMPIA: t.quienLimpia, FRECUENCIA_LIMPIEZA_MESES: t.frecuencia, OBSERVACIONES: t.obs, ESTADO: t.inv || 'Activo' }
     : { TIPO: 'Tanque elevado', USO: 'Consumo humano', TAPA: 'Sí, en condiciones', ACCESO: 'Escalera fija', QUIEN_LIMPIA: 'Personal propio', FRECUENCIA_LIMPIEZA_MESES: '12', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '' };
   MIV = { f: () => formTanque() }; formTanque();
 }
@@ -1032,7 +1032,7 @@ function formTanque() {
   VISTA = 'mi'; vista('form'); const g = miEstOps();
   $('app').innerHTML = miTit(F.CODIGO_TANQUE ? 'Cambiar datos de ' + F.CODIGO_TANQUE : 'Agregar tanque o cisterna') + fErr +
     (g && !F.CODIGO_TANQUE ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('UBICACION', 'Ubicación', 'text', 'Ej.: azotea, sobre cocina') +
-    fSeg('TIPO', 'Tipo', ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']) + fInp('CAPACIDAD_L', 'Capacidad (litros)', 'number', 'Ej.: 40000') + fSeg('USO', 'Uso', ['Consumo humano', 'Reserva de incendio', 'Mixto']) +
+    fSeg('TIPO', 'Tipo', ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']) + fInp('CAPACIDAD_L', 'Capacidad (litros)', 'number', 'Ej.: 40000') + fSeg('USO', 'Uso', ['Consumo humano', 'Consumo y reserva de incendio', 'Reserva de incendio', 'Riego', 'Mixto']) + fInp('MATERIAL', 'Material (opcional)', 'text', 'Ej.: acero inoxidable, hormigón, polietileno') +
     fSeg('TAPA', 'Tapa', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSel('ACCESO', 'Acceso', ['Escalera fija', 'Escalera móvil', 'Espacio confinado', 'A nivel', 'Otro']) +
     fSel('QUIEN_LIMPIA', 'Quién lo limpia', ['Personal propio', 'Personal propio y empresa (trabajo en altura)', 'Empresa de mantenimiento', 'Empresa contratada', 's/d (revisar)']) + fSel('FRECUENCIA_LIMPIEZA_MESES', 'Frecuencia de limpieza', [['12', 'Una vez al año'], ['6', 'Cada 6 meses']]) +
     (F.CODIGO_TANQUE ? fSeg('ESTADO', 'Estado', ['Activo', 'Fuera de uso']) : '') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
@@ -1040,7 +1040,7 @@ function formTanque() {
 }
 function aguaEditP(cod) {
   const p = cod ? MI.puntos.find(x => x.codigo === cod) : null;
-  F = p ? { CODIGO_PUNTO: p.codigo, ESTABLECIMIENTO: p.est, SITIO: p.sitio, UBICACION: p.ubicacion, TANQUE_ASOCIADO: p.tanque, FUENTE: p.fuente, USO: p.uso, ESTADO: 'Activo' }
+  F = p ? { CODIGO_PUNTO: p.codigo, ESTABLECIMIENTO: p.est, SITIO: p.sitio, UBICACION: p.ubicacion, TANQUE_ASOCIADO: p.tanque, FUENTE: p.fuente, USO: p.uso, ESTADO: p.inv || 'Activo' }
     : { FUENTE: 'Red pública', USO: 'Bebida', ESTABLECIMIENTO: SES.est, SITIO: (MI.sitios || [])[0] || '', TANQUE_ASOCIADO: (MI.tanques[0] || {}).codigo || '' };
   MIV = { f: () => formPunto() }; formPunto();
 }
@@ -1049,7 +1049,7 @@ function formPunto() {
   $('app').innerHTML = miTit(F.CODIGO_PUNTO ? 'Cambiar datos de ' + F.CODIGO_PUNTO : 'Agregar canilla') + fErr +
     (g && !F.CODIGO_PUNTO ? fSel('ESTABLECIMIENTO', 'Edificio', g) : '') + fSel('SITIO', 'Sitio', (MI.sitios || []).length ? MI.sitios : ['s/d (revisar)']) + fInp('UBICACION', 'Ubicación de la canilla', 'text', 'Ej.: cocina, lactario, la más alejada del tanque') +
     fSel('TANQUE_ASOCIADO', 'Tanque del que sale el agua', [['', 'No sé / directo de red']].concat(MI.tanques.map(t => [t.codigo, t.codigo + ' · ' + t.ubicacion]))) +
-    fSeg('FUENTE', 'Fuente', ['Red pública', 'Pozo', 'Camión cisterna', 'Otra']) + fSeg('USO', 'Uso', ['Bebida', 'Cocina', 'Higiene', 'Mixto']) + (F.CODIGO_PUNTO ? fSeg('ESTADO', 'Estado', ['Activo', 'Fuera de uso']) : '');
+    fSeg('FUENTE', 'Fuente', ['Red pública', 'Pozo', 'Camión cisterna', 'Otra']) + fSeg('USO', 'Uso', ['Bebida', 'Cocina', 'Higiene', 'Mixto']) + (F.CODIGO_PUNTO ? fSel('ESTADO', 'Estado', [['Activo', 'Activo (bacteriológico cada 6 meses y físico-químico cada 12)'], ['Equipo (solo físico-químico)', 'Equipo: solo físico-químico cada 12 meses'], ['Muestra única', 'Muestra única: no se repite, no vence'], ['Fuera de uso', 'Fuera de uso']].concat(/^(Activo|Equipo \(solo físico-químico\)|Muestra única|Fuera de uso)$/.test(F.ESTADO || '') ? [] : [[F.ESTADO, F.ESTADO]])) : '');
   bar('<button class="btn sec" data-act="aguaInv">Cancelar</button><button class="btn pri" data-act="guardarInv" data-arg="m_punto">Guardar</button>');
 }
 async function guardarInv(tipo) {

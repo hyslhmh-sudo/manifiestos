@@ -64,7 +64,7 @@ function eeItems(cod, f) {
   de(T.noApta).forEach(a => add('Agua', true, true, 'Agua NO APTA en ' + a.punto, 'Limpiar y tomar nueva muestra antes del ' + fechaTxt(a.limite), fc));
   const tq = de(T.tanques), pt = de(T.puntos), n = (l, e) => l.filter(x => x.estado === e).length;
   if (n(tq, 'vencida')) add('Agua', true, true, n(tq, 'vencida') + ' tanque(s) con la limpieza vencida', 'Registrar la limpieza con el F-AGU-01', fc);
-  if (n(pt, 'vencida')) add('Agua', true, true, n(pt, 'vencida') + ' canilla(s) con el análisis bacteriológico vencido', 'Tomar muestra según el proceso provincial', fc);
+  if (n(pt, 'vencida')) add('Agua', true, true, n(pt, 'vencida') + ' canilla(s) con el análisis de agua vencido', 'Tomar muestra según el proceso provincial', fc);
   if (n(tq, 'porvencer') + n(pt, 'porvencer')) add('Agua', false, false, (n(tq, 'porvencer') + n(pt, 'porvencer')) + ' limpieza(s) o análisis por vencer', 'Programar', fc);
   if (n(tq, 'sin') + n(pt, 'sin')) add('Agua', false, true, (n(tq, 'sin') + n(pt, 'sin')) + ' tanque(s) o canilla(s) sin registro', 'Cargar la última limpieza o el último análisis', fc);
   if (activo && !tq.length && !pt.length) add('Agua', false, true, 'Sin inventario de tanques y canillas', 'Cargar desde «Mi establecimiento» o el diagnóstico de agua', '#aguadiag');
@@ -90,6 +90,9 @@ function eeItems(cod, f) {
     if ((s.avisos || []).length) add('Personal y RAR', true, false, 'Siniestro con avisos', (s.nro || '') + ' · ' + s.avisos.join(' · '), ir);
     if (s.estado === 'En ILT') add('Personal y RAR', false, false, 'Persona en ILT (con baja)', (s.nro || '') + (s.dias ? ' · ' + s.dias + ' días de baja' : ''), ir);
   });
+  // Infraestructura: mediciones con vencimiento (puesta a tierra, iluminación, ruido…) y RGRL (Rgrl.gs, datos del tablero)
+  de(T.mediciones || []).forEach(m => { if (m.estado === 'vencida' || m.estado === 'porvencer') add('Infraestructura', true, true, m.tipo + (m.estado === 'vencida' ? ' vencida' : ' por vencer'), (m.estado === 'vencida' ? 'Venció el ' : 'Vence el ') + fechaTxt(m.vence) + ' · coordinar la medición y cargar el protocolo', '#medic'); });
+  de(T.rgrl || []).forEach(r => { if (r.estadoVto === 'vencida') add('Infraestructura', false, true, 'RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' (' + r.lugar + ')' : ''), 'Se actualiza una vez al año (Res. SRT 463/09)', '#rgrl/' + encodeURIComponent(r.id)); else if (r.noVencidas) add('Infraestructura', true, false, r.noVencidas + ' condición(es) del RGRL con la fecha de regularización vencida', r.lugar || r.cod, '#rgrl/' + encodeURIComponent(r.id)); });
   // Infraestructura: hallazgos abiertos del módulo 8, con la misma regla que las acciones de los otros módulos
   if (typeof M8 !== 'undefined' && M8 && M8.ok) {
     const estDe = {}; (M8.relevamientos || []).forEach(x => estDe[x.id] = x.est || ((M8.servicios || []).find(v => v.id === x.servicio) || {}).est);

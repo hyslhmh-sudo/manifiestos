@@ -129,11 +129,31 @@ function radPer(D) {
       '<td>' + esc(p.EN_NTE || 's/d') + '</td><td style="white-space:nowrap"><button class="btn sec" data-ed="' + esc(p.ID) + '">Editar</button> ' +
       (/^Baja/.test(p.ESTADO_DOSIMETRO) ? '<button class="btn sec" data-re="' + esc(p.ID) + '">Reactivar</button>' : '<button class="btn sec" data-ba="' + esc(p.ID) + '">Dar de baja</button>') + '</td></tr>').join('')
       : '<tr><td colspan="7" class="mu">' + (D.personal.length ? 'Nadie con ese filtro.' : RADF.sitio ? 'Nadie cargado en ' + RADF.sitio + '.' : 'Todavía no hay personal expuesto cargado.') + '</td></tr>') + '</tbody></table></div></section>' +
+    radCruceHtml(D) +
     (sug.length ? '<section class="card"><h2>En la base de trabajadores</h2><p class="mu peq" style="margin-top:0">Personas de este establecimiento con función o servicio de imágenes, rayos, tomografía, odontología o hemodinamia que todavía no están en el módulo. Tocá una para agregarla.</p><div style="display:flex;flex-wrap:wrap;gap:6px">' +
       sug.map((s, i) => '<button class="btn sec" data-sug="' + i + '" style="min-height:30px;padding:4px 10px">' + esc(s.nombre) + ' <span class="mu peq" style="margin-left:6px">' + esc(s.funcion || s.servicio) + '</span></button>').join('') + '</div></section>' : '') +
     '<p class="mu peq">Al dar de alta o de baja a alguien con dosímetro, se comunica de inmediato a la autoridad sanitaria (Dto. 6320/68, art. 22): cargá la nota en «Documentos» como «Comunicación de cambio de personal».</p>';
 }
+// Cruce con la BASE DE TRABAJADORES (Radiaciones.gs › radCruce_)
+const RAD_CRUCE = { ok: ['ok', 'En la base, datos iguales'], difiere: ['wa', 'En la base, con datos distintos'], otro_est: ['wa', 'En la base, en otro establecimiento'], baja: ['er', 'En la base, de baja'], no_base: ['er', 'No está en la base'], sin_dni: ['gr', 'Sin DNI cargado'] };
+function radCruceHtml(D) {
+  const C = (D.cruce || []).filter(c => !RADF.sitio || (D.personal.find(p => p.ID === c.id) || {}).SITIO === RADF.sitio); if (!C.length) return '';
+  const cnt = k => C.filter(c => c.estado === k).length, rev = C.filter(c => c.estado !== 'ok');
+  const etq = { APELLIDO_Y_NOMBRE: 'Nombre', CUIL: 'CUIL', SERVICIO: 'Servicio', FUNCION: 'Función' };
+  return '<section class="card"><h2>Cruce con la base de trabajadores</h2><p class="mu peq" style="margin-top:0">Cada persona expuesta (sin las bajas) buscada por DNI en la BASE DE TRABAJADORES.</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">' +
+    Object.keys(RAD_CRUCE).filter(k => cnt(k)).map(k => '<span class="chip ' + RAD_CRUCE[k][0] + '">' + cnt(k) + ' · ' + RAD_CRUCE[k][1] + '</span>').join('') + '</div>' +
+    (rev.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Resultado</th><th>En la base</th><th></th></tr></thead><tbody>' + rev.map(c => '<tr><td><b>' + esc(c.nombre) + '</b><div class="mu peq">DNI ' + esc(c.dni || 's/d') + '</div></td><td><span class="chip ' + RAD_CRUCE[c.estado][0] + '">' + RAD_CRUCE[c.estado][1] + '</span>' +
+      (c.dif.length ? '<div class="peq" style="margin-top:4px">' + c.dif.map(d => etq[d[0]] + ': <s>' + esc(d[1] || 's/d') + '</s> → <b>' + esc(d[2]) + '</b>').join('<br>') + '</div>' : '') + '</td>' +
+      '<td class="peq">' + (c.base ? esc([c.base.est, c.base.estado, c.base.servicio].filter(Boolean).join(' · ')) : '—') + '</td>' +
+      '<td style="white-space:nowrap">' + (c.dif.length ? '<button class="btn sec" data-cru="' + esc(c.id) + '">Tomar los datos de la base</button>' : c.estado === 'no_base' || c.estado === 'sin_dni' ? '<button class="btn sec" data-ed="' + esc(c.id) + '">Revisar DNI</button>' : c.estado === 'baja' ? '<button class="btn sec" data-ba="' + esc(c.id) + '">Dar de baja el dosímetro</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<div class="mu peq">Todas las personas expuestas están en la base con los mismos datos.</div>') +
+    '<p class="mu peq" style="margin:8px 0 0">«No está en la base»: revisá el DNI o pedí el alta en la base de personal. «De baja» u «otro establecimiento»: confirmá si sigue expuesta acá; si no, dale de baja el dosímetro (y comunicalo a la autoridad, Dto. 6320/68, art. 22).</p></section>';
+}
 function radPerEv(D) {
+  document.querySelectorAll('[data-cru]').forEach(b => b.onclick = async () => { const c = (D.cruce || []).find(x => x.id === b.dataset.cru); if (!c) return;
+    const datos = { ID: c.id, ESTABLECIMIENTO: D.cod, movimiento: { tipo: 'Corrección de datos', detalle: 'Datos tomados de la base de trabajadores: ' + c.dif.map(d => d[0]).join(', ') } }; c.dif.forEach(d => datos[d[0]] = d[2]);
+    b.disabled = true; b.textContent = 'Guardando…';
+    try { const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) { b.disabled = false; b.textContent = 'Tomar los datos de la base'; return toast(r.mensaje || 'No se pudo guardar.'); } radRecargar(D, 'Datos actualizados con la base de trabajadores.'); } catch (e) { b.disabled = false; b.textContent = 'Tomar los datos de la base'; } });
   $('rpVer').onchange = e => { RADF.ver = e.target.value; radEst(encodeURIComponent(D.cod) + '/per'); };
   $('rpQ').onchange = e => { RADF.q = e.target.value; radEst(encodeURIComponent(D.cod) + '/per'); };
   $('rpNuevo').onclick = () => radPersonaForm(D, null);
@@ -253,7 +273,12 @@ function radEveForm(D, e) {
 // ---------- Salas y equipos
 function radSal(D) {
   const si = x => x === 'Sí' ? '<span class="chip ok mini">Sí</span>' : x === 'No' ? '<span class="chip er mini">No</span>' : '<span class="chip gr mini">' + esc(x || 's/d') + '</span>';
-  return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><h2>Salas y equipos</h2><button class="btn pri" id="rsNuevo">Agregar equipo</button></div><div style="overflow-x:auto"><table><thead><tr><th>Sala y equipo</th><th>Habilitación</th><th>Responsables</th><th>Plano / blindaje</th><th>Levantamiento radiométrico</th><th>Control de calidad</th><th>Señalización · luz · EPP</th><th></th></tr></thead><tbody>' +
+  const vivos = D.salas.filter(s => s.ESTADO !== 'Baja'), inv = {};
+  vivos.forEach(s => { const k = (s.TIPO_EQUIPO || 's/d (revisar)') + '|' + (s.SITIO || '') + (s.SALA ? ' · ' + s.SALA : ''); inv[k] = (inv[k] || 0) + 1; });
+  const invHtml = vivos.length ? '<section class="card"><h2>Inventario de equipos (' + vivos.length + ')</h2><div style="display:flex;flex-wrap:wrap;gap:6px">' +
+    Object.keys(inv).sort().map(k => { const [t, l] = k.split('|'); return '<span class="chip gr" style="font-size:13px"><b>' + inv[k] + '</b>&nbsp;' + esc(t) + (l ? ' · ' + esc(l.replace(/^ · /, '')) : '') + '</span>'; }).join('') +
+    '</div><p class="mu peq" style="margin:8px 0 0">Equipos en uso o fuera de servicio, por tipo y lugar. Para varios iguales (por ejemplo 2 arcos en C en quirófano o 3 portátiles), «Agregar equipos» con la cantidad: queda una fila por equipo para completar su serie y habilitación.</p></section>' : '';
+  return invHtml + '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><h2>Salas y equipos</h2><button class="btn pri" id="rsNuevo">Agregar equipos</button></div><div style="overflow-x:auto"><table><thead><tr><th>Sala y equipo</th><th>Habilitación</th><th>Responsables</th><th>Plano / blindaje</th><th>Levantamiento radiométrico</th><th>Control de calidad</th><th>Señalización · luz · EPP</th><th></th></tr></thead><tbody>' +
     (D.salas.length ? D.salas.map(s => '<tr' + (s.ESTADO === 'Baja' ? ' style="opacity:.5"' : '') + '><td><b>' + esc((s.SITIO ? s.SITIO + ' · ' : '') + (s.SALA || 's/d (revisar)')) + '</b><div class="mu peq">' + esc([s.TIPO_EQUIPO, s.MARCA, s.MODELO, s.SERIE ? 'serie ' + s.SERIE : ''].filter(Boolean).join(' · ')) + '</div>' + (s.ESTADO !== 'En uso' ? '<span class="chip gr mini">' + esc(s.ESTADO) + '</span>' : '') + '</td>' +
       '<td>' + radChipF(s.hab, s.HABILITACION_VENCE) + (s.HABILITACION_NRO ? '<div class="mu peq">N.º ' + esc(s.HABILITACION_NRO) + '</div>' : '') + '</td>' +
       '<td class="peq">Instalación: ' + esc(s.RESPONSABLE_INSTALACION || 's/d') + '<br>Uso: ' + esc(s.RESPONSABLE_USO || 's/d') + '</td>' +
@@ -270,16 +295,16 @@ function radSalEv(D) {
 }
 function radSalForm(D, s) {
   const arch = {}, sn = ['Sí', 'No', 's/d'];
-  modal(s ? 'Equipo · ' + (s.SALA || s.TIPO_EQUIPO) : 'Agregar sala y equipo', [radSitF(D), ['SALA', 'Sala'], ['TIPO_EQUIPO', 'Tipo de equipo', D.listas.equipos], ['MARCA', 'Marca'], ['MODELO', 'Modelo'], ['SERIE', 'N.º de serie'], ['ANIO', 'Año de fabricación'],
+  modal(s ? 'Equipo · ' + (s.SALA || s.TIPO_EQUIPO) : 'Agregar equipos', [radSitF(D), ['SALA', 'Sala o servicio (quirófano, odontología, guardia…)'], ['TIPO_EQUIPO', 'Tipo de equipo', D.listas.equipos]].concat(s ? [] : [['CANTIDAD', 'Cantidad de equipos iguales', ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']]]).concat([ ['MARCA', 'Marca'], ['MODELO', 'Modelo'], ['SERIE', 'N.º de serie'], ['ANIO', 'Año de fabricación'],
     ['HABILITACION_NRO', 'Habilitación: número'], ['HABILITACION_FECHA', 'Habilitación: fecha', 'date'], ['HABILITACION_VENCE', 'Habilitación: vencimiento', 'date'],
     ['RESPONSABLE_INSTALACION', 'Responsable de la instalación (director)'], ['RESPONSABLE_USO', 'Responsable del uso (jefe del servicio)'],
     ['LEVANTAMIENTO_FECHA', 'Levantamiento radiométrico: último', 'date'], ['LEVANTAMIENTO_PROXIMO', 'Levantamiento radiométrico: próximo', 'date'], ['CONTROL_CALIDAD_FECHA', 'Control de calidad: último', 'date'], ['CONTROL_CALIDAD_PROXIMO', 'Control de calidad: próximo', 'date'],
     ['SENALIZACION', 'Señalización de riesgo radiológico', sn], ['LUZ_ADVERTENCIA', 'Luz de advertencia en la puerta', ['Sí', 'No', 's/d', 'No corresponde']], ['EPP_PLOMADO', 'Elementos plomados (delantales, cuellos, anteojos…)'], ['EPP_CONTROL_FECHA', 'Elementos plomados: último control', 'date'],
-    ['ESTADO', 'Estado', ['En uso', 'Fuera de servicio', 'Baja']], ['OBSERVACIONES', 'Observaciones', null, 1]], Object.assign({ ESTADO: 'En uso', SITIO: RADF.sitio }, s || {}),
+    ['ESTADO', 'Estado', ['En uso', 'Fuera de servicio', 'Baja']], ['OBSERVACIONES', 'Observaciones', null, 1]]), Object.assign({ ESTADO: 'En uso', SITIO: RADF.sitio, CANTIDAD: '1' }, s || {}),
     async out => {
       const datos = Object.assign({ ID: s ? s.ID : '', ESTABLECIMIENTO: D.cod }, out); if (arch.plano) datos.planoArchivo = arch.plano; if (arch.memo) datos.memoriaArchivo = arch.memo;
       const r = await api('p_rad_sala_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-      radRecargar(D, 'Equipo guardado.' + (r.aviso ? ' ' + r.aviso : '')); return '';
+      radRecargar(D, (r.ids && r.ids.length > 1 ? '' : 'Equipo guardado.') + (r.aviso ? ' ' + r.aviso : '')); return '';
     }, radSubir('plano', 'Plano de ubicación y plomado (PDF o imagen)', s && s.PLANO_BLINDAJE) + radSubir('memo', 'Memoria de cálculo de blindaje (PDF)', s && s.MEMORIA_BLINDAJE) +
     '<p class="mu peq" style="margin:0">La habilitación, el levantamiento radiométrico y el control de calidad se cargan además como documento en «Documentos» (con su archivo), para el control de requisitos.</p>');
   radInputs(arch);
