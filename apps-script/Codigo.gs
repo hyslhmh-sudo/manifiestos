@@ -26,7 +26,7 @@ const CFG = {
 };
 const TZ = 'America/Argentina/Buenos_Aires';
 // Versión del sistema: cambia con cada entrega. Se ve al pie del menú del portal. Si no coincide con la del manual, falta instalar algo.
-const VERSION_SISTEMA = '2026-10-14 · 14.61';
+const VERSION_SISTEMA = '2026-10-14 · 14.62';
 function versionSistema() { Logger.log('Sistema HyS · versión ' + VERSION_SISTEMA); }
 const FOTO_OBLIGATORIA_DESDE = '2027-01-01';   // certificados: desde esta fecha la foto es obligatoria al cargarlos
 // Manifiestos: la foto (o el escaneo en el lote .zip del mes) nunca es obligatoria al cargar, pero tiene que estar antes del día 10 del mes siguiente.
@@ -212,11 +212,11 @@ function guardarManifiesto_(est, m) {
   ].filter(Boolean).join(' · ');
 
   // Libro del establecimiento: A est, B sitio, C fecha, D año, E mes, F nro, G corriente, H recipientes, I tamaño, J cantidad, K unidad, L origen, M obs
-  const filasE = m.res.map(r => [E.nombre, m.sitio, fecha, '', '', String(m.nro).trim(), r.corriente, num_(r.cant), num_(r.tam), num_(r.vol), r.uni || 'dm³', 'App', obs]);
+  const filasE = m.res.map(r => [E.nombre, m.sitio, fecha, '', '', String(m.nro).trim(), r.corriente, num_(r.cant), num_(r.tam), num_(r.vol), r.uni || 'dm³', m.origen || 'App', obs]);
   agregar_(sh, filasE, [4, 5], ['=YEAR(R[0]C[-1])', '=MONTH(R[0]C[-2])']);
   // Libro general: A est, B sitio, C área, D fecha, E año, F mes, G nro, H corriente, I recipientes, J cantidad, K unidad, L origen, M tamaño, N obs
   const shG = SpreadsheetApp.openById(CFG.GENERAL).getSheetByName('MANIFIESTOS');
-  const filasG = m.res.map(r => [E.nombre, m.sitio, E.area, fecha, '', '', String(m.nro).trim(), r.corriente, num_(r.cant), num_(r.vol), r.uni || 'dm³', 'App', num_(r.tam), obs]);
+  const filasG = m.res.map(r => [E.nombre, m.sitio, E.area, fecha, '', '', String(m.nro).trim(), r.corriente, num_(r.cant), num_(r.vol), r.uni || 'dm³', m.origen || 'App', num_(r.tam), obs]);
   agregar_(shG, filasG, [5, 6], ['=YEAR(R[0]C[-1])', '=MONTH(R[0]C[-2])']);
   return { ok: true };
 }
@@ -471,7 +471,7 @@ function fotosPendientes_(est, ss) {
     const lotes = leerLotes_(ss).filter(l => l.tipo !== 'certificados'), desde = Utilities.formatDate(new Date(Date.now() - 400 * 864e5), TZ, 'yyyy-MM');
     const g = {};
     leerManifiestos_(ss).forEach(x => {
-      if (x.origen !== 'App') return; const mes = x.fecha.slice(0, 7); if (mes < desde) return;
+      if (x.origen !== 'App' && x.origen !== 'Carga manual') return;   // la carga manual cuenta igual que la aplicación (14.62) const mes = x.fecha.slice(0, 7); if (mes < desde) return;
       if (/(Foto|Escaneo): *https?:/.test(String(x.obs || ''))) return;
       if (lotes.some(l => mes >= l.desde && mes <= l.hasta)) return;
       const k = x.sitio + '|' + x.nro + '|' + x.fecha; (g[mes] = g[mes] || {})[k] = x.nro;
