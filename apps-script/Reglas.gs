@@ -214,7 +214,7 @@ function gregDetectar_(RG, fresco) {
     const E = incLeer_('EXTINTORES', INC.H_EXT).filter(e => e.ID && !/baja/i.test(e.ESTADO || '')), ult = {}, fal = {};
     try { incLeer_('CONTROLES', INC.H_CON).forEach(c => { if (!c.ID_EXTINTOR || /anulad/i.test(c.ESTADO || '')) return; const f = incISO_(c.FECHA); if (!ult[c.ID_EXTINTOR] || f >= ult[c.ID_EXTINTOR].f) ult[c.ID_EXTINTOR] = { f: f, c: c }; }); } catch (e) {}
     incFallasAbiertas_().forEach(f => { fal[f.ID_EXTINTOR] = (fal[f.ID_EXTINTOR] ? fal[f.ID_EXTINTOR] + ' · ' : '') + (f.PROBLEMAS || ''); });
-    const grupos = {}, nom = e => 'extintor ' + (e.NRO_EXTINTOR || e.ID) + (e.SECTOR || e.UBICACION ? ' (' + [e.PLANTA, e.SECTOR, e.UBICACION].filter(String).join(', ') + ')' : '');
+    const grupos = {}, nom = e => 'extintor ' + (e.NRO_EXTINTOR || e.ID) + (e.SECTOR || e.UBICACION ? ' (' + [e.PLANTA ? 'planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(String).join(', ') + ')' : '');
     E.forEach(e => {
       const cod = limpio_(e.ESTABLECIMIENTO), sitio = limpio_(e.SITIO) || cod, u = ult[e.ID], pr = [];
       if (/fuera de servicio/i.test(e.ESTADO || '')) pr.push('fuera de servicio');
