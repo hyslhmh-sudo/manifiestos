@@ -107,7 +107,7 @@ function incExtForm(D, e) {
         const sinF = L.fotos.filter(f => !fotos[f[0]]).map(f => f[1]); if (sinF.length) return 'Faltan las fotos: ' + sinF.join(', ') + '. Para agregar un extintor son obligatorias las 3.'; }
       if (!out.PRUEBA_HIDRAULICA_VENCE) out.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
       const r = await api('p_inc_ext_guardar', Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod, fotos: fotos }, out), 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-      incRecargar(D, e ? 'Extintor actualizado.' : 'Extintor agregado (' + r.id + ').'); return '';
+      incRecargar(D, (e ? 'Extintor actualizado.' : 'Extintor agregado (' + r.id + ').') + (r.aviso ? ' Correo: ' + r.aviso : '')); return '';
     }, (e && e.CAMBIOS ? '<div class="card" style="margin:12px 0;padding:10px 14px"><b>Cambios anteriores</b><div class="mu peq" style="white-space:pre-line;max-height:140px;overflow:auto">' + esc(e.CAMBIOS) + '</div></div>' : '') +
       (e && incPend(e) ? '<p class="mu peq" style="margin:0 0 8px">Está pendiente de verificar: al guardar desde acá queda verificado.</p>' : '') +
       incFotosHtml(L, e ? 'Fotos (opcional: solo para reemplazar las que tiene)' : '3 fotos obligatorias') +
@@ -129,14 +129,15 @@ function incFotosOnchange(fotos) {
 function incControlForm(D, e) {
   const L = D.listas, fotos = {}, hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   const campos = [['FECHA', 'Fecha del control', 'date']].concat(L.chequeos.map(c => [c[0], c[1], ['Sí', 'No']]), [['ESTADO', 'Estado del extintor (si cambió)', L.estados], ['VTO_CARGA', 'Nuevo vencimiento de la carga (solo si se recargó)', 'date'], ['OBSERVACIONES', 'Observaciones', null, 1]]);
-  const extra = incFotosHtml(L, '3 fotos obligatorias') +
+  const extra = (L.problemas ? '<div class="card" style="margin:12px 0;padding:12px 14px"><b>¿Tiene algún problema?</b> <span class="mu peq">Marcá todos los que correspondan; si no tiene ninguno, no marques nada.' + (e.ESTABLECIMIENTO === 'HMH' ? ' En el HMH, si hay un problema o alguna verificación da «No», se avisa por correo a SOMI y a Mantenimiento.' : '') + '</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 12px;margin-top:8px">' +
+    L.problemas.map(p => '<label class="peq" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-incprob value="' + esc(p) + '">' + esc(p) + '</label>').join('') + '</div></div>' : '') + incFotosHtml(L, '3 fotos obligatorias') +
     '<p class="mu peq" style="margin:0">' + esc([e.ID, e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + ' · carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + '. Si alguna verificación da «No», el control queda «Con observaciones».</p>';
   modal('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), campos, { FECHA: hoy }, async out => {
     const faltan = L.chequeos.filter(c => !out[c[0]]).map(c => c[1]); if (faltan.length) return 'Falta responder: ' + faltan.join(', ') + '.';
     const sinF = L.fotos.filter(f => !fotos[f[0]]).map(f => f[1]); if (sinF.length) return 'Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3.';
-    const datos = Object.assign({ ID_EXTINTOR: e.ID, fotos: fotos }, out); if (!datos.ESTADO) delete datos.ESTADO; if (!datos.VTO_CARGA) delete datos.VTO_CARGA;
+    const datos = Object.assign({ ID_EXTINTOR: e.ID, fotos: fotos, PROBLEMAS: Array.from(document.querySelectorAll('#ov [data-incprob]:checked')).map(x => x.value) }, out); if (!datos.ESTADO) delete datos.ESTADO; if (!datos.VTO_CARGA) delete datos.VTO_CARGA;
     const r = await api('p_inc_control', datos, 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-    incRecargar(D, 'Control guardado: ' + r.resultado + '.'); return '';
+    incRecargar(D, 'Control guardado: ' + r.resultado + '.' + (r.aviso ? ' Correo: ' + r.aviso : '')); return '';
   }, extra);
   incFotosOnchange(fotos);
 }

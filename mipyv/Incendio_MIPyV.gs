@@ -13,7 +13,9 @@
  *  - guardarEdicionExtintor_(data): corrección del nombre (N.º) y la ubicación (lugar, planta, sector, ubicación) de un extintor.
  *    El cambio se anota en CAMBIOS y el extintor queda «Pendiente» en VERIFICACION hasta que Belén lo verifica en el portal.
  *    Si el lugar nuevo es de otro establecimiento, no lo mueve: lo anota para que lo revise HyS.
- * Normativa: Ley 19.587; Dto. 351/79, cap. 18. No envía correos.
+ * Aviso por correo: si un control queda con algo en «No» y el lugar tiene CORREOS_FALLA en SITIOS_INC (hoy HMH: SOMI y Mantenimiento),
+ *    avisa con enviarCorreo() (sale desde el remitente configurado de MIPyV). Regla de Belén 14/10/2026.
+ * Normativa: Ley 19.587; Dto. 351/79, cap. 18.
  */
 const INC_LIBRO_ID = '10lyFIV8UDQGGiNu3DegHiyxqR5xinSgn82XFmO5VWw0';   // PROTECCIÓN CONTRA INCENDIOS · Sistema HyS
 const INC_CARPETA_ID = '1hbRoTsXpKp6vMtz_2Lv4XcuuWdsv8yOV';           // Drive › SISTEMA HyS › MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS
@@ -89,7 +91,29 @@ function guardarControlExtintor_(data) {
     const cambios = Object.assign({ ULTIMO_CONTROL: fecha, RESULTADO_CONTROL: resultado + ' (MIPyV)' + (com ? ': ' + com : ''), ACTUALIZADO: new Date() }, links);
     Object.keys(cambios).forEach((k) => { const j = E.H.indexOf(k); if (j >= 0) shE.getRange(e._fila, j + 1).setValue(cambios[k]); });
   }
+  // Aviso por correo si quedó algo en «No» y el lugar tiene CORREOS_FALLA en SITIOS_INC (regla de Belén 14/10/2026: HMH → SOMI y Mantenimiento)
+  const mal = INC_PREGUNTAS.filter((k) => data[k] === 'No');
+  if (mal.length) { const av = incAvisoFallaMipyv_(libro, e, mal, quien, fecha, String(data.OBSERVACIONES || '').trim(), links, data.id_control);
+    if (av) { const C2 = incTabla_(shC), f = C2.filas.find((z) => String(z.ID) === String(data.id_control)), j = C2.H.indexOf('AVISO_CORREO'); if (f && j >= 0) shC.getRange(f._fila, j + 1).setValue(av); } }
   return { resultado: resultado };
+}
+const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización' };
+function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
+  const S = incTabla_(libro.getSheetByName('SITIOS_INC')).filas.filter((z) => String(z.ESTABLECIMIENTO).trim() === String(e.ESTABLECIMIENTO).trim() && z.ACTIVO !== 'No');
+  const sit = S.find((z) => incNorm_(z.SITIO) === incNorm_(e.SITIO)) || S.find((z) => String(z.CORREOS_FALLA || '').trim());
+  const para = String((sit && sit.CORREOS_FALLA) || '').split(/[,;\s]+/).filter((m) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)); if (!para.length) return '';
+  const fallas = mal.map((k) => INC_NO_FALLA[k]), ext = (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID;
+  const ubic = [e.SITIO, e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ');
+  const intro = 'Se registró en el Sistema HyS un problema en un extintor que dificulta o impide su uso. Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto.';
+  const datos = [['Extintor', ext], ['Ubicación', ubic], ['Tipo', [e.TIPO, e.AGENTE, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' · ')], ['N.º de inventario', e.NRO_INVENTARIO || 's/d'],
+    ['Detectado', Utilities.formatDate(fecha, ZONA_HORARIA, 'dd/MM/yyyy') + ' · ' + quien], ['Observaciones', obs || '—']];
+  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C"><p>' + intro + '</p><p><b>Problemas detectados</b></p><ul>' + fallas.map((f) => '<li><b>' + f + '</b></li>').join('') + '</ul>' +
+    datos.map((r) => r[0] + ': ' + r[1]).join('<br>') + '<p>Fotos: ' + INC_FOTOS.filter(([k]) => links[k]).map(([k, et]) => '<a href="' + links[k] + '">' + et + '</a>').join(' · ') + '</p>' +
+    '<p style="color:#4F616B;font-size:12px">Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Aviso automático del Sistema HyS (MIPyV). Registro: ' + id + '.</span></p></div>';
+  try {
+    enviarCorreo({ to: para.join(','), subject: String(e.ESTABLECIMIENTO).trim() + ' · Extintor con problemas: ' + ext, body: intro + '\n\n- ' + fallas.join('\n- ') + '\n\n' + datos.map((r) => r[0] + ': ' + r[1]).join('\n'), htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' });
+    return 'Enviado ' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ');
+  } catch (err) { return 'No se pudo enviar: ' + (err.message || err); }
 }
 
 // Lugar de MIPyV (id_establecimiento) → establecimiento y sitio del sistema HyS

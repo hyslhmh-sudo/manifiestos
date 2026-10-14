@@ -13,13 +13,16 @@
  *                marbete y N.º de inventario)
  *   LISTAS · AYUDA
  * Fotos: MÓDULO 10 › Establecimientos › establecimiento › Controles › año-mes (controles) y › Altas › año-mes (extintores agregados).
+ * Aviso por correo (regla de Belén 14/10/2026): si un control marca algo que dificulta o impide usar un extintor (casillas de problemas,
+ * una verificación en «No» o estado Sobrecarga, Recargar o Fuera de servicio), se avisa a los correos de SITIOS_INC › CORREOS_FALLA
+ * (HMH: Ing. Erick Velázquez, SOMI, e Ing. Ezequiel Nieto, Mantenimiento HMH). Única excepción a «no enviar correos automáticos».
  * Agregar extintores: HyS (portal), Melani, SOMI y MAREM («Mi establecimiento») y Javier Tramaleo (MIPyV); datos y 3 fotos obligatorios.
  * Corregir nombre y ubicación (lugar, planta, sector, ubicación): también desde la aplicación y MIPyV. Lo que viene de la aplicación o de MIPyV queda
  * «Pendiente» en VERIFICACION y el cambio se anota en CAMBIOS; HyS lo verifica desde el portal. HyS edita y carga todo desde el portal.
  * Avisos: carga o prueba hidráulica vencida, y 30 días antes de cada vencimiento (aparecen en los tableros); sin control en los últimos 3 meses (el control es mensual,
  * pero la alarma recién aparece a los 3 meses, pedido de Belén 14/10/2026).
  * Carga inicial: importarExtintoresIncendio() lee la planilla «Inventario de Extintores» de Belén (INC.FUENTE) y no pisa lo ya cargado.
- * Normativa: Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL). No envía correos.
+ * Normativa: Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL). Solo envía el aviso de extintores con problemas (ver arriba).
  * Instalación: ejecutar una vez construirModuloIncendio() (la primera vez también importa la planilla; importarExtintoresIncendio() se puede volver a ejecutar sin duplicar).
  */
 const INC = {
@@ -27,24 +30,30 @@ const INC = {
   CARPETA: 'MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS',
   P_LIBRO: 'INC_ID', P_CARPETA: 'INC_CARPETA',
   FUENTE: '1AD5M0mA3JrugyLwBkJj52127BGhKBDcIcO3NTK5EAaU',   // «Inventario de Extintores» (Belén, carga inicial)
-  H_SIT: ['ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'RESPONSABLES_CONTROL', 'ACTIVO', 'OBSERVACIONES', 'ACTUALIZADO'],
+  H_SIT: ['ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'RESPONSABLES_CONTROL', 'ACTIVO', 'OBSERVACIONES', 'ACTUALIZADO', 'CORREOS_FALLA'],   // CORREOS_FALLA: a quién avisar por correo si un extintor queda con problemas
   H_EXT: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO',
     'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ESTADO', 'ULTIMO_CONTROL', 'RESULTADO_CONTROL', 'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'ACTUALIZADO',
     'VERIFICACION', 'CAMBIOS'],   // VERIFICACION: «Pendiente» si lo agregó o cambió alguien desde la aplicación o MIPyV; «Verificado …» cuando HyS lo revisa
   H_CON: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'ID_EXTINTOR', 'EN_LUGAR', 'ACCESO_LIBRE', 'MANOMETRO', 'PRECINTO', 'SENALIZACION', 'RESULTADO',
-    'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'QUIEN', 'CARGADO', 'ESTADO'],
+    'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'QUIEN', 'CARGADO', 'ESTADO', 'PROBLEMAS', 'AVISO_CORREO'],
   CHEQUEOS: [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manómetro en verde (o peso correcto si es CO2)'],
     ['PRECINTO', 'Precinto y seguro colocados'], ['SENALIZACION', 'Señalización completa']],
   FOTOS: [['FOTO_PANORAMICA', 'Panorámica', 'El extintor y su entorno: que se vea dónde está, la señal y el acceso.'],
     ['FOTO_MARBETE', 'Marbete', 'La tarjeta del extintor con la fecha de carga, legible.'],
     ['FOTO_INVENTARIO', 'N.º de inventario', 'La chapa o etiqueta con el número de inventario, legible.']],
+  // Problemas que dificultan o impiden el uso del extintor (casillas del control). Si el lugar tiene CORREOS_FALLA, se avisa por correo.
+  PROBLEMAS: ['No está (desapareció o lo sacaron)', 'Se usó (descargado total o parcialmente)', 'Poca presión (aguja en la zona roja de la izquierda)', 'Demasiada presión (aguja en la zona roja de la derecha)',
+    'Precinto o seguro roto o faltante', 'Manguera, boquilla, válvula o manija dañada', 'Golpeado, oxidado o con pérdida', 'Tapado u obstruido (no se puede agarrar)',
+    'Sin cartel o señalización', 'Sin tarjeta (marbete) o ilegible', 'Carga vencida', 'Otro (contalo en observaciones)'],
+  REMITENTE: 'belenpellegrini.hys@gmail.com',
   TIPOS: ['ABC', 'BC', 'K', 'D', 'Otro'],
   AGENTES: ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 's/d'],
   ESTADOS: ['Operativo', 'Sobrecarga', 'Recargar', 'Fuera de servicio', 'Baja', 's/d (revisar)'],
   PLANTAS: ['Baja', 'Alta', 'Terraza', 'Subsuelo', 'Única', 'Vehículo'],
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
   RESP_TRELEW: 'Belén Pellegrini · Melani · Javier Tramaleo',
-  RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM'
+  RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
+  CORREOS_HMH: 'erickvelazquezing@gmail.com, fezequielnieto@gmail.com'   // Ing. Erick Velázquez (representante técnico de SOMI) e Ing. Ezequiel Nieto (Mantenimiento HMH) · pedido de Belén 14/10/2026
 };
 
 // ------------------------------------------------------------------ INSTALACIÓN (se puede volver a ejecutar sin pisar nada)
@@ -104,6 +113,7 @@ function incSembrarSitios_(sh) {
     if (c === 'HSST') filas.push(['HSST', s, t === 'CAPS' ? 'CAPS' : 'Edificio', 's/d (a definir)', 'Sí', '', new Date()]); }); } catch (e) {}
   const obs = { 'Sede ex ADOS': 'Incluye Adolescencia, PROSATE, Consultorios Externos e Internación de Salud Mental.' };
   filas.forEach(f => { if (obs[f[1]]) f[5] = obs[f[1]]; });
+  filas.forEach(f => { while (f.length < INC.H_SIT.length) f.push(''); if (f[0] === 'HMH') f[7] = INC.CORREOS_HMH; });
   sh.getRange(6, 1, filas.length, INC.H_SIT.length).setValues(filas);
 }
 
@@ -237,7 +247,7 @@ function incDetalle_(cod, sitio) {
   const ids = {}; ext.forEach(e => ids[e.ID] = true);
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
-    listas: { requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS } };
+    listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS } };
 }
 // Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
 // MIPyV (Javier Tramaleo). En el alta los datos y las 3 fotos son obligatorios (pedido de Belén 14/10/2026). La corrección (con ID) es solo del portal.
@@ -292,8 +302,63 @@ function incExtGuardar_(x, quien, codPermitido) {
   o.ACTUALIZADO = new Date(); delete o.fila; delete o.est;
   incEscribir_('EXTINTORES', INC.H_EXT, e ? e.fila : null, o);
   CacheService.getScriptCache().remove('inc_tablero');
-  return { ok: true, id: o.ID };
+  let aviso = '';   // si el estado pasó a uno que impide o dificulta el uso, se avisa por correo
+  if (e && INC_ESTADO_FALLA.test(o.ESTADO) && !INC_ESTADO_FALLA.test(e.ESTADO || '')) aviso = incAvisoFalla_(o, ['Estado: ' + o.ESTADO], { quien: quien, fecha: incHoy_(), obs: limpio_(x.OBSERVACIONES), fotos: {}, id: o.ID });
+  return { ok: true, id: o.ID, aviso: aviso };
 }
+// ------------------------------------------------------------------ AVISO POR CORREO DE EXTINTORES CON PROBLEMAS (regla de Belén, 14/10/2026)
+// Para los lugares con CORREOS_FALLA en SITIOS_INC (por ahora HMH: Ing. Erick Velázquez, SOMI, e Ing. Ezequiel Nieto, Mantenimiento).
+// Se manda cuando un control marca algo que dificulta o impide usar el extintor (casillas de problemas, alguna verificación en «No»
+// o estado Sobrecarga, Recargar o Fuera de servicio), o cuando HyS cambia el estado a uno de esos. Sale desde belenpellegrini.hys@gmail.com
+// si está en Gmail › «Enviar correo como» de la cuenta dueña del sistema; si no, sale desde esa cuenta con respuesta a esa dirección.
+const INC_ESTADO_FALLA = /sobrecarg|recarg|fuera de servicio/i;
+const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización' };
+function incFallas_(x, probs, estado) {
+  const l = probs.slice(); Object.keys(INC_NO_FALLA).forEach(k => { if (x[k] === 'No') l.push(INC_NO_FALLA[k]); });
+  if (estado && INC_ESTADO_FALLA.test(estado)) l.push('Estado: ' + estado);
+  return l.filter((v, i) => l.indexOf(v) === i);
+}
+function incCorreosFalla_(cod, sitio) {
+  const S = incLeer_('SITIOS_INC', INC.H_SIT).filter(s => limpio_(s.ESTABLECIMIENTO) === cod && s.ACTIVO !== 'No');
+  const s = S.find(z => sinTildes_(z.SITIO) === sinTildes_(sitio)) || S.find(z => limpio_(z.CORREOS_FALLA));
+  return String((s && s.CORREOS_FALLA) || '').split(/[,;\s]+/).map(m => m.trim()).filter(m => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m));
+}
+function incAvisoFalla_(e, fallas, d) {
+  const cod = limpio_(e.ESTABLECIMIENTO), para = incCorreosFalla_(cod, e.SITIO); if (!para.length) return '';
+  const nom = (pEstablecimientos_().filas.find(f => limpio_(f.v[0]) === cod) || { v: [cod, cod] }).v[1];
+  const ext = (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID, ubic = [e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ');
+  const asunto = cod + ' · Extintor con problemas: ' + ext + (ubic ? ' · ' + ubic : '');
+  const filas = [['Establecimiento', nom], ['Extintor', ext], ['Ubicación', [e.SITIO, ubic].filter(Boolean).join(' · ') || 's/d'],
+    ['Tipo', [e.TIPO, e.AGENTE, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' · ') || 's/d'], ['N.º de inventario', e.NRO_INVENTARIO || 's/d'],
+    ['Vencimiento de la carga', incTxt_(incISO_(e.VTO_CARGA)) || 's/d'], ['Detectado', incTxt_(incISO_(d.fecha)) + ' · ' + d.quien], ['Observaciones', d.obs || '—']];
+  const fotos = INC.FOTOS.filter(f => d.fotos && d.fotos[f[0]] && /^http/.test(d.fotos[f[0]])).map(f => '<a href="' + d.fotos[f[0]] + '">' + f[1] + '</a>');
+  const esc_ = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const intro = 'Se registró en el Sistema HyS un problema en un extintor que dificulta o impide su uso. Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto.';
+  const norma = 'Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).';
+  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:640px"><p>' + esc_(intro) + '</p>' +
+    '<p style="margin:12px 0 6px"><b>Problemas detectados</b></p><ul style="margin:0 0 12px">' + fallas.map(f => '<li><b>' + esc_(f) + '</b></li>').join('') + '</ul>' +
+    '<table style="border-collapse:collapse;font-size:14px">' + filas.map(r => '<tr><td style="padding:4px 12px 4px 0;color:#4F616B;vertical-align:top">' + esc_(r[0]) + '</td><td style="padding:4px 0">' + esc_(r[1]) + '</td></tr>').join('') + '</table>' +
+    (fotos.length ? '<p>Fotos: ' + fotos.join(' · ') + '</p>' : '') + '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p>' +
+    '<p>Servicio de Higiene y Seguridad Laboral · HZT / HMH<br><span style="color:#4F616B;font-size:12px">Aviso automático del Sistema HyS (módulo 10 · Protección contra incendios). Registro: ' + esc_(d.id) + '.</span></p>' +
+    '<p><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px"></p></div>';
+  const texto = intro + '\n\nProblemas detectados:\n- ' + fallas.join('\n- ') + '\n\n' + filas.map(r => r[0] + ': ' + r[1]).join('\n') + '\n\n' + norma + '\n\nServicio de Higiene y Seguridad Laboral · HZT / HMH\nAviso automático del Sistema HyS. Registro: ' + d.id + '.';
+  try {
+    const op = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' };
+    try { op.inlineImages = { logo: DriveApp.getFileById(DGM_LOGO_PIE).getBlob() }; } catch (x) { op.htmlBody = html.replace(/<p><img[^>]*><\/p>/, ''); }
+    const propia = String(Session.getEffectiveUser().getEmail()).toLowerCase();
+    if (INC.REMITENTE.toLowerCase() !== propia) { if (GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(INC.REMITENTE.toLowerCase()) >= 0) op.from = INC.REMITENTE; else op.replyTo = INC.REMITENTE; }
+    GmailApp.sendEmail(para.join(','), asunto, texto, op);
+    return 'Enviado ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ') + (op.from ? '' : ' (desde ' + propia + ')');
+  } catch (err) { return 'No se pudo enviar: ' + (err.message || err); }
+}
+// Ejecutar una vez desde el editor para dar el permiso de Gmail (no envía nada): dice desde qué dirección van a salir los avisos.
+function autorizarCorreoIncendio() {
+  const propia = Session.getEffectiveUser().getEmail(), alias = GmailApp.getAliases();
+  const ok = INC.REMITENTE.toLowerCase() === String(propia).toLowerCase() || alias.map(a => a.toLowerCase()).indexOf(INC.REMITENTE.toLowerCase()) >= 0;
+  const t = ok ? 'Correcto: los avisos de extintores van a salir desde ' + INC.REMITENTE + '.' : 'Los avisos van a salir desde ' + propia + ' con respuesta a ' + INC.REMITENTE + ' (no está en Gmail › «Enviar correo como»). Habilitadas: ' + (alias.join(', ') || 'ninguna');
+  Logger.log(t); return t;
+}
+
 // HyS verifica lo que agregaron o cambiaron desde la aplicación o MIPyV (ids: lista de ID de extintores)
 function incVerificar_(ids, quien) {
   const L = incLeer_('EXTINTORES', INC.H_EXT), sh = pInc_().getSheetByName('EXTINTORES'), col = INC.H_EXT.indexOf('VERIFICACION') + 1; let n = 0;
@@ -309,10 +374,14 @@ function incControlGuardar_(x, quien, codPermitido) {
   const sinFoto = INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
   const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' n.º ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
   const fotos = {}; INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));
-  const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') ? 'Conforme' : 'Con observaciones';
+  const probs = (Array.isArray(x.PROBLEMAS) ? x.PROBLEMAS : String(x.PROBLEMAS || '').split(' · ')).map(limpio_).filter(p => INC.PROBLEMAS.indexOf(p) >= 0);
+  const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
   const c = { ID: 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
-    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente' };
+    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · ') };
   INC.CHEQUEOS.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
+  // Aviso por correo si el extintor quedó con algo que dificulta o impide su uso (por ahora, HMH: SOMI y Mantenimiento)
+  const fallas = incFallas_(x, probs, x.ESTADO && INC.ESTADOS.indexOf(x.ESTADO) >= 0 ? x.ESTADO : '');
+  if (fallas.length) c.AVISO_CORREO = incAvisoFalla_(Object.assign({}, e, x.ESTADO ? { ESTADO: x.ESTADO } : {}), fallas, { quien: quien, fecha: fecha, obs: c.OBSERVACIONES, fotos: fotos, id: c.ID });
   incEscribir_('CONTROLES', INC.H_CON, null, c);
   const o = Object.assign({}, e); delete o.fila;
   if (!o.ULTIMO_CONTROL || incISO_(o.ULTIMO_CONTROL) <= fecha) Object.assign(o, { ULTIMO_CONTROL: incFecha_(fecha), RESULTADO_CONTROL: res + (c.OBSERVACIONES ? ': ' + c.OBSERVACIONES : '') }, fotos);
@@ -321,7 +390,7 @@ function incControlGuardar_(x, quien, codPermitido) {
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (o[k] && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
   o.ACTUALIZADO = new Date(); incEscribir_('EXTINTORES', INC.H_EXT, e.fila, o);
   CacheService.getScriptCache().remove('inc_tablero');
-  return { ok: true, id: c.ID, resultado: res };
+  return { ok: true, id: c.ID, resultado: res, aviso: c.AVISO_CORREO || '' };
 }
 
 // ------------------------------------------------------------------ ENTRADA DEL PORTAL (clave de Higiene y Seguridad): acciones «p_inc_…»

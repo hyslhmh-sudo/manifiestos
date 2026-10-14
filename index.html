@@ -1661,6 +1661,8 @@ function formInc() {
   $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
     '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
+    fChk('PROBLEMAS', '¿Tiene algún problema? Marcá todos los que veas (si no tiene ninguno, no marques nada)', (INCX.listas && INCX.listas.problemas) || []) +
+    (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa por correo a SOMI y a Mantenimiento del HMH.</p>' : '') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
 }
@@ -1668,13 +1670,13 @@ async function incGuardar() {
   const falta = INC_CHQ.filter(c => !F[c[0]]).map(c => c[1]); if (falta.length) return miErr('Falta responder: ' + falta.join(', ') + '.');
   const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, OBSERVACIONES: F.OBSERVACIONES || '', quien: SES.persona.nombre, fotos: {} };
+  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, OBSERVACIONES: F.OBSERVACIONES || '', PROBLEMAS: String(F.PROBLEMAS || '').split(' · ').filter(Boolean), quien: SES.persona.nombre, fotos: {} };
   INC_CHQ.forEach(c => d[c[0]] = F[c[0]]); INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
   const b = document.querySelector('[data-act="incGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   const antes = ESPERA_MS; ESPERA_MS = 180000;
   try { const r = await api('i_control', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
     F = null; INCX = null; vista('form');
-    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Control guardado: ' + esc(r.resultado) + '.</b><br>Ya está registrado en el sistema con sus 3 fotos.</div>' + (r.resultado !== 'Conforme' ? '<div class="notice">Quedó con observaciones: Higiene y Seguridad lo ve en el portal.</div>' : '') +
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Control guardado: ' + esc(r.resultado) + '.</b><br>Ya está registrado en el sistema con sus 3 fotos.</div>' + (r.resultado !== 'Conforme' ? '<div class="notice">Quedó con observaciones: Higiene y Seguridad lo ve en el portal.</div>' : '') + (r.aviso ? '<div class="notice">' + (/^Enviado/.test(r.aviso) ? 'Se avisó por correo del problema: ' : 'Aviso por correo: ') + esc(r.aviso) + '</div>' : '') +
       '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
