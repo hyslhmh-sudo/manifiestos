@@ -5,9 +5,30 @@
  * Las planillas siguen siendo el sistema: el portal no guarda nada propio.
  */
 
+// ------------------------------------------------------------------ Caché del servidor (14.50)
+// Pantallas de lectura pesadas (ficha, agua, radiaciones e incendio de un establecimiento, tablero completo) se guardan 15 minutos.
+// Cualquier carga o cambio, del portal o de las aplicaciones, cambia la «generación» y deja todo lo guardado sin efecto (pcBump_).
+// Los valores van comprimidos y, si pasan de 90 KB, partidos en trozos (límite de CacheService: 100 KB por clave).
+function cachePut_(k, v, seg) {
+  try { const c = CacheService.getScriptCache(), z = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(v), 'application/json')).getBytes()), T = 90000, n = Math.ceil(z.length / T), o = {};
+    if (n > 9) return; for (let i = 0; i < n; i++) o[k + '#' + i] = z.slice(i * T, (i + 1) * T); o[k] = String(n); c.putAll(o, seg || 900); } catch (e) {}
+}
+function cacheGet_(k) {
+  try { const c = CacheService.getScriptCache(), n = Number(c.get(k)); if (!n) return null; const ks = []; for (let i = 0; i < n; i++) ks.push(k + '#' + i);
+    const g = c.getAll(ks), z = ks.map(x => g[x]); if (z.some(x => !x)) return null;
+    return JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(z.join('')), 'application/x-gzip')).getDataAsString()); } catch (e) { return null; }
+}
+function pcGen_() { const c = CacheService.getScriptCache(); let g = c.get('pc_gen'); if (!g) { g = String(Date.now()); c.put('pc_gen', g, 21600); } return g; }
+function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Date.now()), 21600); } catch (e) {} }
+const PC_LEER = ['p_ficha', 'p_mi', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
+const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op)$/;
 function portal_(d) {
   if (!esMaestra_(d.clave)) return { ok: false, error: 'clave', mensaje: 'La clave de Higiene y Seguridad no es correcta.' };
+  const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? 'pc|' + pcGen_() + '|' + d.accion + '|' + JSON.stringify(x0) : '';
+  if (usaCache) { const c = cacheGet_(kc); if (c) return c; }
   const t0 = Date.now(), r = portalAccion_(d);
+  if (usaCache && r && r.ok !== false) cachePut_(kc, r, 900);
+  if (!PC_NO_CAMBIA.test(String(d.accion)) && r && r.ok !== false) pcBump_();
   const ms = Date.now() - t0;
   if (ms > 4000) try {   // registro de acciones lentas, para revisar la velocidad
     const g = SpreadsheetApp.openById(CFG.GENERAL); let sh = g.getSheetByName('TIEMPOS_PORTAL');

@@ -86,6 +86,7 @@ function doPost(e) {
   const acc = acceso_(d.est, d.clave, d.dni);
   if (!acc.ok) return json_(acc);
   if (!accPermite_(d.accion, acc)) return json_({ ok: false, error: 'permiso', mensaje: 'No tenés asignado este módulo. Consultá con Higiene y Seguridad.' });
+  if (!/^(config|m_tablero|m_registros|i_datos|i_novedades|i_persona|r_datos|r_dni|k_personas)$/.test(String(d.accion)) && typeof pcBump_ === 'function') pcBump_();   // una carga desde la aplicación renueva la caché del portal (Portal.gs, 14.50)
   if (acc.nombre && d.datos && typeof d.datos === 'object') {   // con clave personal, cada carga queda a nombre de quien ingresó
     d.datos.quien = acc.nombre; d.datos.persona = Object.assign({}, d.datos.persona || {}, { nombre: acc.nombre, dni: acc.dni, funcion: acc.rol || (d.datos.persona || {}).funcion || '' });
   }

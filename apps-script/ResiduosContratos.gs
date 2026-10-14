@@ -106,7 +106,7 @@ function resFrecuencias_(x) {
   const d0 = new Date(); d0.setDate(1); d0.setMonth(d0.getMonth() - 12);
   const desde = /^\d{4}-\d{2}$/.test(x.desde || '') ? x.desde : Utilities.formatDate(d0, TZ, 'yyyy-MM'), hasta = /^\d{4}-\d{2}$/.test(x.hasta || '') ? x.hasta : hoy.slice(0, 7);
   const g = SpreadsheetApp.openById(CFG.GENERAL), huella = g.getSheetByName('MANIFIESTOS').getLastRow() + '|' + desde + '|' + hasta, kc = 'res_frec_' + desde + '_' + hasta;
-  if (!x.fresco) { try { const c = JSON.parse(cache.get(kc) || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
+  if (!x.fresco) { try { const c = typeof cacheGet_ === 'function' ? cacheGet_(kc + '_z') : JSON.parse(cache.get(kc) || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
   const K = rctContratos_(g), C = K.contratos, L = rctRetiros_(g, desde + '-01'), meses = rctMeses_(desde, hasta);
   const S = {};
   L.retiros.filter(r => r.fecha.slice(0, 7) <= hasta).forEach(r => {
@@ -138,7 +138,7 @@ function resFrecuencias_(x) {
   const sinDatos = []; C.filter(c => c.ESTADO === 'Vigente').forEach(c => c.alcance.forEach(a => { if (!conDatos[a.ESTABLECIMIENTO] && !sinDatos.some(s => s.cod === a.ESTABLECIMIENTO)) sinDatos.push({ cod: a.ESTABLECIMIENTO, nombre: (L.info[a.ESTABLECIMIENTO] || {}).nombre || a.ESTABLECIMIENTO, area: (L.info[a.ESTABLECIMIENTO] || {}).area || '', contrato: c.ID, grupo: a.GRUPO, frecuencia: a.FRECUENCIA_CONTRATO, deduccion: /deduc/i.test(sinTildes_(a.ORIGEN_FRECUENCIA)) }); }));
   const out = { ok: true, huella: huella, desde: desde, hasta: hasta, meses: meses, hoy: hoy, sitios: sitios, establecimientos: ests, sinDatos: sinDatos,
     contratos: C.map(c => ({ id: c.ID, empresa: c.EMPRESA, desde: c.DESDE, hasta: c.HASTA, estado: c.ESTADO, archivo: c.ARCHIVO })), hojaContratos: K.url, actualizado: new Date().toISOString() };
-  try { cache.put(kc, JSON.stringify(out), 600); } catch (e) {}
+  if (typeof cachePut_ === 'function') cachePut_(kc + '_z', out, 3600); else try { cache.put(kc, JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
 

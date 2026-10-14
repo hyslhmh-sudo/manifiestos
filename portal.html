@@ -310,7 +310,35 @@ const TIPOS_CON = ['Dirección', 'Servicio', 'Jefatura', 'Comité', 'Área admin
 const CODS_EXTRA = [['NC', 'Nivel central (Secretaría de Salud y organismos)'], ['SIN_ASIGNAR', 'Sin establecimiento reconocido']];
 const TRAB_COLS = ['CUIL', 'DNI', 'APELLIDOS', 'NOMBRES', 'SITIO', 'FUNCION', 'FUNCION_DETALLE', 'SERVICIO', 'VINCULO', 'EMPRESA', 'CARGO_CONDUCCION', 'EMAIL', 'EMAIL_FECHA', 'TELEFONO', 'EN_NTEAR', 'FUENTES', 'ULTIMA_CONFIRMACION', 'REVISAR', 'MOTIVO_REVISION', 'ESTADO', 'FECHA_ALTA', 'ESTABLECIMIENTO'];
 
+// ------------------------------------------------------------------ Respuesta rápida (14.50): las pantallas de lectura se muestran al instante con lo último
+// guardado en este equipo y se actualizan solas por detrás; si llegó algo distinto, la pantalla se vuelve a dibujar. Cualquier carga o cambio borra lo guardado.
+const SWR_LEER = {   // acción de lectura → cómo olvidar la copia en memoria de la pantalla
+  p_ficha: d => { delete FICHAS[d.cod]; }, p_mi: () => {}, p_rad_tablero: () => { RADT = null; }, p_rad_detalle: d => { delete RADD[d.cod]; },
+  p_inc_tablero: () => { INCT = null; }, p_inc_detalle: d => { delete INCD[d.cod]; }, p_inc_novedades: () => { INCNP = null; }, p_rgrl_datos: () => { RG = null; },
+  p_coc_tablero: () => { COCT = null; }, p_coc_personas: () => { COCP.cargado = ''; }, p_mipyv: () => { MIPYV = null; }, p_acc_listar: () => { ACCPD = null; },
+  p_docest_lista: () => { DE.L = null; }, p_notas: () => { NT.R = null; }, p_sin_lista: () => { SINP = null; }, p_dgm_tablero: d => { delete DGMT[d.m]; },
+  p_bib_listar: () => { BIB = null; }, p_registro: () => {}, p_bj_listar: () => {}, p_sin_est: () => {}, p_diag_tablero: () => { TAB = null; }, p_trab: () => {}, p_nte_revisar: () => {}
+};
+const SWR_SIN_BORRAR = /^p_(ping|resumen|tablero|buscar|plan_listar|aud_listar|aud_opciones|res_|informe_trim_op|rgrl_lugares|rgrl_detalle|plan_abrir|aud_abrir|aud_resultado|inv_abrir|caps|sin_persona|sin_expo|.*_dni)/;
+const swrK = (a, d) => 'swr_' + a + '|' + JSON.stringify(d || {});
+function swrBorrar() { try { Object.keys(localStorage).filter(k => k.indexOf('portal_swr_') === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {} }
+function swrGuardar(k, v) { try { localStorage.setItem('portal_' + k, JSON.stringify({ t: Date.now(), v: v })); } catch (e) { swrBorrar(); } }
 async function api(accion, datos, ms) {
+  const d = datos || {}, leer = SWR_LEER[accion];
+  if (!leer) { const r = await apiRed(accion, d, ms); if (!SWR_SIN_BORRAR.test(accion) && r && r.ok !== false) swrBorrar(); return r; }
+  const k = swrK(accion, Object.assign({}, d, { fresco: undefined })), g = LS.get(k, null), edad = g ? Date.now() - g.t : Infinity;
+  if (d.fresco || !g || edad > 7 * 864e5) { const r = await apiRed(accion, d, ms); if (r && r.ok) swrGuardar(k, r); return r; }
+  if (edad < 60000) return g.v;   // recién actualizado: no se vuelve a pedir
+  const hash = location.hash;
+  apiRed(accion, d, ms).then(r => {
+    if (!r || !r.ok) return; const cambio = JSON.stringify(r) !== JSON.stringify(g.v); swrGuardar(k, r);
+    if (!cambio || location.hash !== hash || !$('ov').hidden || (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))) return;
+    try { leer(d); } catch (e) {}
+    if (accion === 'p_mi') { if ($('fMi')) fichaMi(d.cod); } else router();
+  }).catch(() => {});
+  return g.v;
+}
+async function apiRed(accion, datos, ms) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 90000);
   try {
     const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, est: '', datos: datos || {} }), signal: ctl.signal });
@@ -337,7 +365,7 @@ function ingreso(msg) {
   };
   $('entrar').onclick = ir; $('clave').onkeydown = e => { if (e.key === 'Enter') ir(); }; $('clave').focus();
 }
-function salir(msg) { CLAVE = ''; LS.del('clave'); LS.del('res'); LS.del('tab'); RES = null; FICHAS = {}; ingreso(msg); }
+function salir(msg) { swrBorrar(); CLAVE = ''; LS.del('clave'); LS.del('res'); LS.del('tab'); RES = null; FICHAS = {}; ingreso(msg); }
 
 // ------------------------------------------------------------------ Estructura
 // Pantallas que se dejaron atrás: si terminan de cargar tarde (respuesta lenta del servidor), no se dibujan encima de la actual

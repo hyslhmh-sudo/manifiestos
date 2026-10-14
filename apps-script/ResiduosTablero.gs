@@ -28,7 +28,7 @@ function resFecha_(v) {   // Date o texto dd/mm/aaaa o aaaa-mm-dd → aaaa-mm-dd
 function resTablero_(fresco) {
   const cache = CacheService.getScriptCache(), g = SpreadsheetApp.openById(CFG.GENERAL);
   const gm = g.getSheetByName('MANIFIESTOS'), gc = g.getSheetByName('CERTIFICADOS'), huella = gm.getLastRow() + '|' + (gc ? gc.getLastRow() : 0);
-  if (!fresco) { try { const c = JSON.parse(cache.get('res_tablero') || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
+  if (!fresco) { try { const c = typeof cacheGet_ === 'function' ? cacheGet_('res_tablero2') : JSON.parse(cache.get('res_tablero') || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
   const hoy = new Date(), hoyISO = Utilities.formatDate(hoy, TZ, 'yyyy-MM-dd'), mesAct = hoyISO.slice(0, 7);
   const meses = []; for (let i = 11; i >= 0; i--) meses.push(Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() - i, 1), TZ, 'yyyy-MM'));
   const desde = meses[0], dias = f => Math.floor((hoy - new Date(f + 'T12:00:00')) / 86400000);
@@ -84,6 +84,6 @@ function resTablero_(fresco) {
       fotos: act.reduce((a, e) => a + e.fotos.reduce((b, f) => b + f.n, 0), 0), sitiosAtrasados: act.reduce((a, e) => a + e.sitios.filter(s => s.atrasado).length, 0),
       conDiag: Object.keys(diag).length },
     actualizado: new Date().toISOString() };
-  try { cache.put('res_tablero', JSON.stringify(out), 600); } catch (e) {}
+  if (typeof cachePut_ === 'function') cachePut_('res_tablero2', out, 3600); else try { cache.put('res_tablero', JSON.stringify(out), 600); } catch (e) {}   // comprimido y en trozos: el tablero pasa de 100 KB (14.50)
   return out;
 }
