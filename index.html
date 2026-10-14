@@ -855,9 +855,16 @@ const miNivel = n => n === 'er' ? 'er' : n === 'wa' ? 'wa' : 'ok';
 const miEstTxt = { vencida: ['Vencida', 'er'], porvencer: ['Por vencer', 'wa'], sin: ['Sin registro', 'wa'], aldia: ['Al día', 'ok'], unica: ['Muestra única', 'gr'], riego: ['Riego: no lleva limpieza obligatoria', 'gr'] };
 
 // Tablero de control (reemplaza al inicio anterior; los botones de manifiestos siguen igual)
+// Datos leídos de un establecimiento: al entrar con otro, se descartan (antes quedaban, p. ej., los extintores del HMH al pasar al HZT)
+function limpiarCachesEst() {
+  if (!SES || limpiarCachesEst.est === SES.est + '|' + (SES.servicio || SES.dni || '')) return;
+  limpiarCachesEst.est = SES.est + '|' + (SES.servicio || SES.dni || '');
+  INCX = null; INCSIT = ''; INCN = null; RX = null; KP = null; SIN = null; REG = null; IDN = null;
+}
 function inicio() {
   if (!SES) return ingreso();
   if (!SES.persona) return quienCarga();
+  limpiarCachesEst();
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
@@ -881,7 +888,7 @@ function inicio() {
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
-    '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
+    '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + (SES.servicio ? '' : tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado')) + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
