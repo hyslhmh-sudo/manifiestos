@@ -217,6 +217,20 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 .sino button{flex:1; min-height:52px; border-radius:14px; border:2px solid var(--gris-borde); background:#fff; font-family:inherit; font-size:1.05rem; font-weight:800; color:var(--texto);}
 .sino button.si.on{background:var(--verde-ok); border-color:var(--verde-ok); color:#fff;}
 .sino button.no.on{background:var(--rojo-no); border-color:var(--rojo-no); color:#fff;}
+.ext-fila{display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:12px; margin:8px 0 0; border:2px solid var(--gris-borde); border-radius:14px; background:#fff; font-family:inherit; color:var(--texto);}
+.ext-fila.ok{border-color:var(--verde-ok); background:#EAF7EF;}
+.ext-fila.abierta{border-color:var(--mod-primary);}
+.ext-ico{font-size:1.6rem;}
+.ext-txt{display:flex; flex-direction:column; gap:2px;} .ext-txt b{font-size:1rem;} .ext-txt small{font-size:.85rem; color:#5F6B73;}
+.ext-panel{border:2px solid var(--mod-primary); border-top:0; border-radius:0 0 14px 14px; padding:4px 12px 14px; margin-bottom:6px;}
+.ext-fotos{display:grid; grid-template-columns:1fr; gap:10px;}
+.ext-foto{display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 10px; min-height:96px; border:2px dashed var(--mod-primary); border-radius:14px; background:#fff; font-family:inherit; color:var(--texto); text-align:center;}
+.ext-foto b{font-size:1.05rem;} .ext-foto small{font-size:.85rem; color:#5F6B73;}
+.ext-foto.lista{border-style:solid; border-color:var(--verde-ok); background:#EAF7EF;}
+.ext-foto img{width:100%; max-height:160px; object-fit:cover; border-radius:10px;}
+.ext-foto-ico{font-size:2rem;}
+.ext-listo{width:100%; margin-top:14px; min-height:56px; border:0; border-radius:14px; background:var(--verde-ok); color:#fff; font-family:inherit; font-size:1.05rem; font-weight:800;}
+.ext-listo:disabled{background:#B9C3C8;}
 .ext-card input[type=month]{width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
 .ext-sinfecha{margin-top:8px;}
 .auto-hallazgos{background:#FDECEA; color:#8A1C12; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-weight:600; font-size:.92rem; white-space:pre-line;}
@@ -612,7 +626,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 
     <section class="screen" data-step="h-extintores">
       <div class="step-title">Control de extintores</div>
-      <div class="step-sub">Contestá todo, en cada lugar</div>
+      <div class="step-sub">Tocá cada extintor: 5 preguntas y 3 fotos</div>
       <div id="extintoresList"></div>
     </section>
 
