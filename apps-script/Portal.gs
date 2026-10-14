@@ -23,7 +23,7 @@ function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Da
 // Clave de la caché: misma acción y mismos datos (sin «fresco», en orden) = misma respuesta.
 function pcClave_(accion, x) { const o = {}; Object.keys(x || {}).filter(k => k !== 'fresco').sort().forEach(k => o[k] = x[k]); return 'pc|' + pcGen_() + '|' + accion + '|' + JSON.stringify(o); }
 const PC_LEER = ['p_ficha', 'p_mi', 'p_res_tablero', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
-const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op|dat_(libros|hojas|hoja|papelera|historial|props))$/;
+const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op|dat_(libros|hojas|hoja|papelera|historial|props)|ges_(datos|alcance))$/;
 function portal_(d) {
   if (!esMaestra_(d.clave)) return { ok: false, error: 'clave', mensaje: 'La clave de Higiene y Seguridad no es correcta.' };
   const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? pcClave_(d.accion, x0) : '';
@@ -41,6 +41,7 @@ function portal_(d) {
 }
 function portalAccion_(d) {
   const x = d.datos || {};
+  if (/^p_ges_/.test(d.accion)) return typeof gesPortal_ === 'function' ? gesPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Gestion.gs.' };   // 11 · Gestión (14.60)
   if (/^p_dat_/.test(d.accion)) return typeof datPortal_ === 'function' ? datPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Datos.gs.' };   // editor general (14.53)
   switch (d.accion) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
@@ -613,7 +614,7 @@ function precalentarPortal() {
   const t0 = Date.now(), c = CacheService.getScriptCache(), g = pcGen_(), hechos = [];
   c.put('pc_gen', g, 21600);   // que la generación dure lo mismo que lo precalculado
   const ests = String(PropertiesService.getScriptProperties().getProperty('PRECALENTAR_EST') || 'HMH,HZT,HSST').split(',').map(x => x.trim()).filter(String);
-  const lista = [['p_tablero', {}], ['p_res_tablero', {}]];
+  const lista = [['p_tablero', {}], ['p_ges_traer', {}], ['p_res_tablero', {}]];   // p_ges_traer: lo nuevo de los módulos entra al plan único (14.60)
   ests.forEach(e => { lista.push(['p_ficha', { cod: e }]); lista.push(['p_mi', { cod: e }]); });
   ests.forEach(e => { lista.push(['p_rad_detalle', { cod: e }]); lista.push(['p_inc_detalle', { cod: e }]); });
   lista.push(['p_rgrl_datos', {}], ['p_res_inf_opciones', {}], ['p_coc_tablero', {}]);
