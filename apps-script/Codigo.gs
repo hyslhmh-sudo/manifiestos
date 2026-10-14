@@ -94,6 +94,7 @@ function doPost(e) {
     if (String(d.accion).indexOf('a_') === 0) return json_(audRed_(d));   // auditoría interna de residuos (referentes)
     if (String(d.accion).indexOf('k_') === 0) return json_(typeof cocRed_ === 'function' ? cocRed_(d) : { ok: false, mensaje: 'El módulo de cocinas todavía no está instalado.' });   // módulo 6 · cocinas (personas y relevamiento)
     if (String(d.accion).indexOf('r_') === 0) return json_(typeof radRed_ === 'function' ? radRed_(d) : { ok: false, mensaje: 'El módulo de radiaciones todavía no está instalado.' });   // módulo 9 · radiaciones (personal con dosímetro y eventos)
+    if (String(d.accion).indexOf('i_') === 0) return json_(typeof incRed_ === 'function' ? incRed_(d) : { ok: false, mensaje: 'El módulo de incendio todavía no está instalado.' });   // módulo 10 · control de extintores (Incendio.gs)
     if (String(d.accion).indexOf('m_') === 0) return json_(miRed_(d));    // «Mi establecimiento»: agua, plagas, documentos y pendientes
     if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun } }));
     // «No se recibieron manifiestos esta semana» (remisión semanal, PROT-RES-003 · ResiduosRemision.gs)

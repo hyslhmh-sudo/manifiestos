@@ -875,6 +875,7 @@ function inicio() {
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos por extintor', true) + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
@@ -1565,6 +1566,62 @@ async function rxGuardarReact() {
     BAJA_DOSIMETRO: '', MOTIVO_BAJA: '', movimiento: { tipo: 'Reactivación', detalle: (F.DETALLE || '') + (F.BAJA_ANT ? ' (baja anterior ' + fechaTxt(F.BAJA_ANT) + ')' : '') } }, 'rxGuardarReact'); if (!r) return;
   F = null; RX = null; rxListo(r.avisoComunicar);
 }
+// ------------------------------------------------------------------ Módulo 10 · Incendio: control mensual de extintores (Incendio.gs, acciones i_…)
+// Cada extintor: 5 verificaciones (Sí · No) y 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario).
+let INCX = null, INCSIT = '';
+const INC_CHQ = [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manómetro en verde (o peso correcto si es CO2)'], ['PRECINTO', 'Precinto y seguro colocados'], ['SENALIZACION', 'Señalización completa']];
+const INC_FOT = [['FOTO_PANORAMICA', '1 · Foto panorámica', 'El extintor y su entorno: que se vea dónde está, la señal y el acceso.'], ['FOTO_MARBETE', '2 · Foto del marbete', 'La tarjeta del extintor con la fecha de carga, legible.'], ['FOTO_INVENTARIO', '3 · Foto del N.º de inventario', 'La chapa o etiqueta con el número, legible.']];
+async function incLista(fresco) {
+  VISTA = 'mi'; MIV = { f: () => incLista() }; vista('wide');
+  if (!INCX || fresco) {
+    if (!navigator.onLine) { $('app').innerHTML = miTit('Control de extintores') + '<p class="mu">Para ver los extintores hace falta señal.</p>'; miVolver(); return; }
+    $('app').innerHTML = miTit('Control de extintores') + '<p class="mu">Cargando…</p>'; bar(null);
+    try { const r = await api('i_datos', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); INCX = r; }
+    catch (e) { $('app').innerHTML = miTit('Control de extintores') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return; }
+  }
+  const S = INCX.sitios.map(s => s.SITIO), mes = new Date().toISOString().slice(0, 7);
+  if (!INCSIT || S.indexOf(INCSIT) < 0) INCSIT = S.length === 1 ? S[0] : '';
+  if (!INCSIT) {
+    $('app').innerHTML = miTit('Control de extintores', 'Elegí el lugar. El control es una vez por mes, con 3 fotos por extintor.') + '<div class="lista">' + S.map(s => { const l = INCX.extintores.filter(e => e.SITIO === s && !e.est.baja), hechos = l.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
+      return '<button class="item" data-act="incSit" data-arg="' + esc(s) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(s) + '</b><small>' + (l.length ? l.length + ' extintor(es) · ' + hechos + ' controlado(s) este mes' : 'Sin extintores cargados') + '</small></div><span class="tag ' + (l.length && hechos === l.length ? 'ok' : 'wa') + '">' + (l.length && hechos === l.length ? 'Al día' : 'Pendiente') + '</span></button>'; }).join('') + '</div>' +
+      '<p class="mu" style="font-size:13px"><button class="link" data-act="incAct">Actualizar la lista</button></p>';
+    miVolver(); window.scrollTo(0, 0); return;
+  }
+  const L = INCX.extintores.filter(e => e.SITIO === INCSIT && !e.est.baja), hechos = L.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
+  const tag = e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes ? '<span class="tag ok">Controlado</span>' : e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : '<span class="tag wa">Falta</span>';
+  $('app').innerHTML = miTit(INCSIT, 'Tocá un extintor para cargar su control. ' + hechos + ' de ' + L.length + ' controlados este mes.') +
+    (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' · ' + esc([e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' ')) + '</b><small>' +
+      esc([e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') + '</small></div>' + tag(e) + '</button>').join('') + '</div>' : '<p class="mu">No hay extintores cargados en este lugar. Avisale a Higiene y Seguridad.</p>') +
+    '<p class="mu" style="font-size:13px">' + (S.length > 1 ? '<button class="link" data-act="incSit" data-arg="">Cambiar de lugar</button> · ' : '') + '<button class="link" data-act="incAct">Actualizar la lista</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function incCtl(id) {
+  const e = INCX.extintores.find(x => x.ID === id); if (!e) return;
+  F = { _f: 'inc', ID_EXTINTOR: id, FECHA: new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), _e: e }; MIV = { f: formInc }; formInc();
+}
+function formInc() {
+  VISTA = 'mi'; vista('form'); const e = F._e;
+  $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
+    fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
+    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
+  bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
+}
+async function incGuardar() {
+  const falta = INC_CHQ.filter(c => !F[c[0]]).map(c => c[1]); if (falta.length) return miErr('Falta responder: ' + falta.join(', ') + '.');
+  const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, OBSERVACIONES: F.OBSERVACIONES || '', quien: SES.persona.nombre, fotos: {} };
+  INC_CHQ.forEach(c => d[c[0]] = F[c[0]]); INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
+  const b = document.querySelector('[data-act="incGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const antes = ESPERA_MS; ESPERA_MS = 180000;
+  try { const r = await api('i_control', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; INCX = null; vista('form');
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Control guardado: ' + esc(r.resultado) + '.</b><br>Ya está registrado en el sistema con sus 3 fotos.</div>' + (r.resultado !== 'Conforme' ? '<div class="notice">Quedó con observaciones: Higiene y Seguridad lo ve en el portal.</div>' : '') +
+      '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
+}
+Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar() });
+
 function rxListo(aviso, volver) {
   vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Guardado.</b><br>Ya está registrado en el sistema.</div>' + (aviso ? '<div class="notice">' + esc(aviso) + ' Avisale a Higiene y Seguridad.</div>' : '') +
     '<div class="menu"><button class="big main" data-act="' + (volver || 'rxPers') + '"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>';

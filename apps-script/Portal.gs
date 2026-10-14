@@ -21,7 +21,7 @@ function portalAccion_(d) {
   switch (d.accion) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
     case 'p_resumen': return pResumen_(x.fresco);
-    case 'p_tablero': { const t = tbTablero_(x.fresco); try { if (t && t.ok !== false && typeof remRed_ === 'function') t.remision = remRed_(x.fresco); } catch (e) {} return t; }   // tablero de control (Tablero.gs) + remisión semanal de manifiestos (ResiduosRemision.gs)
+    case 'p_tablero': { const t = tbTablero_(x.fresco); try { if (t && t.ok !== false && typeof remRed_ === 'function') t.remision = remRed_(x.fresco); } catch (e) {} try { if (t && t.ok !== false && typeof incTablero_ === 'function' && PropertiesService.getScriptProperties().getProperty('INC_ID')) t.incendio = { avisos: incTablero_(x.fresco).avisos }; } catch (e) {} return t; }   // tablero de control (Tablero.gs) + remisión semanal de manifiestos (ResiduosRemision.gs)
     case 'p_res_tablero': return typeof resTablero_ === 'function' ? resTablero_(x.fresco) : { ok: false, mensaje: 'Falta instalar ResiduosTablero.gs.' };   // 1 · Residuos: tablero general (14.22)
     case 'p_res_frecuencias': return typeof resFrecuencias_ === 'function' ? resFrecuencias_(x) : { ok: false, mensaje: 'Falta instalar ResiduosContratos.gs.' };   // frecuencias de retiro (14.23)
     case 'p_res_inf_opciones': return typeof resInfOpciones_ === 'function' ? resInfOpciones_() : { ok: false, mensaje: 'Falta instalar ResiduosInforme.gs.' };   // informe de frecuencia de retiro (14.26)
@@ -98,6 +98,7 @@ function portalAccion_(d) {
       if (String(d.accion).indexOf('p_acc_') === 0) return typeof accPortal_ === 'function' ? accPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // pantalla «Accesos» (Accesos.gs)
       if (String(d.accion).indexOf('p_dgm_') === 0) return typeof dgmPortal_ === 'function' ? dgmPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // diagnóstico de agua y plagas (DiagModulos.gs)
       if (String(d.accion).indexOf('p_coc_') === 0) return typeof cocPortal_ === 'function' ? cocPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Modulo6.gs.' };
+      if (String(d.accion).indexOf('p_inc_') === 0) return typeof incPortal_ === 'function' ? incPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Incendio.gs (módulo 10).' };   // 10 · protección contra incendios
       if (String(d.accion).indexOf('p_rad_') === 0) return typeof radPortal_ === 'function' ? radPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Radiaciones.gs (módulo 9).' };   // 9 · Radiaciones ionizantes
   }
   return { ok: false, error: 'Acción desconocida.' };

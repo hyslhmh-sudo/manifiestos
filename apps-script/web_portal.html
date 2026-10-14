@@ -373,6 +373,7 @@ function marco(activo, contenido) {
     grp('cap', 'school', '7 · Capacitaciones', it('#cap', '', 'Tablero', 1) + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + it('#capfir', '', 'Firmantes', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES') + ext(CAP_PANEL, 'Panel de carga (sistema actual)')) +
     grp('m8', 'domain', '8 · Servicios e infraestructura', it('#m8', '', 'Tablero', 1) + it('#m8rel', '', 'Nuevo relevamiento', 1) + it('#m8plan', '', 'Plan de acción', 1) + it('#m8serv', '', 'Edificios y servicios', 1) + it('#m8libros', '', 'Libros para la red', 1) + ext(M8_LINKS.planilla, 'Planilla del módulo 8') + ext(M8_LINKS.campo, 'Listas de campo')) +
     grp('rad', 'radiology', '9 · Radiaciones ionizantes', it('#rad', '', 'Tablero', 1) + it('#radest', '', 'Por establecimiento', 1)) +
+    grp('inc', 'fire_extinguisher', '10 · Protección contra incendios', it('#inc', '', 'Extintores · tablero', 1) + it('#incest/HMH', '', 'Extintores del HMH', 1) + it('#incest/HZT', '', 'Extintores de la red HZT', 1)) +
     '<div class="titu mod">Más</div>' +
     it('#accesos', 'key', 'Accesos (DNI y claves)') +
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
@@ -464,6 +465,8 @@ const AYUDA = {
   '#m8': ['8 · Servicios e infraestructura', ['Estado de cada edificio y servicio según su último relevamiento: cumplimiento ponderado, críticos en «no cumple» y semáforo (rojo si hay un crítico en NC, aunque el porcentaje sea alto).', 'Tocá una fila para abrir el relevamiento, o para empezar uno si el servicio todavía no se relevó.', '«Requiere atención» muestra los hallazgos vencidos y los de 30 días.', 'Los datos viven en la planilla del módulo 8; si falta GitHub, todo se hace desde esa planilla (menú Módulo 8).']],
   '#m8rel': ['Relevamiento', ['Elegí el edificio (capa A, requisitos del RGRL) o el servicio (capa B, requisitos de su directriz): la lista de verificación se arma sola.', 'Tocá C, P, NC o NA en cada punto; tocá de nuevo para borrar la respuesta. ★ = crítico: si no cumple, pegá el enlace de la foto.', '«Guardar» escribe en la planilla. Después, «Generar hallazgos» pasa los P y NC al plan de acción con su prioridad y plazo.', '«Generar informe a la Dirección» arma un borrador en Google Docs (carpeta del módulo › INFORMES) con portada, índice, métodos, notas al pie, plan de acción y anexos. Lo que hay que revisar queda en celeste e itálica.', 'Para auditorías, elegí el tipo «Auditoría» y usá un ID nuevo (por ejemplo, con la fecha).']],
   '#m8plan': ['Plan de acción del módulo 8', ['Hallazgos ordenados por prioridad: Actuar ya (30 días), Resolver rápido (90) y Planificar (180).', 'Tocá una fila para cargar la respuesta de la Dirección, cambiar el estado, ajustar la propuesta o cerrar el hallazgo.']],
+  '#inc': ['10 · Protección contra incendios · Extintores', ['Inventario de extintores de la red Trelew (HZT y sus sitios, HMH) y del HSST con sus CAPS, en el libro «PROTECCIÓN CONTRA INCENDIOS · Sistema HyS» (Drive › SISTEMA HyS › MÓDULO 10). La carga inicial salió de la planilla «Inventario de Extintores».', 'Por lugar: cuántos extintores hay, cuántos tienen la carga vencida o por vencer (30 días), cuántos tienen observación (sobrecarga, recargar, fuera de servicio) y el último control.', 'Control: mensual, con 3 fotos obligatorias por extintor (panorámica con el entorno, marbete y N.º de inventario). La alarma por falta de control aparece a los 3 meses; los nunca controlados avisan desde el 14/01/2027.', 'Controlan: HMH, Belén, Melani, SOMI y MAREM; red Trelew (HZT, sede ex ADOS, CAPS, dispositivos y ambulancias), Belén, Melani y Javier Tramaleo; HSST, a definir. Desde «Mi establecimiento» lo cargan las personas con el módulo Incendio en Accesos.', 'Normativa: Ley 19.587; Dto. 351/79, cap. 18 y Anexo VII.']],
+  '#incest': ['10 · Extintores de un lugar', ['Lista de extintores con su ubicación, tipo, N.º de inventario, vencimiento de la carga y de la prueba hidráulica, estado y último control con sus fotos.', '«Control»: fecha, 5 verificaciones (en su lugar, acceso libre, manómetro, precinto y señalización) y las 3 fotos obligatorias. Si se recargó, se puede poner el nuevo vencimiento.', '«Editar» corrige los datos del extintor; para sacarlo, Estado = Baja (no se borra). «Agregar extintor» suma uno nuevo.', 'Lo que había que revisar de la planilla de origen (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes) está en Observaciones.']],
   '#rad': ['9 · Radiaciones ionizantes', ['Rayos X de toda la red: radiología, tomografía, arco en C (quirófano) y odontológicos. No incluye medicina nuclear ni radioterapia.', 'Tablero: sitios con rayos X (y cuántos de la provincia faltan confirmar), dosímetros activos, extraviados, eventos abiertos, equipos y habilitaciones, y establecimientos a los que les falta algún control mensual de los últimos 3 meses. «Requiere atención» lleva directo a la pestaña que hay que completar.', 'Tocá un establecimiento (o elegilo en «Abrir un establecimiento») para cargar sus datos. «Mostrar también los que no tienen datos» lista toda la red.', 'Todo queda en la planilla RADIACIONES IONIZANTES · Sistema HyS (se puede corregir ahí, desde la fila 6) y los archivos en SISTEMA HyS › MÓDULO 9 · RADIACIONES IONIZANTES › Establecimientos.', 'Normativa: Ley 17.557 y Dto. 6320/68; Ley 19.587 y Dto. 351/79; Res. SRT 37/10, 81/19 y 905/15. El sistema no envía correos.']],
   '#radest': ['9 · Radiaciones de un establecimiento', ['Sitios: los edificios, CAPS, sede ex ADOS y dispositivos del establecimiento (salen de BASE COMÚN › SITIOS). Para cada uno se marca si tiene rayos X (Sí, No o A confirmar) y qué equipos. En la red Trelew, HZT Central, sede ex ADOS, CAPS y HMH ya figuran con Sí; el resto de la provincia está A confirmar. «Ver» o el selector «Sitio» de arriba filtran todas las pestañas por ese sitio; lo que se carga con un sitio elegido queda en ese sitio.', 'Personal y dosímetros: una fila por persona expuesta. Al escribir el DNI se completan los datos de la base de trabajadores; «En la base de trabajadores» sugiere personas de imágenes, rayos, tomografía, odontología o hemodinamia. «Dar de baja» (a pedido del trabajador o por fin de exposición) no borra a nadie; «Reactivar» vuelve a dar de alta el dosímetro en la misma fila. Cada cambio queda en «Movimientos».', 'Controles mensuales: tocá el mes y subí el PDF del servicio de dosimetría (máx. 6 MB). Queda en la carpeta del establecimiento › Dosimetría › año. El sistema no lee el PDF: si trae valores anormales, marcalo y cargá el evento.', 'Eventos: registro anormal, extravío, dosímetro dañado o no devuelto, exposición accidental. Un extravío deja el dosímetro de la persona como «Extraviado». La exposición accidental superior a la norma se notifica de inmediato a la autoridad sanitaria (Dto. 6320/68, art. 20).', 'Salas y equipos: habilitación, responsables (instalación y uso), plano de plomado y memoria de blindaje, levantamiento radiométrico, control de calidad, señalización, luz de advertencia y elementos plomados.', 'Documentos: habilitaciones, autorizaciones individuales, designaciones, comunicaciones a la autoridad y demás. Nada se borra: se marca Reemplazado o Anulado.', 'Requisitos legales: lo que pide la norma, con su artículo, y si el establecimiento ya tiene el documento que lo acredita. «Falta · cargar» abre la carga con el tipo elegido. Los requisitos se editan en la hoja REQUISITOS.']],
   '#res': ['1 · Residuos · Tablero', ['Estado de los residuos peligrosos de la red con lo que cargan los establecimientos: manifiestos (retiros) y certificados de tratamiento del libro general.', 'Indicadores: establecimientos con cargas, retiros del mes, días sin retiro (verde hasta 10, amarillo de 11 a 30, rojo más de 30), certificados faltantes (meses con retiros y sin certificado; el del mes pasado figura pendiente), manifiestos sin foto y diagnósticos.', '«Requiere atención» ordena lo urgente primero; tocá un aviso o un establecimiento para ver el detalle mes por mes y por sitio, con la frecuencia de retiro pactada (BASE COMÚN › SITIOS › FRECUENCIA_PACTADA).', 'Los datos se guardan 10 minutos y se muestran al instante; «Actualizar» los trae en el momento. También actualiza el último retiro en el tablero de inicio y en la matriz.', 'Normativa: Ley 24.051 y Dto. 831/93 (manifiesto y certificado de tratamiento); Ley XI N.º 35 (Código Ambiental del Chubut).']],
@@ -608,6 +611,7 @@ async function inicio(fresco) {
   plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
   atr.forEach(f => at.push([f.diasSinRetiro > 30 ? 'er' : 'wa', f.cod + ': ' + f.diasSinRetiro + ' días sin retiro', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), '#ficha/' + encodeURIComponent(f.cod)]));
   pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
+  ((TB.incendio || {}).avisos || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ' · ' + x.sitio + ': ' + x.texto, 'Extintores · control mensual con 3 fotos', '#incest/' + encodeURIComponent(x.cod) + '/' + encodeURIComponent(x.sitio)]));   // 10 · Incendio
   const RM = TB.remision || {};   // remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
   if (RM.activa) { const g = {}; (RM.avisos || []).filter(x => !x.silenciado && enA(x.cod)).forEach(x => (g[x.cod] = g[x.cod] || []).push(x));
     Object.keys(g).forEach(c => at.push(['wa', c + ': ' + g[c].length + (g[c].length > 1 ? ' sitios' : ' sitio') + ' sin manifiestos cargados de las últimas 2 semanas', g[c].slice(0, 3).map(x => x.sitio + ' (último ' + fechaTxt(x.ultimo) + ')').join(' · ') + (g[c].length > 3 ? ' · …' : '') + ' · remisión semanal (PROT-RES-003)', '#ficha/' + encodeURIComponent(c)])); }
@@ -4109,6 +4113,129 @@ function radMov(D) {
 }
 </script>
 <script>
+// Portal HyS · 10 · Protección contra incendios (Incendio.gs) · versión 0 (14/10/2026)
+// Inventario de extintores de la red Trelew y del HSST, vencimientos (carga y prueba hidráulica) y control mensual con 3 fotos
+// obligatorias (panorámica con el entorno, marbete y N.º de inventario). Alarma: 3 meses sin control.
+// Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
+let INCT = null, INCD = {}, INCF = { sitio: '', ver: 'todos', q: '' };
+const INC_CARGA = { vencida: ['Vencida', 'er'], porvencer: ['Vence pronto', 'wa'], aldia: ['Al día', 'ok'], sd: ['Sin dato', 'gr'] };
+const INC_CTRL = { aldia: ['Al día', 'ok'], atrasado: ['Más de 3 meses', 'er'], sin: ['Sin control', 'gr'] };
+const incChip = (m, k, extra) => { const x = m[k] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (extra ? '<div class="mu peq">' + extra + '</div>' : ''); };
+const incChipEst = e => '<span class="chip ' + (/^Operativo/.test(e) ? 'ok' : /Baja/.test(e) ? 'gr' : /^s\/d/.test(e || 's/d') ? 'gr' : 'er') + '">' + esc(e || 's/d (revisar)') + '</span>';
+const incLink = (u, t) => u ? '<a class="link" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + ' ↗</a>' : '';
+const incNom = c => { const f = (RES && RES.filas || []).find(x => x.cod === c); return f ? f.nombre : c; };
+function incNoInstalado(hash, r) {
+  return marco(hash, '<div class="cab"><div><span class="mu peq">10 · Protección contra incendios</span><h1>Protección contra incendios</h1></div></div><div class="aviso ' + (r && r.instalado === false ? '' : 'error') + '">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer el módulo.') + '</div>' +
+    (r && r.instalado === false ? '<section class="card"><h2>Cómo se instala</h2><ol class="peq"><li>En el editor de Apps Script del «Sistema HyS», elegí la función <b>construirModuloIncendio</b> y tocá «Ejecutar» (una sola vez).</li><li>Después elegí <b>importarExtintoresIncendio</b> y tocá «Ejecutar»: trae los extintores de la planilla «Inventario de Extintores».</li><li>Volvé acá y tocá «Actualizar».</li></ol></section>' : ''));
+}
+
+// ------------------------------------------------------------------ Tablero de la red
+async function incTablero(fresco) {
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  if (!INCT || fresco) { cargando('#inc', 'Armando el tablero de incendio…'); try { INCT = await api('p_inc_tablero', { fresco: !!fresco }, 180000); } catch (e) { return; } }
+  if (!INCT.ok) { const r = INCT; INCT = null; return incNoInstalado('#inc', r); }
+  const T = INCT.totales, kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
+  const grupos = {}; INCT.lugares.forEach(L => (grupos[L.cod] = grupos[L.cod] || []).push(L));
+  const fila = L => { const r = L.r, h = '#incest/' + encodeURIComponent(L.cod) + '/' + encodeURIComponent(L.sitio);
+    return '<tr class="cl" data-h="' + esc(h) + '"><td><b>' + esc(L.sitio) + '</b><div class="mu peq">' + esc(L.tipo || '') + (L.obs ? ' · ' + esc(L.obs) : '') + '</div></td><td class="peq">' + esc(L.responsables || 's/d') + '</td>' +
+      '<td>' + (r.total || '<span class="mu">Sin cargar</span>') + '</td>' +
+      '<td>' + (r.cargaVencida ? '<span class="chip er">' + r.cargaVencida + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + (r.porVencer ? ' <span class="chip wa mini">' + r.porVencer + ' por vencer</span>' : '') + (r.cargaSd ? ' <span class="chip gr mini">' + r.cargaSd + ' sin dato</span>' : '') + '</td>' +
+      '<td>' + (r.conObs ? '<span class="chip er">' + r.conObs + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + '</td>' +
+      '<td>' + (L.ultimoControl ? fechaTxt(L.ultimoControl) : '<span class="mu">Nunca</span>') + (r.controlAtrasado ? ' <span class="chip er mini">' + r.controlAtrasado + ' con más de 3 meses</span>' : '') + '</td></tr>'; };
+  const at = (INCT.avisos || []).map(a => ['<a class="at" href="#incest/' + encodeURIComponent(a.cod) + '/' + encodeURIComponent(a.sitio) + '"><span class="tag ' + a.nivel + '">' + (a.nivel === 'er' ? 'Urgente' : a.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span><span><b>' + esc(a.sitio) + ': ' + esc(a.texto) + '</b><small>' + esc(incNom(a.cod)) + '</small></span></a>']);
+  marco('#inc', '<div class="cab"><div><span class="mu peq">10 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual (3 fotos por extintor). Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
+    '<div class="filtros">' + incLink(INCT.libro, 'Planilla del módulo') + ' ' + incLink(INCT.carpeta, 'Carpeta de fotos') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
+    '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '') +
+    kpi('Con observación', T.conObs, 'sobrecarga, recargar o fuera de servicio', T.conObs ? 'var(--er)' : '') + kpi('Controlados', T.controlAlDia, (T.sinControl + T.controlAtrasado) + ' sin control en los últimos 3 meses', (T.controlAtrasado) ? 'var(--wa)' : '') +
+    kpi('Prueba hidráulica', T.pruebaVencida, T.pruebaSd + ' sin dato (revisar)', T.pruebaVencida ? 'var(--er)' : '') + '</div>' +
+    '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Por lugar</h2><span class="mu peq">Tocá un lugar para ver sus extintores y cargar el control.</span></div><div style="overflow-x:auto"><table><thead><tr><th>Lugar</th><th>Controlan</th><th>Extintores</th><th>Carga vencida</th><th>Con observación</th><th>Último control</th></tr></thead><tbody>' +
+    Object.keys(grupos).sort((a, b) => a === 'HMH' ? -1 : b === 'HMH' ? 1 : a.localeCompare(b)).map(c => '<tr><td colspan="6" style="background:var(--pa1);font-weight:700;color:var(--az)">' + esc(incNom(c)) + '</td></tr>' + grupos[c].map(fila).join('')).join('') +
+    '</tbody></table></div></section>' +
+    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 20).join('') : '<div class="mu">Nada pendiente.</div>') +
+    '<p class="mu peq" style="margin-top:8px">El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
+  $('icAct').onclick = () => incTablero(true);
+  document.querySelectorAll('tr.cl[data-h]').forEach(tr => tr.onclick = () => location.hash = tr.dataset.h);
+}
+
+// ------------------------------------------------------------------ Extintores de un establecimiento (o de un lugar)
+async function incEst(a, fresco) {
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
+  const [cod, sitio] = String(a || '').split('/').map(decodeURIComponent);
+  if (!cod) return location.hash = '#inc';
+  if (sitio !== undefined) INCF.sitio = sitio || '';
+  if (!INCD[cod] || fresco) { cargando('#incest', 'Abriendo los extintores de ' + incNom(cod) + '…'); try { INCD[cod] = await api('p_inc_detalle', { cod: cod }, 180000); } catch (e) { return; } }
+  const D = INCD[cod]; if (!D.ok) { delete INCD[cod]; return incNoInstalado('#incest', D); }
+  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
+    && (!q || sinTildesJs([e.ID, e.NRO_EXTINTOR, e.NRO_INVENTARIO, e.SECTOR, e.UBICACION, e.PLANTA].join(' ')).indexOf(q) >= 0));
+  const ult = id => D.controles.find(c => c.ID_EXTINTOR === id);
+  const fila = e => { const c = ult(e.ID), i = D.extintores.indexOf(e);
+    return '<tr><td><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + '</b><div class="mu peq">' + esc(e.ID) + (INCF.sitio ? '' : ' · ' + esc(e.SITIO)) + '</div></td>' +
+      '<td>' + esc([e.PLANTA ? 'Planta ' + e.PLANTA.toLowerCase() : '', e.SECTOR].filter(Boolean).join(' · ')) + '<div class="mu peq">' + esc(e.UBICACION || '') + '</div></td>' +
+      '<td>' + esc([e.TIPO, e.AGENTE].filter(Boolean).join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : '') + '</div></td>' +
+      '<td class="peq">' + esc(e.NRO_INVENTARIO || 's/d') + '</td>' +
+      '<td>' + incChip(INC_CARGA, e.est.carga, e.VTO_CARGA ? fechaTxt(e.VTO_CARGA) : '') + '</td>' +
+      '<td>' + incChip(INC_CARGA, e.est.prueba === 'vencida' ? 'vencida' : e.est.prueba === 'aldia' ? 'aldia' : 'sd', /^\d{4}-/.test(e.PRUEBA_HIDRAULICA_VENCE || '') ? fechaTxt(e.PRUEBA_HIDRAULICA_VENCE) : '') + '</td>' +
+      '<td>' + incChipEst(e.ESTADO) + '</td>' +
+      '<td>' + incChip(INC_CTRL, e.est.control, e.ULTIMO_CONTROL ? fechaTxt(e.ULTIMO_CONTROL) + (e.RESULTADO_CONTROL ? ' · ' + esc(e.RESULTADO_CONTROL) : '') : '') +
+        (c || e.FOTO_PANORAMICA ? '<div class="peq">' + [incLink(e.FOTO_PANORAMICA, 'Panorámica'), incLink(e.FOTO_MARBETE, 'Marbete'), incLink(e.FOTO_INVENTARIO, 'Inventario')].filter(Boolean).join(' · ') + '</div>' : '') + '</td>' +
+      '<td class="peq" style="max-width:240px">' + esc(e.OBSERVACIONES || '') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn pri" data-ctl="' + i + '">Control</button> <button class="btn sec" data-edit="' + i + '">Editar</button></td></tr>'; };
+  const ver = [['todos', 'Todos'], ['vencida', 'Carga vencida'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
+  marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
+    L.length + ' extintor(es) en la lista · ' + D.extintores.filter(e => e.est.carga === 'vencida' && (!INCF.sitio || e.SITIO === INCF.sitio)).length + ' con la carga vencida · controlan: ' + esc(((D.sitios.find(s => s.SITIO === INCF.sitio) || D.sitios[0] || {}).RESPONSABLES_CONTROL) || 's/d') + '</span></div>' +
+    '<div class="filtros"><label class="f">Lugar<select class="c" id="icSit"><option value="">Todos los lugares</option>' + D.sitios.map(s => '<option' + (s.SITIO === INCF.sitio ? ' selected' : '') + '>' + esc(s.SITIO) + '</option>').join('') + '</select></label>' +
+    '<label class="f">Ver<select class="c" id="icVer">' + ver.map(v => '<option value="' + v[0] + '"' + (v[0] === INCF.ver ? ' selected' : '') + '>' + v[1] + '</option>').join('') + '</select></label>' +
+    '<label class="f">Buscar<input class="c" id="icQ" value="' + esc(INCF.q) + '" placeholder="N.º, inventario, sector"></label>' +
+    '<button class="btn sec" id="icNuevo">Agregar extintor</button><button class="btn sec" id="icAct">Actualizar</button></div></div>' +
+    '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Extintor</th><th>Ubicación</th><th>Tipo</th><th>N.º inventario</th><th>Carga</th><th>Prueba hidráulica</th><th>Estado</th><th>Último control</th><th>Observaciones</th><th></th></tr></thead><tbody>' +
+    (L.length ? L.map(fila).join('') : '<tr><td colspan="10" class="mu">' + (D.extintores.length ? 'Ningún extintor coincide con el filtro.' : 'Todavía no hay extintores cargados en este lugar. Usá «Agregar extintor».') + '</td></tr>') + '</tbody></table></div></section>' +
+    '<p class="mu peq">Control: 5 verificaciones y 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Todo se puede corregir también en la planilla del módulo.</p>');
+  const recargar = () => incEst(encodeURIComponent(cod));
+  $('icSit').onchange = e => { INCF.sitio = e.target.value; location.hash = '#incest/' + encodeURIComponent(cod) + '/' + encodeURIComponent(INCF.sitio); };
+  $('icVer').onchange = e => { INCF.ver = e.target.value; recargar(); };
+  $('icQ').onchange = e => { INCF.q = e.target.value; recargar(); };
+  $('icAct').onclick = () => incEst(encodeURIComponent(cod), true);
+  $('icNuevo').onclick = () => incExtForm(D, null);
+  document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => incControlForm(D, D.extintores[+b.dataset.ctl]));
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => incExtForm(D, D.extintores[+b.dataset.edit]));
+}
+function incRecargar(D, msg) { if (msg) toast(msg); INCT = null; TB = null; delete INCD[D.cod]; incEst(encodeURIComponent(D.cod), true); }
+
+// ---------- Alta o corrección de un extintor
+function incExtForm(D, e) {
+  const L = D.listas, iso = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : '';
+  const v = Object.assign({ ESTABLECIMIENTO: D.cod, SITIO: INCF.sitio || (D.sitios[0] || {}).SITIO, ESTADO: 'Operativo', PRUEBA_HIDRAULICA_VENCE: '' }, e || {});
+  v.VTO_CARGA = iso(v.VTO_CARGA); const phTxt = /^s\/d/i.test(v.PRUEBA_HIDRAULICA_VENCE || ''); v.PRUEBA_HIDRAULICA_VENCE = iso(v.PRUEBA_HIDRAULICA_VENCE);
+  modal(e ? 'Extintor ' + (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) : 'Agregar extintor', [['SITIO', 'Lugar', D.sitios.map(s => s.SITIO)], ['NRO_EXTINTOR', 'N.º del extintor'], ['NRO_CHAPA', 'N.º de chapa'], ['PLANTA', 'Planta', L.plantas],
+    ['SECTOR', 'Sector o servicio'], ['UBICACION', 'Ubicación (detalle)'], ['TIPO', 'Tipo', L.tipos], ['AGENTE', 'Agente extintor', L.agentes], ['CAPACIDAD_KG', 'Capacidad (kg)'], ['NRO_INVENTARIO', 'N.º de inventario'],
+    ['VTO_CARGA', 'Vencimiento de la carga', 'date'], ['PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica', 'date'], ['ESTADO', 'Estado', L.estados], ['OBSERVACIONES', 'Observaciones', null, 1]], v,
+    async out => {
+      if (!out.SITIO) return 'Elegí el lugar.'; if (!out.TIPO) return 'Elegí el tipo de extintor.';
+      if (!out.PRUEBA_HIDRAULICA_VENCE) out.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
+      const r = await api('p_inc_ext_guardar', Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod }, out), 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      incRecargar(D, e ? 'Extintor actualizado.' : 'Extintor agregado (' + r.id + ').'); return '';
+    }, phTxt ? '<p class="mu peq" style="margin:0">Prueba hidráulica: sin dato. Si no la sabés, dejala vacía y queda «s/d (revisar)».</p>' : '');
+}
+
+// ---------- Control mensual con 3 fotos obligatorias
+function incControlForm(D, e) {
+  const L = D.listas, fotos = {}, hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const campos = [['FECHA', 'Fecha del control', 'date']].concat(L.chequeos.map(c => [c[0], c[1], ['Sí', 'No']]), [['ESTADO', 'Estado del extintor (si cambió)', L.estados], ['VTO_CARGA', 'Nuevo vencimiento de la carga (solo si se recargó)', 'date'], ['OBSERVACIONES', 'Observaciones', null, 1]]);
+  const extra = '<div class="card" style="margin:12px 0;padding:12px 14px;background:var(--pa1)"><b>3 fotos obligatorias</b><div class="campos" style="margin-top:8px">' +
+    L.fotos.map(f => '<label class="f">' + esc(f[1]) + '<input class="c" type="file" accept="image/*" capture="environment" data-incfoto="' + f[0] + '"><span class="mu peq" id="if_' + f[0] + '">' + esc(f[2]) + '</span></label>').join('') + '</div></div>' +
+    '<p class="mu peq" style="margin:0">' + esc([e.ID, e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + ' · carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + '. Si alguna verificación da «No», el control queda «Con observaciones».</p>';
+  modal('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), campos, { FECHA: hoy }, async out => {
+    const faltan = L.chequeos.filter(c => !out[c[0]]).map(c => c[1]); if (faltan.length) return 'Falta responder: ' + faltan.join(', ') + '.';
+    const sinF = L.fotos.filter(f => !fotos[f[0]]).map(f => f[1]); if (sinF.length) return 'Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3.';
+    const datos = Object.assign({ ID_EXTINTOR: e.ID, fotos: fotos }, out); if (!datos.ESTADO) delete datos.ESTADO; if (!datos.VTO_CARGA) delete datos.VTO_CARGA;
+    const r = await api('p_inc_control', datos, 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    incRecargar(D, 'Control guardado: ' + r.resultado + '.'); return '';
+  }, extra);
+  document.querySelectorAll('#ov [data-incfoto]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.incfoto, msg = $('if_' + k); if (!f) return;
+    try { if (!/^image\//.test(f.type)) throw new Error('Tiene que ser una foto.'); fotos[k] = await achicar(f); msg.textContent = 'Lista: ' + f.name; msg.style.color = 'var(--ok)'; } catch (x) { delete fotos[k]; msg.textContent = x.message || 'No se pudo leer la foto.'; msg.style.color = 'var(--er)'; } });
+}
+</script>
+<script>
 // Portal HyS · 1 · Residuos · Tablero general (versión 14.22, 13/10/2026). Lee p_res_tablero (ResiduosTablero.gs): manifiestos y certificados del
 // libro general, en el momento (guardado 10 minutos). Además actualiza en la matriz (RES) el último retiro de cada establecimiento.
 let REST = null, RESF = { verTodos: false };
@@ -4496,6 +4623,8 @@ function routerPantalla() {
   if (ruta === 'm8plan') return m8Plan();
   if (ruta === 'm8serv') return m8Servicios();
   if (ruta === 'm8libros') return m8Libros();
+  if (ruta === 'inc') return incTablero();
+  if (ruta === 'incest') return incEst(location.hash.replace(/^#incest\/?/, ''));
   if (ruta === 'rad') return radTablero();
   if (ruta === 'radest') return radEst(location.hash.replace(/^#radest\/?/, ''));
   if (ruta === 'ayuda') return ayuda();
