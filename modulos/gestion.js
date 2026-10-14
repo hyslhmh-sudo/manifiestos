@@ -56,7 +56,7 @@ function gesPlan() {
       (h.DESCRIPCION && h.DESCRIPCION !== a.ACCION ? '<div class="mu peq">Hallazgo: ' + esc(h.DESCRIPCION) + '</div>' : '') + (a.SITIO ? '<div class="mu peq">' + esc(a.SITIO) + '</div>' : '') + '</td><td class="peq">' + esc(a.RESPONSABLE || '—') + '</td><td class="peq"' + (ext(a) ? ' style="color:' + ext(a) + ';font-weight:700"' : '') + '>' + fechaTxt(a.FECHA_LIMITE) + '</td><td class="peq">' + esc(a.TIPO_RECURSO || '—') + (a.REQUIERE_DIRECCION === 'Sí' ? '<div class="mu">Dirección</div>' : '') + '</td></tr>'; };
   const tabla = orden.length ? orden.map(g => (F.por !== 'ninguno' ? '<tr><td colspan="7" style="background:#EEF2F4;font-weight:800;color:var(--az)">' + esc(g) + ' · ' + grupos[g].length + '</td></tr>' : '') + grupos[g].map(fila).join('')).join('')
     : '<tr><td colspan="7" class="mu">No hay acciones con estos filtros.' + (A.length ? '' : ' Tocá «Traer de los módulos» para pasar los planes que ya existen.') + '</td></tr>';
-  marco('#ges', gesCab('Plan de acción único', 'Todas las acciones de los 10 módulos, con responsable, plazo, si requiere Dirección, avance, evidencia y verificación de eficacia.', '<button class="btn sec" id="gTraer">Traer de los módulos</button><button class="btn pri" id="gNueva">+ Nueva acción</button>') + gesTabs('plan') +
+  marco('#ges', gesCab('Plan de acción único', 'Todas las acciones de los 10 módulos, con responsable, plazo, si requiere Dirección, avance, evidencia y verificación de eficacia.', '<button class="btn sec" id="gTraer">Traer de los módulos</button><button class="btn sec" id="gElevar">Elevar a la Dirección</button><button class="btn pri" id="gNueva">+ Nueva acción</button>') + gesTabs('plan') +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + gesKpi('Abiertas', ab.length, 'en curso o por empezar') + gesKpi('Vencidas', venc, 'gestión e insumos; sin inversión', venc ? '#B4361F' : '') +
       gesKpi('Elevadas sin respuesta', sinR, 'más de 60 días', sinR ? '#8A5200' : '') + gesKpi('A verificar', ver, 'hechas: falta ver si fueron eficaces') + gesKpi('Pendientes de recursos', rec, 'riesgo informado; no cuentan contra HyS') + '</div>' +
     '<div class="filtros" style="margin:12px 0;flex-wrap:wrap">' +
@@ -72,7 +72,7 @@ function gesPlan() {
   const re = () => gesPlan();
   $('gE').onchange = e => { F.cod = e.target.value; re(); }; $('gM').onchange = e => { F.mod = e.target.value; re(); }; $('gS').onchange = e => { F.estado = e.target.value; re(); };
   $('gR').onchange = e => { F.resp = e.target.value; re(); }; $('gT').onchange = e => { F.rec = e.target.value; re(); }; $('gP').onchange = e => { F.por = e.target.value; re(); }; $('gQ').onchange = e => { F.q = e.target.value.trim(); re(); };
-  $('gTraer').onclick = gesTraer; $('gNueva').onclick = () => gesNuevaAccion();
+  $('gTraer').onclick = gesTraer; $('gNueva').onclick = () => gesNuevaAccion(); $('gElevar').onclick = () => gesElevar();
   document.querySelectorAll('[data-ac]').forEach(tr => tr.onclick = () => gesAccion(tr.dataset.ac));
 }
 
@@ -214,3 +214,62 @@ async function gesAlcance(fresco) {
       if (!r.ok) return r.mensaje || 'No se pudo guardar.'; toast('Guardado.'); gesAlcance(true); return ''; }); });
 }
 const gesNomA = c => ((GESA && GESA.establecimientos.find(e => e.cod === c)) || {}).nombre || c;
+
+// ------------------------------------------------------------------ Elevar a la Dirección (14.63)
+// Elige establecimiento y acciones, las marca «Elevada» con la fecha y copia el correo para pegar. El sistema no envía nada.
+async function gesElevar(cod) {
+  if (!cod) { toast('Trayendo las recomendaciones de los informes nuevos…'); try { await api('p_ges_traer', { solo: 'plan' }, 180000); GESD = await api('p_ges_datos', {}, 180000); } catch (e) { return; } }
+  const H = {}; GESD.hallazgos.forEach(h => H[h.ID] = h);
+  const cand = GESD.acciones.filter(a => a.abierta && !a.FECHA_ELEVADA && a.ESTADO !== 'Pendiente de recursos');
+  const cods = Array.from(new Set(cand.map(a => a.ESTABLECIMIENTO))).sort();
+  if (!cods.length) return toast('No hay acciones abiertas sin elevar.');
+  cod = cod && cods.indexOf(cod) >= 0 ? cod : (GESF.cod && cods.indexOf(GESF.cod) >= 0 ? GESF.cod : cods[0]);
+  const L = cand.filter(a => a.ESTABLECIMIENTO === cod), hoy = new Date().toISOString().slice(0, 10);
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Elevar a la Dirección"><h2>Elevar a la Dirección</h2><div class="aviso error" id="mErr" hidden></div>' +
+    '<p class="mu peq" style="margin:0 0 10px">Marcá las acciones que necesitan una decisión o recursos de la Dirección. Quedan «Elevada» con la fecha, se registra el envío en su informe de origen y se copia el correo para que lo pegues y lo mandes vos.</p>' +
+    '<div class="campos"><label class="f">Establecimiento<select class="c" id="evE">' + cods.map(c => gesOpt(c, gesNom(c) + ' · ' + cand.filter(a => a.ESTABLECIMIENTO === c).length, cod)).join('') + '</select></label>' +
+    '<label class="f">Fecha de elevación<input class="c" type="date" id="evF" value="' + hoy + '"></label></div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin-top:8px">' + L.map(a => { const h = H[a.HALLAZGO] || {};
+      return '<label style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;cursor:pointer"><input type="checkbox" data-ev="' + esc(a.ID) + '"' + (a.REQUIERE_DIRECCION === 'Sí' ? ' checked' : '') + ' style="margin-top:3px">' +
+        '<span><b>' + esc(a.ACCION) + '</b><span class="mu peq" style="display:block">' + esc(a.ID) + ' · ' + esc(a.MODULO) + (h.PRIORIDAD ? ' · ' + esc(h.PRIORIDAD) : '') + ' · ' + esc(a.TIPO_RECURSO || 'recurso s/d') + (a.REQUIERE_DIRECCION === 'Sí' ? ' · requiere Dirección' : '') + '</span>' +
+        (h.FUENTE ? '<span class="mu peq" style="display:block">Fuente: ' + esc(h.FUENTE) + '</span>' : '<span class="peq" style="display:block;color:#8A5200">Sin fuente cargada: completala en Hallazgos antes de elevar</span>') + '</span></label>'; }).join('') + '</div>' +
+    '<div class="acciones"><div></div><div style="display:flex;gap:8px"><button class="btn sec" id="mCan">Cancelar</button><button class="btn pri" id="mOk">Elevar y copiar el correo</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('mCan').onclick = cerrar; $('evE').onchange = e => gesElevar(e.target.value);
+  $('mOk').onclick = async () => {
+    const ids = Array.from(document.querySelectorAll('#ov [data-ev]:checked')).map(x => x.dataset.ev), b = $('mOk');
+    if (!ids.length) { $('mErr').textContent = 'Marcá al menos una acción.'; $('mErr').hidden = false; return; }
+    b.disabled = true; b.textContent = 'Elevando…';
+    try { const r = await api('p_ges_elevar', { ids: ids, fecha: $('evF').value }, 120000);
+      if (!r.ok) { b.disabled = false; b.textContent = 'Elevar y copiar el correo'; $('mErr').textContent = r.mensaje || 'No se pudo.'; $('mErr').hidden = false; return; }
+      cerrar(); await copiarCorreo(r.correo); toast(r.elevadas + ' acción(es) elevadas. El correo quedó copiado: pegalo, revisalo y mandalo desde tu correo.'); gestion(true);
+    } catch (e) { b.disabled = false; b.textContent = 'Elevar y copiar el correo'; }
+  };
+}
+
+// ------------------------------------------------------------------ Acciones abiertas en cada módulo y en la ficha (14.63)
+// Al abrir el tablero de un módulo o la ficha de un establecimiento, se agrega abajo un recuadro con sus acciones del plan único.
+const GES_MOD_RUTA = { '#res': '1 · Residuos', '#agua': '2 · Agua', '#plagas': '3 · Plagas', '#coc': '4 · Cocinas hospitalarias', '#rad': '5 · Radiaciones ionizantes', '#radest': '5 · Radiaciones ionizantes',
+  '#m8': '6 · Servicios e infraestructura', '#inc': '7 · Protección contra incendios', '#sinest': '8 · Personal y RAR', '#cap': '9 · Capacitaciones', '#docest': '10 · Documentos', '#ficha': '' };
+let GES_T = 0;
+async function gesInyectar(activo) {
+  const base = String(activo || '').split('/')[0]; if (!(base in GES_MOD_RUTA)) return;
+  const h0 = location.hash, partes = h0.replace(/^#/, '').split('/'), cod = partes[1] ? decodeURIComponent(partes[1]) : '', mod = GES_MOD_RUTA[base];
+  if (base === '#ficha' && !cod) return;
+  const m = $('main'); if (!m || m.querySelector('.cargando')) return;
+  if (!GESD || Date.now() - GES_T > 300000) { try { const r = await api('p_ges_datos', {}, 180000); if (r && r.ok) { GESD = r; GES_T = Date.now(); } } catch (e) { return; } }
+  if (!GESD || !GESD.ok || location.hash !== h0) return;
+  const mm = $('main'); if (!mm || mm.querySelector('#gesCaja')) return;
+  const L = GESD.acciones.filter(a => a.abierta && (!mod || a.MODULO === mod) && (!cod || a.ESTABLECIMIENTO === cod))
+    .sort((a, b) => (b.vencida - a.vencida) || String(a.FECHA_LIMITE || '9999').localeCompare(String(b.FECHA_LIMITE || '9999')));
+  const venc = L.filter(a => a.vencida).length, ver = L.filter(a => a.verificar).length;
+  const caja = document.createElement('section'); caja.className = 'card'; caja.id = 'gesCaja'; caja.style.marginTop = '14px';
+  caja.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">Acciones abiertas · plan de acción único</h2><a href="#ges" id="gesCajaIr" class="peq" style="font-weight:700">Ver en el plan</a></div>' +
+    '<span class="mu peq">' + (mod ? esc(mod) : esc(gesNom(cod))) + (cod && mod ? ' · ' + esc(gesNom(cod)) : '') + ' · ' + L.length + ' abierta(s)' + (venc ? ' · <b style="color:#B4361F">' + venc + ' vencida(s)</b>' : '') + (ver ? ' · ' + ver + ' a verificar' : '') + '</span>' +
+    (L.length ? '<div style="display:flex;flex-direction:column;margin-top:8px">' + L.slice(0, 6).map(a => '<a class="at" href="#ges" data-gca="' + esc(a.ID) + '">' + gesTag(a) + '<span><b>' + esc(a.ACCION) + '</b><small>' + esc((cod ? a.MODULO : a.ESTABLECIMIENTO) + (a.RESPONSABLE ? ' · ' + a.RESPONSABLE : ' · sin responsable') + ' · ' + fechaTxt(a.FECHA_LIMITE)) + '</small></span></a>').join('') + '</div>' + (L.length > 6 ? '<span class="mu peq">Y ' + (L.length - 6) + ' más.</span>' : '')
+      : '<div class="mu peq" style="margin-top:6px">No hay acciones abiertas.</div>');
+  mm.appendChild(caja);
+  $('gesCajaIr').onclick = () => { GESF.mod = mod; GESF.cod = cod; GESF.estado = 'abiertas'; };
+  caja.querySelectorAll('[data-gca]').forEach(x => x.onclick = ev => { ev.preventDefault(); gesAccion(x.dataset.gca); });
+}

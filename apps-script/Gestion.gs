@@ -16,7 +16,7 @@ const GES = {
     '7 · Protección contra incendios', '8 · Personal y RAR', '9 · Capacitaciones', '10 · Documentos', '11 · Gestión'],
   NIVELES: ['A', 'B', 'Sin habilitar'],
   H_ALC: ['ESTABLECIMIENTO', 'MODULO', 'NIVEL', 'DESDE', 'OBSERVACIONES', 'ACTUALIZADO'],
-  H_EMP: ['ESTABLECIMIENTO', 'EMPRESA', 'MODULO', 'QUE_LE_TOCA', 'REFERENCIA_CONTRATO', 'CONTACTO', 'ACTUALIZADO'],
+  H_EMP: ['ESTABLECIMIENTO', 'EMPRESA', 'MODULO', 'QUE_LE_TOCA', 'REFERENCIA_CONTRATO', 'CONTACTO', 'ACTUALIZADO', 'PALABRAS_CLAVE'],   // PALABRAS_CLAVE (14.63): separadas por «|»; vacía = todo el módulo
   H_HAL: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'MODULO', 'SITIO', 'DESCRIPCION', 'ORIGEN', 'REFERENCIA_ORIGEN', 'FUENTE', 'GRAVEDAD', 'URGENCIA', 'PRIORIDAD',
     'EVIDENCIA', 'ENTRADA', 'ESTADO', 'MOTIVO', 'CLAVE', 'ACTUALIZADO'],
   H_ACC: ['ID', 'HALLAZGO', 'ESTABLECIMIENTO', 'MODULO', 'ACCION', 'SITIO', 'RESPONSABLE', 'PLAZO_DIAS', 'FECHA_ALTA', 'FECHA_LIMITE', 'REQUIERE_DIRECCION',
@@ -92,11 +92,32 @@ function gesSembrarAlcance_() {
     });
   });
   gesAgregar_(sh, GES.H_ALC, filas);
+  gesEmpColumnas_();
   const se = gesEmp_(); if (se.getLastRow() <= 5) gesAgregar_(se, GES.H_EMP, [
-    { ESTABLECIMIENTO: 'HMH', EMPRESA: 'SOMI', MODULO: '7 · Protección contra incendios', QUE_LE_TOCA: 'Control y reposición de extintores; colabora en incendio y evacuación', REFERENCIA_CONTRATO: 'Plan de trabajos – Mantenimiento preventivo, Hospital María Humphreys, 12 meses', ACTUALIZADO: hoy },
-    { ESTABLECIMIENTO: 'HMH', EMPRESA: 'SOMI', MODULO: '1 · Residuos', QUE_LE_TOCA: 'Mantenimiento de la planta de efluentes y de equipos de tratamiento de residuos (meses 9 y 10 del plan)', REFERENCIA_CONTRATO: 'Plan de trabajos – Mantenimiento preventivo, Hospital María Humphreys, 12 meses', ACTUALIZADO: hoy },
+    { ESTABLECIMIENTO: 'HMH', EMPRESA: 'SOMI', MODULO: '7 · Protección contra incendios', QUE_LE_TOCA: 'Control y reposición de extintores; colabora en incendio y evacuación', REFERENCIA_CONTRATO: 'Plan de trabajos – Mantenimiento preventivo, Hospital María Humphreys, 12 meses', ACTUALIZADO: hoy, PALABRAS_CLAVE: 'extintor|matafuego|carga vencida|prueba hidráulica' },
+    { ESTABLECIMIENTO: 'HMH', EMPRESA: 'SOMI', MODULO: '1 · Residuos', QUE_LE_TOCA: 'Mantenimiento de la planta de efluentes y de equipos de tratamiento de residuos (meses 9 y 10 del plan)', REFERENCIA_CONTRATO: 'Plan de trabajos – Mantenimiento preventivo, Hospital María Humphreys, 12 meses', ACTUALIZADO: hoy, PALABRAS_CLAVE: 'efluente|planta de tratamiento|autoclave|equipo de tratamiento' },
     { ESTABLECIMIENTO: 'HMH', EMPRESA: 'MAREM', MODULO: '7 · Protección contra incendios', QUE_LE_TOCA: 'Colabora en incendio y evacuación (por contrato)', REFERENCIA_CONTRATO: 'Sin contrato ni plan cargado: no se asigna en forma automática', ACTUALIZADO: hoy }]);
   return filas.length;
+}
+// 14.63: agrega la columna PALABRAS_CLAVE a GES_EMPRESAS (al final) y completa las de SOMI la primera vez
+function gesEmpColumnas_() {
+  const sh = gesEmp_(), c = GES.H_EMP.length;
+  if (String(sh.getRange(5, c).getValue()).trim() === 'PALABRAS_CLAVE') return;
+  sh.getRange(5, c).setValue('PALABRAS_CLAVE').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#0D313F').setNote('Palabras que tiene que tener la acción para asignársela a la empresa, separadas por «|». Vacía = todas las del módulo. Si la referencia dice «Sin contrato», no se asigna sola.');
+  gesLeer_(sh, GES.H_EMP).forEach(o => { if (o.EMPRESA !== 'SOMI') return;
+    const k = /incendio/i.test(o.MODULO) ? 'extintor|matafuego|carga vencida|prueba hidráulica' : /residuos/i.test(o.MODULO) ? 'efluente|planta de tratamiento|autoclave|equipo de tratamiento' : '';
+    if (k) sh.getRange(o.fila, c).setValue(k); });
+}
+// Asignación automática por contrato: si la acción no tiene responsable y una empresa del establecimiento tiene ese módulo
+// (y, si hay palabras clave, alguna aparece en la acción o el hallazgo), queda a su cargo y se cita el contrato.
+function gesAsignar_(a, h, EMP) {
+  if (a.RESPONSABLE) return '';
+  const txt = String(a.ACCION + ' ' + (h ? h.DESCRIPCION : '') + ' ' + (a.SITIO || '')).toLowerCase();
+  const e = (EMP || []).find(o => o.ESTABLECIMIENTO === a.ESTABLECIMIENTO && o.MODULO === a.MODULO && !/sin contrato/i.test(o.REFERENCIA_CONTRATO) &&
+    (!o.PALABRAS_CLAVE || String(o.PALABRAS_CLAVE).toLowerCase().split('|').map(x => x.trim()).filter(String).some(x => txt.indexOf(x) >= 0)));
+  if (!e) return '';
+  a.RESPONSABLE = e.EMPRESA;
+  return 'Asignada a ' + e.EMPRESA + ' por contrato: ' + e.QUE_LE_TOCA + ' (' + e.REFERENCIA_CONTRATO + ')';
 }
 function gesAlcance_() {
   gesSembrarAlcance_();
@@ -165,7 +186,8 @@ function gesAccionNueva_(h, d) {
   const o = Object.assign({ ID: gesSiguiente_(L, 'AC')(1), HALLAZGO: h.ID, ESTABLECIMIENTO: h.ESTABLECIMIENTO, MODULO: h.MODULO, ACCION: d.ACCION || 'A definir: ' + h.DESCRIPCION, SITIO: h.SITIO,
     RESPONSABLE: '', PLAZO_DIAS: plazo, FECHA_ALTA: hoy, REQUIERE_DIRECCION: 'No', TIPO_RECURSO: '', ESTADO: 'Propuesta', CLAVE: '' }, d);
   o.FECHA_LIMITE = o.FECHA_LIMITE || gesSuma_(o.FECHA_ALTA, o.PLAZO_DIAS);
-  o.HISTORIAL = gesAhora_() + ' · Alta (' + o.ESTADO + ')'; o.SEGUIMIENTO = hoy; o.ACTUALIZADO = gesAhora_();
+  let asig = ''; try { gesEmpColumnas_(); asig = gesAsignar_(o, h, gesLeer_(gesEmp_(), GES.H_EMP)); } catch (e) {}
+  o.HISTORIAL = gesAhora_() + ' · Alta (' + o.ESTADO + ')' + (asig ? '\n' + gesAhora_() + ' · ' + asig : ''); o.SEGUIMIENTO = hoy; o.ACTUALIZADO = gesAhora_();
   gesAgregar_(sh, GES.H_ACC, [o]);
   return o.ID;
 }
@@ -248,6 +270,7 @@ function gesTraer_(x) {
     const porClave = {}; AL.forEach(a => { if (a.CLAVE) porClave[a.CLAVE] = a; });
     const halClave = {}; HL.forEach(h => { if (h.CLAVE) halClave[h.CLAVE] = h; });
     const nh = gesSiguiente_(HL, 'HZ'), na = gesSiguiente_(AL, 'AC'); let ch = 0, ca = 0;
+    gesEmpColumnas_(); const EMP = gesLeer_(gesEmp_(), GES.H_EMP);
     const nuevosH = [], nuevosA = [], cambios = [], res = { plan: 0, m8: 0, agua: 0, plagas: 0, sugeridos: 0, cerradas: 0, errores: [] };
     const alta = (src, k, migrado) => {   // src: {cod, modulo, sitio, desc, origen, ref, fuente, prioridad, accion, responsable, plazo, limite, estado, recurso, dir, elevada, resp, fresp, evid, hecha, motivo, alta, historial, directo}
       if (porClave[k] || halClave[k]) return false;
@@ -263,6 +286,7 @@ function gesTraer_(x) {
         ESTADO: src.estado || 'Propuesta', FECHA_ELEVADA: src.elevada || '', RESPUESTA_DIRECCION: src.resp || '', FECHA_RESPUESTA: src.fresp || '', AVANCE: src.avance || '', EVIDENCIA: src.evid || '',
         FECHA_HECHA: src.hecha || '', FECHA_VERIFICACION: '', MOTIVO: src.motivo || '', CLAVE: k, SEGUIMIENTO: hoy,
         HISTORIAL: (src.historial ? src.historial + '\n' : '') + ahora + ' · ' + (migrado ? 'Pasó al plan único desde ' : 'Entró desde ') + src.origen + (src.ref ? ' (' + src.ref + ')' : ''), ACTUALIZADO: ahora });
+      const nA = nuevosA[nuevosA.length - 1], asig = gesAsignar_(nA, { DESCRIPCION: src.desc }, EMP); if (asig) nA.HISTORIAL += '\n' + ahora + ' · ' + asig;
       return true;
     };
     // Cierre en el origen → «Hecha» en Gestión (Belén verifica la eficacia)
@@ -288,7 +312,7 @@ function gesTraer_(x) {
     } catch (e) { res.errores.push('Plan de acción: ' + e.message); }
 
     // 2) M8 › HALLAZGOS_PLAN
-    try {
+    if (x.solo !== 'plan') try {
       const m8 = SpreadsheetApp.openById(GES.M8_ID), rv = m8.getSheetByName('RELEVAMIENTOS'), hh = m8.getSheetByName('HALLAZGOS_PLAN');
       const estDe = {}; if (rv && rv.getLastRow() > 1) rv.getRange(2, 1, rv.getLastRow() - 1, 5).getValues().forEach(r => { if (r[0]) estDe[r[0]] = limpio_(r[4]); });
       if (hh && hh.getLastRow() > 1) hh.getRange(2, 1, hh.getLastRow() - 1, 17).getValues().forEach(r => {
@@ -303,7 +327,7 @@ function gesTraer_(x) {
     } catch (e) { res.errores.push('Infraestructura (M8): ' + e.message); }
 
     // 3) Agua NO APTA y revisiones de plagas atrasadas (lo que junta el tablero)
-    try {
+    if (x.solo !== 'plan') try {
       const T = tbTablero_(!!x.fresco), abiertas = {};
       (T.acciones || []).forEach(a => {
         let k, src;
@@ -325,6 +349,44 @@ function gesTraer_(x) {
   });
 }
 
+// ------------------------------------------------------------------ Elevar a la Dirección (14.63)
+// Marca las acciones elegidas como «Elevada» con la fecha, las enlaza con su plan de origen (fecha de envío y plazos)
+// y arma el correo para copiar. El sistema no lo envía.
+function gesElevar_(x) {
+  const f = String(x.fecha || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return { ok: false, mensaje: 'Indicá la fecha de elevación.' };
+  const ids = (x.ids || []).map(String); if (!ids.length) return { ok: false, mensaje: 'Elegí al menos una acción.' };
+  const r = conLock_(() => {
+    const sh = gesAcc_(), L = gesLeer_(sh, GES.H_ACC), H = {}, ahora = gesAhora_(); gesLeer_(gesHal_(), GES.H_HAL).forEach(h => H[h.ID] = h);
+    const sel = L.filter(a => ids.indexOf(a.ID) >= 0); if (!sel.length) return { ok: false, mensaje: 'No encuentro las acciones. Actualizá la pantalla.' };
+    const cods = Array.from(new Set(sel.map(a => a.ESTABLECIMIENTO))); if (cods.length > 1) return { ok: false, mensaje: 'Elevá de a un establecimiento por vez.' };
+    const plan = {}; try { planFilas_().forEach(o => plan[o.CODIGO_INFORME + '|' + o.N_REC] = o); } catch (e) {}
+    const psh = Object.keys(plan).length ? planHoja_() : null, hist = [];
+    sel.forEach(a => {
+      const antes = a.ESTADO; a.REQUIERE_DIRECCION = 'Sí'; a.FECHA_ELEVADA = f; if (GES.ABIERTOS.indexOf(a.ESTADO) >= 0 && a.ESTADO !== 'En curso') a.ESTADO = 'Elevada';
+      a.HISTORIAL = (a.HISTORIAL ? a.HISTORIAL + '\n' : '') + ahora + ' · Elevada a la Dirección el ' + f.split('-').reverse().join('/') + (antes !== a.ESTADO ? ' (' + antes + ' → ' + a.ESTADO + ')' : '');
+      a.SEGUIMIENTO = gesHoy_(); a.ACTUALIZADO = ahora; gesEscribir_(sh, GES.H_ACC, a.fila, a);
+      hist.push([new Date(), 'GES_ACCIONES', a.ID, 'FECHA_ELEVADA', '', f, 'Portal HyS · elevar']);
+      const p = String(a.CLAVE).split('|');
+      if (p[0] === 'PLAN' && plan[p[1] + '|' + p[2]] && psh) { const o = plan[p[1] + '|' + p[2]], d = /^\d+/.test(o.PLAZO_TECNICO) ? parseInt(o.PLAZO_TECNICO, 10) : Number(a.PLAZO_DIAS) || 0;
+        if (!o.FECHA_ENVIO) psh.getRange(o.fila, 13, 1, 2).setValues([[f, d ? planSuma_(f, d) : '']]); }
+    });
+    if (hist.length) pHistorial_(pBC_(), hist);
+    return { ok: true, sel: sel, H: H, cod: cods[0] };
+  });
+  if (!r.ok) return r;
+  // Correo para copiar
+  const nom = ((pEstablecimientos_().filas.find(e => limpio_(e.v[0]) === r.cod) || {}).v || [])[1] || r.cod;
+  const orden = { 'Actuar ya': 0, 'Resolver rápido': 1, 'Planificar': 2, 'Monitorear': 3 };
+  const pos = a => { const p = (r.H[a.HALLAZGO] || {}).PRIORIDAD; return p in orden ? orden[p] : 9; }, L = r.sel.slice().sort((a, b) => pos(a) - pos(b));
+  const lin = L.map((a, i) => { const h = r.H[a.HALLAZGO] || {};
+    return (i + 1) + '. ' + a.ACCION + (a.SITIO ? ' (' + a.SITIO + ')' : '') + '\n   Motivo: ' + (h.DESCRIPCION || 's/d') + (h.FUENTE ? ' — ' + h.FUENTE : '') +
+      '\n   Prioridad: ' + (h.PRIORIDAD || 's/d') + ' · plazo técnico: ' + (a.PLAZO_DIAS || 's/d') + ' días · recurso: ' + (a.TIPO_RECURSO || 's/d') + (a.COSTO_ESTIMADO ? ' (costo estimado: ' + a.COSTO_ESTIMADO + ')' : ''); }).join('\n\n');
+  const correo = { asunto: 'Higiene y Seguridad Laboral · acciones que requieren intervención de la Dirección · ' + nom,
+    cuerpo: 'Dirección del ' + nom + ':\n\nSe elevan las siguientes acciones de mejora surgidas del seguimiento de Higiene y Seguridad Laboral, que requieren una decisión o recursos de la Dirección. Para cada una se indica el motivo, su fundamento normativo y el plazo técnico sugerido (Ley 19.587; Dto. 351/79; Res. SRT 905/15).\n\n' + lin +
+      '\n\nSe solicita indicar, para cada acción, si se aprueba, el responsable de su ejecución y la fecha prevista. Las que no puedan realizarse por falta de recursos quedarán registradas como riesgo informado.\n\nQuedo a disposición por cualquier consulta o requerimiento.\n\nBelén Pellegrini\nLic. en Higiene, Seguridad y Medio Ambiente del Trabajo\nServicio de Higiene y Seguridad Laboral' };
+  return { ok: true, elevadas: r.sel.length, correo: correo };
+}
+
 // ------------------------------------------------------------------ Entrada del portal
 function gesPortal_(accion, x) {
   switch (accion) {
@@ -335,6 +397,7 @@ function gesPortal_(accion, x) {
     case 'p_ges_bandeja': return gesBandeja_(x);
     case 'p_ges_accion': return gesAccionGuardar_(x);
     case 'p_ges_traer': return gesTraer_(x);
+    case 'p_ges_elevar': return gesElevar_(x);
   }
   return { ok: false, mensaje: 'Acción de Gestión desconocida: ' + accion };
 }
