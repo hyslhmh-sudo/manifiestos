@@ -51,7 +51,7 @@ async function incEst(a, fresco) {
   if (sitio !== undefined) INCF.sitio = sitio || '';
   if (!INCD[cod] || fresco) { cargando('#incest', 'Abriendo los extintores de ' + incNom(cod) + '…'); try { INCD[cod] = await api('p_inc_detalle', { cod: cod }, 180000); } catch (e) { return; } }
   const D = INCD[cod]; if (!D.ok) { delete INCD[cod]; return incNoInstalado('#incest', D); }
-  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'verificar' && incPend(e)) || (INCF.ver === 'porvencer' && (e.est.carga === 'porvencer' || e.est.prueba === 'porvencer')) || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
+  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'verificar' && incPend(e)) || (INCF.ver === 'falla' && e.falla) || (INCF.ver === 'porvencer' && (e.est.carga === 'porvencer' || e.est.prueba === 'porvencer')) || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
     && (!q || sinTildesJs([e.ID, e.NRO_EXTINTOR, e.NRO_INVENTARIO, e.SECTOR, e.UBICACION, e.PLANTA].join(' ')).indexOf(q) >= 0));
   const ult = id => D.controles.find(c => c.ID_EXTINTOR === id);
   const fila = e => { const c = ult(e.ID), i = D.extintores.indexOf(e);
@@ -65,10 +65,10 @@ async function incEst(a, fresco) {
       '<td>' + incChip(INC_CTRL, e.est.control, e.ULTIMO_CONTROL ? fechaTxt(e.ULTIMO_CONTROL) + (e.RESULTADO_CONTROL ? ' · ' + esc(e.RESULTADO_CONTROL) : '') : '') +
         (c || e.FOTO_PANORAMICA ? '<div class="peq">' + [incLink(e.FOTO_PANORAMICA, 'Panorámica'), incLink(e.FOTO_MARBETE, 'Marbete'), incLink(e.FOTO_INVENTARIO, 'Inventario')].filter(Boolean).join(' · ') + '</div>' : '') + '</td>' +
       '<td class="peq" style="max-width:260px">' + esc(e.OBSERVACIONES || '') + (e.CAMBIOS ? '<div class="mu peq" style="margin-top:4px;white-space:pre-line" title="' + esc(e.CAMBIOS) + '"><b>Último cambio:</b> ' + esc(String(e.CAMBIOS).split('\n')[0]) + '</div>' : '') + '</td>' +
-      '<td style="white-space:nowrap">' + (incPend(e) ? '<span class="chip wa">Para verificar</span><br><button class="btn pri" data-verif="' + esc(e.ID) + '" style="margin:4px 0">Verificar</button><br>' : '') +
+      '<td style="white-space:nowrap">' + (e.falla ? '<span class="chip er" title="' + esc(e.falla.PROBLEMAS || '') + '">Problema abierto desde ' + fechaTxt(e.falla.FECHA) + '</span><div class="mu peq" style="white-space:normal;max-width:220px">' + esc(e.falla.PROBLEMAS || '') + ' · ' + (e.falla.AVISOS || 0) + ' correo(s)</div><button class="btn pri" data-resol="' + i + '" style="margin:4px 0">Marcar resuelto</button><br>' : '') + (incPend(e) ? '<span class="chip wa">Para verificar</span><br><button class="btn pri" data-verif="' + esc(e.ID) + '" style="margin:4px 0">Verificar</button><br>' : '') +
         '<button class="btn pri" data-ctl="' + i + '">Control</button> <button class="btn sec" data-edit="' + i + '">Editar</button></td></tr>'; };
   const pend = L.filter(incPend);
-  const ver = [['todos', 'Todos'], ['verificar', 'Para verificar'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
+  const ver = [['todos', 'Todos'], ['falla', 'Con problema abierto'], ['verificar', 'Para verificar'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
   marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
     L.length + ' extintor(es) en la lista · ' + D.extintores.filter(e => e.est.carga === 'vencida' && (!INCF.sitio || e.SITIO === INCF.sitio)).length + ' con la carga vencida · controlan: ' + esc(((D.sitios.find(s => s.SITIO === INCF.sitio) || D.sitios[0] || {}).RESPONSABLES_CONTROL) || 's/d') + '</span></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="icSit"><option value="">Todos los lugares</option>' + D.sitios.map(s => '<option' + (s.SITIO === INCF.sitio ? ' selected' : '') + '>' + esc(s.SITIO) + '</option>').join('') + '</select></label>' +
@@ -87,6 +87,11 @@ async function incEst(a, fresco) {
   $('icNuevo').onclick = () => incExtForm(D, null);
   const verificar = async ids => { const r = await api('p_inc_verificar', { ids: ids }, 120000); if (!r.ok) return toast(r.mensaje || 'No se pudo verificar.'); incRecargar(D, r.verificados + (r.verificados === 1 ? ' extintor verificado.' : ' extintores verificados.')); };
   if ($('icVerTodo')) $('icVerTodo').onclick = () => verificar(pend.map(e => e.ID));
+  document.querySelectorAll('[data-resol]').forEach(b => b.onclick = () => { const e = D.extintores[+b.dataset.resol];
+    modal('Problema resuelto · ' + (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID), [['RESOLUCION', 'Qué se hizo (opcional)', null, 1]], {}, async out => {
+      const r = await api('p_inc_resolver', { ID_EXTINTOR: e.ID, RESOLUCION: out.RESOLUCION || '' }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      incRecargar(D, 'Problema marcado como resuelto.' + (r.aviso ? ' Correo de cierre: ' + r.aviso : '')); return '';
+    }, '<p class="mu peq" style="margin:0">Problemas: ' + esc(e.falla.PROBLEMAS || '') + '. Detectado el ' + fechaTxt(e.falla.FECHA) + ' por ' + esc(e.falla.DETECTO || 's/d') + '. Al marcarlo resuelto se dejan de mandar los recordatorios y se avisa el cierre por correo.</p>'); });
   document.querySelectorAll('[data-verif]').forEach(b => b.onclick = () => { b.disabled = true; verificar([b.dataset.verif]); });
   document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => incControlForm(D, D.extintores[+b.dataset.ctl]));
   document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => incExtForm(D, D.extintores[+b.dataset.edit]));

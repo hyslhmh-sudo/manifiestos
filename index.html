@@ -1589,7 +1589,7 @@ async function incLista(fresco) {
   }
   const L = INCX.extintores.filter(e => e.SITIO === INCSIT && !e.est.baja), hechos = L.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
   // Carga vencida o que vence en 30 días: se marca siempre, además del control del mes
-  const tag = e => '<span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' + (e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : e.est.carga === 'porvencer' ? '<span class="tag wa">Vence ' + fechaTxt(e.VTO_CARGA) + '</span>' : '') +
+  const tag = e => '<span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' + (e.falla ? '<span class="tag er">Con problema</span>' : '') + (e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : e.est.carga === 'porvencer' ? '<span class="tag wa">Vence ' + fechaTxt(e.VTO_CARGA) + '</span>' : '') +
     (String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes ? '<span class="tag ok">Controlado</span>' : '<span class="tag wa">Falta control</span>') + '</span>';
   $('app').innerHTML = miTit(INCSIT, 'Tocá un extintor para cargar su control. ' + hechos + ' de ' + L.length + ' controlados este mes.') +
     (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' · ' + esc([e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' ')) + '</b><small>' +
@@ -1620,6 +1620,21 @@ async function incEditGuardar() {
     F = null; INCX = null; vista('form');
     $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
+}
+// Marcar resuelto el problema abierto de un extintor (Incendio.gs › i_resolver): se dejan de mandar los recordatorios y se avisa el cierre
+function incResolver() { const e = F._e; F = { _f: 'incResolver', _e: e, RESOLUCION: '' }; MIV = { f: formIncResolver }; formIncResolver(); }
+function formIncResolver() {
+  VISTA = 'mi'; vista('form'); const e = F._e;
+  $('app').innerHTML = miTit('Problema resuelto', esc((e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID + ' · ' + (e.falla.PROBLEMAS || ''))) + fErr + fTxt('RESOLUCION', 'Qué se hizo (opcional)', 'Ej.: se recargó, se repuso, se cambió el precinto');
+  bar('<button class="btn sec" data-act="incEditVolver">Cancelar</button><button class="btn pri" data-act="incResolverGuardar">Marcar resuelto</button>');
+}
+async function incResolverGuardar() {
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const b = document.querySelector('[data-act="incResolverGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try { const r = await api('i_resolver', { ID_EXTINTOR: F._e.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; INCX = null; vista('form');
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Problema marcado como resuelto.</b><br>Se dejan de mandar los recordatorios' + (r.aviso && /^Enviado/.test(r.aviso) ? ' y se avisó el cierre por correo.' : '.') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { if (b) { b.disabled = false; b.textContent = 'Marcar resuelto'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
 }
 // Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios (Incendio.gs › i_ext_alta)
 function incAlta() { F = { _f: 'incAlta', SITIO: INCSIT }; MIV = { f: formIncAlta }; formIncAlta(); }
@@ -1660,9 +1675,10 @@ function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
   $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
     '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
+    (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Se avisa por correo cada 3 días hasta que se marque resuelto.<br><button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button></div>' : '') +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
     fChk('PROBLEMAS', '¿Tiene algún problema? Marcá todos los que veas (si no tiene ninguno, no marques nada)', (INCX.listas && INCX.listas.problemas) || []) +
-    (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa por correo a SOMI y a Mantenimiento del HMH.</p>' : '') +
+    (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa por correo a SOMI y a Mantenimiento del HMH ese día y cada 3 días hasta que se marque resuelto.</p>' : '') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
 }
@@ -1680,7 +1696,7 @@ async function incGuardar() {
       '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
-Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
+Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incResolver: () => incResolver(), incResolverGuardar: () => incResolverGuardar(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
 
 function rxListo(aviso, volver) {
   vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Guardado.</b><br>Ya está registrado en el sistema.</div>' + (aviso ? '<div class="notice">' + esc(aviso) + ' Avisale a Higiene y Seguridad.</div>' : '') +
