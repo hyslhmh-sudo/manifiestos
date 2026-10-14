@@ -1,4 +1,4 @@
-// Portal HyS · 11 · Gestión (fase 2 · 14.60 · 14/10/2026) · servidor: Gestion.gs (acciones p_ges_…)
+// Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026) · servidor: Gestion.gs (acciones p_ges_…)
 // Plan de acción único, hallazgos, bandeja de sugeridos, necesidades de inversión y alcance (niveles A y B).
 // Los datos viven en la BASE COMÚN (GES_ALCANCE, GES_EMPRESAS, GES_HALLAZGOS, GES_ACCIONES).
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
@@ -8,7 +8,7 @@ const GESHF = { cod: '', mod: '', estado: '', origen: '', q: '' };
 const gesNom = c => ((GESD && GESD.establecimientos.find(e => e.cod === c)) || {}).nombre || c;
 const gesMod = m => String(m || '').replace(/^(\d+) · /, '$1 · ');
 const gesCab = (t, s, extra) => '<div class="cab"><div><span class="mu peq">11 · Gestión</span><h1>' + t + '</h1><span class="mu peq">' + s + '</span></div><div class="filtros">' + (extra || '') + '</div></div>';
-const gesTabs = act => '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:0 0 12px">' + [['plan', 'Plan de acción único'], ['hallazgos', 'Hallazgos'], ['bandeja', 'Bandeja de sugeridos'], ['inversion', 'Necesidades de inversión'], ['alcance', 'Alcance']]
+const gesTabs = act => '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:0 0 12px">' + [['plan', 'Plan de acción único'], ['hallazgos', 'Hallazgos'], ['bandeja', 'Bandeja de sugeridos'], ['inversion', 'Necesidades de inversión'], ['reglas', 'Reglas'], ['alcance', 'Alcance']]
   .map(([k, t]) => '<a class="btn ' + (k === act ? 'pri' : 'sec') + ' peq" href="#ges/' + k + '">' + t + (k === 'bandeja' && GESD ? ' · ' + GESD.hallazgos.filter(h => h.ESTADO === 'Sugerido').length : '') + '</a>').join('') + '</div>';
 const gesKpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
 const gesOpt = (v, t, sel) => '<option value="' + esc(v) + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + esc(t) + '</option>';
@@ -22,6 +22,7 @@ function gesTag(a) {
 async function gestion(fresco) {
   const sub = (location.hash.split('/')[1] || 'plan');
   if (sub === 'alcance') return gesAlcance(fresco);
+  if (sub === 'reglas') return gesReglas(fresco);
   if (!GESD || fresco) { cargando('#ges', 'Leyendo el plan de acción único…'); try { GESD = await api('p_ges_datos', {}, 180000); } catch (e) { return; } }
   if (!GESD.ok) return marco('#ges', gesCab('Gestión', '') + '<div class="aviso error">' + esc(GESD.mensaje || GESD.error || 'No se pudo leer.') + (/instalar|desconocida/i.test(GESD.mensaje || GESD.error || '') ? ' Falta instalar Gestion.gs en el Sistema HyS.' : '') + '</div>');
   if (sub === 'hallazgos') return gesHallazgos();
@@ -272,4 +273,39 @@ async function gesInyectar(activo) {
   mm.appendChild(caja);
   $('gesCajaIr').onclick = () => { GESF.mod = mod; GESF.cod = cod; GESF.estado = 'abiertas'; };
   caja.querySelectorAll('[data-gca]').forEach(x => x.onclick = ev => { ev.preventDefault(); gesAccion(x.dataset.gca); });
+}
+
+// ------------------------------------------------------------------ Reglas automáticas (fase 3 · 14.64)
+// La tabla de reglas con su fuente (BASE COMÚN › GES_REGLAS). Se edita acá o en la hoja; el motor corre con «Traer de los módulos» y cada mañana.
+let GESR = null; const GESRF = { mod: '', ver: 'todas' };
+async function gesReglas(fresco) {
+  if (!GESR || fresco) { cargando('#ges', 'Leyendo las reglas…'); try { GESR = await api('p_ges_reglas', {}, 120000); } catch (e) { return; } }
+  if (!GESR.ok) return marco('#ges', gesCab('Reglas automáticas', '') + '<div class="aviso error">' + esc(GESR.mensaje || 'No se pudo leer.') + (/desconocida/i.test(GESR.mensaje || '') ? ' Falta instalar Reglas.gs en el Sistema HyS.' : '') + '</div>');
+  const R = GESR.reglas, F = GESRF, prog = R.filter(r => r.MOTOR === 'Programada'), act = prog.filter(r => r.ACTIVA === 'Sí');
+  const L = R.filter(r => (!F.mod || r.MODULO === F.mod) && (F.ver === 'todas' || (F.ver === 'activas' ? r.ACTIVA === 'Sí' : F.ver === 'programar' ? r.MOTOR !== 'Programada' : r.ACTIVA !== 'Sí' && r.MOTOR === 'Programada')));
+  const estado = r => r.MOTOR !== 'Programada' ? '<span class="tag gr">Por programar</span>' : r.ACTIVA === 'Sí' ? '<span class="tag ok">Activa</span>' : '<span class="tag wa">Apagada</span>';
+  const mods = Array.from(new Set(R.map(r => r.MODULO)));
+  marco('#ges', gesCab('Reglas automáticas', 'Qué condición de cada módulo es un hallazgo, si entra directo al plan o a la bandeja, con qué prioridad, plazo y fuente. En nivel B todo entra sugerido; sin habilitar, no entra.', '<button class="btn sec" id="rTraer">Aplicar ahora</button>') + gesTabs('reglas') +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + gesKpi('Activas', act.length, 'de ' + prog.length + ' programadas') + gesKpi('Por programar', R.length - prog.length, 'figuran con su fuente') +
+      gesKpi('Hallazgos abiertos', R.reduce((a, r) => a + (r.abiertos || 0), 0), 'con acción en curso') + gesKpi('En la bandeja', R.reduce((a, r) => a + (r.sugeridos || 0), 0), 'esperan tu decisión') + '</div>' +
+    '<div class="filtros" style="margin:12px 0"><label class="f">Módulo<select class="c" id="rM">' + gesOpt('', 'Todos', F.mod) + mods.map(m => gesOpt(m, m, F.mod)).join('') + '</select></label>' +
+      '<label class="f">Ver<select class="c" id="rV">' + [['todas', 'Todas'], ['activas', 'Activas'], ['apagadas', 'Apagadas'], ['programar', 'Por programar']].map(o => gesOpt(o[0], o[1], F.ver)).join('') + '</select></label></div>' +
+    '<section class="card tabla" style="overflow-x:auto"><table><thead><tr><th>Regla</th><th>Entra</th><th>Prioridad · plazo</th><th>Fuente</th><th>Estado</th><th>Última revisión</th></tr></thead><tbody>' +
+      (L.length ? L.map(r => '<tr style="cursor:pointer" data-rg="' + esc(r.ID) + '"><td><b>' + esc(r.REGLA) + '</b><div class="mu peq">' + esc(r.ID) + ' · ' + esc(r.MODULO) + '</div><div class="mu peq">' + esc(r.COMO_SE_DETECTA) + '</div></td>' +
+        '<td>' + (r.ENTRA === 'Directo' ? '<span class="tag er">Directo</span>' : '<span class="tag av">Sugerido</span>') + (r.REQUIERE_DIRECCION === 'Sí' ? '<div class="mu peq">requiere Dirección</div>' : '') + '</td>' +
+        '<td class="peq">' + esc(r.PRIORIDAD) + '<div class="mu">' + esc(r.PLAZO_DIAS) + ' días</div></td><td class="peq" style="min-width:220px">' + esc(r.FUENTE) + '</td><td>' + estado(r) + '</td>' +
+        '<td class="peq">' + (r.ULTIMA_REVISION ? esc(String(r.ULTIMA_REVISION).slice(0, 16).replace(/^(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')) + '<div class="mu">' + (r.DETECTADOS || 0) + ' detectado(s) · ' + (r.abiertos || 0) + ' abierto(s)' + (r.sugeridos ? ' · ' + r.sugeridos + ' en la bandeja' : '') + '</div>' : '<span class="mu">—</span>') + '</td></tr>').join('')
+        : '<tr><td colspan="6" class="mu">No hay reglas con ese filtro.</td></tr>') + '</tbody></table></section>' +
+    '<p class="mu peq">Tocá una regla para cambiar cómo entra, la prioridad, el plazo, la acción, la fuente o para apagarla. Datos en BASE COMÚN › GES_REGLAS (también se editan desde «Datos · editar todo»); cada cambio queda en el historial. Las reglas se aplican con «Traer de los módulos» y cada mañana.</p>');
+  $('rM').onchange = e => { F.mod = e.target.value; gesReglas(); }; $('rV').onchange = e => { F.ver = e.target.value; gesReglas(); };
+  $('rTraer').onclick = async () => { cargando('#ges', 'Aplicando las reglas a los datos de los módulos…'); let r; try { r = await api('p_ges_traer', { fresco: true }, 300000); } catch (e) { return gesReglas(); }
+    toast(r.ok ? 'Nuevos: ' + r.hallazgos + ' hallazgo(s)' + (r.sugeridos ? ', ' + r.sugeridos + ' a la bandeja' : '') + (r.cerradas ? ' · ' + r.cerradas + ' resuelta(s) en su módulo' : '') + (r.errores && r.errores.length ? ' · ⚠ ' + r.errores.join(' · ') : '') : (r.mensaje || 'No se pudo.')); GESD = null; gesReglas(true); };
+  document.querySelectorAll('[data-rg]').forEach(tr => tr.onclick = () => { const r = R.find(x => x.ID === tr.dataset.rg);
+    const nota = '<p class="mu peq" style="margin:8px 0 0">' + esc(r.ID + ' · ' + r.MODULO) + (r.MOTOR !== 'Programada' ? ' · todavía no la aplica el sistema: queda registrada con su fuente.' : '') + ' Parámetros: clave=valor separados por «;».</p>';
+    modal('Regla ' + r.ID, [['REGLA', 'Regla', null, 1], ['COMO_SE_DETECTA', 'Cómo se detecta', null, 1], ['ENTRA', 'Entra', GESR.listas.entra], ['PRIORIDAD', 'Prioridad', GESR.listas.prioridades], ['PLAZO_DIAS', 'Plazo (días)'], ['REQUIERE_DIRECCION', '¿Requiere Dirección?', ['Sí', 'No']],
+      ['ACTIVA', 'Activa', ['Sí', 'No']], ['ACCION', 'Acción que propone', null, 1], ['FUENTE', 'Fuente (norma y artículo)', null, 1], ['PARAMETROS', 'Parámetros', null, 1]], r, async o => {
+      if (!String(o.FUENTE || '').trim()) return 'Toda regla necesita su fuente.';
+      if (o.PLAZO_DIAS && !/^\d+$/.test(String(o.PLAZO_DIAS).trim())) return 'El plazo va en días (un número).';
+      const x = await api('p_ges_regla', { id: r.ID, datos: o }, 90000); if (!x.ok) return x.mensaje || 'No se pudo guardar.';
+      toast(x.cambios ? 'Regla guardada. Se aplica en la próxima revisión (o tocá «Aplicar ahora»).' : 'Sin cambios.'); gesReglas(true); return ''; }, nota); });
 }

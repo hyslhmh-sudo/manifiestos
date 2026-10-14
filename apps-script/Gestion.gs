@@ -1,5 +1,5 @@
 /**
- * SISTEMA HyS · 11 · GESTIÓN (fase 2 · versión 14.60 · 14/10/2026)
+ * SISTEMA HyS · 11 · GESTIÓN (fase 3 · versión 14.64 · 14/10/2026)
  * Alcance (niveles A y B), registro único de hallazgos, bandeja de sugeridos, plan de acción único y necesidades de inversión.
  * Todo vive en la BASE COMÚN (hojas GES_ALCANCE, GES_EMPRESAS, GES_HALLAZGOS, GES_ACCIONES): respaldo en Sheets y editable también
  * desde «Datos · editar todo». No envía correos.
@@ -7,7 +7,8 @@
  * Paso de lo que ya existe («Traer de los módulos», también cada mañana con el precalentado):
  *   · DIAGNÓSTICO › PLAN_ACCION (diagnósticos de residuos, agua, plagas y cocinas, y auditorías), con su estado e historial.
  *   · M8 › HALLAZGOS_PLAN (servicios e infraestructura).
- *   · Agua NO APTA abierta (directo) y revisiones de plagas atrasadas (incluye el registro MIPyV); lo abierto en plazo es alerta, no hallazgo.
+ *   · Reglas automáticas (Reglas.gs › GES_REGLAS, fase 3): agua NO APTA, plagas atrasadas, residuos (categoría y acopio, certificados),
+ *     agua (análisis, limpieza, tapas), incendio (extintores, recorridas) e infraestructura (mediciones, RGRL «No»). Lo abierto en plazo es alerta, no hallazgo.
  * Las hojas de origen no se borran. Al cerrar una acción en Gestión se marca también en su plan de origen (PLAN_ACCION o HALLAZGOS_PLAN).
  */
 
@@ -23,7 +24,7 @@ const GES = {
     'TIPO_RECURSO', 'COSTO_ESTIMADO', 'ESTADO', 'FECHA_ELEVADA', 'RESPUESTA_DIRECCION', 'FECHA_RESPUESTA', 'AVANCE', 'EVIDENCIA', 'FECHA_HECHA',
     'FECHA_VERIFICACION', 'MOTIVO', 'CLAVE', 'SEGUIMIENTO', 'HISTORIAL', 'ACTUALIZADO'],
   HAL_ESTADOS: ['Sugerido', 'Confirmado', 'Descartado', 'Cerrado'],
-  ORIGENES: ['Diagnóstico', 'Auditoría', 'Relevamiento', 'Análisis de agua', 'Caso de plagas', 'RGRL', 'Recorrida', 'Entrevista', 'Reclamo', 'Siniestro', 'Otro'],
+  ORIGENES: ['Diagnóstico', 'Auditoría', 'Relevamiento', 'Análisis de agua', 'Caso de plagas', 'RGRL', 'Recorrida', 'Entrevista', 'Reclamo', 'Siniestro', 'Regla automática', 'Otro'],
   ESTADOS: ['Propuesta', 'Elevada', 'Aprobada', 'No aprobada', 'En curso', 'Hecha', 'Eficaz', 'No eficaz', 'No se realiza', 'Pendiente de recursos'],
   ABIERTOS: ['Propuesta', 'Elevada', 'Aprobada', 'En curso', 'No eficaz'],
   CERRADOS: ['Hecha', 'Eficaz', 'No se realiza'],
@@ -184,7 +185,7 @@ function gesBandeja_(x) {
 function gesAccionNueva_(h, d) {
   const sh = gesAcc_(), L = gesLeer_(sh, GES.H_ACC), hoy = gesHoy_(), plazo = Number(d.PLAZO_DIAS) || GES.PLAZO[h.PRIORIDAD] || 90;
   const o = Object.assign({ ID: gesSiguiente_(L, 'AC')(1), HALLAZGO: h.ID, ESTABLECIMIENTO: h.ESTABLECIMIENTO, MODULO: h.MODULO, ACCION: d.ACCION || 'A definir: ' + h.DESCRIPCION, SITIO: h.SITIO,
-    RESPONSABLE: '', PLAZO_DIAS: plazo, FECHA_ALTA: hoy, REQUIERE_DIRECCION: 'No', TIPO_RECURSO: '', ESTADO: 'Propuesta', CLAVE: '' }, d);
+    RESPONSABLE: '', PLAZO_DIAS: plazo, FECHA_ALTA: hoy, REQUIERE_DIRECCION: 'No', TIPO_RECURSO: '', ESTADO: 'Propuesta', CLAVE: h.CLAVE || '' }, d);
   o.FECHA_LIMITE = o.FECHA_LIMITE || gesSuma_(o.FECHA_ALTA, o.PLAZO_DIAS);
   let asig = ''; try { gesEmpColumnas_(); asig = gesAsignar_(o, h, gesLeer_(gesEmp_(), GES.H_EMP)); } catch (e) {}
   o.HISTORIAL = gesAhora_() + ' · Alta (' + o.ESTADO + ')' + (asig ? '\n' + gesAhora_() + ' · ' + asig : ''); o.SEGUIMIENTO = hoy; o.ACTUALIZADO = gesAhora_();
@@ -271,10 +272,10 @@ function gesTraer_(x) {
     const halClave = {}; HL.forEach(h => { if (h.CLAVE) halClave[h.CLAVE] = h; });
     const nh = gesSiguiente_(HL, 'HZ'), na = gesSiguiente_(AL, 'AC'); let ch = 0, ca = 0;
     gesEmpColumnas_(); const EMP = gesLeer_(gesEmp_(), GES.H_EMP);
-    const nuevosH = [], nuevosA = [], cambios = [], res = { plan: 0, m8: 0, agua: 0, plagas: 0, sugeridos: 0, cerradas: 0, errores: [] };
+    const nuevosH = [], nuevosA = [], cambios = [], res = { plan: 0, m8: 0, reglas: 0, sugeridos: 0, cerradas: 0, errores: [] };
     const alta = (src, k, migrado) => {   // src: {cod, modulo, sitio, desc, origen, ref, fuente, prioridad, accion, responsable, plazo, limite, estado, recurso, dir, elevada, resp, fresp, evid, hecha, motivo, alta, historial, directo}
       if (porClave[k] || halClave[k]) return false;
-      const nivel = gesNivelDe_(ALC, src.cod, src.modulo), sugerido = !migrado && nivel !== 'A' && !src.directo;
+      const nivel = gesNivelDe_(ALC, src.cod, src.modulo), sugerido = !migrado && (src.entra ? (src.entra !== 'Directo' || nivel !== 'A') : (nivel !== 'A' && !src.directo));
       const gu = gesGU_(src.prioridad), idH = nh(++ch);
       nuevosH.push({ ID: idH, FECHA: src.alta || hoy, ESTABLECIMIENTO: src.cod, MODULO: src.modulo, SITIO: src.sitio || '', DESCRIPCION: src.desc, ORIGEN: src.origen, REFERENCIA_ORIGEN: src.ref || '',
         FUENTE: src.fuente || '', GRAVEDAD: gu[0], URGENCIA: gu[1], PRIORIDAD: src.prioridad || '', EVIDENCIA: '', ENTRADA: migrado ? 'Migrado' : sugerido ? 'Sugerido' : 'Directo',
@@ -326,24 +327,50 @@ function gesTraer_(x) {
       });
     } catch (e) { res.errores.push('Infraestructura (M8): ' + e.message); }
 
-    // 3) Agua NO APTA y revisiones de plagas atrasadas (lo que junta el tablero)
+    // 3) Reglas automáticas (fase 3 · Reglas.gs › GES_REGLAS): agua NO APTA, plagas atrasadas, residuos, agua, incendio e infraestructura
+    const cambiosH = [];
     if (x.solo !== 'plan') try {
-      const T = tbTablero_(!!x.fresco), abiertas = {};
-      (T.acciones || []).forEach(a => {
-        let k, src;
-        if (a.origen === 'Agua') { k = 'AGUA|' + a.cod + '|' + a.ref + '|' + a.limite; src = { modulo: GES.MODULOS[1], origen: 'Análisis de agua', desc: 'Agua NO APTA en el punto ' + (a.ref || 's/d'), accion: 'Limpiar y desinfectar, y repetir el análisis', prioridad: 'Actuar ya', plazo: 21, limite: a.limite, fuente: 'Dto. 351/79, Anexo I, arts. 57 y 58; Código Alimentario Argentino (CAA), art. 982', directo: true }; }
-        // Plagas: solo la revisión atrasada es hallazgo; lo abierto en plazo es un recordatorio del módulo («alerta no es hallazgo»)
-        else if (/^Plagas/.test(a.origen) && a.vencida) { k = (a.origen === 'Plagas' ? 'PLAGAS|' : 'MIPYV|') + a.cod + '|' + a.ref; src = { modulo: GES.MODULOS[2], origen: 'Caso de plagas', desc: 'Revisión atrasada (desde ' + a.limite + '): ' + a.que, accion: 'Hacer la revisión atrasada y cerrar el caso: ' + a.que, prioridad: 'Resolver rápido', plazo: 30, fuente: 'Programa MIPyV o contrato' }; }
-        else return;
-        abiertas[k] = true;
-        if (alta(Object.assign({ cod: limpio_(a.cod), sitio: a.donde, ref: a.ref, estado: 'En curso', recurso: 'Gestión' }, src), k, false)) res[src.origen === 'Análisis de agua' ? 'agua' : 'plagas']++;
+      const RGL = gregLeer_(), RG = RGL.R, D = gregDetectar_(RG, !!x.fresco), vistos = {}, cuenta = {};
+      D.errores.forEach(e => res.errores.push(e));
+      // La última vuelta de una clave (si se cerró y volvió a aparecer, la clave sigue con #2, #3…)
+      const accDe = {}; AL.forEach(a => { if (a.HALLAZGO) accDe[a.HALLAZGO] = a; });
+      const ciclo = base => { let n = 1; while (halClave[base + '#' + (n + 1)] || porClave[base + '#' + (n + 1)]) n++; return { n: n, k: n === 1 ? base : base + '#' + n }; };
+      D.det.forEach(d => {
+        const r = RG[d.regla], cod = limpio_(d.cod), nivel = gesNivelDe_(ALC, cod, r.MODULO); if (nivel === 'Sin habilitar') return;
+        cuenta[d.regla] = (cuenta[d.regla] || 0) + 1;
+        const fuente = [r.FUENTE, d.fuente && String(r.FUENTE).indexOf(d.fuente) < 0 ? d.fuente : ''].filter(String).join('; ');
+        const src = { cod: cod, modulo: r.MODULO, sitio: d.sitio || '', desc: d.desc, accion: d.accion || r.ACCION, origen: d.origen || 'Regla automática', ref: d.regla + (d.ref ? ' · ' + d.ref : ''),
+          fuente: fuente, prioridad: r.PRIORIDAD, plazo: r.PLAZO_DIAS, limite: d.limite || '', dir: r.REQUIERE_DIRECCION || 'No', estado: d.estado || 'Propuesta', recurso: d.recurso || '', entra: r.ENTRA };
+        const c = ciclo(d.clave), h = halClave[c.k], a = porClave[c.k] || (h ? accDe[h.ID] : null); vistos[c.k] = true;
+        if (!h && !a) { if (alta(src, d.clave, false)) res.reglas++; return; }
+        if (a && !a.CLAVE && h) { a.CLAVE = h.CLAVE; porClave[h.CLAVE] = a; cambios.push(a); }   // acción confirmada desde la bandeja antes de la 14.64: queda enlazada
+        if (h && h.ESTADO === 'Descartado') return;   // Belén lo descartó: no vuelve a entrar
+        if (h && h.ESTADO === 'Confirmado' && !a) return;   // confirmado sin acción todavía
+        const abierta = a && (GES.ABIERTOS.indexOf(a.ESTADO) >= 0 || a.ESTADO === 'Pendiente de recursos');
+        if ((h && h.ESTADO === 'Sugerido') || abierta) {   // sigue: se actualiza lo que cambió
+          if (h && h.DESCRIPCION !== d.desc) { h.DESCRIPCION = d.desc; h.ACTUALIZADO = ahora; cambiosH.push(h);
+            if (abierta) { a.HISTORIAL = (a.HISTORIAL ? a.HISTORIAL + '\n' : '') + ahora + ' · Actualizado por la regla ' + d.regla + ': ' + d.desc; a.SEGUIMIENTO = hoy; a.ACTUALIZADO = ahora; cambios.push(a); } }
+          return;
+        }
+        if (a && a.ESTADO === 'Hecha') {   // marcada hecha pero el módulo sigue mostrando el problema: a la semana vuelve como «No eficaz»
+          if (a.FECHA_HECHA && gesSuma_(a.FECHA_HECHA, 7) < hoy) { a.ESTADO = 'No eficaz'; a.HISTORIAL = (a.HISTORIAL ? a.HISTORIAL + '\n' : '') + ahora + ' · No eficaz: el módulo sigue mostrando el problema (' + d.regla + ')'; a.SEGUIMIENTO = hoy; a.ACTUALIZADO = ahora; cambios.push(a); }
+          return;
+        }
+        if (a && a.ESTADO === 'No se realiza') return;
+        const k2 = d.clave + '#' + (c.n + 1); vistos[k2] = true;   // se había cerrado (eficaz o resuelto): entra uno nuevo
+        if (alta(src, k2, false)) res.reglas++;
       });
-      // Lo que ya no está abierto en el módulo se cerró allá
-      if (T && T.ok !== false && (T.acciones || []).length) AL.forEach(a => { if (/^(AGUA|PLAGAS|MIPYV)\|/.test(a.CLAVE) && !abiertas[a.CLAVE]) cerrarSi(a.CLAVE, 'Cerrado en el módulo de origen'); });
-    } catch (e) { res.errores.push('Agua y plagas: ' + e.message); }
+      // Lo que ya no aparece en su módulo se resolvió allá: la acción pasa a «Hecha» y el sugerido sin confirmar se cierra
+      Object.keys(D.ok).forEach(id => { const pre = gregPrefijos_(id), es = k => pre.some(p => String(k).indexOf(p) === 0);
+        AL.forEach(a => { if (a.CLAVE && es(a.CLAVE) && !vistos[a.CLAVE]) cerrarSi(a.CLAVE, 'Ya no aparece en el módulo de origen (regla ' + id + ')'); });
+        HL.forEach(h => { if (h.CLAVE && es(h.CLAVE) && !vistos[h.CLAVE] && h.ESTADO === 'Sugerido') { h.ESTADO = 'Cerrado'; h.MOTIVO = 'Se resolvió en el módulo antes de confirmarlo'; h.ACTUALIZADO = ahora; cambiosH.push(h); } });
+      });
+      gregAnotar_(RGL.lista, cuenta, D.ok);
+    } catch (e) { res.errores.push('Reglas: ' + e.message); }
 
     gesAgregar_(hs, GES.H_HAL, nuevosH); gesAgregar_(as, GES.H_ACC, nuevosA);
-    cambios.forEach(a => gesEscribir_(as, GES.H_ACC, a.fila, a));
+    const una = L => L.filter((o, i) => L.findIndex(z => z.fila === o.fila) === i);
+    una(cambios).forEach(a => gesEscribir_(as, GES.H_ACC, a.fila, a)); una(cambiosH).forEach(h => gesEscribir_(hs, GES.H_HAL, h.fila, h));
     res.hallazgos = nuevosH.length; res.acciones = nuevosA.length;
     return Object.assign({ ok: true }, res);
   });
@@ -398,6 +425,8 @@ function gesPortal_(accion, x) {
     case 'p_ges_accion': return gesAccionGuardar_(x);
     case 'p_ges_traer': return gesTraer_(x);
     case 'p_ges_elevar': return gesElevar_(x);
+    case 'p_ges_reglas': return gregDatos_();
+    case 'p_ges_regla': return gregGuardar_(x);
   }
   return { ok: false, mensaje: 'Acción de Gestión desconocida: ' + accion };
 }

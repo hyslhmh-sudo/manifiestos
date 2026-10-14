@@ -26,7 +26,7 @@ const CFG = {
 };
 const TZ = 'America/Argentina/Buenos_Aires';
 // Versión del sistema: cambia con cada entrega. Se ve al pie del menú del portal. Si no coincide con la del manual, falta instalar algo.
-const VERSION_SISTEMA = '2026-10-14 · 14.63';
+const VERSION_SISTEMA = '2026-10-14 · 14.64';
 function versionSistema() { Logger.log('Sistema HyS · versión ' + VERSION_SISTEMA); }
 const FOTO_OBLIGATORIA_DESDE = '2027-01-01';   // certificados: desde esta fecha la foto es obligatoria al cargarlos
 // Manifiestos: la foto (o el escaneo en el lote .zip del mes) nunca es obligatoria al cargar, pero tiene que estar antes del día 10 del mes siguiente.
