@@ -1,0 +1,3418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MIPyV — Registro de visita</title>
+
+<meta name="theme-color" content="#0D313F">
+<style>
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  src: url('https://fonts.gstatic.com/s/plusjakartasans/v8/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_qU7NShXDpFA.woff2') format('woff2');
+  font-weight: 400 800;
+}
+:root{
+  --azul-humphreys:#0D313F;
+  --azul-patagonia:#5894A7;
+  --azul-claro:#EAF1F2;
+  --verde-ok:#2E9E5B;
+  --amarillo-alerta:#E3A426;
+  --rojo-no:#C0453A;
+  --texto:#1A1A1A;
+  --gris-borde:#D8E1E3;
+  --blanco:#FFFFFF;
+  --radio:18px;
+
+  /* color de módulo — por defecto MIPyV (azul institucional) */
+  --mod-primary:#0D313F;
+  --mod-accent:#5894A7;
+  --mod-claro:#EAF1F2;
+  font-size: 16px;
+}
+body.mode-saneamiento{
+  --mod-primary:#2E5233;
+  --mod-accent:#6E8E4E;
+  --mod-claro:#EEF2E7;
+}
+body.mode-hys{
+  --mod-primary:#3B6A7A;
+  --mod-accent:#5894A7;
+  --mod-claro:#EAF3F6;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mod-primary); font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:var(--texto); transition:background .3s ease;}
+#app{position:relative; width:100%; height:100%; max-width:560px; margin:0 auto; background:var(--blanco); display:flex; flex-direction:column; overflow:hidden;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; background:var(--mod-primary); color:#fff; flex:0 0 auto; transition:background .3s ease;
+}
+.topbar .brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.05rem;}
+.dot{width:10px; height:10px; border-radius:50%; background:var(--verde-ok);}
+.dot.offline{background:var(--amarillo-alerta);}
+.top-actions{display:flex; gap:8px;}
+.top-actions button{
+  background:rgba(255,255,255,.12); border:none; color:#fff; font-family:inherit;
+  padding:8px 14px; border-radius:999px; font-size:.85rem; font-weight:700;
+}
+#helpBtn{
+  width:36px; height:36px; padding:0; font-size:1.1rem; font-weight:900;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---------- PROGRESS ---------- */
+.progress-wrap{padding:10px 18px 0; flex:0 0 auto;}
+.progress-track{height:6px; border-radius:99px; background:var(--gris-borde); overflow:hidden;}
+.progress-fill{height:100%; background:var(--mod-accent); border-radius:99px; transition:width .35s ease, background .3s ease;}
+
+/* ---------- SCREENS ---------- */
+.screens{flex:1 1 auto; overflow-y:auto; padding:18px; -webkit-overflow-scrolling:touch;}
+.screen{display:none;}
+.screen.active{display:block; animation:fade .25s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.step-title{font-size:1.5rem; font-weight:800; color:var(--mod-primary); margin:4px 0 4px;}
+.step-sub{font-size:.95rem; color:#5A5A5A; margin:0 0 18px;}
+
+/* ---------- HOME / MODULE SELECT ---------- */
+.module-card{
+  width:100%; border:none; border-radius:22px; padding:26px 20px; margin-bottom:16px;
+  display:flex; align-items:center; gap:18px; font-family:inherit; color:#fff; text-align:left;
+}
+.module-card svg{width:52px; height:52px; flex:0 0 auto;}
+.module-card .mc-title{font-size:1.2rem; font-weight:800; margin-bottom:2px;}
+.module-card .mc-sub{font-size:.85rem; opacity:.9; font-weight:600;}
+.module-card.mipyv{background:linear-gradient(135deg,#0D313F,#1A4A5E);}
+.module-card.saneamiento{background:linear-gradient(135deg,#2E5233,#4E7A3E);}
+.module-card.hys{background:linear-gradient(135deg,#3B6A7A,#5894A7);}
+.module-card .mc-emoji{font-size:2.6rem; line-height:1; width:52px; text-align:center; flex:0 0 auto;}
+.module-card:active{transform:scale(.98);}
+
+/* ---------- GRID BUTTONS (icon based) ---------- */
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.tile{
+  border:2px solid var(--gris-borde); background:var(--blanco); border-radius:var(--radio);
+  padding:16px 10px 12px; display:flex; flex-direction:column; align-items:center; gap:8px;
+  font-family:inherit; cursor:pointer; transition:all .12s ease; min-height:118px; justify-content:center;
+}
+.tile svg{width:44px; height:44px;}
+.tile .label{font-size:.9rem; font-weight:700; text-align:center; line-height:1.15; color:var(--texto);}
+.tile:active{transform:scale(.96);}
+.tile.selected{border-color:var(--mod-accent); background:var(--mod-claro);}
+.tile.big{min-height:150px;}
+.tile.big svg{width:58px; height:58px;}
+
+.person-tile{grid-column:span 1;}
+.person-tile .avatar{
+  width:64px; height:64px; border-radius:50%; background:var(--mod-accent); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:800;
+}
+
+/* search / filter chip row (visual, minimal text) */
+.chip-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+.chip{
+  border:2px solid var(--gris-borde); background:#fff; border-radius:999px; padding:9px 16px;
+  font-family:inherit; font-weight:700; font-size:.85rem; color:var(--mod-primary);
+}
+.chip.active{background:var(--mod-primary); color:#fff; border-color:var(--mod-primary);}
+
+/* ---------- SUMMARY CONFIRM CARD ---------- */
+.summary-card{background:var(--mod-claro); border-radius:var(--radio); padding:16px; margin-bottom:12px; display:flex; gap:12px; align-items:center;}
+.summary-card svg{width:34px; height:34px; flex:0 0 auto;}
+.summary-card .txt b{display:block; font-size:.75rem; color:#5A5A5A; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+.summary-card .txt span{font-size:1rem; font-weight:800; color:var(--mod-primary);}
+
+/* ---------- BOTTOM ACTIONS ---------- */
+.bottom-bar{flex:0 0 auto; padding:14px 18px 22px; border-top:1px solid var(--gris-borde); display:flex; gap:10px; background:#fff;}
+.btn{
+  flex:1; border:none; border-radius:16px; padding:16px; font-family:inherit; font-weight:800; font-size:1.05rem;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary{background:var(--mod-primary); color:#fff;}
+.btn-primary:active{filter:brightness(.85);}
+.btn-secondary{background:var(--mod-claro); color:var(--mod-primary); flex:0 0 76px;}
+.btn:disabled{opacity:.4;}
+
+/* semaforo buttons */
+.result-btn{
+  width:100%; border:none; border-radius:var(--radio); padding:22px; margin-bottom:14px;
+  display:flex; align-items:center; gap:16px; font-family:inherit; font-weight:800; font-size:1.15rem; color:#fff;
+}
+.result-ok{background:var(--verde-ok);}
+.result-followup{background:var(--amarillo-alerta);}
+.result-blocked{background:var(--rojo-no);}
+.result-btn svg{width:36px; height:36px; flex:0 0 auto;}
+
+/* EPP checkbox tiles */
+.epp-tile{position:relative;}
+.epp-check{position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:6px; border:2px solid var(--gris-borde); background:#fff;}
+.tile.selected .epp-check{background:var(--verde-ok); border-color:var(--verde-ok);}
+.tile.selected .epp-check::after{content:'✓'; color:#fff; font-size:.85rem; font-weight:900; display:flex; align-items:center; justify-content:center; height:100%;}
+
+/* cantidad de EPP (aparece cuando el ítem está seleccionado) */
+.epp-qty{
+  display:none; align-items:center; justify-content:center; gap:10px; margin-top:6px;
+  background:var(--mod-claro); border-radius:999px; padding:4px 8px;
+}
+.tile.selected .epp-qty{display:flex;}
+.epp-qty button{
+  width:26px; height:26px; border-radius:50%; border:none; background:var(--mod-primary); color:#fff;
+  font-size:1rem; font-weight:900; font-family:inherit; display:flex; align-items:center; justify-content:center; padding:0;
+}
+.epp-qty span{font-weight:800; font-size:.95rem; color:var(--mod-primary); min-width:16px; text-align:center;}
+
+/* dosis autofill card */
+.autofill-card{background:var(--mod-claro); border-radius:var(--radio); padding:18px; text-align:center;}
+.autofill-card .big-num{font-size:1.4rem; font-weight:800; color:var(--mod-primary); margin:6px 0;}
+.autofill-card .lbl{font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:#5A5A5A; font-weight:700;}
+.autofill-divider{height:1px; background:var(--gris-borde); margin:14px 0;}
+
+/* photo */
+.photo-box{
+  border:2px dashed var(--gris-borde); border-radius:var(--radio); aspect-ratio:4/3; display:flex;
+  flex-direction:column; align-items:center; justify-content:center; gap:10px; color:var(--mod-accent);
+  font-weight:800; overflow:hidden; position:relative; background:var(--mod-claro);
+}
+.photo-box img{width:100%; height:100%; object-fit:cover; position:absolute; inset:0;}
+.photo-box svg{width:48px; height:48px;}
+
+/* multi-photo grid (hasta 5) */
+.foto-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.foto-slot{
+  aspect-ratio:1/1; border-radius:14px; position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.foto-slot.add{
+  border:2px dashed var(--gris-borde); background:var(--mod-claro); color:var(--mod-accent);
+  font-family:inherit; flex-direction:column; gap:2px;
+}
+.foto-slot.add span{font-size:1.8rem; font-weight:800; line-height:1;}
+.foto-slot.add small{font-size:.7rem; font-weight:700;}
+.foto-slot.filled{border:2px solid var(--gris-borde);}
+.foto-slot.filled img{width:100%; height:100%; object-fit:cover;}
+.foto-remove{
+  position:absolute; top:4px; right:4px; width:24px; height:24px; border-radius:50%;
+  background:rgba(0,0,0,.55); color:#fff; border:none; font-size:1rem; font-weight:800;
+  display:flex; align-items:center; justify-content:center; padding:0; line-height:1;
+}
+
+/* multi-select task tiles (saneamiento) */
+.tile.multi.selected{border-color:var(--verde-ok); background:#EAF7EF;}
+.tile.multi .epp-check{position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:6px; border:2px solid var(--gris-borde); background:#fff;}
+.tile.multi.selected .epp-check{background:var(--verde-ok); border-color:var(--verde-ok);}
+.tile.multi.selected .epp-check::after{content:'✓'; color:#fff; font-size:.85rem; font-weight:900; display:flex; align-items:center; justify-content:center; height:100%;}
+
+/* otras tareas de HyS */
+.tile .emoji{font-size:2.4rem; line-height:1;}
+.tile.multi{position:relative;}
+.hint-rojo{display:none; margin-top:12px; padding:12px; border-radius:12px; background:#FDECEA; color:#8A1C12; font-weight:600;}
+.ext-card{border:2px solid var(--gris-borde); border-radius:var(--radio); padding:14px; margin-bottom:16px; background:#fff;}
+.ext-card.completo{border-color:var(--verde-ok);}
+.ext-card h4{margin:0 0 10px; font-size:1.05rem; color:var(--mod-primary); font-weight:800;}
+.ext-preg{margin:10px 0 6px; font-weight:700; font-size:.95rem;}
+.sino{display:flex; gap:10px;}
+.sino button{flex:1; min-height:52px; border-radius:14px; border:2px solid var(--gris-borde); background:#fff; font-family:inherit; font-size:1.05rem; font-weight:800; color:var(--texto);}
+.sino button.si.on{background:var(--verde-ok); border-color:var(--verde-ok); color:#fff;}
+.sino button.no.on{background:var(--rojo-no); border-color:var(--rojo-no); color:#fff;}
+.ext-fila{display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:12px; margin:8px 0 0; border:2px solid var(--gris-borde); border-radius:14px; background:#fff; font-family:inherit; color:var(--texto);}
+.ext-fila.ok{border-color:var(--verde-ok); background:#EAF7EF;}
+.ext-fila.abierta{border-color:var(--mod-primary);}
+.ext-ico{font-size:1.6rem;}
+.ext-txt{display:flex; flex-direction:column; gap:2px;} .ext-txt b{font-size:1rem;} .ext-txt small{font-size:.85rem; color:#5F6B73;}
+.ext-panel{border:2px solid var(--mod-primary); border-top:0; border-radius:0 0 14px 14px; padding:4px 12px 14px; margin-bottom:6px;}
+.ext-fotos{display:grid; grid-template-columns:1fr; gap:10px;}
+.ext-foto{display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 10px; min-height:96px; border:2px dashed var(--mod-primary); border-radius:14px; background:#fff; font-family:inherit; color:var(--texto); text-align:center;}
+.ext-foto b{font-size:1.05rem;} .ext-foto small{font-size:.85rem; color:#5F6B73;}
+.ext-foto.lista{border-style:solid; border-color:var(--verde-ok); background:#EAF7EF;}
+.ext-foto img{width:100%; max-height:160px; object-fit:cover; border-radius:10px;}
+.ext-foto-ico{font-size:2rem;}
+.ext-listo{width:100%; margin-top:14px; min-height:56px; border:0; border-radius:14px; background:var(--verde-ok); color:#fff; font-family:inherit; font-size:1.05rem; font-weight:800;}
+.ext-listo:disabled{background:#B9C3C8;}
+.ext-chk{display:flex; gap:10px; align-items:center; margin:8px 0 4px; font-size:.95rem;} .ext-chk input{width:22px; height:22px;}
+.ext-editar{width:100%; margin:10px 0 4px; min-height:46px; border:2px solid var(--gris-borde); border-radius:12px; background:#F4F7F8; font-family:inherit; font-size:.95rem; font-weight:700; color:var(--mod-primary); text-align:left; padding:8px 12px;}
+.ext-edicion{border:2px dashed var(--mod-primary); border-radius:14px; padding:4px 12px 12px; margin:8px 0 12px;}
+.ext-agregar{width:100%; margin-top:12px; min-height:54px; border:2px dashed var(--mod-primary); border-radius:14px; background:#fff; font-family:inherit; font-size:1rem; font-weight:800; color:var(--mod-primary);}
+.ext-fila.nuevo{border-style:dashed;}
+.ext-opc{display:flex; flex-wrap:wrap; gap:8px;}
+.ext-opc button{flex:1 1 30%; min-height:48px; border-radius:12px; border:2px solid var(--gris-borde); background:#fff; font-family:inherit; font-size:1rem; font-weight:700; color:var(--texto);}
+.ext-opc button.on{background:var(--mod-primary); border-color:var(--mod-primary); color:#fff;}
+.ext-inp, .ext-com{width:100%; box-sizing:border-box; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
+.ext-quitar{width:100%; margin-top:10px; min-height:44px; border:0; background:none; font-family:inherit; font-size:.95rem; color:#B4361F; text-decoration:underline;}
+.ext-vto{font-weight:700;} .ext-vto.er{color:#B4361F !important;} .ext-vto.wa{color:#8A5200 !important;}
+.ext-card input[type=month]{width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
+.ext-sinfecha{margin-top:8px;}
+.auto-hallazgos{background:#FDECEA; color:#8A1C12; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-weight:600; font-size:.92rem; white-space:pre-line;}
+.campo-texto{width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;}
+
+/* trabajo abierto list card */
+.job-card{
+  width:100%; text-align:left; border:2px solid var(--gris-borde); background:#fff; border-radius:var(--radio);
+  padding:16px; margin-bottom:12px; font-family:inherit;
+}
+.job-card b{display:block; font-size:1rem; color:var(--mod-primary); margin-bottom:3px;}
+.job-card span{font-size:.82rem; color:#5A5A5A;}
+.job-card.selected{border-color:var(--mod-accent); background:var(--mod-claro);}
+
+/* safety recommendation cards */
+.seg-card{
+  border-radius:var(--radio); padding:16px 18px; margin-bottom:14px; background:var(--mod-claro);
+  border-left:5px solid var(--mod-accent);
+}
+.seg-card h4{margin:0 0 10px; font-size:1rem; color:var(--mod-primary); font-weight:800;}
+.seg-card ul{margin:0; padding-left:20px;}
+.seg-card li{font-size:.92rem; line-height:1.5; margin-bottom:6px; color:var(--texto);}
+
+/* final send screen */
+.center-flow{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-top:30px;}
+.center-flow svg{width:80px; height:80px; margin-bottom:10px;}
+
+/* sync queue badge */
+.queue-badge{
+  position:absolute; top:10px; right:16px; background:var(--amarillo-alerta); color:#1A1A1A;
+  font-size:.7rem; font-weight:800; padding:3px 9px; border-radius:999px; display:none;
+}
+.queue-badge.show{display:block;}
+
+::-webkit-scrollbar{display:none;}
+
+/* help overlay */
+.help-overlay{
+  position:fixed; inset:0; background:rgba(13,49,63,.72); display:none;
+  align-items:center; justify-content:center; z-index:999; padding:24px;
+}
+.help-overlay.show{display:flex;}
+.help-card{
+  background:#fff; border-radius:24px; padding:32px 26px; max-width:400px; width:100%;
+  text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3);
+}
+.help-icon{
+  width:56px; height:56px; border-radius:50%; background:var(--mod-primary); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:900;
+  margin:0 auto 18px;
+}
+.help-text{font-size:1.15rem; line-height:1.5; color:var(--texto); margin-bottom:24px; font-weight:600;}
+
+/* detalle extra condicional (chips que piden explicación) */
+.detalle-extra-box{margin-top:10px;}
+.detalle-extra-box .lbl-extra{font-size:.85rem; font-weight:700; color:var(--mod-primary); margin-bottom:4px;}
+.detalle-extra-box textarea{
+  width:100%; min-height:64px; border:2px solid var(--amarillo-alerta); border-radius:14px; padding:12px;
+  font-family:inherit; font-size:.95rem; resize:vertical; margin-bottom:10px; background:#FFFBF0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot" id="netDot"></span>
+      <span id="brandLabel">Red HZT</span>
+    </div>
+    <div class="top-actions">
+      <button id="helpBtn" type="button" title="Ayuda">?</button>
+      <button id="homeBtn" type="button" title="Inicio">🏠</button>
+      <button id="syncBtn" type="button">Sincronizar</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:9%"></div></div>
+  </div>
+
+  <div class="screens" id="screens">
+
+    <!-- 0. HOME — ELEGIR MÓDULO -->
+    <section class="screen active" data-step="home">
+      <div class="step-title">¿Qué vas a registrar?</div>
+      <div class="step-sub">Tocá el módulo</div>
+      <button class="module-card mipyv" type="button" id="goMipyv">
+        <span id="iconBug"></span>
+        <div>
+          <div class="mc-title">MIPyV</div>
+          <div class="mc-sub">Control de plagas y vectores</div>
+        </div>
+      </button>
+      <button class="module-card saneamiento" type="button" id="goSaneamiento">
+        <span id="iconBroom"></span>
+        <div>
+          <div class="mc-title">Limpieza y Saneamiento</div>
+          <div class="mc-sub">Predios, cañerías, tanques de agua — CAPs</div>
+        </div>
+      </button>
+      <button class="module-card hys" type="button" id="goHys">
+        <span class="mc-emoji">🧯</span>
+        <div>
+          <div class="mc-title">Otra tarea de Higiene y Seguridad</div>
+          <div class="mc-sub">Extintores, señalización, recorridas y más</div>
+        </div>
+      </button>
+      <div id="appVersion" style="text-align:center; font-size:.8rem; opacity:.6; margin-top:18px;"></div>
+    </section>
+
+    <!-- QUIEN SOS (compartido) -->
+    <section class="screen" data-step="quien">
+      <div class="step-title">¿Quién sos?</div>
+      <div class="step-sub">Tocá tu nombre</div>
+      <div class="grid" id="operarioGrid"></div>
+    </section>
+
+    <!-- ACOMPAÑANTE (compartido) -->
+    <section class="screen" data-step="acompanante">
+      <div class="step-title">¿Trabajaste solo/a hoy?</div>
+      <div class="step-sub">Para que quede registrado si estuvieron los dos</div>
+      <button class="tile big" id="soloBtn" style="width:100%; margin-bottom:14px; min-height:100px;" type="button">
+        <div class="label">Trabajé solo/a</div>
+      </button>
+      <button class="tile big" id="acompanadoBtn" style="width:100%; min-height:100px;" type="button">
+        <div class="label" id="acompanadoLabel">Trabajé con el otro</div>
+      </button>
+    </section>
+
+    <!-- HORARIO (compartido) -->
+    <section class="screen" data-step="horario">
+      <div class="step-title">Horario de trabajo</div>
+      <div class="step-sub">Tocá para elegir la hora</div>
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de inicio</div>
+      <input type="time" id="horaInicio" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+      <div class="lbl" style="margin-bottom:6px;">Tu hora de finalización</div>
+      <input type="time" id="horaFin" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      <div id="horarioAcompananteWrap" style="display:none; margin-top:20px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaInicioAcompLabel">Hora de inicio del otro operario</div>
+        <input type="time" id="horaInicioAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
+        <div class="lbl" style="margin-bottom:6px;" id="horaFinAcompLabel">Hora de finalización del otro operario</div>
+        <input type="time" id="horaFinAcomp" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem;">
+      </div>
+    </section>
+
+    <!-- ============ MIPyV ============ -->
+
+    <section class="screen" data-step="m-tipo">
+      <div class="step-title">¿Intervención nueva o en curso?</div>
+      <div class="step-sub">Si ya volviste antes por esta misma plaga, continuá el mismo protocolo</div>
+      <button class="tile big" id="mNuevaBtn" style="width:100%; margin-bottom:14px; min-height:110px;" type="button">
+        <span id="iconNuevaMipyv"></span>
+        <div class="label">Intervención nueva</div>
+      </button>
+      <button class="tile big" id="mContinuarBtn" style="width:100%; min-height:110px;" type="button">
+        <span id="iconContinuarMipyv"></span>
+        <div class="label">Continuar una abierta</div>
+      </button>
+    </section>
+
+    <section class="screen" data-step="m-continuar-lista">
+      <div class="step-title">Intervenciones abiertas</div>
+      <div class="step-sub">Elegí la que vas a continuar</div>
+      <div id="intervencionesAbiertasList"></div>
+      <div id="sinIntervencionesMsg" class="step-sub" style="display:none;">No hay intervenciones abiertas guardadas en este celular. Tocá "Sincronizar" con conexión antes de este paso, así se trae lo que haya cargado el otro operario.</div>
+    </section>
+
+    <section class="screen" data-step="m-establecimiento">
+      <div class="step-title">¿Dónde estás?</div>
+      <div class="step-sub">Elegí el establecimiento</div>
+      <div class="chip-row" id="tipoChips"></div>
+      <div class="grid" id="establecimientoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-sector">
+      <div class="step-title">¿Qué sector?</div>
+      <div class="step-sub" id="sectorSub">Elegí dónde interviniste</div>
+      <div class="grid cols-3" id="sectorGrid"></div>
+      <div id="sectorLibreWrap" style="display:none;">
+        <div class="chip-row" id="sectorChipsSugeridos"></div>
+        <input type="text" id="sectorInput" placeholder="Escribí el sector (ej: Consultorio, Depósito...)"
+          style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; margin-top:6px;">
+      </div>
+    </section>
+
+    <section class="screen" data-step="m-plaga">
+      <div class="step-title">¿Qué plaga viste?</div>
+      <div class="step-sub">Tocá la imagen que corresponde</div>
+      <div class="grid" id="plagaGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-producto">
+      <div class="step-title">¿Qué producto usaste?</div>
+      <div class="step-sub">Tocá el envase que usaste</div>
+      <div class="grid" id="productoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="seguridadCards"></div>
+    </section>
+
+    <section class="screen" data-step="m-dosis">
+      <div class="step-title">Dosis y frecuencia</div>
+      <div class="step-sub">Confirmá lo que ya está definido</div>
+      <div class="autofill-card">
+        <div class="lbl">Dosis</div>
+        <div class="big-num" id="dosisTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Frecuencia</div>
+        <div class="big-num" id="frecTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Puntos críticos sugeridos</div>
+        <div class="big-num" id="puntosTxt" style="font-size:1rem;">—</div>
+      </div>
+    </section>
+
+    <section class="screen" data-step="m-epp">
+      <div class="step-title">EPP usado</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
+      <div class="grid" id="eppGrid"></div>
+    </section>
+
+    <section class="screen" data-step="m-resultado">
+      <div class="step-title">¿Cómo quedó?</div>
+      <div class="step-sub">Elegí una opción</div>
+      <button class="result-btn result-ok" data-resultado="Resuelto" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Resuelto
+      </button>
+      <button class="result-btn result-followup" data-resultado="Requiere otra visita" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.71 3.86a2 2 0 00-3.42 0z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Necesita otra visita
+      </button>
+      <button class="result-btn result-blocked" data-resultado="No se pudo acceder al sector" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2"/><path d="M4.9 4.9l14.2 14.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        No pude acceder
+      </button>
+    </section>
+
+    <section class="screen" data-step="m-foto">
+      <div class="step-title">Fotos del sector</div>
+      <div class="step-sub">Sacá hasta 5 fotos como respaldo</div>
+      <div class="foto-grid" id="fotoGrid"></div>
+      <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none">
+    </section>
+
+    <section class="screen" data-step="m-obs">
+      <div class="step-title">Observaciones</div>
+      <div class="step-sub">Opcional — tocá si aplica</div>
+      <div class="chip-row" id="obsChips"></div>
+      <div class="lbl" style="margin-top:14px; margin-bottom:6px;">Notas del operador (opcional)</div>
+      <textarea id="notasOperador" placeholder="Escribí acá cualquier detalle adicional..."
+        style="width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;"></textarea>
+    </section>
+
+    <section class="screen" data-step="m-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="summaryList"></div>
+    </section>
+
+    <section class="screen" data-step="m-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="sentSub">Visita registrada</div>
+        <button class="btn btn-primary" id="newVisitBtn" type="button" style="max-width:220px;">Cargar otra visita</button>
+      </div>
+    </section>
+
+    <!-- ============ SANEAMIENTO ============ -->
+
+    <section class="screen" data-step="s-tipo">
+      <div class="step-title">¿Trabajo nuevo o en curso?</div>
+      <div class="step-sub">La tarea puede llevar más de un día</div>
+      <button class="tile big" id="sNuevoBtn" style="width:100%; margin-bottom:14px; min-height:110px;" type="button">
+        <span id="iconNuevo"></span>
+        <div class="label">Iniciar trabajo nuevo</div>
+      </button>
+      <button class="tile big" id="sContinuarBtn" style="width:100%; min-height:110px;" type="button">
+        <span id="iconContinuar"></span>
+        <div class="label">Continuar un trabajo abierto</div>
+      </button>
+    </section>
+
+    <section class="screen" data-step="s-cap-nuevo">
+      <div class="step-title">¿En qué CAP?</div>
+      <div class="step-sub">Se registra hoy como fecha de inicio</div>
+      <div class="grid cols-3" id="capGridNuevo"></div>
+    </section>
+
+    <section class="screen" data-step="s-cap-continuar">
+      <div class="step-title">Trabajos abiertos</div>
+      <div class="step-sub">Elegí el que vas a continuar</div>
+      <div id="trabajosAbiertosList"></div>
+      <div id="sinTrabajosMsg" class="step-sub" style="display:none;">No hay trabajos abiertos guardados en este celular. Si Javier o Paulo empezaron uno desde otro teléfono, tocá "Sincronizar" con conexión antes de este paso.</div>
+    </section>
+
+    <section class="screen" data-step="s-tareas">
+      <div class="step-title">¿Qué hiciste hoy?</div>
+      <div class="step-sub">Tocá todas las que correspondan</div>
+      <div class="grid" id="tareasGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-producto">
+      <div class="step-title">¿Qué producto usaste?</div>
+      <div class="step-sub">Tocá el envase que usaste</div>
+      <div class="grid" id="sProductoGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-seguridad">
+      <div class="step-title">Antes de aplicar</div>
+      <div class="step-sub">Recomendaciones de seguridad de este producto</div>
+      <div id="sSeguridadCards"></div>
+    </section>
+
+    <section class="screen" data-step="s-dosis">
+      <div class="step-title">Dosis y frecuencia</div>
+      <div class="step-sub">Confirmá lo que ya está definido</div>
+      <div class="autofill-card">
+        <div class="lbl">Dosis</div>
+        <div class="big-num" id="sDosisTxt">—</div>
+        <div class="autofill-divider"></div>
+        <div class="lbl">Frecuencia</div>
+        <div class="big-num" id="sFrecTxt">—</div>
+      </div>
+    </section>
+
+    <section class="screen" data-step="s-epp">
+      <div class="step-title">EPP usado</div>
+      <div class="step-sub">Tocá todo lo que usaste y ajustá la cantidad</div>
+      <div class="grid" id="sEppGrid"></div>
+    </section>
+
+    <section class="screen" data-step="s-detalle">
+      <div class="step-title">Detalle del día</div>
+      <div class="step-sub">Tocá lo que aplique y sacá hasta 5 fotos</div>
+      <div class="chip-row" id="detalleChips"></div>
+      <div id="detalleExtra"></div>
+      <div class="foto-grid" id="sFotoGrid" style="margin-top:6px;"></div>
+      <input type="file" accept="image/*" capture="environment" id="sPhotoInput" style="display:none">
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Notas del día (opcional)</div>
+      <textarea id="notasSaneamiento" placeholder="Escribí acá cualquier detalle adicional..."
+        style="width:100%; min-height:90px; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1rem; resize:vertical;"></textarea>
+    </section>
+
+    <section class="screen" data-step="s-cierre">
+      <div class="step-title">¿Seguís otro día o terminaste?</div>
+      <div class="step-sub">En este CAP</div>
+      <button class="result-btn result-followup" data-cierre="continua" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.71 3.86a2 2 0 00-3.42 0z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Continúa otro día
+      </button>
+      <button class="result-btn result-ok" data-cierre="terminado" type="button">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Terminado
+      </button>
+    </section>
+
+    <section class="screen" data-step="s-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="sSummaryList"></div>
+    </section>
+
+    <section class="screen" data-step="s-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="sSentSub">Avance registrado</div>
+        <button class="btn btn-primary" id="sNewBtn" type="button" style="max-width:240px;">Cargar otro avance</button>
+      </div>
+    </section>
+
+    <!-- ============ OTRAS TAREAS DE HIGIENE Y SEGURIDAD ============ -->
+
+    <section class="screen" data-step="h-tipo">
+      <div class="step-title">¿Qué tarea hiciste?</div>
+      <div class="step-sub">Tocá una</div>
+      <div class="grid" id="tipoTareaGrid"></div>
+    </section>
+
+    <section class="screen" data-step="h-lugares">
+      <div class="step-title">¿Dónde?</div>
+      <div class="step-sub">Tocá todos los lugares donde hiciste la tarea (podés tocar varios)</div>
+      <div class="chip-row" id="hTipoChips"></div>
+      <div class="grid" id="hLugarGrid"></div>
+      <div class="step-sub" id="hLugaresCuenta" style="margin-top:14px; font-weight:700;"></div>
+    </section>
+
+    <section class="screen" data-step="h-extintores">
+      <div class="step-title">Control de extintores</div>
+      <div class="step-sub">Tocá cada extintor: 5 preguntas y 3 fotos. Si falta alguno en la lista, agregalo con sus datos y 3 fotos.</div>
+      <div id="extintoresList"></div>
+    </section>
+
+    <section class="screen" data-step="h-detalle">
+      <div class="step-title">¿Qué hiciste?</div>
+      <div class="step-sub" id="hDetalleSub">Contalo con tus palabras</div>
+      <textarea id="hDetalle" class="campo-texto" placeholder="Escribí acá..."></textarea>
+      <div class="hint-rojo" id="hDetalleAviso">Escribí qué hiciste para poder seguir.</div>
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Fotos (hasta 5)</div>
+      <div class="foto-grid" id="hFotoGrid"></div>
+      <input type="file" accept="image/*" capture="environment" id="hPhotoInput" style="display:none">
+    </section>
+
+    <section class="screen" data-step="h-hallazgos">
+      <div class="step-title">¿Encontraste algo mal?</div>
+      <div class="step-sub">Opcional — si está todo bien, tocá "Siguiente"</div>
+      <div class="auto-hallazgos" id="hAutoHallazgos" style="display:none;"></div>
+      <div class="lbl" style="margin-bottom:6px;">Problemas que encontraste</div>
+      <textarea id="hHallazgos" class="campo-texto" placeholder="Ej.: cartel de salida roto, matafuego tapado con cajas..."></textarea>
+      <div class="lbl" style="margin-top:16px; margin-bottom:6px;">Observaciones</div>
+      <textarea id="hObservaciones" class="campo-texto" placeholder="Cualquier otra cosa que quieras contar..."></textarea>
+    </section>
+
+    <section class="screen" data-step="h-confirm">
+      <div class="step-title">Confirmar y enviar</div>
+      <div class="step-sub">Revisá antes de mandar</div>
+      <div id="hSummaryList"></div>
+    </section>
+
+    <section class="screen" data-step="h-sent">
+      <div class="center-flow">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#2E9E5B"/><path d="M8 12.5l2.5 2.5L16 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="step-title">¡Listo!</div>
+        <div class="step-sub" id="hSentSub">Tarea registrada</div>
+        <button class="btn btn-primary" id="hNewBtn" type="button" style="max-width:240px;">Cargar otra tarea</button>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="bottom-bar" id="bottomBar">
+    <button class="btn btn-secondary" id="backBtn" type="button">←</button>
+    <button class="btn btn-primary" id="nextBtn" type="button">Siguiente</button>
+  </div>
+
+  <div class="queue-badge" id="queueBadge">0 sin enviar</div>
+
+  <div class="help-overlay" id="helpOverlay">
+    <div class="help-card">
+      <div class="help-icon">?</div>
+      <div class="help-text" id="helpText">Ayuda</div>
+      <button class="btn btn-primary" id="helpCloseBtn" type="button" style="max-width:200px;">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// VERSIÓN DE LA APP — MIPyV Red HZT
+// Es el ÚNICO número que hay que cambiar cuando se actualiza
+// cualquier archivo de la app (index.html, app.js, data.js, icons.js).
+// Formato: año.mes.día, y una letra si hay más de un cambio el mismo día
+// (por ejemplo 2026.10.07b).
+// Se muestra en la pantalla de inicio y hace que los celulares
+// descarguen la versión nueva solos.
+// ============================================================
+const APP_VERSION = "2026.10.14d";
+</script>
+<script>
+// ============================================================
+// CONFIGURACIÓN — pegar acá la URL de implementación del Apps Script
+// (ver GUIA_DESPLIEGUE.md paso 3)
+// ============================================================
+const CONFIG = {
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzLLhU4Zgb7EsqmkBTfHc_oLxd6rJRNzfy33IRmRbrHuvJo9FD7EWqaaahROhr_Jucwrg/exec",
+};
+
+// ============================================================
+// CATÁLOGOS — COPIA DE RESPALDO
+// La app lee estas listas de la planilla "MIP RED HZT - Base de Datos v2"
+// cada vez que se abre con señal (hojas operarios, establecimientos,
+// sectores, plagas, productos y dosis_frecuencia) y guarda una copia en el
+// celular. Lo que está acá abajo se usa solo si el celular nunca pudo
+// descargar la planilla. Para cambiar una lista, se edita la PLANILLA.
+// ============================================================
+
+const OPERARIOS = [
+  { id: "javier", nombre: "Javier Tramaleo", inicial: "J" },
+  { id: "paulo", nombre: "Paulo Tramaleo", inicial: "P" },
+];
+
+const ESTABLECIMIENTOS = [
+  { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital" },
+  { id: "HMH", nombre: "Hospital María Humphreys", tipo: "Hospital" },
+  { id: "ADOL", nombre: "Adolescencia", tipo: "Dependencia" },
+  { id: "CTUT", nombre: "Casa Tutelada", tipo: "Dependencia" },
+  { id: "CDIA", nombre: "Centro de Día", tipo: "Dependencia" },
+  { id: "CIT", nombre: "CIT", tipo: "Dependencia" },
+  { id: "HCAM", nombre: "Hilando Caminos", tipo: "Dependencia" },
+  { id: "ISM", nombre: "Internación de Salud Mental", tipo: "Dependencia" },
+  { id: "PANAI", nombre: "Pichi Anai", tipo: "Dependencia" },
+  { id: "PROS", nombre: "PROSATE", tipo: "Dependencia" },
+  { id: "UGD", nombre: "UGD - Ex APT", tipo: "Dependencia" },
+  { id: "VAC", nombre: "Vacunatorio Central", tipo: "Dependencia" },
+  { id: "EXADOS", nombre: "Ex Ados", tipo: "Dependencia" },
+  { id: "CEXT", nombre: "Consultorios Externos", tipo: "Dependencia" },
+  { id: "CAP-AMA", nombre: "CAPS Amaya", tipo: "CAP" },
+  { id: "CAP-CON", nombre: "CAPS Constitución", tipo: "CAP" },
+  { id: "CAP-COR", nombre: "CAPS Corradi", tipo: "CAP" },
+  { id: "CAP-DBO", nombre: "CAPS Don Bosco", tipo: "CAP" },
+  { id: "CAP-ETC", nombre: "CAPS Etchepare", tipo: "CAP" },
+  { id: "CAP-LLO", nombre: "CAPS La Loma", tipo: "CAP" },
+  { id: "CAP-PGA", nombre: "CAPS Planta de Gas", tipo: "CAP" },
+  { id: "CAP-SMA", nombre: "CAPS San Martín", tipo: "CAP" },
+  { id: "CAP-SAR", nombre: "CAPS Sarmiento", tipo: "CAP" },
+  { id: "CAP-TFE", nombre: "CAPS Tiro Federal", tipo: "CAP" },
+  { id: "CAP-VIT", nombre: "CAPS Villa Italia", tipo: "CAP" },
+];
+
+// Sectores de los hospitales (hoja sectores, aplica_hospital = SI)
+const SECTORES_HZT = [
+  "Administración","Admisión","Anatomía Patológica",
+  "Arancelamiento / Recuperación de Prestaciones","Archivo",
+  "Área Externa / Atención Comunitaria","Asesoría Legal","Bacteriología",
+  "Bioingeniería / Electromedicina","Camilleros","Cardiología","Central de Esterilización",
+  "Centro Obstétrico / Maternidad y Obstetricia","Centro Quirúrgico","Choferes / Ambulancias",
+  "Cirugía","Clínica Médica","Clínica Quirúrgica","Cocina","Comité de Bioética",
+  "Comité de Calidad y Seguridad del Paciente","Comité de Docencia e Investigación",
+  "Comité de Prevención y Control de Infecciones","Compras y Contrataciones",
+  "Comunicación Institucional","Consultorios Externos","Cuidados Progresivos",
+  "Departamento Contable","Depósito","Diagnóstico por Imágenes","Dirección",
+  "Dirección Asociada Administrativa","Dirección Asociada Médica",
+  "Dispositivos Comunitarios de Salud Mental","División de Enfermería","Docencia","Ecografía",
+  "Escuela Hospitalaria Domiciliaria","Estadística","Farmacia","Fonoaudiología",
+  "Gestión de Pacientes","Hemoterapia","Higiene y Seguridad","Informática / Sistemas",
+  "Informes / Isla de Informes","Internación de Salud Mental","Internación Pediátrica",
+  "Kinesiología / Rehabilitación","Laboratorio","Lactario","Lavadero y Ropería",
+  "Maestranza / Servicios Generales","Mamografía","Mantenimiento","Mesa de Entradas","Morgue",
+  "Mucamas / Servicios Generales","Nefrología","Neonatología / UCIN","Nutrición y Dietoterapia",
+  "Oncología","Patrimonio / Inventario","Pediatría","Personal / Recursos Humanos","Portería",
+  "PROSATE","Psicología","Psiquiatría","Registro Civil","Residencias","Salud Mental",
+  "Secretaría de Dirección","Seguridad / Vigilancia","Telesalud / Teleconsulta",
+  "Terapia Intensiva / UTI Adultos","Terapia Intermedia de Adultos","Terapia Ocupacional",
+  "Tesorería","Trabajo Social","Traumatología","UCIP","UMU / Guardia / Emergencias",
+  "No corresponde","Otro",
+];
+
+// Sectores de dependencias y CAPS (hoja sectores, aplica_dependencias_caps = SI)
+const SECTORES_DEPENDENCIAS = [
+  "Administración","Admisión","Cocina","Consultorios Externos","Depósito",
+  "Dispositivos Comunitarios de Salud Mental","Farmacia","Mantenimiento",
+  "Mucamas / Servicios Generales","Portería","Psicología","Salud Mental",
+  "Seguridad / Vigilancia","Trabajo Social","No corresponde","Otro",
+];
+
+const PLAGAS = [
+  { id: "PLA-01", nombre: "Araña de rincón", icono: "spider" },
+  { id: "PLA-02", nombre: "Viuda negra", icono: "spider" },
+  { id: "PLA-03", nombre: "Cucarachas", icono: "roach" },
+  { id: "PLA-04", nombre: "Roedores", icono: "rodent" },
+  { id: "PLA-05", nombre: "Moscas", icono: "fly" },
+  { id: "PLA-06", nombre: "Mosquitos", icono: "mosquito" },
+  { id: "PLA-07", nombre: "Palomas", icono: "pigeon" },
+  { id: "PLA-08", nombre: "Piojillo de paloma", icono: "mite" },
+  { id: "PLA-09", nombre: "Chinche de cama", icono: "bedbug" },
+  { id: "PLA-10", nombre: "Murciélagos", icono: "bat" },
+  { id: "PLA-11", nombre: "Tijeretas", icono: "earwig" },
+  { id: "PLA-12", nombre: "Hormigas", icono: "ant" },
+];
+
+const PRODUCTOS = [
+  { id: "PRD-01", nombre: "Panic", color: "#7A4A9E", icono: "bottle" },
+  { id: "PRD-02", nombre: "Sipertrin", color: "#2E7D9E", icono: "spray" },
+  { id: "PRD-03", nombre: "Keeptrin", color: "#3E8E5B", icono: "spray" },
+  { id: "PRD-04", nombre: "Tacazo", color: "#C0453A", icono: "bottle" },
+  { id: "PRD-05", nombre: "Glacoxan H", color: "#E3A426", icono: "powder" },
+  { id: "PRD-06", nombre: "K-Othrina o similar", color: "#4A7A9E", icono: "spray" },
+  { id: "PRD-07", nombre: "Huagro Chipre o similar", color: "#5A9E7A", icono: "spray" },
+  { id: "PRD-08", nombre: "Aquiles o similar", color: "#8A6F52", icono: "pellet" },
+  { id: "PRD-09", nombre: "Geltex o similar (Gel hormiguicida)", color: "#8A5A2E", icono: "pellet" },
+  { id: "PRD-10", nombre: "Chemoxane F / FumiXan Pro o similar", color: "#6E4A8A", icono: "spray" },
+  { id: "PRD-11", nombre: "Ultra Plus o similar (Biorat pellet)", color: "#0D313F", icono: "pellet" },
+  { id: "PRD-12", nombre: "Huagro Rat o similar", color: "#5A5A5A", icono: "pellet" },
+  { id: "PRD-13", nombre: "Exclusión física / control físico", color: "#2E9E5B", icono: "shield" },
+  { id: "PRD-14", nombre: "Sin aplicación (solo inspección)", color: "#5A6E7A", icono: "generic" },
+];
+
+// Catálogo técnico dosis/frecuencia por combinación plaga+producto (editable solo por HyS)
+// Corregido con los datos reales del POE 2023 (ver Correccion_Catalogos.gs)
+const DOSIS_FRECUENCIA = {
+  "PLA-01|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-01|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-01|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-02|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-02|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-02|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-03|PRD-08": { dosis: "Aplicación puntual en grietas, zócalos, bajo mesadas y sitios estratégicos", frecuencia: "Según necesidad", puntos: "Cocinas, zócalos, desagües, bajo mesadas, motores, grietas" },
+  "PLA-04|PRD-01": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-04|PRD-11": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-04|PRD-12": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
+  "PLA-05|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-05|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-05|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-06|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-06|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-06|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-07|PRD-13": { dosis: "Sellado de ingresos, barreras físicas y saneamiento", frecuencia: "Según necesidad", puntos: "Aleros, techos, cornisas, patios de aire" },
+  "PLA-08|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-08|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-08|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-09|PRD-10": { dosis: "Aplicación en ambiente cerrado según fabricante y procedimiento", frecuencia: "Según necesidad", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
+  "PLA-10|PRD-13": { dosis: "Sellado de ingresos y derivación a autoridad competente", frecuencia: "Según necesidad", puntos: "Entretechos, aleros, cámaras técnicas, cielorrasos" },
+  "PLA-11|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-11|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-11|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-12|PRD-05": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
+  "PLA-12|PRD-09": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
+};
+const DOSIS_DEFAULT = { dosis: "Consultar a HyS — combinación sin definir", frecuencia: "Consultar a HyS", puntos: "—" };
+// Para productos de la familia "inspeccion" (no se aplicó nada)
+const DOSIS_SIN_APLICACION = { dosis: "No aplica — no se usó producto", frecuencia: "—", puntos: "—" };
+
+// Recomendaciones de seguridad por familia de producto — se muestran al operario
+// después de elegir el producto, antes de ver la dosis. Basadas en HDS + historial real.
+const RECOMENDACIONES_SEGURIDAD = {
+  piretroide: {
+    titulo: "Piretroides (voladores/rastreros)",
+    items: [
+      "Ventilar el ambiente 30-60 min antes de que vuelva a entrar alguien",
+      "No aplicar con pacientes, personal o alimentos expuestos en el sector",
+      "Usar guantes, barbijo y anteojos durante toda la aplicación",
+      "No aplicar cerca de desagües hacia el exterior",
+    ],
+  },
+  gel: {
+    titulo: "Cebos en gel (hormigas, cucarachas)",
+    items: [
+      "No aplicar cerca de alimentos ni utensilios de cocina",
+      "Aplicar preferentemente al finalizar las tareas de cocina",
+      "Revisar si hay reinfestación a las 72 horas",
+      "Mantener fuera del alcance de niños y mascotas",
+    ],
+  },
+  rodenticida: {
+    titulo: "Rodenticidas (roedores)",
+    items: [
+      "No tocar los cebos sin guantes",
+      "Señalizar bien los puntos donde se colocó cebo",
+      "No dejar cebo cerca de alimentos ni al alcance de mascotas",
+      "Ante ingestión accidental: CIATOX 0800-333-0160",
+    ],
+  },
+  fumigeno: {
+    titulo: "Fumígeno (chinches de cama)",
+    items: [
+      "Orden de inspección: baño → cocina → comedor → dormitorio",
+      "No sacudir textiles: embolsar en el lugar y cerrar",
+      "Ambiente cerrado, puertas internas abiertas, activar y retirarse de inmediato",
+      "Ventilar 6-8 horas mínimo antes de limpiar o reingresar",
+      "Revisar de nuevo a las 24-72 horas: si persiste, avisar a HyS",
+    ],
+  },
+  fisico: {
+    titulo: "Control físico (sin biocida)",
+    items: [
+      "No se aplican venenos ni biocidas en esta intervención",
+      "Usar guantes, protección respiratoria, calzado de seguridad y mameluco",
+      "Retirar nidos o excretas con precaución, evitando dispersión",
+    ],
+  },
+  inspeccion: {
+    titulo: "Inspección sin producto",
+    items: [
+      "No se aplica ningún producto en esta visita",
+      "Usar guantes y barbijo si hay que mover muebles, cajas o revisar rincones",
+      "Anotar en observaciones qué se vio y qué hace falta (producto, reparación, limpieza)",
+    ],
+  },
+  general: {
+    titulo: "Cuidados generales",
+    items: [
+      "No comer, beber ni fumar durante la aplicación",
+      "Lavarse las manos bien después de manipular el producto",
+      "Guardar el envase cerrado, en lugar fresco y seco",
+      "Ante síntomas de intoxicación: CIATOX 0800-333-0160",
+    ],
+  },
+};
+
+// Mapea cada producto a su(s) familia(s) de recomendaciones de seguridad
+const FAMILIA_PRODUCTO = {
+  "PRD-01": ["rodenticida", "general"],
+  "PRD-02": ["piretroide", "general"],
+  "PRD-03": ["piretroide", "general"],
+  "PRD-04": ["piretroide", "general"],
+  "PRD-05": ["gel", "general"],
+  "PRD-06": ["piretroide", "general"],
+  "PRD-07": ["piretroide", "general"],
+  "PRD-08": ["gel", "general"],
+  "PRD-09": ["gel", "general"],
+  "PRD-10": ["fumigeno", "general"],
+  "PRD-11": ["rodenticida", "general"],
+  "PRD-12": ["rodenticida", "general"],
+  "PRD-13": ["fisico"],
+  "PRD-14": ["inspeccion", "general"],
+};
+
+const EPP = [
+  { id: "guantes", nombre: "Guantes", icono: "gloves" },
+  { id: "barbijo", nombre: "Barbijo / respirador", icono: "mask" },
+  { id: "anteojos", nombre: "Anteojos", icono: "goggles" },
+  { id: "botas", nombre: "Botas", icono: "boots" },
+  { id: "mameluco", nombre: "Mameluco", icono: "coverall" },
+  { id: "cofia", nombre: "Cofia", icono: "cap_epp" },
+  { id: "cubrezapatos", nombre: "Cubrezapatos", icono: "shoe_covers" },
+];
+
+const OBSERVACIONES_CHIPS = [
+  "Sin novedad",
+  "Mucho tránsito de personal",
+  "Personal o pacientes presentes durante la intervención",
+  "Zona de difícil acceso",
+  "Alimentos expuestos",
+  "Agua estancada / humedad",
+  "Residuos sin disposición correcta",
+  "Puntos de acceso nuevos (grietas/aberturas)",
+  "Requiere seguimiento",
+  "Falta de limpieza en el sector",
+  "Se recomienda sellado de aberturas",
+  "Reinfestación detectada",
+];
+
+// ============================================================
+// MÓDULO: LIMPIEZA Y SANEAMIENTO (PROP-HYS-045 — Área Externa HZT)
+// ============================================================
+
+// Solo los 11 CAPs del Área Externa (alcance de la propuesta)
+const CAPS_SANEAMIENTO = ESTABLECIMIENTOS.filter(e => e.tipo === "CAP");
+
+const TAREAS_SANEAMIENTO = [
+  { id: "predios", nombre: "Limpieza de predios", icono: "yard" },
+  { id: "insecticida", nombre: "Saneamiento con insecticida doméstico", icono: "spray" },
+  { id: "canerias", nombre: "Desobstrucción de cañerías", icono: "pipe" },
+  { id: "tanques", nombre: "Limpieza de tanques de agua", icono: "tank" },
+  { id: "roedores", nombre: "Control de roedores / sellado", icono: "rodent" },
+  { id: "pluviales", nombre: "Desagües pluviales", icono: "drain" },
+];
+
+const DETALLE_CHIPS_SANEAMIENTO = [
+  "Sin novedad",
+  "Se retiraron residuos / escombros",
+  "Agua estancada eliminada",
+  "Obstrucción resuelta",
+  "Tanque limpio y desinfectado",
+  "Poda realizada",
+  "Sellado de aberturas realizado",
+  "Requiere mantenimiento (reportado)",
+  "Cebaderos revisados",
+  "Se relevaron nuevos puntos críticos",
+  "Acceso restringido durante la tarea",
+  "Queda pendiente para otro día",
+];
+
+// Chips que, al activarse, piden un detalle extra en un cuadro de texto aparte
+const CHIPS_CON_DETALLE = {
+  "Se relevaron nuevos puntos críticos": "¿Cuáles y por qué son un punto crítico?",
+  "Requiere mantenimiento (reportado)": "¿Qué requiere mantenimiento y por qué?",
+  "Queda pendiente para otro día": "¿Qué queda pendiente por hacer?",
+};
+
+// ============================================================
+// OTRAS TAREAS DE HIGIENE Y SEGURIDAD
+// La lista real se edita en la planilla (hoja configuracion, filas
+// "tipo_tarea"). Esta es la de respaldo si nunca se pudo descargar.
+// ============================================================
+const TIPOS_TAREA_HYS = [
+  "Control de extintores", "Señalización", "Recorrida de seguridad",
+  "Traslado de residuos", "Otra",
+];
+// Dibujo de cada tarea, según una palabra de su nombre (si no coincide, 📋)
+const EMOJI_TAREA_HYS = [
+  ["extintor", "🧯"], ["señal", "⚠️"], ["recorrida", "🚶"],
+  ["residuo", "🗑️"], ["otra", "✏️"],
+];
+
+// ============================================================
+// AYUDA — texto simple por pantalla, para el botón "?"
+// ============================================================
+const AYUDA_TEXTOS = {
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
+  quien: "Tocá tu nombre en la lista.",
+  acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
+  horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
+  "m-tipo": "¿Es un problema nuevo? Tocá \"Intervención nueva\". ¿Ya viniste antes por esta misma plaga? Tocá \"Continuar una abierta\".",
+  "m-continuar-lista": "Tocá la intervención que corresponde a lo que estás por hacer ahora.",
+  "m-establecimiento": "Tocá el lugar donde estás ahora.",
+  "m-sector": "Tocá el sector donde interviniste. Si es un CAP, tocá el que más se parezca o escribilo.",
+  "m-plaga": "Tocá la imagen de la plaga que viste.",
+  "m-producto": "Tocá la imagen del producto que usaste. Si no usaste ninguno (solo revisaste), tocá «Sin aplicación (solo inspección)».",
+  "m-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
+  "m-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
+  "m-epp": "Tocá todos los elementos de protección que usaste (podés tocar varios). Después ajustá la cantidad con los botones + y -.",
+  "m-resultado": "Tocá cómo quedó la situación.",
+  "m-foto": "Tocá el recuadro con el + para sacar una foto. Podés sacar hasta 5. Para borrar una, tocá la X. Si no hace falta foto, tocá \"Siguiente\".",
+  "m-obs": "Si querés, tocá algún cartelito o escribí una nota. No es obligatorio, podés tocar \"Siguiente\" igual.",
+  "m-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "m-sent": "Listo, la visita quedó guardada. Si arriba dice \"sin enviar\", no pasa nada: se manda sola cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
+  "s-tipo": "¿Empezás hoy? Tocá \"Iniciar trabajo nuevo\". ¿Ya venías con este trabajo? Tocá \"Continuar un trabajo abierto\".",
+  "s-cap-nuevo": "Tocá el CAP donde estás.",
+  "s-cap-continuar": "Tocá el trabajo que vas a seguir.",
+  "s-tareas": "Tocá todas las tareas que hiciste hoy (podés tocar varias).",
+  "s-producto": "Tocá la imagen del producto que usaste. Si no usaste ninguno, tocá «Sin aplicación (solo inspección)».",
+  "s-seguridad": "Leé los cuidados de este producto antes de aplicarlo. Después tocá \"Siguiente\".",
+  "s-dosis": "Esta es la dosis correcta, ya viene puesta. No hace falta que hagas nada, solo tocá \"Siguiente\".",
+  "s-epp": "Tocá todos los elementos de protección que usaste. Después ajustá la cantidad con los botones + y -.",
+  "s-detalle": "Tocá los cartelitos que correspondan. Si tocás uno con ❓, escribí abajo qué pasó (es obligatorio). Podés sacar hasta 5 fotos con el recuadro +.",
+  "s-cierre": "¿Vas a seguir otro día en este CAP? Tocá \"Continúa otro día\". ¿Ya terminaste? Tocá \"Terminado\".",
+  "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
+  "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
+  "h-extintores": "Tocá cada extintor de la lista y contestá las 5 preguntas con Sí o No. Mirá la tarjeta y poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, hasta cuándo vale la prueba hidráulica. Después sacá las 3 fotos: 1) de lejos, que se vea el extintor y todo alrededor; 2) la tarjeta con la fecha, que se lea; 3) la chapita con el número de inventario. Si querés, escribí un comentario (es opcional). Si dice ⚠️ la carga está vencida; si dice ⏰ vence en menos de 30 días. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: completá todos los datos (planta, sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario y vencimiento de la carga) y sacá las 3 fotos; todo es obligatorio. Si el nombre o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el nombre o dónde está»: cambiá el nombre o N.º, el lugar, la planta, el sector o dónde está, y tocá «Guardar la corrección». Belén lo revisa y lo verifica. Lo que da No pasa solo a hallazgos.",
+  "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
+  "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
+  "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
+  "h-sent": "Listo, la tarea quedó guardada. Si arriba dice \"sin enviar\", no pasa nada: se manda sola cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
+  "s-sent": "Listo, el avance quedó guardado. Si arriba dice \"sin enviar\", no pasa nada: se manda solo cuando haya señal. No borres la app ni los datos del navegador mientras haya registros sin enviar.",
+};
+</script>
+<script>
+// Librería de íconos SVG simples y reconocibles por silueta.
+// Cada ícono viene con un color de fondo distinto por categoría para
+// reforzar el reconocimiento visual (no depende solo de la forma).
+
+function svgWrap(inner, bg) {
+  return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="30" fill="${bg}"/>
+    <g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${inner}</g>
+  </svg>`;
+}
+
+const ICONS = {
+  // ---------- PLAGAS ----------
+  spider: (bg="#6B4C8A") => svgWrap(`
+    <circle cx="32" cy="30" r="8" fill="#fff" stroke="none"/>
+    <circle cx="32" cy="18" r="4.5" fill="#fff" stroke="none"/>
+    <path d="M24 24L14 18M24 28L12 28M24 33L14 40M40 24L50 18M40 28L52 28M40 33L50 40"/>
+  `, bg),
+  roach: (bg="#7A5C3E") => svgWrap(`
+    <ellipse cx="32" cy="34" rx="13" ry="9" fill="#fff" stroke="none"/>
+    <path d="M25 24L20 14M39 24L44 14M20 34H10M20 40L12 46M44 34H54M44 40L52 46M20 27H10"/>
+  `, bg),
+  rodent: (bg="#8A6F52") => svgWrap(`
+    <ellipse cx="30" cy="34" rx="14" ry="10" fill="#fff" stroke="none"/>
+    <circle cx="42" cy="26" r="5" fill="#fff" stroke="none"/>
+    <path d="M44 44Q54 50 58 42" stroke-width="3"/>
+    <circle cx="43" cy="25" r="1.4" fill="${bg}" stroke="none"/>
+  `, bg),
+  fly: (bg="#4A5A6B") => svgWrap(`
+    <ellipse cx="32" cy="32" rx="7" ry="9" fill="#fff" stroke="none"/>
+    <ellipse cx="22" cy="26" rx="10" ry="6" fill="#fff" fill-opacity=".55" stroke="none" transform="rotate(-20 22 26)"/>
+    <ellipse cx="42" cy="26" rx="10" ry="6" fill="#fff" fill-opacity=".55" stroke="none" transform="rotate(20 42 26)"/>
+    <path d="M27 40L20 46M37 40L44 46"/>
+  `, bg),
+  mosquito: (bg="#4A7A6B") => svgWrap(`
+    <ellipse cx="34" cy="32" rx="5" ry="10" fill="#fff" stroke="none" transform="rotate(20 34 32)"/>
+    <path d="M18 18L28 26"/>
+    <ellipse cx="26" cy="24" rx="9" ry="5" fill="#fff" fill-opacity=".5" stroke="none" transform="rotate(-15 26 24)"/>
+    <ellipse cx="40" cy="28" rx="9" ry="5" fill="#fff" fill-opacity=".5" stroke="none" transform="rotate(25 40 28)"/>
+    <path d="M30 40L24 48M38 40L42 48"/>
+  `, bg),
+  pigeon: (bg="#5A6E8A") => svgWrap(`
+    <ellipse cx="30" cy="36" rx="14" ry="11" fill="#fff" stroke="none"/>
+    <circle cx="44" cy="24" r="7" fill="#fff" stroke="none"/>
+    <path d="M50 24L57 22" stroke-width="3"/>
+    <path d="M22 44L18 52M32 46L30 54"/>
+  `, bg),
+  mite: (bg="#8A7A4A") => svgWrap(`
+    <circle cx="32" cy="32" r="9" fill="#fff" stroke="none"/>
+    <path d="M25 26L17 22M25 32H15M25 38L17 42M39 26L47 22M39 32H49M39 38L47 42"/>
+  `, bg),
+  bedbug: (bg="#8A4A4A") => svgWrap(`
+    <ellipse cx="32" cy="32" rx="11" ry="14" fill="#fff" stroke="none"/>
+    <path d="M22 22L14 18M22 42L14 46M42 22L50 18M42 42L50 46"/>
+  `, bg),
+  bat: (bg="#4A4A5A") => svgWrap(`
+    <path d="M32 22C28 12 14 14 10 24C18 22 24 26 26 32C24 26 14 26 10 34C20 34 26 30 32 36C38 30 44 34 54 34C50 26 40 26 38 32C40 26 46 22 54 24C50 14 36 12 32 22Z" fill="#fff" stroke="none"/>
+  `, bg),
+  earwig: (bg="#5A7A4A") => svgWrap(`
+    <ellipse cx="30" cy="32" rx="12" ry="6" fill="#fff" stroke="none"/>
+    <path d="M42 28Q52 20 50 30M42 36Q52 44 50 34"/>
+    <path d="M20 24L12 18M20 32H10M20 38L12 44"/>
+  `, bg),
+  ant: (bg="#4A3A2A") => svgWrap(`
+    <circle cx="20" cy="30" r="5" fill="#fff" stroke="none"/>
+    <circle cx="32" cy="32" r="6.5" fill="#fff" stroke="none"/>
+    <circle cx="45" cy="30" r="5.5" fill="#fff" stroke="none"/>
+    <path d="M32 25L28 16M32 25L36 16M24 30L14 26M24 34L14 38M40 30L50 24M40 34L48 40"/>
+  `, bg),
+
+  // ---------- PRODUCTOS ----------
+  bottle: (bg) => svgWrap(`
+    <rect x="24" y="18" width="16" height="8" rx="2" fill="#fff" stroke="none"/>
+    <path d="M26 26H38V46Q38 50 34 50H30Q26 50 26 46Z" fill="#fff" stroke="none"/>
+    <rect x="27" y="14" width="10" height="5" rx="1.5" fill="#fff" stroke="none"/>
+  `, bg),
+  spray: (bg) => svgWrap(`
+    <rect x="22" y="26" width="18" height="24" rx="3" fill="#fff" stroke="none"/>
+    <rect x="27" y="18" width="8" height="8" fill="#fff" stroke="none"/>
+    <path d="M35 20L46 14M42 12L48 18" stroke-width="3"/>
+  `, bg),
+  powder: (bg) => svgWrap(`
+    <path d="M24 46L28 20H36L40 46Z" fill="#fff" stroke="none"/>
+    <rect x="26" y="16" width="12" height="5" rx="1.5" fill="#fff" stroke="none"/>
+    <circle cx="20" cy="44" r="2" fill="#fff" stroke="none"/><circle cx="44" cy="40" r="2" fill="#fff" stroke="none"/>
+  `, bg),
+  pellet: (bg) => svgWrap(`
+    <circle cx="24" cy="38" r="5" fill="#fff" stroke="none"/>
+    <circle cx="36" cy="30" r="5.5" fill="#fff" stroke="none"/>
+    <circle cx="42" cy="44" r="4.5" fill="#fff" stroke="none"/>
+    <circle cx="28" cy="24" r="4" fill="#fff" stroke="none"/>
+  `, bg),
+  shield: (bg) => svgWrap(`
+    <path d="M32 14L48 20V32Q48 44 32 50Q16 44 16 32V20Z" fill="#fff" stroke="none"/>
+    <path d="M26 32L30 36L38 26" stroke="${bg}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  `, bg),
+
+  // ---------- EPP ----------
+  gloves: () => svgWrap(`
+    <path d="M22 44V26Q22 22 26 22Q30 22 30 26V30M30 30V20Q30 16 34 16Q38 16 38 20V30M38 24Q38 20 42 20Q46 20 46 24V32M42 32V40Q42 48 34 48H28Q22 48 22 42V44"/>
+  `, "#3E6E8A"),
+  mask: () => svgWrap(`
+    <path d="M18 30Q32 20 46 30V38Q32 48 18 38Z" fill="#fff" stroke="none"/>
+    <path d="M24 34H40M28 40H36"/>
+  `, "#3E6E8A"),
+  goggles: () => svgWrap(`
+    <circle cx="24" cy="32" r="9" fill="#fff" stroke="none"/>
+    <circle cx="42" cy="32" r="9" fill="#fff" stroke="none"/>
+    <path d="M33 32H33"/>
+  `, "#3E6E8A"),
+  boots: () => svgWrap(`
+    <path d="M26 14V34L18 40Q16 42 18 46H36V34H30V14Z" fill="#fff" stroke="none"/>
+  `, "#3E6E8A"),
+  coverall: () => svgWrap(`
+    <path d="M24 14H40V22L44 26V48H36V36H28V48H20V26L24 22Z" fill="#fff" stroke="none"/>
+    <circle cx="32" cy="18" r="3" fill="#3E6E8A" stroke="none"/>
+  `, "#3E6E8A"),
+  cap_epp: () => svgWrap(`
+    <path d="M18 32Q18 18 32 18Q46 18 46 32V36H18Z" fill="#fff" stroke="none"/>
+    <rect x="16" y="36" width="32" height="6" rx="3" fill="#fff" stroke="none"/>
+  `, "#3E6E8A"),
+  shoe_covers: () => svgWrap(`
+    <path d="M20 40Q20 26 26 22Q30 20 34 22Q38 24 38 32V40Z" fill="#fff" stroke="none"/>
+    <ellipse cx="29" cy="42" rx="14" ry="4" fill="#fff" stroke="none"/>
+  `, "#3E6E8A"),
+
+  // ---------- ESTABLECIMIENTO ----------
+  hospital: () => svgWrap(`
+    <rect x="16" y="22" width="32" height="28" rx="2" fill="#fff" stroke="none"/>
+    <path d="M32 28V42M25 35H39" stroke="#5894A7" stroke-width="3"/>
+  `, "#0D313F"),
+  building: () => svgWrap(`
+    <rect x="20" y="16" width="24" height="34" rx="2" fill="#fff" stroke="none"/>
+    <rect x="25" y="22" width="5" height="5" fill="#0D313F" stroke="none"/>
+    <rect x="34" y="22" width="5" height="5" fill="#0D313F" stroke="none"/>
+    <rect x="25" y="31" width="5" height="5" fill="#0D313F" stroke="none"/>
+    <rect x="34" y="31" width="5" height="5" fill="#0D313F" stroke="none"/>
+  `, "#5894A7"),
+  cap: () => svgWrap(`
+    <path d="M18 34L32 22L46 34V48H18Z" fill="#fff" stroke="none"/>
+    <rect x="28" y="38" width="8" height="10" fill="#5894A7" stroke="none"/>
+  `, "#2E9E5B"),
+
+  // ---------- SANEAMIENTO (PROP-HYS-045) ----------
+  yard: (bg="#4E7A3E") => svgWrap(`
+    <path d="M32 48V30M32 30Q24 30 22 20Q32 22 32 30Q32 22 42 20Q40 30 32 30Z" fill="#fff" stroke="none"/>
+    <path d="M20 48H44"/>
+  `, bg),
+  pipe: (bg="#5A6E7A") => svgWrap(`
+    <path d="M16 24H36V34H48" stroke-width="7"/>
+    <circle cx="48" cy="34" r="3.5" fill="#fff" stroke="none"/>
+  `, bg),
+  tank: (bg="#3E7A8E") => svgWrap(`
+    <rect x="20" y="20" width="24" height="26" rx="3" fill="#fff" stroke="none"/>
+    <rect x="24" y="14" width="16" height="6" rx="1.5" fill="#fff" stroke="none"/>
+    <path d="M26 46V50M38 46V50" stroke-width="3"/>
+  `, bg),
+  drain: (bg="#4A6A7A") => svgWrap(`
+    <rect x="18" y="24" width="28" height="18" rx="3" fill="#fff" stroke="none"/>
+    <path d="M24 30H40M24 35H40" stroke="${bg}" stroke-width="2.5"/>
+    <path d="M32 42V50" stroke-width="3"/>
+  `, bg),
+  broom: (bg="#3E8E5B") => svgWrap(`
+    <path d="M38 14L24 38" stroke-width="3.5"/>
+    <path d="M24 38L14 50M24 38L20 50M24 38L28 48" stroke-width="2.6"/>
+  `, bg),
+  bug: (bg="#0D313F") => svgWrap(`
+    <ellipse cx="32" cy="34" rx="10" ry="13" fill="#fff" stroke="none"/>
+    <path d="M24 26L16 20M40 26L48 20M22 34H12M42 34H52M24 42L16 48M40 42L48 48"/>
+  `, bg),
+  calendar_new: (bg="#4E7A3E") => svgWrap(`
+    <rect x="16" y="18" width="32" height="28" rx="3" fill="#fff" stroke="none"/>
+    <rect x="16" y="18" width="32" height="8" fill="${bg}" stroke="none"/>
+    <path d="M32 30V42M26 36H38" stroke="${bg}" stroke-width="3"/>
+  `, bg),
+  calendar_continue: (bg="#6E8E4E") => svgWrap(`
+    <rect x="16" y="18" width="32" height="28" rx="3" fill="#fff" stroke="none"/>
+    <rect x="16" y="18" width="32" height="8" fill="${bg}" stroke="none"/>
+    <path d="M25 36L30 41L40 30" stroke="${bg}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  `, bg),
+
+  // fallback genérico
+  generic: () => svgWrap(`<circle cx="32" cy="32" r="10" fill="#fff" stroke="none"/>`, "#5894A7"),
+};
+
+function renderIcon(key, size, color) {
+  const fn = ICONS[key] || ICONS.generic;
+  const svg = color ? fn(color) : fn();
+  return size ? svg.replace("<svg ", `<svg style="width:${size}px;height:${size}px" `) : svg;
+}
+</script>
+<script>
+// ============================================================
+// ESTADO GENERAL
+// ============================================================
+let currentModule = null; // "mipyv" | "saneamiento" | "hys"
+let currentOperario = null; // { id, nombre }
+
+let stepList = [];
+let stepIndex = 0;
+
+let visita = {};
+let fotosDataUrls = []; // hasta 5
+let intervencion = {}; // { protocolo, esNueva, id_establecimiento, establecimiento, tipo_establecimiento, id_plaga, tipo_plaga }
+
+let trabajo = {};
+let avance = {};
+let sFotosDataUrls = []; // hasta 5
+let operarioAcompanante = null; // nombre del otro operario, o null si trabajó solo/a
+let acompananteRespondido = false;
+let detalleExtraTextos = {}; // texto extra por cada chip de DETALLE_CHIPS_SANEAMIENTO que lo requiera
+
+function resetVisita() {
+  visita = {
+    id_visita: "V-" + Date.now(),
+    fecha: new Date().toISOString(),
+    id_operario: null, operario: null,
+    id_establecimiento: null, establecimiento: null, tipo_establecimiento: null,
+    sector: null,
+    id_plaga: null, tipo_plaga: null,
+    id_producto: null, producto: null,
+    dosis_aplicada: null, frecuencia_recomendada: null, puntos_criticos: null,
+    epp_utilizado: [], // [{nombre, cantidad}]
+    resultado: null,
+    observaciones: "",
+    protocolo_existente: null,
+    operario_acompanante: null,
+    hora_inicio: null, hora_fin: null,
+    hora_inicio_acompanante: null, hora_fin_acompanante: null,
+  };
+  fotosDataUrls = [];
+}
+
+function resetIntervencion() {
+  intervencion = { protocolo: null, esNueva: true, id_establecimiento: null, establecimiento: null, tipo_establecimiento: null, id_plaga: null, tipo_plaga: null };
+}
+
+function resetSaneamiento() {
+  trabajo = { id_trabajo: null, id_establecimiento: null, establecimiento: null, fecha_inicio: null, estado: null, esNuevo: true };
+  avance = {
+    tareas: [], detalle: "", notas: "",
+    epp_utilizado: [], // [{nombre, cantidad}]
+    producto_biocida: null, id_producto_biocida: null,
+    dosis_biocida: null, frecuencia_biocida: null, puntos_criticos_biocida: null,
+  };
+  sFotosDataUrls = [];
+  detalleExtraTextos = {};
+}
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+const screensEl = document.getElementById("screens");
+const progressFill = document.getElementById("progressFill");
+const progressWrap = document.getElementById("progressWrap");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+const bottomBar = document.getElementById("bottomBar");
+const brandLabel = document.getElementById("brandLabel");
+const homeBtn = document.getElementById("homeBtn");
+
+function goHome() {
+  currentModule = null;
+  if (hayVersionNueva) { window.location.reload(); return; }
+  cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
+  document.body.classList.remove("mode-saneamiento", "mode-hys");
+  brandLabel.textContent = "Red HZT";
+  progressWrap.style.display = "none";
+  bottomBar.style.display = "none";
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelector('.screen[data-step="home"]').classList.add("active");
+  screensEl.scrollTop = 0;
+}
+homeBtn.addEventListener("click", goHome);
+
+function enterModule(mod) {
+  currentModule = mod;
+  resetVisita();
+  resetIntervencion();
+  resetSaneamiento();
+  resetTareaHys();
+  operarioAcompanante = null;
+  acompananteRespondido = false;
+  document.body.classList.remove("mode-saneamiento", "mode-hys");
+  if (mod === "hys") {
+    document.body.classList.add("mode-hys");
+    brandLabel.textContent = "Higiene y Seguridad";
+    stepList = ["quien", "acompanante", "h-tipo"];
+    reiniciarPantallasHys();
+  } else if (mod === "saneamiento") {
+    document.body.classList.add("mode-saneamiento");
+    brandLabel.textContent = "Saneamiento · Área Externa";
+    stepList = ["quien", "acompanante", "s-tipo"];
+  } else {
+    brandLabel.textContent = "MIPyV · HZT Red";
+    stepList = ["quien", "acompanante", "m-tipo"];
+  }
+  progressWrap.style.display = "block";
+  bottomBar.style.display = "flex";
+  stepIndex = 0;
+  showStep(stepList[0]);
+}
+
+document.getElementById("goMipyv").addEventListener("click", () => enterModule("mipyv"));
+document.getElementById("goSaneamiento").addEventListener("click", () => enterModule("saneamiento"));
+document.getElementById("goHys").addEventListener("click", () => enterModule("hys"));
+
+function showStep(name) {
+  document.querySelectorAll(".screen").forEach(s => {
+    s.classList.toggle("active", s.dataset.step === name);
+  });
+  const pos = stepList.indexOf(name) + 1;
+  progressFill.style.width = Math.max(8, (pos / stepList.length) * 100) + "%";
+  backBtn.style.visibility = pos <= 1 ? "hidden" : "visible";
+  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent";
+  bottomBar.style.display = isSentScreen ? "none" : "flex";
+  nextBtn.disabled = !canAdvance(name);
+  const isConfirm = name === "m-confirm" || name === "s-confirm" || name === "h-confirm";
+  nextBtn.textContent = isConfirm ? "Enviar" : "Siguiente";
+  screensEl.scrollTop = 0;
+
+  if (name === "m-confirm") renderResumenMipyv();
+  if (name === "s-confirm") renderResumenSaneamiento();
+  if (name === "s-cap-continuar") renderTrabajosAbiertos();
+  if (name === "m-continuar-lista") renderIntervencionesAbiertas();
+  if (name === "m-seguridad") renderSeguridad();
+  if (name === "acompanante") actualizarLabelAcompanante();
+  if (name === "horario") actualizarPantallaHorario();
+  if (name === "m-foto") renderFotoGrid();
+  if (name === "s-detalle") renderSFotoGrid();
+  if (name === "m-epp") renderEppGrid();
+  if (name === "s-epp") renderSEppGrid();
+  if (name === "s-seguridad") renderSSeguridad();
+  if (name === "h-lugares") renderLugaresHys();
+  if (name === "h-extintores") renderExtintores();
+  if (name === "h-detalle") prepararDetalleHys();
+  if (name === "h-hallazgos") prepararHallazgosHys();
+  if (name === "h-confirm") renderResumenHys();
+}
+
+function canAdvance(name) {
+  switch (name) {
+    case "quien": return !!currentOperario;
+    case "acompanante": return acompananteRespondido;
+    case "horario": return validarHorario();
+    case "m-tipo": return false;
+    case "m-continuar-lista": return !!intervencion.protocolo;
+    case "m-establecimiento": return !!visita.id_establecimiento;
+    case "m-sector": return !!visita.sector;
+    case "m-plaga": return !!visita.id_plaga;
+    case "m-producto": return !!visita.id_producto;
+    case "m-epp": return visita.epp_utilizado.length > 0;
+    case "m-resultado": return !!visita.resultado;
+    case "s-tipo": return false;
+    case "s-cap-nuevo": return !!trabajo.id_establecimiento;
+    case "s-cap-continuar": return !!trabajo.id_trabajo;
+    case "s-producto": return !!avance.id_producto_biocida;
+    case "s-tareas": return avance.tareas.length > 0;
+    case "s-epp": return avance.epp_utilizado.length > 0;
+    case "s-detalle": return validarDetalleSaneamiento();
+    case "s-cierre": return !!avance.cierre;
+    case "h-tipo": return !!tareaHys.tipo_tarea;
+    case "h-lugares": return tareaHys.lugares.length > 0;
+    case "h-extintores": return extintoresListo();
+    case "h-detalle": return validarDetalleHys();
+    default: return true;
+  }
+}
+
+// La hora de fin tiene que ser posterior a la de inicio (las horas vienen
+// como "HH:MM", así que se pueden comparar como texto).
+const avisoHorario = document.createElement("div");
+avisoHorario.style.cssText = "display:none; margin-top:14px; padding:12px; border-radius:12px; background:#FDECEA; color:#8A1C12; font-weight:600;";
+document.querySelector('.screen[data-step="horario"]').appendChild(avisoHorario);
+
+function validarHorario() {
+  const errores = [];
+  if (horaInicioEl.value && horaFinEl.value && horaFinEl.value <= horaInicioEl.value) {
+    errores.push("Tu hora de finalización tiene que ser después de la de inicio.");
+  }
+  if (pideHorarioAcompanante() && horaInicioAcompEl.value && horaFinAcompEl.value && horaFinAcompEl.value <= horaInicioAcompEl.value) {
+    errores.push(`La hora de finalización de ${operarioAcompanante} tiene que ser después de la de inicio.`);
+  }
+  avisoHorario.textContent = errores.join(" ");
+  avisoHorario.style.display = errores.length ? "block" : "none";
+  if (errores.length) return false;
+  if (!horaInicioEl.value || !horaFinEl.value) return false;
+  if (pideHorarioAcompanante() && (!horaInicioAcompEl.value || !horaFinAcompEl.value)) return false;
+  return true;
+}
+
+function validarDetalleSaneamiento() {
+  return detalleSeleccionados
+    .filter(txt => CHIPS_CON_DETALLE[txt])
+    .every(txt => (detalleExtraTextos[txt] || "").trim().length > 0);
+}
+
+function goNext() {
+  const current = stepList[stepIndex];
+  if (!canAdvance(current)) return;
+  if (current === "m-confirm") { sendVisita(); return; }
+  if (current === "s-confirm") { sendAvance(); return; }
+  if (current === "h-confirm") { sendTareaHys(); return; }
+  if (stepIndex < stepList.length - 1) stepIndex++;
+  showStep(stepList[stepIndex]);
+}
+function goBack() {
+  if (stepIndex > 0) stepIndex--;
+  showStep(stepList[stepIndex]);
+}
+nextBtn.addEventListener("click", goNext);
+backBtn.addEventListener("click", goBack);
+
+// ============================================================
+// PASO COMPARTIDO — QUIEN SOS
+// ============================================================
+const operarioGrid = document.getElementById("operarioGrid");
+function renderOperarios() {
+operarioGrid.innerHTML = "";
+OPERARIOS.forEach(op => {
+  const btn = document.createElement("button");
+  btn.className = "tile big person-tile";
+  btn.innerHTML = `<div class="avatar">${op.inicial}</div><div class="label">${op.nombre}</div>`;
+  btn.onclick = () => {
+    currentOperario = op;
+    visita.id_operario = op.id; visita.operario = op.nombre;
+    [...operarioGrid.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  operarioGrid.appendChild(btn);
+});
+}
+renderOperarios();
+
+// ============================================================
+// PASO COMPARTIDO — ACOMPAÑANTE (trabajó solo o con el otro operario)
+// ============================================================
+const acompanadoLabel = document.getElementById("acompanadoLabel");
+document.getElementById("soloBtn").addEventListener("click", () => {
+  operarioAcompanante = null;
+  acompananteRespondido = true;
+  setTimeout(goNext, 180);
+});
+document.getElementById("acompanadoBtn").addEventListener("click", () => {
+  const otro = OPERARIOS.find(op => op.id !== currentOperario.id);
+  operarioAcompanante = otro ? otro.nombre : null;
+  acompananteRespondido = true;
+  setTimeout(goNext, 180);
+});
+function actualizarLabelAcompanante() {
+  const otro = OPERARIOS.find(op => currentOperario && op.id !== currentOperario.id);
+  acompanadoLabel.textContent = "Trabajé con " + (otro ? otro.nombre : "el otro operario");
+}
+
+// ============================================================
+// PASO COMPARTIDO — HORARIO (hora de inicio/fin, propia y del acompañante)
+// ============================================================
+const horaInicioEl = document.getElementById("horaInicio");
+const horaFinEl = document.getElementById("horaFin");
+const horarioAcompananteWrap = document.getElementById("horarioAcompananteWrap");
+const horaInicioAcompLabel = document.getElementById("horaInicioAcompLabel");
+const horaFinAcompLabel = document.getElementById("horaFinAcompLabel");
+const horaInicioAcompEl = document.getElementById("horaInicioAcomp");
+const horaFinAcompEl = document.getElementById("horaFinAcomp");
+
+// En "Otra tarea de HyS" no se piden los horarios del acompañante
+// (la hoja tareas_hys guarda un solo horario por tarea).
+function pideHorarioAcompanante() {
+  return !!operarioAcompanante && currentModule !== "hys";
+}
+
+function actualizarPantallaHorario() {
+  const hayAcompanante = pideHorarioAcompanante();
+  horarioAcompananteWrap.style.display = hayAcompanante ? "block" : "none";
+  if (hayAcompanante) {
+    horaInicioAcompLabel.textContent = `Hora de inicio de ${operarioAcompanante}`;
+    horaFinAcompLabel.textContent = `Hora de finalización de ${operarioAcompanante}`;
+  }
+}
+
+function guardarHorarios(objetivo) {
+  objetivo.hora_inicio = horaInicioEl.value || null;
+  objetivo.hora_fin = horaFinEl.value || null;
+  objetivo.hora_inicio_acompanante = operarioAcompanante ? (horaInicioAcompEl.value || null) : null;
+  objetivo.hora_fin_acompanante = operarioAcompanante ? (horaFinAcompEl.value || null) : null;
+}
+
+[horaInicioEl, horaFinEl, horaInicioAcompEl, horaFinAcompEl].forEach(el => {
+  el.addEventListener("input", () => {
+    if (stepList[stepIndex] === "horario") nextBtn.disabled = !canAdvance("horario");
+  });
+});
+
+// ============================================================
+// MIPyV — m-tipo (nueva / continuar)
+// ============================================================
+document.getElementById("mNuevaBtn").addEventListener("click", () => {
+  intervencion.esNueva = true;
+  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
+  stepIndex = stepList.indexOf("m-establecimiento");
+  showStep("m-establecimiento");
+});
+document.getElementById("mContinuarBtn").addEventListener("click", () => {
+  intervencion.esNueva = false;
+  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
+  stepIndex = stepList.indexOf("m-continuar-lista");
+  showStep("m-continuar-lista");
+});
+
+// ============================================================
+// MIPyV — m-continuar-lista (intervenciones abiertas, cacheadas localmente)
+// ============================================================
+const INTERVENCIONES_KEY = "mipyv_intervenciones_abiertas_v1";
+function getIntervencionesAbiertas() { return JSON.parse(localStorage.getItem(INTERVENCIONES_KEY) || "[]"); }
+function setIntervencionesAbiertas(list) { localStorage.setItem(INTERVENCIONES_KEY, JSON.stringify(list)); }
+
+// Copias de las listas abiertas que manda la planilla (última descarga).
+// Se usan también sin señal. A esa lista se le suma lo que este celular
+// tiene todavía sin enviar, para que se vea al instante.
+const INTERV_PLANILLA_KEY = "mipyv_intervenciones_planilla_v1";
+const TRABAJOS_PLANILLA_KEY = "mipyv_trabajos_planilla_v1";
+function leerCopia(clave) {
+  try { const c = JSON.parse(localStorage.getItem(clave) || "null"); return c && Array.isArray(c.lista) ? c.lista : null; }
+  catch (err) { return null; }
+}
+function guardarCopia(clave, lista) {
+  try { localStorage.setItem(clave, JSON.stringify({ fecha: new Date().toISOString(), lista })); } catch (err) { /* sin espacio */ }
+}
+async function colaSegura() {
+  try { return await colaListar(); } catch (err) { return []; }
+}
+
+async function intervencionesParaMostrar() {
+  const dePlanilla = leerCopia(INTERV_PLANILLA_KEY);
+  if (!dePlanilla) return getIntervencionesAbiertas(); // nunca se descargó: lista propia del celular
+  const lista = dePlanilla.map(iv => ({ ...iv }));
+  const visitasPendientes = (await colaSegura())
+    .filter(it => it.tipo === "visita").map(it => it.data)
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  visitasPendientes.forEach(v => {
+    const clave = v.protocolo_existente || "PENDIENTE-" + v.id_visita;
+    const idx = lista.findIndex(iv => iv.protocolo === clave || (iv.alias || []).includes(clave));
+    if (v.resultado === "Requiere otra visita") {
+      const reg = {
+        protocolo: idx >= 0 ? lista[idx].protocolo : clave,
+        alias: idx >= 0 ? lista[idx].alias : [clave],
+        id_establecimiento: v.id_establecimiento, establecimiento: v.establecimiento,
+        tipo_establecimiento: v.tipo_establecimiento, id_plaga: v.id_plaga,
+        tipo_plaga: v.tipo_plaga, sector: v.sector,
+      };
+      if (idx >= 0) lista[idx] = reg; else lista.push(reg);
+    } else if (idx >= 0) {
+      lista.splice(idx, 1); // se cerró con una visita que todavía no se envió
+    }
+  });
+  return lista;
+}
+
+function renderIntervencionesAbiertas() {
+  pintarIntervencionesAbiertas(); // muestra lo que ya hay en el celular, sin esperar
+  actualizarCatalogosDesdePlanilla().finally(pintarIntervencionesAbiertas);
+}
+
+async function pintarIntervencionesAbiertas() {
+  const list = await intervencionesParaMostrar();
+  const wrap = document.getElementById("intervencionesAbiertasList");
+  const msg = document.getElementById("sinIntervencionesMsg");
+  wrap.innerHTML = "";
+  if (list.length === 0) { msg.style.display = "block"; return; }
+  msg.style.display = "none";
+  list.forEach(iv => {
+    const card = document.createElement("button");
+    card.className = "job-card";
+    card.innerHTML = `<b>${iv.tipo_plaga} — ${iv.establecimiento}</b><span>Sector: ${iv.sector || "—"} · Protocolo ${iv.protocolo}</span>`;
+    card.onclick = () => {
+      intervencion.protocolo = iv.protocolo;
+      intervencion.id_establecimiento = iv.id_establecimiento;
+      intervencion.establecimiento = iv.establecimiento;
+      intervencion.tipo_establecimiento = iv.tipo_establecimiento;
+      intervencion.id_plaga = iv.id_plaga;
+      intervencion.tipo_plaga = iv.tipo_plaga;
+      visita.id_establecimiento = iv.id_establecimiento;
+      visita.establecimiento = iv.establecimiento;
+      visita.tipo_establecimiento = iv.tipo_establecimiento;
+      visita.id_plaga = iv.id_plaga;
+      visita.tipo_plaga = iv.tipo_plaga;
+      visita.protocolo_existente = iv.protocolo;
+      [...wrap.children].forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      renderSectores();
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    wrap.appendChild(card);
+  });
+}
+
+// ============================================================
+// MIPyV — m-establecimiento
+// ============================================================
+const tipoChips = document.getElementById("tipoChips");
+const establecimientoGrid = document.getElementById("establecimientoGrid");
+const TIPOS = ["Todos", "Hospital", "Dependencia", "CAP"];
+let tipoFiltro = "Todos";
+
+TIPOS.forEach(t => {
+  const chip = document.createElement("button");
+  chip.className = "chip" + (t === "Todos" ? " active" : "");
+  chip.textContent = t === "CAP" ? "CAPS" : t;
+  chip.onclick = () => {
+    tipoFiltro = t;
+    [...tipoChips.children].forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    renderEstablecimientos();
+  };
+  tipoChips.appendChild(chip);
+});
+
+function renderEstablecimientos() {
+  establecimientoGrid.innerHTML = "";
+  const iconFor = { Hospital: "hospital", Dependencia: "building", CAP: "cap" };
+  ESTABLECIMIENTOS.filter(e => tipoFiltro === "Todos" || e.tipo === tipoFiltro).forEach(est => {
+    const btn = document.createElement("button");
+    btn.className = "tile";
+    btn.innerHTML = `${renderIcon(iconFor[est.tipo])}<div class="label">${est.nombre}</div>`;
+    if (visita.id_establecimiento === est.id) btn.classList.add("selected");
+    btn.onclick = () => {
+      visita.id_establecimiento = est.id; visita.establecimiento = est.nombre; visita.tipo_establecimiento = est.tipo;
+      intervencion.id_establecimiento = est.id; intervencion.establecimiento = est.nombre; intervencion.tipo_establecimiento = est.tipo;
+      [...establecimientoGrid.children].forEach(c => c.classList.remove("selected"));
+      btn.classList.add("selected");
+      renderSectores();
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    establecimientoGrid.appendChild(btn);
+  });
+}
+renderEstablecimientos();
+
+// ============================================================
+// MIPyV — m-sector
+// ============================================================
+const sectorGrid = document.getElementById("sectorGrid");
+const sectorSub = document.getElementById("sectorSub");
+const sectorLibreWrap = document.getElementById("sectorLibreWrap");
+const sectorChipsSugeridos = document.getElementById("sectorChipsSugeridos");
+const sectorInput = document.getElementById("sectorInput");
+
+function renderSectores() {
+  const esHZT = visita.tipo_establecimiento === "Hospital";
+  sectorGrid.style.display = esHZT ? "grid" : "none";
+  sectorLibreWrap.style.display = esHZT ? "none" : "block";
+
+  if (esHZT) {
+    sectorSub.textContent = "Elegí dónde interviniste";
+    sectorGrid.innerHTML = "";
+    SECTORES_HZT.forEach(sec => {
+      const btn = document.createElement("button");
+      btn.className = "tile";
+      btn.style.minHeight = "84px";
+      btn.innerHTML = `<div class="label">${sec}</div>`;
+      if (visita.sector === sec) btn.classList.add("selected");
+      btn.onclick = () => {
+        visita.sector = sec;
+        [...sectorGrid.children].forEach(c => c.classList.remove("selected"));
+        btn.classList.add("selected");
+        nextBtn.disabled = false;
+        setTimeout(goNext, 180);
+      };
+      sectorGrid.appendChild(btn);
+    });
+  } else {
+    sectorSub.textContent = "Cada CAP es distinto — tocá un sector frecuente o escribilo";
+    sectorInput.value = visita.sector || "";
+    sectorChipsSugeridos.innerHTML = "";
+    SECTORES_DEPENDENCIAS.forEach(sec => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = sec;
+      if (visita.sector === sec) chip.classList.add("active");
+      chip.onclick = () => {
+        [...sectorChipsSugeridos.children].forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        sectorInput.value = sec;
+        visita.sector = sec;
+        nextBtn.disabled = false;
+        setTimeout(goNext, 180);
+      };
+      sectorChipsSugeridos.appendChild(chip);
+    });
+  }
+}
+
+sectorInput.addEventListener("input", () => {
+  visita.sector = sectorInput.value.trim();
+  nextBtn.disabled = !canAdvance("m-sector");
+  [...sectorChipsSugeridos.children].forEach(c => c.classList.toggle("active", c.textContent === visita.sector));
+});
+
+// ============================================================
+// MIPyV — m-plaga
+// ============================================================
+const plagaGrid = document.getElementById("plagaGrid");
+function renderPlagas() {
+plagaGrid.innerHTML = "";
+PLAGAS.forEach(pl => {
+  const btn = document.createElement("button");
+  btn.className = "tile";
+  btn.innerHTML = `${renderIcon(pl.icono)}<div class="label">${pl.nombre}</div>`;
+  btn.onclick = () => {
+    visita.id_plaga = pl.id; visita.tipo_plaga = pl.nombre;
+    intervencion.id_plaga = pl.id; intervencion.tipo_plaga = pl.nombre;
+    [...plagaGrid.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  plagaGrid.appendChild(btn);
+});
+}
+renderPlagas();
+
+// ============================================================
+// MIPyV — m-producto
+// ============================================================
+const productoGrid = document.getElementById("productoGrid");
+function renderProductos() {
+productoGrid.innerHTML = "";
+PRODUCTOS.forEach(pr => {
+  const btn = document.createElement("button");
+  btn.className = "tile";
+  btn.innerHTML = `${renderIcon(pr.icono, null, pr.color)}<div class="label">${pr.nombre}</div>`;
+  btn.onclick = () => {
+    visita.id_producto = pr.id; visita.producto = pr.nombre;
+    [...productoGrid.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    applyDosisFrecuencia();
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  productoGrid.appendChild(btn);
+});
+}
+renderProductos();
+
+// Dosis según plaga + producto. Si el producto es "sin aplicación"
+// (familia inspeccion en la hoja productos), no se busca dosis.
+function dosisPara(idPlaga, idProducto) {
+  const familias = FAMILIA_PRODUCTO[idProducto] || [];
+  if (familias.includes("inspeccion")) return DOSIS_SIN_APLICACION;
+  if (idPlaga) return DOSIS_FRECUENCIA[`${idPlaga}|${idProducto}`] || DOSIS_DEFAULT;
+  // saneamiento: cualquier plaga que use este producto
+  const combo = Object.keys(DOSIS_FRECUENCIA).find(k => k.endsWith("|" + idProducto));
+  return combo ? DOSIS_FRECUENCIA[combo] : DOSIS_DEFAULT;
+}
+
+function applyDosisFrecuencia() {
+  const d = dosisPara(visita.id_plaga, visita.id_producto);
+  visita.dosis_aplicada = d.dosis;
+  visita.frecuencia_recomendada = d.frecuencia;
+  visita.puntos_criticos = d.puntos;
+  document.getElementById("dosisTxt").textContent = d.dosis;
+  document.getElementById("frecTxt").textContent = d.frecuencia;
+  document.getElementById("puntosTxt").textContent = d.puntos;
+}
+
+// ============================================================
+// MIPyV — m-seguridad (recomendaciones según producto)
+// ============================================================
+function renderSeguridad() {
+  const familias = FAMILIA_PRODUCTO[visita.id_producto] || ["general"];
+  const wrap = document.getElementById("seguridadCards");
+  wrap.innerHTML = familias.map(key => {
+    const f = RECOMENDACIONES_SEGURIDAD[key];
+    if (!f) return "";
+    return `<div class="seg-card"><h4>${f.titulo}</h4><ul>${f.items.map(i => `<li>${i}</li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+// ============================================================
+// MIPyV — m-epp / SANEAMIENTO — s-epp (con cantidad, ambos comparten lógica)
+// ============================================================
+const eppGrid = document.getElementById("eppGrid");
+const sEppGrid = document.getElementById("sEppGrid");
+
+// arma una grilla de EPP con stepper de cantidad; "getLista"/"setLista" leen y
+// escriben el arreglo [{nombre, cantidad}] correspondiente (visita o avance)
+function construirEppGrid(container, getLista, setLista) {
+  container.innerHTML = "";
+  const listaActual = getLista();
+  EPP.forEach(item => {
+    const existente = listaActual.find(x => x.nombre === item.nombre);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tile epp-tile" + (existente ? " selected" : "");
+    btn.innerHTML = `
+      <div class="epp-check"></div>
+      ${renderIcon(item.icono)}
+      <div class="label">${item.nombre}</div>
+      <div class="epp-qty">
+        <button type="button" class="epp-menos">−</button>
+        <span class="epp-cant">${existente ? existente.cantidad : 1}</span>
+        <button type="button" class="epp-mas">+</button>
+      </div>`;
+    btn.addEventListener("click", (e) => {
+      if (e.target.closest(".epp-qty")) return; // no togglear si tocó +/-
+      btn.classList.toggle("selected");
+      let lista = getLista();
+      if (btn.classList.contains("selected")) {
+        if (!lista.some(x => x.nombre === item.nombre)) lista = [...lista, { nombre: item.nombre, cantidad: 1 }];
+      } else {
+        lista = lista.filter(x => x.nombre !== item.nombre);
+      }
+      setLista(lista);
+      nextBtn.disabled = !canAdvance(stepList[stepIndex]);
+    });
+    btn.querySelector(".epp-mas").addEventListener("click", (e) => {
+      e.stopPropagation();
+      cambiarCantidadEpp(item.nombre, 1, getLista, setLista, btn);
+    });
+    btn.querySelector(".epp-menos").addEventListener("click", (e) => {
+      e.stopPropagation();
+      cambiarCantidadEpp(item.nombre, -1, getLista, setLista, btn);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function cambiarCantidadEpp(nombre, delta, getLista, setLista, btn) {
+  let lista = getLista();
+  const idx = lista.findIndex(x => x.nombre === nombre);
+  if (idx === -1) return;
+  const nuevaCantidad = Math.max(1, lista[idx].cantidad + delta);
+  lista = lista.map((x, i) => (i === idx ? { ...x, cantidad: nuevaCantidad } : x));
+  setLista(lista);
+  btn.querySelector(".epp-cant").textContent = nuevaCantidad;
+}
+
+function renderEppGrid() {
+  construirEppGrid(eppGrid, () => visita.epp_utilizado, (lista) => { visita.epp_utilizado = lista; });
+}
+function renderSEppGrid() {
+  construirEppGrid(sEppGrid, () => avance.epp_utilizado, (lista) => { avance.epp_utilizado = lista; });
+}
+
+// ============================================================
+// MIPyV — m-resultado
+// ============================================================
+document.querySelectorAll('[data-resultado]').forEach(btn => {
+  btn.onclick = () => {
+    visita.resultado = btn.dataset.resultado;
+    document.querySelectorAll('[data-resultado]').forEach(b => b.style.outline = "none");
+    btn.style.outline = "4px solid #0D313F";
+    nextBtn.disabled = false;
+    setTimeout(goNext, 200);
+  };
+});
+
+// ============================================================
+// MIPyV — m-foto (hasta 5 fotos)
+// ============================================================
+const fotoGrid = document.getElementById("fotoGrid");
+const photoInput = document.getElementById("photoInput");
+function renderFotoGrid() {
+  fotoGrid.innerHTML = "";
+  fotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    fotoGrid.appendChild(box);
+  });
+  if (fotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${fotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => photoInput.click();
+    fotoGrid.appendChild(addBox);
+  }
+  fotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      fotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderFotoGrid();
+    };
+  });
+}
+photoInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  photoInput.value = "";
+  if (!file) return;
+  try {
+    fotosDataUrls.push(await comprimirFoto(file));
+    renderFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
+});
+
+// ============================================================
+// COMPRESIÓN DE FOTOS — lado mayor 1280 px, JPEG calidad 0,7
+// (una foto de 3-6 MB queda en unos 200 KB)
+// ============================================================
+const FOTO_LADO_MAX = 1280;
+const FOTO_CALIDAD = 0.7;
+
+function comprimirFoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const escala = Math.min(1, FOTO_LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.round(img.naturalWidth * escala);
+        const h = Math.round(img.naturalHeight * escala);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", FOTO_CALIDAD));
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen ilegible")); };
+    img.src = url;
+  });
+}
+
+// ============================================================
+// MIPyV — m-obs (chips + notas de texto libre)
+// ============================================================
+const obsChips = document.getElementById("obsChips");
+const notasOperador = document.getElementById("notasOperador");
+let obsSeleccionadas = [];
+OBSERVACIONES_CHIPS.forEach(txt => {
+  const chip = document.createElement("button");
+  chip.className = "chip";
+  chip.textContent = txt;
+  chip.onclick = () => {
+    chip.classList.toggle("active");
+    if (chip.classList.contains("active")) obsSeleccionadas.push(txt);
+    else obsSeleccionadas = obsSeleccionadas.filter(x => x !== txt);
+    actualizarObservaciones();
+  };
+  obsChips.appendChild(chip);
+});
+notasOperador.addEventListener("input", actualizarObservaciones);
+function actualizarObservaciones() {
+  const partes = [...obsSeleccionadas];
+  if (notasOperador.value.trim()) partes.push(notasOperador.value.trim());
+  visita.observaciones = partes.join(" · ");
+}
+
+// ============================================================
+// MIPyV — m-confirm (resumen)
+// ============================================================
+function renderResumenMipyv() {
+  guardarHorarios(visita);
+  const rows = [
+    ["Operario", visita.operario],
+    ["Establecimiento", visita.establecimiento],
+    ["Sector", visita.sector],
+    ["Plaga", visita.tipo_plaga],
+    ["Producto", visita.producto],
+    ["Resultado", visita.resultado],
+    ["Horario", (visita.hora_inicio || "—") + " a " + (visita.hora_fin || "—")],
+  ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
+  if (visita.protocolo_existente) rows.splice(1, 0, ["Protocolo", visita.protocolo_existente + " (continuación)"]);
+  document.getElementById("summaryList").innerHTML = rows.map(([k, v]) => `
+    <div class="summary-card">
+      ${renderIcon("generic", 34)}
+      <div class="txt"><b>${k}</b><span>${v || "—"}</span></div>
+    </div>`).join("");
+}
+
+// ============================================================
+// SANEAMIENTO — s-tipo (nuevo / continuar)
+// ============================================================
+document.getElementById("sNuevoBtn").addEventListener("click", () => {
+  trabajo.esNuevo = true;
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "horario", "s-cierre", "s-confirm", "s-sent"];
+  stepIndex = stepList.indexOf("s-cap-nuevo");
+  showStep("s-cap-nuevo");
+});
+document.getElementById("sContinuarBtn").addEventListener("click", () => {
+  trabajo.esNuevo = false;
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "horario", "s-cierre", "s-confirm", "s-sent"];
+  stepIndex = stepList.indexOf("s-cap-continuar");
+  showStep("s-cap-continuar");
+});
+
+// ============================================================
+// SANEAMIENTO — s-cap-nuevo
+// ============================================================
+const capGridNuevo = document.getElementById("capGridNuevo");
+function renderCapsNuevo() {
+capGridNuevo.innerHTML = "";
+CAPS_SANEAMIENTO.forEach(cap => {
+  const btn = document.createElement("button");
+  btn.className = "tile";
+  btn.innerHTML = `${renderIcon("cap")}<div class="label">${cap.nombre}</div>`;
+  btn.onclick = () => {
+    trabajo.id_trabajo = "T-" + Date.now();
+    trabajo.id_establecimiento = cap.id;
+    trabajo.establecimiento = cap.nombre;
+    trabajo.fecha_inicio = new Date().toISOString();
+    trabajo.estado = "Abierto";
+    [...capGridNuevo.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  capGridNuevo.appendChild(btn);
+});
+}
+renderCapsNuevo();
+
+// ============================================================
+// SANEAMIENTO — s-cap-continuar
+// ============================================================
+const TRABAJOS_KEY = "mipyv_trabajos_abiertos_v1";
+function getTrabajosAbiertos() { return JSON.parse(localStorage.getItem(TRABAJOS_KEY) || "[]"); }
+function setTrabajosAbiertos(list) { localStorage.setItem(TRABAJOS_KEY, JSON.stringify(list)); }
+
+async function trabajosParaMostrar() {
+  const dePlanilla = leerCopia(TRABAJOS_PLANILLA_KEY);
+  if (!dePlanilla) return getTrabajosAbiertos(); // nunca se descargó: lista propia del celular
+  const lista = dePlanilla.map(t => ({ ...t }));
+  (await colaSegura()).forEach(it => {
+    const id = it.data && it.data.id_trabajo;
+    if (it.tipo === "trabajo_nuevo" && !lista.some(t => t.id_trabajo === id)) {
+      lista.push({ id_trabajo: id, id_establecimiento: it.data.id_establecimiento, establecimiento: it.data.establecimiento, fecha_inicio: it.data.fecha_inicio, estado: "Abierto" });
+    }
+    if (it.tipo === "cierre_trabajo") {
+      const idx = lista.findIndex(t => t.id_trabajo === id);
+      if (idx >= 0) lista.splice(idx, 1);
+    }
+  });
+  return lista;
+}
+
+function renderTrabajosAbiertos() {
+  pintarTrabajosAbiertos(); // muestra lo que ya hay en el celular, sin esperar
+  actualizarCatalogosDesdePlanilla().finally(pintarTrabajosAbiertos);
+}
+
+async function pintarTrabajosAbiertos() {
+  const list = await trabajosParaMostrar();
+  const wrap = document.getElementById("trabajosAbiertosList");
+  const msg = document.getElementById("sinTrabajosMsg");
+  wrap.innerHTML = "";
+  if (list.length === 0) { msg.style.display = "block"; return; }
+  msg.style.display = "none";
+  list.forEach(t => {
+    const card = document.createElement("button");
+    card.className = "job-card";
+    const fecha = new Date(t.fecha_inicio).toLocaleDateString("es-AR");
+    card.innerHTML = `<b>${t.establecimiento}</b><span>Iniciado ${fecha}</span>`;
+    card.onclick = () => {
+      trabajo = { ...t, esNuevo: false };
+      [...wrap.children].forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    wrap.appendChild(card);
+  });
+}
+
+// ============================================================
+// SANEAMIENTO — s-producto / s-seguridad / s-dosis (biocida, opcional)
+// ============================================================
+const sProductoGrid = document.getElementById("sProductoGrid");
+function renderSProductos() {
+sProductoGrid.innerHTML = "";
+PRODUCTOS.forEach(pr => {
+  const btn = document.createElement("button");
+  btn.className = "tile";
+  btn.innerHTML = `${renderIcon(pr.icono, null, pr.color)}<div class="label">${pr.nombre}</div>`;
+  btn.onclick = () => {
+    avance.id_producto_biocida = pr.id; avance.producto_biocida = pr.nombre;
+    [...sProductoGrid.children].forEach(c => c.classList.remove("selected"));
+    btn.classList.add("selected");
+    applyDosisFrecuenciaSaneamiento();
+    nextBtn.disabled = false;
+    setTimeout(goNext, 180);
+  };
+  sProductoGrid.appendChild(btn);
+});
+}
+renderSProductos();
+
+function applyDosisFrecuenciaSaneamiento() {
+  // usa la misma tabla de dosis, buscando cualquier plaga que use este producto
+  const d = dosisPara(null, avance.id_producto_biocida);
+  avance.dosis_biocida = d.dosis;
+  avance.frecuencia_biocida = d.frecuencia;
+  avance.puntos_criticos_biocida = d.puntos;
+  document.getElementById("sDosisTxt").textContent = d.dosis;
+  document.getElementById("sFrecTxt").textContent = d.frecuencia;
+}
+
+function renderSSeguridad() {
+  const familias = FAMILIA_PRODUCTO[avance.id_producto_biocida] || ["general"];
+  const wrap = document.getElementById("sSeguridadCards");
+  wrap.innerHTML = familias.map(key => {
+    const f = RECOMENDACIONES_SEGURIDAD[key];
+    if (!f) return "";
+    return `<div class="seg-card"><h4>${f.titulo}</h4><ul>${f.items.map(i => `<li>${i}</li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+// ============================================================
+// SANEAMIENTO — s-tareas
+// ============================================================
+const tareasGrid = document.getElementById("tareasGrid");
+const NOMBRE_TAREA_INSECTICIDA = "Saneamiento con insecticida doméstico";
+TAREAS_SANEAMIENTO.forEach(t => {
+  const btn = document.createElement("button");
+  btn.className = "tile multi";
+  btn.innerHTML = `<div class="epp-check"></div>${renderIcon(t.icono)}<div class="label">${t.nombre}</div>`;
+  btn.onclick = () => {
+    btn.classList.toggle("selected");
+    if (btn.classList.contains("selected")) avance.tareas.push(t.nombre);
+    else avance.tareas = avance.tareas.filter(x => x !== t.nombre);
+    actualizarPasosBiocidaSaneamiento();
+    nextBtn.disabled = !canAdvance("s-tareas");
+  };
+  tareasGrid.appendChild(btn);
+});
+
+// Inserta o saca los pasos de producto/seguridad/dosis del biocida, según
+// si se marcó la tarea de insecticida. Se llama cada vez que cambian las tareas.
+function actualizarPasosBiocidaSaneamiento() {
+  const pasosBiocida = ["s-producto", "s-seguridad", "s-dosis"];
+  const yaEstan = pasosBiocida.every(p => stepList.includes(p));
+  const necesitaBiocida = avance.tareas.includes(NOMBRE_TAREA_INSECTICIDA);
+  const idxEpp = stepList.indexOf("s-epp");
+  if (necesitaBiocida && !yaEstan) {
+    stepList.splice(idxEpp, 0, ...pasosBiocida);
+  } else if (!necesitaBiocida && yaEstan) {
+    stepList = stepList.filter(p => !pasosBiocida.includes(p));
+  }
+}
+
+// ============================================================
+// SANEAMIENTO — s-detalle (chips + foto)
+// ============================================================
+const detalleChips = document.getElementById("detalleChips");
+const detalleExtra = document.getElementById("detalleExtra");
+let detalleSeleccionados = [];
+DETALLE_CHIPS_SANEAMIENTO.forEach(txt => {
+  const chip = document.createElement("button");
+  chip.className = "chip";
+  chip.textContent = CHIPS_CON_DETALLE[txt] ? txt + " ❓" : txt;
+  chip.onclick = () => {
+    chip.classList.toggle("active");
+    if (chip.classList.contains("active")) detalleSeleccionados.push(txt);
+    else {
+      detalleSeleccionados = detalleSeleccionados.filter(x => x !== txt);
+      delete detalleExtraTextos[txt];
+    }
+    actualizarDetalleTexto();
+    renderDetalleExtra();
+    nextBtn.disabled = !canAdvance("s-detalle");
+  };
+  detalleChips.appendChild(chip);
+});
+
+function renderDetalleExtra() {
+  detalleExtra.innerHTML = "";
+  detalleSeleccionados.filter(txt => CHIPS_CON_DETALLE[txt]).forEach(txt => {
+    const box = document.createElement("div");
+    box.className = "detalle-extra-box";
+    box.innerHTML = `
+      <div class="lbl-extra">${CHIPS_CON_DETALLE[txt]}</div>
+      <textarea placeholder="Escribí acá...">${detalleExtraTextos[txt] || ""}</textarea>`;
+    box.querySelector("textarea").addEventListener("input", (e) => {
+      detalleExtraTextos[txt] = e.target.value;
+      actualizarDetalleTexto();
+      nextBtn.disabled = !canAdvance("s-detalle");
+    });
+    detalleExtra.appendChild(box);
+  });
+}
+
+function actualizarDetalleTexto() {
+  const partes = detalleSeleccionados.map(txt => {
+    const extra = detalleExtraTextos[txt];
+    return extra ? `${txt}: ${extra}` : txt;
+  });
+  avance.detalle = partes.join(" · ");
+}
+
+const sPhotoInput = document.getElementById("sPhotoInput");
+const sFotoGrid = document.getElementById("sFotoGrid");
+function renderSFotoGrid() {
+  sFotoGrid.innerHTML = "";
+  sFotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    sFotoGrid.appendChild(box);
+  });
+  if (sFotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${sFotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => sPhotoInput.click();
+    sFotoGrid.appendChild(addBox);
+  }
+  sFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      sFotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderSFotoGrid();
+    };
+  });
+}
+sPhotoInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  sPhotoInput.value = "";
+  if (!file) return;
+  try {
+    sFotosDataUrls.push(await comprimirFoto(file));
+    renderSFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
+});
+
+const notasSaneamiento = document.getElementById("notasSaneamiento");
+notasSaneamiento.addEventListener("input", () => {
+  avance.notas = notasSaneamiento.value.trim();
+});
+
+// ============================================================
+// SANEAMIENTO — s-cierre
+// ============================================================
+document.querySelectorAll('[data-cierre]').forEach(btn => {
+  btn.onclick = () => {
+    avance.cierre = btn.dataset.cierre;
+    document.querySelectorAll('[data-cierre]').forEach(b => b.style.outline = "none");
+    btn.style.outline = "4px solid #2E5233";
+    nextBtn.disabled = false;
+    setTimeout(goNext, 200);
+  };
+});
+
+// ============================================================
+// SANEAMIENTO — s-confirm
+// ============================================================
+function renderResumenSaneamiento() {
+  guardarHorarios(avance);
+  const rows = [
+    ["Operario", currentOperario ? currentOperario.nombre : "—"],
+    ["CAP", trabajo.establecimiento],
+    ["Tareas de hoy", avance.tareas.join(", ") || "—"],
+    ["Horario", (avance.hora_inicio || "—") + " a " + (avance.hora_fin || "—")],
+    ["Cierre", avance.cierre === "terminado" ? "Trabajo terminado" : "Continúa otro día"],
+  ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
+  document.getElementById("sSummaryList").innerHTML = rows.map(([k, v]) => `
+    <div class="summary-card">
+      ${renderIcon("generic", 34)}
+      <div class="txt"><b>${k}</b><span>${v || "—"}</span></div>
+    </div>`).join("");
+}
+
+// ============================================================
+// COLA OFFLINE + ENVÍO — MIPyV
+// ============================================================
+// La cola vive en IndexedDB (mucho más espacio que localStorage, que se
+// llenaba con una sola foto). Cada registro queda guardado hasta que el
+// servidor responde ok: true.
+const QUEUE_KEY = "mipyv_queue_v1"; // cola vieja en localStorage (se migra sola)
+const COLA_DB = "mipyv_db";
+const COLA_STORE = "cola";
+
+function abrirColaDB() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("sin IndexedDB")); return; }
+    const req = indexedDB.open(COLA_DB, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(COLA_STORE)) {
+        db.createObjectStore(COLA_STORE, { keyPath: "qid", autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function colaTx(modo, accion) {
+  const db = await abrirColaDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(COLA_STORE, modo);
+    const store = tx.objectStore(COLA_STORE);
+    let resultado;
+    accion(store, (r) => { resultado = r; });
+    tx.oncomplete = () => { db.close(); resolve(resultado); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+
+// Agrega uno o varios registros al final de la cola, en orden.
+async function colaAgregar(items) {
+  await colaTx("readwrite", (store) => {
+    items.forEach(it => store.add({ ...it, intentos: 0, ultimo_error: "", agregado: new Date().toISOString() }));
+  });
+  updateQueueBadge();
+}
+function colaListar() {
+  return colaTx("readonly", (store, set) => {
+    const req = store.getAll();
+    req.onsuccess = () => set(req.result || []);
+  });
+}
+function colaBorrar(qid) {
+  return colaTx("readwrite", (store) => { store.delete(qid); });
+}
+function colaActualizar(item) {
+  return colaTx("readwrite", (store) => { store.put(item); });
+}
+async function colaContar() {
+  try {
+    return await colaTx("readonly", (store, set) => {
+      const req = store.count();
+      req.onsuccess = () => set(req.result);
+    });
+  } catch (err) { return 0; }
+}
+
+// Pasa a IndexedDB lo que haya quedado en la cola vieja de localStorage.
+async function migrarColaVieja() {
+  let vieja = [];
+  try { vieja = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch (err) { vieja = []; }
+  if (!vieja.length) return;
+  await colaAgregar(vieja);
+  localStorage.removeItem(QUEUE_KEY);
+}
+
+async function guardarEnCola(items) {
+  try {
+    await colaAgregar(items);
+    return true;
+  } catch (err) {
+    alert("No se pudo guardar el registro en el celular. No cierres la app y avisale a Belén.");
+    return false;
+  }
+}
+
+async function sendVisita() {
+  guardarHorarios(visita);
+  const eppTexto = visita.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
+  const record = { ...visita, epp_utilizado: eppTexto, fotos_base64: fotosDataUrls, operario_acompanante: operarioAcompanante };
+  nextBtn.disabled = true;
+  const guardado = await guardarEnCola([{ tipo: "visita", data: record }]);
+  nextBtn.disabled = false;
+  if (!guardado) return;
+
+  // actualizar cache local de intervenciones abiertas
+  let abiertas = getIntervencionesAbiertas();
+  if (visita.resultado === "Resuelto" || visita.resultado === "No se pudo acceder al sector") {
+    if (visita.protocolo_existente) {
+      abiertas = abiertas.filter(iv => iv.protocolo !== visita.protocolo_existente);
+    }
+  } else if (visita.resultado === "Requiere otra visita") {
+    const protocoloClave = visita.protocolo_existente || "PENDIENTE-" + visita.id_visita;
+    const existente = abiertas.findIndex(iv => iv.protocolo === protocoloClave);
+    const registro = {
+      protocolo: protocoloClave,
+      id_establecimiento: visita.id_establecimiento,
+      establecimiento: visita.establecimiento,
+      tipo_establecimiento: visita.tipo_establecimiento,
+      id_plaga: visita.id_plaga,
+      tipo_plaga: visita.tipo_plaga,
+      sector: visita.sector,
+    };
+    if (existente >= 0) abiertas[existente] = registro; else abiertas.push(registro);
+  }
+  setIntervencionesAbiertas(abiertas);
+
+  document.getElementById("sentSub").textContent = navigator.onLine
+    ? "Visita registrada — sincronizando…"
+    : "Visita guardada en el celular — se enviará cuando haya señal";
+  stepIndex = stepList.length - 1;
+  showStep("m-sent");
+  trySync();
+}
+
+document.getElementById("newVisitBtn").addEventListener("click", () => {
+  resetVisita();
+  renderFotoGrid();
+  obsSeleccionadas = [];
+  notasOperador.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
+  [...obsChips.children].forEach(c => c.classList.remove("active"));
+  [...establecimientoGrid.children].forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll('[data-resultado]').forEach(b => b.style.outline = "none");
+  enterModule("mipyv");
+});
+
+// ============================================================
+// COLA OFFLINE + ENVÍO — SANEAMIENTO
+// ============================================================
+async function sendAvance() {
+  guardarHorarios(avance);
+  const eppTexto = avance.epp_utilizado.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
+  const record = {
+    id_avance: "A-" + Date.now(),
+    id_trabajo: trabajo.id_trabajo,
+    fecha: new Date().toISOString(),
+    id_operario: currentOperario.id,
+    operario: currentOperario.nombre,
+    id_establecimiento: trabajo.id_establecimiento,
+    establecimiento: trabajo.establecimiento,
+    tareas: avance.tareas,
+    detalle: avance.detalle,
+    notas: avance.notas || "",
+    epp_utilizado: eppTexto,
+    producto_biocida: avance.producto_biocida || "",
+    dosis_biocida: avance.dosis_biocida || "",
+    frecuencia_biocida: avance.frecuencia_biocida || "",
+    fotos_base64: sFotosDataUrls,
+    cierre: avance.cierre,
+    operario_acompanante: operarioAcompanante,
+    hora_inicio: avance.hora_inicio,
+    hora_fin: avance.hora_fin,
+    hora_inicio_acompanante: avance.hora_inicio_acompanante,
+    hora_fin_acompanante: avance.hora_fin_acompanante,
+  };
+
+  const q = [];
+  if (trabajo.esNuevo) {
+    const { esNuevo, ...datosTrabajo } = trabajo;
+    q.push({ tipo: "trabajo_nuevo", data: { ...datosTrabajo, operario_inicio: currentOperario.nombre } });
+  }
+  q.push({ tipo: "avance", data: record });
+  if (avance.cierre === "terminado") {
+    q.push({ tipo: "cierre_trabajo", data: { id_trabajo: trabajo.id_trabajo, fecha_fin: new Date().toISOString() } });
+  }
+
+  nextBtn.disabled = true;
+  const guardado = await guardarEnCola(q);
+  nextBtn.disabled = false;
+  if (!guardado) return;
+
+  let abiertos = getTrabajosAbiertos();
+  if (avance.cierre === "terminado") {
+    abiertos = abiertos.filter(t => t.id_trabajo !== trabajo.id_trabajo);
+  } else {
+    const idx = abiertos.findIndex(t => t.id_trabajo === trabajo.id_trabajo);
+    const trabajoParaCache = { id_trabajo: trabajo.id_trabajo, id_establecimiento: trabajo.id_establecimiento, establecimiento: trabajo.establecimiento, fecha_inicio: trabajo.fecha_inicio, estado: "Abierto" };
+    if (idx >= 0) abiertos[idx] = trabajoParaCache; else abiertos.push(trabajoParaCache);
+  }
+  setTrabajosAbiertos(abiertos);
+
+  document.getElementById("sSentSub").textContent = navigator.onLine
+    ? "Avance registrado — sincronizando…"
+    : "Avance guardado en el celular — se enviará cuando haya señal";
+  stepIndex = stepList.length - 1;
+  showStep("s-sent");
+  trySync();
+}
+
+document.getElementById("sNewBtn").addEventListener("click", () => {
+  resetSaneamiento();
+  renderSFotoGrid();
+  notasSaneamiento.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
+  detalleSeleccionados = [];
+  detalleExtra.innerHTML = "";
+  [...detalleChips.children].forEach(c => c.classList.remove("active"));
+  document.querySelectorAll(".tile.multi").forEach(c => c.classList.remove("selected"));
+  [...sProductoGrid.children].forEach(c => c.classList.remove("selected"));
+  document.querySelectorAll('[data-cierre]').forEach(b => b.style.outline = "none");
+  [...capGridNuevo.children].forEach(c => c.classList.remove("selected"));
+  enterModule("saneamiento");
+});
+
+
+// ============================================================
+// OTRAS TAREAS DE HIGIENE Y SEGURIDAD (hoja tareas_hys)
+// Pasos: tipo de tarea → lugares (uno o varios) → [extintores, solo en
+// "Control de extintores"] → qué hiciste + fotos → hallazgos y
+// observaciones → horario → confirmar. No pide plaga ni producto.
+// ============================================================
+let extAbierto = null;      // id del extintor que se está controlando (control de extintores)
+let altaAbierta = null;     // uid del extintor nuevo que se está cargando
+let tareaHys = {};
+let hFotosDataUrls = []; // hasta 5
+
+function resetTareaHys() {
+  tareaHys = { tipo_tarea: null, lugares: [], controles: {}, altas: [], ediciones: {}, detalle: "", hallazgos: "", observaciones: "" };
+  extAbierto = null; altaAbierta = null;
+  hFotosDataUrls = [];
+}
+resetTareaHys();
+
+const esTareaExtintores = (tipo) => /extintor|matafuego/i.test(tipo || "");
+const esTareaOtra = (tipo) => /^otra\b/i.test(String(tipo || "").trim());
+function emojiTarea(nombre) {
+  const n = String(nombre || "").toLowerCase();
+  const par = EMOJI_TAREA_HYS.find(([clave]) => n.includes(clave));
+  return par ? par[1] : "📋";
+}
+
+// --- h-tipo
+const tipoTareaGrid = document.getElementById("tipoTareaGrid");
+function renderTiposTarea() {
+  tipoTareaGrid.innerHTML = "";
+  TIPOS_TAREA_HYS.forEach(nombre => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tile" + (tareaHys.tipo_tarea === nombre ? " selected" : "");
+    btn.innerHTML = `<div class="emoji">${emojiTarea(nombre)}</div><div class="label">${nombre}</div>`;
+    btn.onclick = () => {
+      tareaHys.tipo_tarea = nombre;
+      armarPasosHys();
+      [...tipoTareaGrid.children].forEach(c => c.classList.remove("selected"));
+      btn.classList.add("selected");
+      nextBtn.disabled = false;
+      setTimeout(goNext, 180);
+    };
+    tipoTareaGrid.appendChild(btn);
+  });
+}
+renderTiposTarea();
+
+function armarPasosHys() {
+  stepList = ["quien", "acompanante", "h-tipo", "h-lugares"];
+  if (esTareaExtintores(tareaHys.tipo_tarea)) stepList.push("h-extintores");
+  stepList.push("h-detalle", "h-hallazgos", "horario", "h-confirm", "h-sent");
+  stepIndex = stepList.indexOf("h-tipo");
+}
+
+// --- h-lugares (varios a la vez)
+const hTipoChips = document.getElementById("hTipoChips");
+const hLugarGrid = document.getElementById("hLugarGrid");
+const hLugaresCuenta = document.getElementById("hLugaresCuenta");
+let hTipoFiltro = "Todos";
+TIPOS.forEach(t => {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip" + (t === "Todos" ? " active" : "");
+  chip.textContent = t === "CAP" ? "CAPS" : t;
+  chip.onclick = () => {
+    hTipoFiltro = t;
+    [...hTipoChips.children].forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    renderLugaresHys();
+  };
+  hTipoChips.appendChild(chip);
+});
+
+// Al empezar una tarea nueva: filtro de lugares en "Todos" y nada marcado.
+function reiniciarPantallasHys() {
+  hTipoFiltro = "Todos";
+  [...hTipoChips.children].forEach((c, i) => c.classList.toggle("active", i === 0));
+  renderTiposTarea();
+}
+
+function renderLugaresHys() {
+  hLugarGrid.innerHTML = "";
+  const iconFor = { Hospital: "hospital", Dependencia: "building", CAP: "cap" };
+  ESTABLECIMIENTOS.filter(e => hTipoFiltro === "Todos" || e.tipo === hTipoFiltro).forEach(est => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const marcado = tareaHys.lugares.some(l => l.id === est.id);
+    btn.className = "tile multi" + (marcado ? " selected" : "");
+    btn.innerHTML = `<div class="epp-check"></div>${renderIcon(iconFor[est.tipo])}<div class="label">${est.nombre}</div>`;
+    btn.onclick = () => {
+      if (tareaHys.lugares.some(l => l.id === est.id)) {
+        tareaHys.lugares = tareaHys.lugares.filter(l => l.id !== est.id);
+        btn.classList.remove("selected");
+      } else {
+        tareaHys.lugares.push({ id: est.id, nombre: est.nombre, tipo: est.tipo });
+        btn.classList.add("selected");
+      }
+      // mismo orden que la lista de establecimientos
+      const orden = ESTABLECIMIENTOS.map(e => e.id);
+      tareaHys.lugares.sort((a, b) => orden.indexOf(a.id) - orden.indexOf(b.id));
+      actualizarCuentaLugares();
+      nextBtn.disabled = !canAdvance("h-lugares");
+    };
+    hLugarGrid.appendChild(btn);
+  });
+  actualizarCuentaLugares();
+}
+function actualizarCuentaLugares() {
+  const n = tareaHys.lugares.length;
+  hLugaresCuenta.textContent = n === 0 ? "" : n === 1 ? "Elegiste 1 lugar: " + tareaHys.lugares[0].nombre
+    : `Elegiste ${n} lugares: ` + tareaHys.lugares.map(l => l.nombre).join(", ");
+}
+
+// --- h-extintores: control mensual de cada extintor (módulo 10 del sistema HyS)
+// La lista sale del inventario del sistema HyS (la manda el servidor con los catálogos).
+// Cada extintor: 5 preguntas Sí/No y 3 fotos obligatorias. Se manda al sistema HyS
+// (planilla PROTECCIÓN CONTRA INCENDIOS) como registros «control_extintor».
+const escX = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+let EXTINTORES_CAT = [];   // [{id, lugares:[id_establecimiento], nro, planta, sector, ubicacion, tipo, kg, inv, vto, ultimo}]
+const extintoresList = document.getElementById("extintoresList");
+const PREGUNTAS_EXTINTOR = [
+  ["EN_LUGAR", "¿Está en su lugar?"],
+  ["ACCESO_LIBRE", "¿Se puede agarrar fácil? (nada adelante)"],
+  ["MANOMETRO", "¿La aguja está en verde?"],
+  ["PRECINTO", "¿Tiene el precinto (el seguro)?"],
+  ["SENALIZACION", "¿Tiene el cartel?"],
+];
+const FOTOS_EXTINTOR = [
+  ["FOTO_PANORAMICA", "📷", "1. Foto de lejos", "Que se vea el extintor y todo alrededor"],
+  ["FOTO_MARBETE", "🏷️", "2. Foto de la tarjeta", "La tarjeta con la fecha, que se lea"],
+  ["FOTO_INVENTARIO", "🔢", "3. Foto del número", "La chapita con el número de inventario"],
+];
+let extFotoDestino = null;  // [id, campo] de la foto que se está sacando
+const extFotoInput = document.createElement("input");
+extFotoInput.type = "file"; extFotoInput.accept = "image/*"; extFotoInput.setAttribute("capture", "environment"); extFotoInput.style.display = "none";
+document.body.appendChild(extFotoInput);
+extFotoInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0]; extFotoInput.value = "";
+  if (!file || !extFotoDestino) return;
+  try {
+    const foto = await comprimirFoto(file);
+    if (extFotoDestino[0] === "alta") { const a = tareaHys.altas.find(x => x.uid === extFotoDestino[1]); if (a) a.fotos[extFotoDestino[2]] = foto; }
+    else { const [id, campo] = extFotoDestino; tareaHys.controles[id].fotos[campo] = foto; }
+    renderExtintores();
+  }
+  catch (err) { alert("No se pudo cargar la foto. Probá sacarla de nuevo."); }
+});
+function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k] = null); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = "");
+  const iso = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : "";
+  return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false }; }
+// Completo: 5 respuestas, 3 fotos y el vencimiento de la carga (o «No se lee»)
+function controlCompleto(c) { return !!c && PREGUNTAS_EXTINTOR.every(([k]) => c.resp[k] !== null) && FOTOS_EXTINTOR.every(([k]) => !!c.fotos[k]) && (!!c.vto || !!c.noSeLee); }
+function controlEmpezado(c) { return !!c && (PREGUNTAS_EXTINTOR.some(([k]) => c.resp[k] !== null) || FOTOS_EXTINTOR.some(([k]) => !!c.fotos[k])); }
+const extintoresDe = (idLugar) => EXTINTORES_CAT.filter(e => (e.lugares || []).indexOf(idLugar) >= 0);
+function extNombre(e) { const ed = tareaHys.ediciones && tareaHys.ediciones[e.id], nro = ed ? ed.NRO_EXTINTOR : e.nro; return (nro ? "N.º " + nro : e.id) + " · " + [e.tipo, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" "); }
+function extintoresListo() {
+  const cs = Object.keys(tareaHys.controles).map(k => tareaHys.controles[k]);
+  if (cs.some(c => controlEmpezado(c) && !controlCompleto(c))) return false;   // uno a medias
+  if (tareaHys.altas.some(a => !altaCompleta(a))) return false;                // un extintor nuevo a medias
+  const hayCatalogo = tareaHys.lugares.some(l => extintoresDe(l.id).length);
+  return cs.some(controlCompleto) || tareaHys.altas.length > 0 || Object.keys(tareaHys.ediciones).length > 0 || !hayCatalogo;
+}
+function renderExtintores() {
+  extintoresList.innerHTML = "";
+  const mes = new Date().toISOString().slice(0, 7);
+  tareaHys.lugares.forEach(l => {
+    const lista = extintoresDe(l.id);
+    const card = document.createElement("div");
+    card.className = "ext-card";
+    const hechos = lista.filter(e => controlCompleto(tareaHys.controles[e.id])).length;
+    let html = `<h4>🧯 ${l.nombre}</h4>`;
+    if (!lista.length) html += `<div class="ext-preg">No hay extintores cargados para este lugar. Si hay alguno, agregalo con el botón de abajo.</div>`;
+    else html += `<div class="step-sub" style="margin:0 0 8px">Controlaste ${hechos} de ${lista.length}. Tocá cada extintor.</div>`;
+    card.innerHTML = html;
+    lista.forEach(e => {
+      const c = tareaHys.controles[e.id], ok = controlCompleto(c), yaMes = String(e.ultimo || "").slice(0, 7) === mes;
+      const fila = document.createElement("button");
+      fila.type = "button";
+      fila.className = "ext-fila" + (ok ? " ok" : "") + (extAbierto === e.id ? " abierta" : "");
+      fila.innerHTML = `<span class="ext-ico">${ok ? "✅" : yaMes ? "☑️" : "🧯"}</span><span class="ext-txt"><b>${extNombre(e)}</b><small>${escX(tareaHys.ediciones[e.id] ? [tareaHys.ediciones[e.id].SECTOR, tareaHys.ediciones[e.id].UBICACION].filter(Boolean).join(" · ") : [e.sector, e.ubicacion].filter(Boolean).join(" · ")) || "&nbsp;"}</small>${tareaHys.ediciones[e.id] ? '<small class="ext-vto wa">✏️ Corregido (lo verifica Higiene y Seguridad)</small>' : ""}${avisoVto(e)}${yaMes && !ok ? "<small>Ya controlado este mes</small>" : ""}</span>`;
+      fila.onclick = () => { extAbierto = extAbierto === e.id ? null : e.id; altaAbierta = null; if (!tareaHys.controles[e.id]) tareaHys.controles[e.id] = controlVacio(e); renderExtintores(); };
+      card.appendChild(fila);
+      if (extAbierto === e.id) card.appendChild(panelControl(e, l));
+    });
+    // Extintores nuevos de este lugar (los que no estaban en la lista)
+    tareaHys.altas.filter(a => a.lugar.id === l.id).forEach(a => {
+      const ok = altaCompleta(a), fila = document.createElement("button");
+      fila.type = "button";
+      fila.className = "ext-fila nuevo" + (ok ? " ok" : "") + (altaAbierta === a.uid ? " abierta" : "");
+      fila.innerHTML = `<span class="ext-ico">${ok ? "✅" : "➕"}</span><span class="ext-txt"><b>Extintor nuevo${a.datos.TIPO ? " · " + escX(a.datos.TIPO) : ""}${a.datos.CAPACIDAD_KG ? " " + escX(a.datos.CAPACIDAD_KG) + " kg" : ""}</b><small>${escX([a.datos.SECTOR, a.datos.UBICACION].filter(Boolean).join(" · ")) || "Completá los datos y sacá las 3 fotos"}</small></span>`;
+      fila.onclick = () => { altaAbierta = altaAbierta === a.uid ? null : a.uid; extAbierto = null; renderExtintores(); };
+      card.appendChild(fila);
+      if (altaAbierta === a.uid) card.appendChild(panelAlta(a));
+    });
+    const mas = document.createElement("button");
+    mas.type = "button"; mas.className = "ext-agregar";
+    mas.innerHTML = "➕ Agregar un extintor que no está en la lista";
+    mas.onclick = () => { const a = altaVacia(l); tareaHys.altas.push(a); altaAbierta = a.uid; extAbierto = null; renderExtintores(); };
+    card.appendChild(mas);
+    extintoresList.appendChild(card);
+  });
+  nextBtn.disabled = !canAdvance("h-extintores");
+}
+function panelControl(e, l) {
+  const c = tareaHys.controles[e.id];
+  const panel = document.createElement("div");
+  panel.className = "ext-panel";
+  const ed = tareaHys.ediciones[e.id];
+  let html = `<button type="button" class="ext-editar">✏️ ${ed ? "Corrección guardada · tocá para cambiarla" : "Corregir el nombre o dónde está"}</button>`;
+  if (c.editando) {
+    const v = ed || { NRO_EXTINTOR: e.nro || "", lugar_id: l.id, PLANTA: e.planta || "", SECTOR: e.sector || "", UBICACION: e.ubicacion || "" };
+    c.borrador = c.borrador || Object.assign({}, v);
+    const b = c.borrador;
+    html += `<div class="ext-edicion"><div class="ext-preg">Nombre o N.º del extintor</div><input class="ext-inp" data-ed="NRO_EXTINTOR" value="${escX(b.NRO_EXTINTOR)}" placeholder="Ej.: 12, o Extintor del office">
+      <div class="ext-preg">¿En qué lugar está?</div><select class="ext-inp" data-ed="lugar_id">${ESTABLECIMIENTOS.map(x => `<option value="${escX(x.id)}"${x.id === b.lugar_id ? " selected" : ""}>${escX(x.nombre)}</option>`).join("")}</select>
+      <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${["Baja", "Alta", "Subsuelo", "Única"].map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${x}">${x}</button>`).join("")}</div>
+      <div class="ext-preg">Sector o servicio</div><input class="ext-inp" data-ed="SECTOR" value="${escX(b.SECTOR)}">
+      <div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-ed="UBICACION" value="${escX(b.UBICACION)}">
+      <button type="button" class="ext-listo ext-ed-ok">Guardar la corrección</button><button type="button" class="ext-quitar ext-ed-no">${ed ? "Deshacer la corrección" : "Cancelar"}</button></div>`;
+  }
+  PREGUNTAS_EXTINTOR.forEach(([k, preg]) => {
+    html += `<div class="ext-preg">${preg}</div><div class="sino" data-campo="${k}">
+      <button type="button" class="si${c.resp[k] === "Sí" ? " on" : ""}" data-valor="Sí">Sí</button>
+      <button type="button" class="no${c.resp[k] === "No" ? " on" : ""}" data-valor="No">No</button></div>`;
+  });
+  html += `<div class="ext-preg" style="margin-top:16px">Sacá las 3 fotos</div><div class="ext-fotos">`;
+  FOTOS_EXTINTOR.forEach(([k, ico, tit, ayuda]) => {
+    html += c.fotos[k]
+      ? `<button type="button" class="ext-foto lista" data-foto="${k}"><img src="${c.fotos[k]}" alt="${tit}"><b>${tit}</b><small>Lista · tocá para sacarla de nuevo</small></button>`
+      : `<button type="button" class="ext-foto" data-foto="${k}"><span class="ext-foto-ico">${ico}</span><b>${tit}</b><small>${ayuda}</small></button>`;
+  });
+  html += `</div><div class="ext-preg" style="margin-top:16px">¿Hasta cuándo dura la carga? (mirá la tarjeta)</div>
+    <input class="ext-inp ext-vto-inp" type="date" value="${escX(c.vto)}"${c.noSeLee ? " disabled" : ""}>
+    <label class="ext-chk"><input type="checkbox" class="ext-nose"${c.noSeLee ? " checked" : ""}> La tarjeta no se lee o no tiene</label>
+    <div class="ext-preg">¿Hasta cuándo vale la prueba hidráulica? (si figura)</div>
+    <input class="ext-inp ext-ph-inp" type="date" value="${escX(c.ph)}">
+    <div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(c.obs || "")}</textarea>`;
+  html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${controlCompleto(c) ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"}</button>`;
+  panel.innerHTML = html;
+  panel.querySelector(".ext-com").oninput = (ev) => { c.obs = ev.target.value; };
+  const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = ok ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  panel.querySelector(".ext-vto-inp").onchange = panel.querySelector(".ext-vto-inp").oninput = (ev) => { c.vto = ev.target.value; actListo(); };
+  panel.querySelector(".ext-ph-inp").onchange = panel.querySelector(".ext-ph-inp").oninput = (ev) => { c.ph = ev.target.value; };
+  panel.querySelector(".ext-nose").onchange = (ev) => { c.noSeLee = ev.target.checked; renderExtintores(); };
+  panel.querySelectorAll(".sino").forEach(grupo => grupo.querySelectorAll("button").forEach(b => {
+    b.onclick = () => { c.resp[grupo.dataset.campo] = b.dataset.valor; renderExtintores(); };
+  }));
+  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = [e.id, b.dataset.foto]; extFotoInput.click(); }; });
+  panel.querySelector(".ext-listo:not(.ext-ed-ok)").onclick = () => { if (controlCompleto(c)) { extAbierto = null; renderExtintores(); } };
+  // Corrección del nombre y la ubicación (queda pendiente de verificar por Higiene y Seguridad)
+  panel.querySelector(".ext-editar").onclick = () => { c.editando = !c.editando; c.borrador = null; renderExtintores(); };
+  if (c.editando) {
+    const b = c.borrador;
+    panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; }; });
+    panel.querySelectorAll(".ext-opc[data-ed] button").forEach(x => { x.onclick = () => { b.PLANTA = x.dataset.valor; renderExtintores(); }; });
+    panel.querySelector(".ext-ed-ok").onclick = () => {
+      if (!String(b.SECTOR || "").trim() || !String(b.UBICACION || "").trim()) { alert("El sector y dónde está no pueden quedar vacíos."); return; }
+      const lug = ESTABLECIMIENTOS.find(x => x.id === b.lugar_id);
+      tareaHys.ediciones[e.id] = Object.assign({}, b, { lugar_nombre: lug ? lug.nombre : b.lugar_id });
+      c.editando = false; c.borrador = null; renderExtintores();
+    };
+    panel.querySelector(".ext-ed-no").onclick = () => { delete tareaHys.ediciones[e.id]; c.editando = false; c.borrador = null; renderExtintores(); };
+  }
+  return panel;
+}
+
+// Aviso de vencimiento de la carga en la fila del extintor (vencida, o 30 días antes)
+function avisoVto(e) {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(e.vto || "")) return "";
+  const hoy = new Date().toISOString().slice(0, 10), lim = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10), f = e.vto.slice(8, 10) + "/" + e.vto.slice(5, 7) + "/" + e.vto.slice(0, 4);
+  if (e.vto < hoy) return `<small class="ext-vto er">⚠️ Carga vencida (${f})</small>`;
+  if (e.vto <= lim) return `<small class="ext-vto wa">⏰ La carga vence el ${f}</small>`;
+  return "";
+}
+
+// --- Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios.
+// Se manda al sistema HyS (módulo 10, hoja EXTINTORES) como registro «alta_extintor».
+const CAMPOS_ALTA = [
+  ["PLANTA", "¿En qué planta está?", "botones", ["Baja", "Alta", "Subsuelo", "Única"]],
+  ["SECTOR", "Sector o servicio", "texto", "Ej.: Guardia, sala de espera"],
+  ["UBICACION", "¿Dónde está exactamente?", "texto", "Ej.: en la pared, al lado de la puerta"],
+  ["TIPO", "Tipo (está escrito en el extintor)", "botones", ["ABC", "BC", "K", "Otro"]],
+  ["AGENTE", "¿Qué tiene adentro?", "botones", ["PQS", "CO2", "Agua", "AFFF (espuma)", "HCFC 123", "Acetato de potasio"]],
+  ["CAPACIDAD_KG", "¿De cuántos kilos?", "numero", "Ej.: 5"],
+  ["NRO_INVENTARIO", "N.º de inventario (la chapita)", "texto", "Si no tiene, escribí s/d"],
+  ["VTO_CARGA", "¿Hasta cuándo dura la carga? (está en la tarjeta)", "fecha", ""],
+  ["NRO_EXTINTOR", "N.º del extintor (opcional)", "texto", "Si tiene un número pintado o en un cartel", true],
+];
+let altaN = 0;
+function altaVacia(l) { const d = {}; CAMPOS_ALTA.forEach(([k]) => d[k] = ""); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = ""); return { uid: "A" + (++altaN) + "-" + Date.now(), lugar: { id: l.id, nombre: l.nombre }, datos: d, fotos: f, obs: "" }; }
+function altaCompleta(a) { return CAMPOS_ALTA.every(([k, , , , opc]) => opc || String(a.datos[k] || "").trim()) && FOTOS_EXTINTOR.every(([k]) => !!a.fotos[k]); }
+function panelAlta(a) {
+  const panel = document.createElement("div");
+  panel.className = "ext-panel";
+  let html = `<div class="step-sub" style="margin:8px 0 0">Completá todo y sacá las 3 fotos. Es obligatorio.</div>`;
+  CAMPOS_ALTA.forEach(([k, tit, tipo, x]) => {
+    html += `<div class="ext-preg">${tit}</div>`;
+    if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + x.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
+    else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : tipo === "numero" ? "number" : "text"}"${tipo === "numero" ? ' inputmode="decimal" step="any"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
+  });
+  html += `<div class="ext-preg" style="margin-top:16px">Sacá las 3 fotos</div><div class="ext-fotos">`;
+  FOTOS_EXTINTOR.forEach(([k, ico, tit, ayuda]) => {
+    html += a.fotos[k]
+      ? `<button type="button" class="ext-foto lista" data-foto="${k}"><img src="${a.fotos[k]}" alt="${tit}"><b>${tit}</b><small>Lista · tocá para sacarla de nuevo</small></button>`
+      : `<button type="button" class="ext-foto" data-foto="${k}"><span class="ext-foto-ico">${ico}</span><b>${tit}</b><small>${ayuda}</small></button>`;
+  });
+  html += `</div><div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(a.obs || "")}</textarea>`;
+  html += `<button type="button" class="ext-listo"${altaCompleta(a) ? "" : " disabled"}>${altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"}</button>`;
+  html += `<button type="button" class="ext-quitar">Quitar este extintor nuevo</button>`;
+  panel.innerHTML = html;
+  const boton = panel.querySelector(".ext-listo");
+  const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = ok ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
+  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
+  panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
+  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; extFotoInput.click(); }; });
+  boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
+  panel.querySelector(".ext-quitar").onclick = () => { if (confirm("¿Quitar este extintor nuevo? Se borra lo que cargaste.")) { tareaHys.altas = tareaHys.altas.filter(x => x !== a); altaAbierta = null; renderExtintores(); } };
+  return panel;
+}
+function altaNombre(a) { return "Nuevo · " + [a.datos.TIPO, a.datos.AGENTE, a.datos.CAPACIDAD_KG ? a.datos.CAPACIDAD_KG + " kg" : ""].filter(Boolean).join(" ") + " · " + [a.datos.SECTOR, a.datos.UBICACION].filter(Boolean).join(", ") + " · inventario " + a.datos.NRO_INVENTARIO; }
+
+// Texto del control de extintores: una línea por extintor controlado (va a "detalle")
+// y lo que está mal (va a "hallazgos").
+function textoExtintores() {
+  const lineas = [], problemas = [];
+  tareaHys.lugares.forEach(l => {
+    extintoresDe(l.id).forEach(e => {
+      const c = tareaHys.controles[e.id]; if (!controlCompleto(c)) return;
+      const fx = (v) => v ? v.split("-").reverse().join("/") : "";
+      lineas.push(`${l.nombre} · ${extNombre(e)} (${e.id}): ` + PREGUNTAS_EXTINTOR.map(([k, p]) => p.replace(/[¿?]/g, "").replace(/ \(.*\)/, "") + " " + c.resp[k]).join(" · ") + " · carga hasta " + (c.noSeLee ? "no se lee" : fx(c.vto)) + (c.ph ? " · prueba hidráulica hasta " + fx(c.ph) : "") + " · 3 fotos" + (c.obs && c.obs.trim() ? " · Comentario: " + c.obs.trim() : ""));
+      const hoyIso = new Date().toISOString().slice(0, 10);
+      if (!c.noSeLee && c.vto && c.vto < hoyIso) problemas.push(`${l.nombre} · ${extNombre(e)}: carga vencida (${fx(c.vto)})`);
+      if (c.noSeLee) problemas.push(`${l.nombre} · ${extNombre(e)}: la tarjeta no se lee o no tiene`);
+      const mal = PREGUNTAS_EXTINTOR.filter(([k]) => c.resp[k] === "No").map(([, p]) => "No: " + p.replace(/[¿?]/g, "").replace(/ \(.*\)/, "").toLowerCase());
+      if (mal.length) problemas.push(`${l.nombre} · ${extNombre(e)}: ${mal.join("; ")}`);
+    });
+    extintoresDe(l.id).forEach(e => { const ed = tareaHys.ediciones[e.id]; if (!ed) return;
+      lineas.push(`${l.nombre} · ${e.id}: corrección de nombre o ubicación → ` + [ed.NRO_EXTINTOR ? "N.º " + ed.NRO_EXTINTOR : "", ed.lugar_nombre, ed.PLANTA ? "planta " + ed.PLANTA.toLowerCase() : "", ed.SECTOR, ed.UBICACION].filter(Boolean).join(" · "));
+    });
+    tareaHys.altas.filter(a => a.lugar.id === l.id && altaCompleta(a)).forEach(a => {
+      lineas.push(`${l.nombre} · ${altaNombre(a)}: agregado al inventario con 3 fotos` + (a.obs && a.obs.trim() ? " · Comentario: " + a.obs.trim() : ""));
+    });
+  });
+  return { lineas, problemas };
+}
+// Registros para el sistema HyS (uno por extintor controlado)
+function registrosControlExtintores(idTarea) {
+  const out = [];
+  Object.keys(tareaHys.controles).forEach((id, i) => {
+    const c = tareaHys.controles[id]; if (!controlCompleto(c)) return;
+    const d = { id_control: idTarea + "-E" + (i + 1), id_tarea: idTarea, ID_EXTINTOR: id, fecha: new Date().toISOString(),
+      operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => c.fotos[k]), OBSERVACIONES: (c.obs || "").trim(),
+      VTO_CARGA: c.noSeLee ? "s/d (no se lee)" : c.vto, PRUEBA_HIDRAULICA_VENCE: c.ph || "" };
+    PREGUNTAS_EXTINTOR.forEach(([k]) => d[k] = c.resp[k]);
+    out.push({ tipo: "control_extintor", data: d });
+  });
+  return out;
+}
+// Registros de las correcciones de nombre o ubicación (una por extintor)
+function registrosEdicionExtintores(idTarea) {
+  return Object.keys(tareaHys.ediciones).map((id, i) => {
+    const ed = tareaHys.ediciones[id];
+    return { tipo: "editar_extintor", data: { id_edit: idTarea + "-C" + (i + 1), id_tarea: idTarea, ID_EXTINTOR: id, NRO_EXTINTOR: ed.NRO_EXTINTOR, PLANTA: ed.PLANTA, SECTOR: ed.SECTOR, UBICACION: ed.UBICACION,
+      lugar_id: ed.lugar_id, lugar_nombre: ed.lugar_nombre, fecha: new Date().toISOString(), operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "" } };
+  });
+}
+// Registros de los extintores agregados (uno por extintor nuevo)
+function registrosAltaExtintores(idTarea) {
+  return tareaHys.altas.filter(altaCompleta).map((a, i) => {
+    const d = Object.assign({ id_alta: idTarea + "-A" + (i + 1), id_tarea: idTarea, lugar_id: a.lugar.id, lugar_nombre: a.lugar.nombre, fecha: new Date().toISOString(),
+      operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos);
+    return { tipo: "alta_extintor", data: d };
+  });
+}
+
+// --- h-detalle (qué hiciste + fotos)
+const hDetalle = document.getElementById("hDetalle");
+const hDetalleSub = document.getElementById("hDetalleSub");
+const hDetalleAviso = document.getElementById("hDetalleAviso");
+// En control de extintores lo escrito es opcional (ya está todo contestado).
+// En las demás tareas hay que escribir qué se hizo.
+function detalleObligatorioHys() { return !esTareaExtintores(tareaHys.tipo_tarea); }
+function validarDetalleHys() {
+  const ok = !detalleObligatorioHys() || tareaHys.detalle.trim().length > 0;
+  hDetalleAviso.style.display = ok || !hDetalle.dataset.tocado ? "none" : "block";
+  return ok;
+}
+function prepararDetalleHys() {
+  hDetalle.value = tareaHys.detalle;
+  delete hDetalle.dataset.tocado;
+  hDetalleAviso.style.display = "none";
+  if (esTareaExtintores(tareaHys.tipo_tarea)) {
+    hDetalleSub.textContent = "Opcional — si querés contar algo más, escribilo acá";
+    hDetalle.placeholder = "Ej.: se cambió de lugar un extintor, se avisó a mantenimiento...";
+  } else if (esTareaOtra(tareaHys.tipo_tarea)) {
+    hDetalleSub.textContent = "Obligatorio — escribí qué tarea hiciste";
+    hDetalle.placeholder = "Ej.: se armó el sector para la capacitación...";
+  } else {
+    hDetalleSub.textContent = "Obligatorio — contalo con tus palabras";
+    hDetalle.placeholder = "Escribí acá qué hiciste...";
+  }
+  renderHFotoGrid();
+  nextBtn.disabled = !canAdvance("h-detalle");
+}
+hDetalle.addEventListener("input", () => {
+  tareaHys.detalle = hDetalle.value;
+  hDetalle.dataset.tocado = "1";
+  nextBtn.disabled = !canAdvance("h-detalle");
+});
+
+const hFotoGrid = document.getElementById("hFotoGrid");
+const hPhotoInput = document.getElementById("hPhotoInput");
+function renderHFotoGrid() {
+  hFotoGrid.innerHTML = "";
+  hFotosDataUrls.forEach((url, i) => {
+    const box = document.createElement("div");
+    box.className = "foto-slot filled";
+    box.innerHTML = `<img src="${url}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button>`;
+    hFotoGrid.appendChild(box);
+  });
+  if (hFotosDataUrls.length < 5) {
+    const addBox = document.createElement("button");
+    addBox.type = "button";
+    addBox.className = "foto-slot add";
+    addBox.innerHTML = `<span>+</span><small>${hFotosDataUrls.length}/5</small>`;
+    addBox.onclick = () => hPhotoInput.click();
+    hFotoGrid.appendChild(addBox);
+  }
+  hFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      hFotosDataUrls.splice(Number(btn.dataset.i), 1);
+      renderHFotoGrid();
+    };
+  });
+}
+hPhotoInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  hPhotoInput.value = "";
+  if (!file) return;
+  try {
+    hFotosDataUrls.push(await comprimirFoto(file));
+    renderHFotoGrid();
+  } catch (err) {
+    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
+  }
+});
+
+// --- h-hallazgos (problemas + observaciones, los dos opcionales)
+const hHallazgos = document.getElementById("hHallazgos");
+const hObservaciones = document.getElementById("hObservaciones");
+const hAutoHallazgos = document.getElementById("hAutoHallazgos");
+function prepararHallazgosHys() {
+  hHallazgos.value = tareaHys.hallazgos;
+  hObservaciones.value = tareaHys.observaciones;
+  const auto = esTareaExtintores(tareaHys.tipo_tarea) ? textoExtintores().problemas : [];
+  hAutoHallazgos.style.display = auto.length ? "block" : "none";
+  hAutoHallazgos.textContent = auto.length ? "Ya quedó anotado:\n" + auto.join("\n") : "";
+}
+hHallazgos.addEventListener("input", () => { tareaHys.hallazgos = hHallazgos.value; });
+hObservaciones.addEventListener("input", () => { tareaHys.observaciones = hObservaciones.value; });
+
+// Arma el registro tal como va a la hoja tareas_hys.
+function registroTareaHys() {
+  const ext = esTareaExtintores(tareaHys.tipo_tarea) ? textoExtintores() : { lineas: [], problemas: [] };
+  const detalle = ext.lineas.concat(tareaHys.detalle.trim() ? [tareaHys.detalle.trim()] : []).join("\n");
+  const hallazgos = ext.problemas.concat(tareaHys.hallazgos.trim() ? [tareaHys.hallazgos.trim()] : []).join("\n");
+  return {
+    id_tarea: tareaHys.id_tarea || (tareaHys.id_tarea = "H-" + Date.now()),
+    fecha: new Date().toISOString(),
+    id_operario: currentOperario ? currentOperario.id : "",
+    operario: currentOperario ? currentOperario.nombre : "",
+    operario_acompanante: operarioAcompanante || "",
+    hora_inicio: horaInicioEl.value || "",
+    hora_fin: horaFinEl.value || "",
+    id_establecimiento: tareaHys.lugares.map(l => l.id).join(" | "),
+    establecimiento: tareaHys.lugares.map(l => l.nombre).join(" | "),
+    tipo_tarea: tareaHys.tipo_tarea,
+    detalle,
+    hallazgos,
+    observaciones: tareaHys.observaciones.trim(),
+    fotos_base64: hFotosDataUrls,
+  };
+}
+
+// --- h-confirm
+function renderResumenHys() {
+  const r = registroTareaHys();
+  const rows = [
+    ["Operario", r.operario],
+    ["Tarea", r.tipo_tarea],
+    ["Lugares", tareaHys.lugares.map(l => l.nombre).join(", ")],
+    ["Qué hiciste", r.detalle || "—"],
+    ["Problemas", r.hallazgos || "Ninguno"],
+    ["Fotos", hFotosDataUrls.length ? hFotosDataUrls.length + " foto(s)" : "Sin fotos"],
+    ["Horario", (r.hora_inicio || "—") + " a " + (r.hora_fin || "—")],
+  ];
+  if (operarioAcompanante) rows.splice(1, 0, ["Trabajó junto con", operarioAcompanante]);
+  if (esTareaExtintores(r.tipo_tarea)) rows.splice(3, 0, ["Extintores controlados", Object.keys(tareaHys.controles).filter(k => controlCompleto(tareaHys.controles[k])).length + " (cada uno con 3 fotos)"]);
+  if (esTareaExtintores(r.tipo_tarea) && Object.keys(tareaHys.ediciones).length) rows.splice(4, 0, ["Extintores corregidos", Object.keys(tareaHys.ediciones).length + " (nombre o ubicación)"]);
+  if (esTareaExtintores(r.tipo_tarea) && tareaHys.altas.length) rows.splice(4, 0, ["Extintores agregados", tareaHys.altas.filter(altaCompleta).length + " (con sus datos y 3 fotos)"]);
+  const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+  document.getElementById("hSummaryList").innerHTML = rows.map(([k, v]) => `
+    <div class="summary-card">
+      ${renderIcon("generic", 34)}
+      <div class="txt"><b>${k}</b><span>${esc(v || "—")}</span></div>
+    </div>`).join("");
+}
+
+// --- envío
+async function sendTareaHys() {
+  const record = registroTareaHys();
+  nextBtn.disabled = true;
+  const controles = esTareaExtintores(tareaHys.tipo_tarea) ? registrosAltaExtintores(record.id_tarea).concat(registrosEdicionExtintores(record.id_tarea), registrosControlExtintores(record.id_tarea)) : [];
+  const guardado = await guardarEnCola(controles.concat([{ tipo: "tarea_hys", data: record }]));
+  nextBtn.disabled = false;
+  if (!guardado) return;
+  document.getElementById("hSentSub").textContent = navigator.onLine
+    ? "Tarea registrada — sincronizando…"
+    : "Tarea guardada en el celular — se enviará cuando haya señal";
+  stepIndex = stepList.length - 1;
+  showStep("h-sent");
+  trySync();
+}
+
+document.getElementById("hNewBtn").addEventListener("click", () => {
+  resetTareaHys();
+  hDetalle.value = ""; hHallazgos.value = ""; hObservaciones.value = "";
+  horaInicioEl.value = ""; horaFinEl.value = "";
+  horaInicioAcompEl.value = ""; horaFinAcompEl.value = "";
+  renderTiposTarea();
+  enterModule("hys");
+});
+
+// ============================================================
+// SINCRONIZACIÓN
+// ============================================================
+async function updateQueueBadge() {
+  const n = await colaContar();
+  const badge = document.getElementById("queueBadge");
+  if (n > 0) { badge.textContent = n + " sin enviar"; badge.classList.add("show"); }
+  else { badge.classList.remove("show"); }
+}
+
+// Envía un registro y devuelve la respuesta del servidor ({ ok, error }).
+// Si no hay red o el servidor no contesta, lanza un error.
+async function enviarRegistro(item) {
+  const { qid, intentos, ultimo_error, agregado, ...paraEnviar } = item;
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 90000); // 90 s máximo por registro
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(paraEnviar),
+      signal: ctrl.signal,
+    });
+    const texto = await res.text();
+    try { return JSON.parse(texto); }
+    catch (err) { return { ok: false, error: "Respuesta no válida del servidor" }; }
+  } finally {
+    clearTimeout(corte);
+  }
+}
+
+let sincronizando = false;
+// manual = true cuando el operario toca "Sincronizar" (muestra aviso aunque no haya nada)
+async function trySync(manual) {
+  if (sincronizando) return;
+  if (!navigator.onLine) { await updateQueueBadge(); return; }
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
+
+  let cola;
+  try { cola = await colaListar(); } catch (err) { return; }
+  if (cola.length === 0) { if (manual) showSyncFeedback("Ya está todo sincronizado"); return; }
+
+  sincronizando = true;
+  const syncBtn = document.getElementById("syncBtn");
+  const originalLabel = syncBtn.textContent;
+  syncBtn.textContent = "Enviando…";
+
+  let enviados = 0;
+  let sinRed = false;
+  // Si falla algo de un trabajo de saneamiento, lo que sigue de ese mismo
+  // trabajo espera (para que el cierre no llegue antes que el inicio).
+  const trabajosTrabados = new Set();
+
+  for (const item of cola) {
+    const idTrabajo = item.data && item.data.id_trabajo;
+    if (idTrabajo && trabajosTrabados.has(idTrabajo)) continue;
+    try {
+      const resp = await enviarRegistro(item);
+      if (resp && resp.ok === true) {
+        await colaBorrar(item.qid);
+        enviados++;
+      } else {
+        item.intentos = (item.intentos || 0) + 1;
+        item.ultimo_error = (resp && resp.error) || "Error desconocido";
+        await colaActualizar(item);
+        if (idTrabajo) trabajosTrabados.add(idTrabajo);
+      }
+    } catch (err) {
+      // sin señal real o el servidor no contestó: se corta y se reintenta después
+      console.warn("Sin conexión o sin respuesta del servidor; se reintenta después.", err);
+      sinRed = true;
+      break;
+    }
+    await updateQueueBadge();
+  }
+
+  syncBtn.textContent = originalLabel;
+  sincronizando = false;
+  const quedan = await colaContar();
+  if (enviados > 0) actualizarCatalogosDesdePlanilla(); // refrescar listas abiertas
+  if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enviados} registro(s)`);
+  else if (sinRed) showSyncFeedback(`Sin señal — quedan ${quedan} pendientes, se reintenta solo`);
+  else showSyncFeedback(`Quedan ${quedan} pendientes — se reintenta más tarde`);
+}
+
+function showSyncFeedback(msg) {
+  const badge = document.getElementById("queueBadge");
+  badge.textContent = msg;
+  badge.classList.add("show");
+  setTimeout(() => { updateQueueBadge(); }, 2500);
+}
+
+document.getElementById("syncBtn").addEventListener("click", () => trySync(true));
+window.addEventListener("online", () => { setNetDot(true); trySync(); });
+window.addEventListener("offline", () => setNetDot(false));
+
+function setNetDot(online) {
+  document.getElementById("netDot").classList.toggle("offline", !online);
+}
+
+// ============================================================
+// AYUDA — botón "?" con explicación simple de la pantalla actual
+// ============================================================
+async function showHelp() {
+  const pasoActual = currentModule ? stepList[stepIndex] : "home";
+  const texto = AYUDA_TEXTOS[pasoActual] || "Tocá las imágenes grandes para avanzar. Si tenés dudas, preguntale a Belén.";
+  const helpText = document.getElementById("helpText");
+  helpText.textContent = texto;
+  // pie de la ayuda: versión y, en el inicio, el estado de lo pendiente
+  const pie = document.createElement("div");
+  pie.style.cssText = "margin-top:14px; font-size:.8rem; opacity:.7;";
+  let detalle = "Versión " + APP_VERSION;
+  if (pasoActual === "home") {
+    try {
+      const cola = await colaListar();
+      if (cola.length) {
+        detalle += ` · ${cola.length} registro(s) sin enviar`;
+        const conError = cola.find(it => it.ultimo_error);
+        if (conError) detalle += ` · último aviso de la planilla: ${conError.ultimo_error}`;
+      } else {
+        detalle += " · todo enviado";
+      }
+    } catch (err) { /* sin datos de la cola */ }
+  }
+  detalle += " · Si algo no anda, avisale a Belén.";
+  pie.textContent = detalle;
+  helpText.appendChild(pie);
+  document.getElementById("helpOverlay").classList.add("show");
+}
+function hideHelp() {
+  document.getElementById("helpOverlay").classList.remove("show");
+}
+document.getElementById("helpBtn").addEventListener("click", showHelp);
+document.getElementById("helpCloseBtn").addEventListener("click", hideHelp);
+document.getElementById("helpOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "helpOverlay") hideHelp();
+});
+
+// ============================================================
+// CATÁLOGOS DESDE LA PLANILLA
+// Al abrir con señal, la app descarga de la planilla las listas
+// (operarios, establecimientos, sectores, plagas, productos, dosis) y
+// guarda una copia en el celular. Sin señal usa esa copia; si nunca pudo
+// descargar, usa las listas de respaldo de data.js.
+// ============================================================
+const CATALOGOS_KEY = "mipyv_catalogos_v1";
+
+const esSi = (v) => String(v || "").trim().toUpperCase().startsWith("SI");
+const texto = (v) => String(v === undefined || v === null ? "" : v).trim();
+
+function reemplazarLista(lista, nuevos) {
+  if (!Array.isArray(nuevos) || nuevos.length === 0) return false; // nunca vaciar una lista
+  lista.length = 0;
+  nuevos.forEach(x => lista.push(x));
+  return true;
+}
+function reemplazarObjeto(obj, nuevo) {
+  if (!nuevo || Object.keys(nuevo).length === 0) return false;
+  Object.keys(obj).forEach(k => delete obj[k]);
+  Object.assign(obj, nuevo);
+  return true;
+}
+
+// Convierte lo que devuelve la planilla al formato que usa la app.
+function convertirCatalogos(d) {
+  const out = {};
+  if (Array.isArray(d.operarios)) {
+    out.operarios = d.operarios
+      .filter(r => texto(r.id_operario) && esSi(r.activo))
+      .map(r => ({ id: texto(r.id_operario), nombre: texto(r.nombre), inicial: texto(r.inicial) || texto(r.nombre).charAt(0) }));
+  }
+  if (Array.isArray(d.establecimientos)) {
+    out.establecimientos = d.establecimientos
+      .filter(r => texto(r.id_establecimiento) && esSi(r.activo))
+      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo) }));
+  }
+  if (Array.isArray(d.sectores)) {
+    out.sectores_hospital = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_hospital)).map(r => texto(r.nombre_sector));
+    out.sectores_dependencias = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_dependencias_caps)).map(r => texto(r.nombre_sector));
+  }
+  if (Array.isArray(d.plagas)) {
+    out.plagas = d.plagas
+      .filter(r => texto(r.id_plaga))
+      .map(r => ({ id: texto(r.id_plaga), nombre: texto(r.nombre_plaga), icono: texto(r.icono) || "bug" }));
+  }
+  if (Array.isArray(d.productos)) {
+    const activos = d.productos.filter(r => texto(r.id_producto) && !/^(inactivo|no)\b/i.test(texto(r.estado)));
+    out.productos = activos.map(r => ({
+      id: texto(r.id_producto), nombre: texto(r.nombre_comercial),
+      color: texto(r.color) || "#5894A7", icono: texto(r.icono) || "bottle",
+    }));
+    out.familias = {};
+    activos.forEach(r => {
+      const fam = texto(r.familia_seguridad).split(",").map(x => x.trim()).filter(Boolean);
+      out.familias[texto(r.id_producto)] = fam.length ? fam : ["general"];
+    });
+  }
+  if (Array.isArray(d.extintores)) out.extintores = d.extintores;
+  if (Array.isArray(d.tipos_tarea)) {
+    out.tipos_tarea = d.tipos_tarea.map(texto).filter(Boolean);
+  }
+  if (Array.isArray(d.dosis_frecuencia)) {
+    out.dosis = {};
+    d.dosis_frecuencia.forEach(r => {
+      if (!texto(r.id_plaga) || !texto(r.id_producto)) return;
+      out.dosis[`${texto(r.id_plaga)}|${texto(r.id_producto)}`] = {
+        dosis: texto(r.dosis_estandar) || DOSIS_DEFAULT.dosis,
+        frecuencia: texto(r.frecuencia_estandar) || DOSIS_DEFAULT.frecuencia,
+        puntos: texto(r.puntos_criticos_sugeridos) || "—",
+      };
+    });
+  }
+  return out;
+}
+
+function aplicarCatalogos(c) {
+  if (!c) return;
+  reemplazarLista(OPERARIOS, c.operarios);
+  reemplazarLista(ESTABLECIMIENTOS, c.establecimientos);
+  reemplazarLista(SECTORES_HZT, c.sectores_hospital);
+  reemplazarLista(SECTORES_DEPENDENCIAS, c.sectores_dependencias);
+  reemplazarLista(PLAGAS, c.plagas);
+  reemplazarLista(PRODUCTOS, c.productos);
+  reemplazarObjeto(FAMILIA_PRODUCTO, c.familias);
+  reemplazarObjeto(DOSIS_FRECUENCIA, c.dosis);
+  reemplazarLista(CAPS_SANEAMIENTO, ESTABLECIMIENTOS.filter(e => e.tipo === "CAP"));
+  reemplazarLista(TIPOS_TAREA_HYS, c.tipos_tarea);
+  if (Array.isArray(c.extintores)) EXTINTORES_CAT = c.extintores;
+  // volver a dibujar las grillas con las listas nuevas
+  renderOperarios();
+  renderEstablecimientos();
+  renderPlagas();
+  renderProductos();
+  renderSProductos();
+  renderCapsNuevo();
+  renderTiposTarea();
+}
+
+function cargarCatalogosGuardados() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CATALOGOS_KEY) || "null");
+    if (guardado && guardado.catalogos) aplicarCatalogos(guardado.catalogos);
+  } catch (err) {
+    console.warn("No se pudo leer la copia de catálogos del celular.", err);
+  }
+}
+
+// Solo actualiza las pantallas si el operario está en el inicio,
+// para no cambiarle la lista mientras está cargando una visita.
+async function actualizarCatalogosDesdePlanilla() {
+  if (!navigator.onLine) return;
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
+    const datos = await res.json();
+    const catalogos = convertirCatalogos(datos);
+    try {
+      localStorage.setItem(CATALOGOS_KEY, JSON.stringify({ fecha: new Date().toISOString(), catalogos }));
+    } catch (err) { /* sin espacio: se sigue con lo que hay */ }
+    // listas de trabajos e intervenciones abiertas: la planilla manda
+    if (Array.isArray(datos.trabajos_abiertos)) guardarCopia(TRABAJOS_PLANILLA_KEY, datos.trabajos_abiertos);
+    if (Array.isArray(datos.intervenciones_abiertas)) guardarCopia(INTERV_PLANILLA_KEY, datos.intervenciones_abiertas);
+    if (!currentModule) aplicarCatalogos(catalogos);
+  } catch (err) {
+    console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById("iconBug").innerHTML = renderIcon("bug");
+document.getElementById("iconBroom").innerHTML = renderIcon("broom");
+document.getElementById("iconNuevo").innerHTML = renderIcon("calendar_new");
+document.getElementById("iconContinuar").innerHTML = renderIcon("calendar_continue");
+document.getElementById("iconNuevaMipyv").innerHTML = renderIcon("calendar_new");
+document.getElementById("iconContinuarMipyv").innerHTML = renderIcon("calendar_continue");
+
+setNetDot(navigator.onLine);
+cargarCatalogosGuardados();
+actualizarCatalogosDesdePlanilla();
+migrarColaVieja()
+  .catch(err => console.warn("No se pudo migrar la cola vieja.", err))
+  .finally(() => { updateQueueBadge(); trySync(); });
+// reintento automático cada 5 minutos mientras la app esté abierta
+setInterval(() => trySync(), 5 * 60 * 1000);
+progressWrap.style.display = "none";
+bottomBar.style.display = "none";
+
+document.getElementById("appVersion").textContent = "Versión " + APP_VERSION;
+
+// ============================================================
+// ACTUALIZACIÓN AUTOMÁTICA
+// El celular revisa si hay versión nueva cada vez que se abre la app.
+// Si la hay, la descarga y se recarga sola, pero solo en la pantalla de
+// inicio, para no cortar a nadie a mitad de una carga.
+// ============================================================
+let hayVersionNueva = false;
+function recargarSiCorresponde() {
+  if (hayVersionNueva && !currentModule) window.location.reload();
+}
+if ("serviceWorker" in navigator) {
+  const yaTeniaVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+    .then(reg => reg.update())
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!yaTeniaVersion) return; // primera instalación: no hace falta recargar
+    hayVersionNueva = true;
+    recargarSiCorresponde();
+  });
+}
+</script>
+</body>
+</html>

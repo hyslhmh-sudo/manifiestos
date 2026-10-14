@@ -13,6 +13,10 @@ function onOpen() {
   ui.createMenu('Sistema HyS')
     .addItem('Abrir el portal', 'menuPortal')
     .addItem('Abrir el portal de respaldo (sin GitHub)', 'menuPortalRespaldo')
+    .addSubMenu(ui.createMenu('Otras páginas sin GitHub (respaldo)')
+      .addItem('Mi establecimiento', 'menuAppRespaldo')
+      .addItem('Página para referentes', 'menuReferentesRespaldo')
+      .addItem('MIPyV · registro de visita', 'menuMipyvRespaldo'))
     .addSeparator()
     .addSubMenu(ui.createMenu('Documentos')
       .addItem('Pedir número de documento', 'menuPedirNumero')
@@ -54,6 +58,9 @@ function abrirUrl_(url, titulo) {
 }
 function menuPortal() { abrirUrl_(URL_GITHUB.portal, 'Portal HyS'); }
 function menuPortalRespaldo() { abrirUrl_(urlRespaldo_('portal'), 'Portal de respaldo'); }
+function menuAppRespaldo() { abrirUrl_(urlRespaldo_('app'), 'Mi establecimiento (respaldo)'); }
+function menuReferentesRespaldo() { abrirUrl_(urlRespaldo_('diagnostico'), 'Página para referentes (respaldo)'); }
+function menuMipyvRespaldo() { abrirUrl_(urlRespaldo_('mipyv'), 'MIPyV (respaldo)'); }
 function menuPlanes() { abrirUrl_(urlRespaldo_('portal') + '#plan', 'Planes de acción'); }
 function menuReferentes() { abrirUrl_(URL_GITHUB.diagnostico, 'Página para referentes'); }
 function menuBandeja() { abrirUrl_(urlRespaldo_('portal') + '#bandeja', 'Bandeja de entrada'); }

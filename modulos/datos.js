@@ -7,7 +7,7 @@ const DATS = { id: '', hoja: '', q: '', desde: 0, orden: 'nuevas', enc: 0, vista
 const datCab = (extra) => '<div class="cab"><div><span class="mu peq">Gestión</span><h1>Datos · editar todo</h1><span class="mu peq">Cualquier dato de cualquier libro del sistema: buscar, cambiar, agregar o eliminar filas. Cada cambio queda en el historial y lo eliminado va a la papelera.</span></div><div class="filtros">' + (extra || '') + '</div></div>';
 function datRuta() {
   const p = location.hash.replace(/^#datos\/?/, '').split('/').map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
-  if (p[0] === 'papelera' || p[0] === 'historial') { DATS.vista = p[0]; return; }
+  if (p[0] === 'papelera' || p[0] === 'historial' || p[0] === 'config') { DATS.vista = p[0]; return; }
   DATS.vista = 'hoja'; if (p[0] && p[0] !== DATS.id) { DATS.id = p[0]; DATS.hoja = ''; DATH = null; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; }
   if (p[1] !== undefined && p[1] !== DATS.hoja) { DATS.hoja = p[1]; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; }
 }
@@ -19,6 +19,7 @@ async function datos(fresco) {
   if (!DATL.ok) return marco('#datos', datCab() + '<div class="aviso error">' + esc(DATL.mensaje || DATL.error || 'No se pudo leer.') + (/instalar|desconocida/i.test(DATL.mensaje || DATL.error || '') ? ' Falta instalar Datos.gs en el Sistema HyS.' : '') + '</div>');
   if (DATS.vista === 'papelera') return datPapelera();
   if (DATS.vista === 'historial') return datHistorial();
+  if (DATS.vista === 'config') return datConfig();
   const grupos = {}; DATL.libros.forEach(l => (grupos[l.grupo] = grupos[l.grupo] || []).push(l));
   const otro = DATS.id && !DATL.libros.some(l => l.id === DATS.id);
   const selLibro = '<select class="c" id="dtLib"><option value="">Elegí un libro…</option>' + Object.keys(grupos).map(g => '<optgroup label="' + esc(g) + '">' + grupos[g].map(l => '<option value="' + esc(l.id) + '"' + (l.id === DATS.id ? ' selected' : '') + '>' + esc(l.nombre) + '</option>').join('') + '</optgroup>').join('') + (otro ? '<option value="' + esc(DATS.id) + '" selected>Planilla por enlace</option>' : '') + '</select>';
@@ -29,11 +30,11 @@ async function datos(fresco) {
     const hojas = '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:10px 0">' + DATH.hojas.map(h => '<button class="btn ' + (h.nombre === DATS.hoja ? 'pri' : 'sec') + ' peq" data-hoja="' + esc(h.nombre) + '">' + esc(h.nombre) + (h.oculta ? ' (oculta)' : '') + ' <span class="mu">' + Math.max(0, h.filas) + '</span></button>').join('') + '</div>';
     cuerpo = '<section class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>' + esc(DATH.nombre) + '</h2><a class="btn sec peq" href="' + esc(DATH.url) + '" target="_blank" rel="noopener">Abrir la planilla ↗</a></div>' + hojas + '<div id="dtHoja"><div class="cargando">Leyendo la hoja…</div></div></section>';
   } else cuerpo = '<section class="card peq">Elegí un libro de la lista o pegá el enlace de cualquier otra planilla de Google. Los libros salen de la configuración del sistema: si falta alguno, sumalo con la propiedad del script DATOS_LIBROS_EXTRA o pegá su enlace.</section>';
-  marco('#datos', datCab('<button class="btn sec" id="dtPap">Papelera</button><button class="btn sec" id="dtHis">Historial de cambios</button><button class="btn sec" id="dtAct">Actualizar lista</button>') +
+  marco('#datos', datCab('<button class="btn sec" id="dtPap">Papelera</button><button class="btn sec" id="dtHis">Historial de cambios</button><button class="btn sec" id="dtCfg">Configuración</button><button class="btn sec" id="dtAct">Actualizar lista</button>') +
     '<section class="card"><div class="filtros" style="align-items:flex-end"><label class="f" style="flex:2;min-width:240px">Libro' + selLibro + '</label><label class="f" style="flex:2;min-width:240px">…o enlace de otra planilla<input class="c" id="dtUrl" placeholder="https://docs.google.com/spreadsheets/d/…"></label><button class="btn sec" id="dtUrlOk">Abrir</button></div></section>' + cuerpo);
   $('dtLib').onchange = e => { DATS.id = e.target.value; DATS.hoja = ''; DATH = null; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; if (DATS.id) datIr(); else location.hash = '#datos'; };
   $('dtUrlOk').onclick = () => { const m = ($('dtUrl').value.match(/[-\w]{25,}/) || [])[0]; if (!m) return toast('Pegá el enlace completo de la planilla.'); DATS.id = m; DATS.hoja = ''; DATH = null; datIr(); };
-  $('dtAct').onclick = () => datos('libros'); $('dtPap').onclick = () => location.hash = '#datos/papelera'; $('dtHis').onclick = () => location.hash = '#datos/historial';
+  $('dtAct').onclick = () => datos('libros'); $('dtPap').onclick = () => location.hash = '#datos/papelera'; $('dtHis').onclick = () => location.hash = '#datos/historial'; $('dtCfg').onclick = () => location.hash = '#datos/config';
   document.querySelectorAll('[data-hoja]').forEach(b => b.onclick = () => { DATS.hoja = b.dataset.hoja; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; datIr(); });
   if (DATS.id && DATS.hoja) datLeerHoja();
 }
@@ -126,4 +127,20 @@ async function datHistorial(q) {
   $('dtVol').onclick = () => location.hash = '#datos' + (DATS.id ? '/' + encodeURIComponent(DATS.id) + (DATS.hoja ? '/' + encodeURIComponent(DATS.hoja) : '') : '');
   $('dtPap').onclick = () => location.hash = '#datos/papelera';
   $('dtHok').onclick = () => datHistorial($('dtHq').value.trim()); $('dtHq').onkeydown = e => { if (e.key === 'Enter') datHistorial($('dtHq').value.trim()); };
+}
+
+// Configuración del sistema: propiedades del script (IDs de libros y carpetas, PRECALENTAR_EST, DATOS_LIBROS_EXTRA…)
+async function datConfig() {
+  cargando('#datos', 'Leyendo la configuración…');
+  let C; try { C = await api('p_dat_props', {}, 60000); } catch (e) { return; }
+  if (!C.ok) return marco('#datos', datCab() + '<div class="aviso error">' + esc(C.mensaje || C.error || 'No se pudo leer.') + '</div>');
+  marco('#datos', datCab('<button class="btn sec" id="dtVol">← Volver a los libros</button><button class="btn pri" id="cfNueva">+ Agregar valor</button>') +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Configuración del sistema</h2><span class="mu peq">Propiedades del script «Sistema HyS» (también en el editor: Configuración del proyecto › Propiedades del script). Son los ID de los libros y carpetas de cada módulo y algunos ajustes, como PRECALENTAR_EST (establecimientos que se dejan calculados a las 7 y 13 h) o DATOS_LIBROS_EXTRA (planillas que aparecen en Datos). Cambiar un ID hace que el sistema use otro libro: hacelo solo si sabés cuál es el nuevo. Cada cambio queda en el historial.</span></div>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Nombre</th><th>Valor</th><th></th></tr></thead><tbody>' + C.props.map(p => '<tr><td><b>' + esc(p.k) + '</b></td><td class="peq" style="word-break:break-all">' + (p.oculta ? '<span class="mu">(oculto)</span>' : esc(p.v)) + '</td><td style="white-space:nowrap"><button class="btn sec peq" data-cf="' + esc(p.k) + '">Cambiar</button></td></tr>').join('') + '</tbody></table></div></section>');
+  $('dtVol').onclick = () => location.hash = '#datos';
+  const editar = p => { const m = modal(p ? 'Cambiar ' + p.k : 'Agregar valor', (p ? [] : [['K', 'Nombre (MAYÚSCULAS_Y_GUIONES)']]).concat([['V', 'Valor', null, 1]]), { K: '', V: p && !p.oculta ? p.v : '' }, async o => {
+      const r = await api('p_dat_prop', { k: p ? p.k : o.K, v: o.V }, 60000); if (!r.ok) return r.mensaje || 'No se pudo guardar.'; toast('Guardado.'); datConfig(); return ''; });
+    if (p) { const b = document.createElement('button'); b.className = 'btn sec'; b.style.color = 'var(--er)'; b.textContent = 'Borrar'; b.onclick = async () => { if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro? Tocá de nuevo'; return; } const r = await api('p_dat_prop', { k: p.k, borrar: true }, 60000); if (!r.ok) return toast(r.mensaje || 'No se pudo borrar.'); m.cerrar(); toast('Borrado.'); datConfig(); }; m.extra.appendChild(b); } };
+  $('cfNueva').onclick = () => editar(null);
+  document.querySelectorAll('[data-cf]').forEach(b => b.onclick = () => editar(C.props.find(p => p.k === b.dataset.cf)));
 }

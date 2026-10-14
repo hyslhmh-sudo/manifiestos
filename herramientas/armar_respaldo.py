@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Junta portal.html + modulos/*.js en un solo archivo (para web_portal.html del Apps Script) y copia index.html y diagnostico.html
-(web_app.html y web_diagnostico.html). Los tres van al proyecto «Sistema HyS» para el respaldo sin GitHub (?p=portal, ?p=app, ?p=diagnostico).
+(web_app.html y web_diagnostico.html), y arma web_mipyv.html (MIPyV). Los tres van al proyecto «Sistema HyS» para el respaldo sin GitHub (?p=portal, ?p=app, ?p=diagnostico).
 Uso: python3 herramientas/armar_respaldo.py [salida]   (por defecto: apps-script/web_portal.html)"""
 import re, sys, pathlib
 raiz = pathlib.Path(__file__).resolve().parent.parent
@@ -20,3 +20,13 @@ if len(sys.argv) <= 1:
     for origen, destino in (('index.html', 'web_app.html'), ('diagnostico.html', 'web_diagnostico.html')):
         (raiz / 'apps-script' / destino).write_text((raiz / origen).read_text(encoding='utf-8'), encoding='utf-8')
         print(f'{origen} → apps-script/{destino}')
+    # MIPyV (registro de plagas): index.html + version/data/icons/app.js en un solo archivo (?p=mipyv)
+    m = (raiz / 'mipyv' / 'index.html').read_text(encoding='utf-8')
+    def inc_m(mm):
+        js = (raiz / 'mipyv' / mm.group(1)).read_text(encoding='utf-8')
+        if '</script' in js.lower(): sys.exit('ERROR: mipyv/' + mm.group(1) + ' contiene </script>')
+        return '<script>\n' + js + '</script>'
+    m, k = re.subn(r'<script src="([a-z]+\.js)(?:\?[^"]*)?"></script>', inc_m, m)
+    m = m.replace('<link rel="manifest" href="manifest.json">', '')
+    (raiz / 'apps-script' / 'web_mipyv.html').write_text(m, encoding='utf-8')
+    print(f'mipyv: {k} scripts incrustados → apps-script/web_mipyv.html')

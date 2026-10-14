@@ -26,6 +26,7 @@ function datTxt_(v) {
   if (v instanceof Date) return isNaN(v) ? '' : Utilities.formatDate(v, TZ, v.getHours() || v.getMinutes() ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy');
   return v == null ? '' : String(v);
 }
+function datH_(v) { const s = String(v == null ? '' : v); return /^0\d+$/.test(s) ? "'" + s : s; }   // historial: conserva ceros a la izquierda
 function datNorm_(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 function datIdDe_(t) { const m = String(t || '').match(/[-\w]{25,}/); return m ? m[0] : ''; }
 function datAbrir_(id) { if (!id) throw new Error('Falta el libro.'); return SpreadsheetApp.openById(id); }
@@ -119,7 +120,7 @@ function datGuardar_(x) {
   if (choque.length) return { ok: false, choque: true, mensaje: 'Esta fila cambió en la planilla mientras la editabas (' + choque.map(j => cab[j] || ('columna ' + (Number(j) + 1))).join(', ') + '). Volvé a abrirla para ver lo último.' };
   const log = [];
   Object.keys(cambios).forEach(j => { const c = Number(j); if (c >= nc || fo[c]) return; if (String(ahora[c]) === String(cambios[j])) return;
-    datPoner_(sh.getRange(fila, c + 1), cambios[j]); log.push([new Date(), ss.getName() + ' › ' + sh.getName(), 'fila ' + fila + (ahora[0] ? ' · ' + String(ahora[0]).slice(0, 40) : ''), cab[c] || ('columna ' + (c + 1)), ahora[c], cambios[j], 'Portal · Datos']); });
+    datPoner_(sh.getRange(fila, c + 1), cambios[j]); log.push([new Date(), ss.getName() + ' › ' + sh.getName(), 'fila ' + fila + (ahora[0] ? ' · ' + String(ahora[0]).slice(0, 40) : ''), cab[c] || ('columna ' + (c + 1)), datH_(ahora[c]), datH_(cambios[j]), 'Portal · Datos']); });
   if (log.length) { pHistorial_(pBC_(), log); datLimpiarCaches_(); }
   return { ok: true, cambios: log.length };
 }
@@ -133,7 +134,7 @@ function datAgregar_(x) {
   if (ult > enc) { const prev = sh.getRange(ult, 1, 1, nc); fo = prev.getFormulas()[0]; prev.copyTo(sh.getRange(nueva, 1, 1, nc), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false); prev.copyTo(sh.getRange(nueva, 1, 1, nc), SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
     fo.forEach((f, j) => { if (f) sh.getRange(ult, j + 1).copyTo(sh.getRange(nueva, j + 1)); }); }
   const cab = sh.getRange(enc, 1, 1, nc).getDisplayValues()[0], log = [];
-  for (let j = 0; j < nc; j++) { if (fo[j]) continue; const v = val[j] == null ? '' : val[j]; if (String(v).trim()) { datPoner_(sh.getRange(nueva, j + 1), v); log.push([new Date(), ss.getName() + ' › ' + sh.getName(), 'fila ' + nueva + ' (nueva)', cab[j] || ('columna ' + (j + 1)), '', v, 'Portal · Datos']); } }
+  for (let j = 0; j < nc; j++) { if (fo[j]) continue; const v = val[j] == null ? '' : val[j]; if (String(v).trim()) { datPoner_(sh.getRange(nueva, j + 1), v); log.push([new Date(), ss.getName() + ' › ' + sh.getName(), 'fila ' + nueva + ' (nueva)', cab[j] || ('columna ' + (j + 1)), '', datH_(v), 'Portal · Datos']); } }
   pHistorial_(pBC_(), log); datLimpiarCaches_();
   return { ok: true, fila: nueva };
 }
@@ -181,6 +182,17 @@ function datHistorial_(x) {
   return { ok: true, lista: v.filter(r => !q || datNorm_(r.join(' ')).indexOf(q) >= 0).slice(0, 300) };
 }
 
+// Configuración del sistema (propiedades del script: IDs de libros y carpetas, establecimientos a precalentar, etc.)
+function datProps_() { const p = PropertiesService.getScriptProperties().getProperties(); return { ok: true, props: Object.keys(p).sort().map(k => ({ k: k, v: /CLAVE|TOKEN|SECRET/i.test(k) ? '' : p[k], oculta: /CLAVE|TOKEN|SECRET/i.test(k) })) }; }
+function datProp_(x) {
+  const k = String(x.k || '').trim(); if (!/^[A-Z0-9_]{2,60}$/.test(k)) return { ok: false, mensaje: 'El nombre va en mayúsculas, sin espacios (ej.: PRECALENTAR_EST).' };
+  const P = PropertiesService.getScriptProperties(), antes = P.getProperty(k) || '';
+  if (x.borrar) P.deleteProperty(k); else P.setProperty(k, String(x.v == null ? '' : x.v).trim());
+  pHistorial_(pBC_(), [[new Date(), 'Configuración del sistema (propiedades del script)', k, k, /CLAVE|TOKEN|SECRET/i.test(k) ? '(oculto)' : datH_(antes), x.borrar ? '(borrada)' : (/CLAVE|TOKEN|SECRET/i.test(k) ? '(oculto)' : datH_(x.v)), 'Portal · Datos']]);
+  if (k === 'DATOS_LIBROS_EXTRA' || /_ID$/.test(k)) CacheService.getScriptCache().remove('dat_libros');
+  return { ok: true };
+}
+
 function datPortal_(accion, x) {
   switch (accion) {
     case 'p_dat_libros': return datLibros_(x.fresco);
@@ -192,6 +204,8 @@ function datPortal_(accion, x) {
     case 'p_dat_papelera': return datPapelera_();
     case 'p_dat_restaurar': return conLock_(() => datRestaurar_(x));
     case 'p_dat_historial': return datHistorial_(x);
+    case 'p_dat_props': return datProps_();
+    case 'p_dat_prop': return conLock_(() => datProp_(x));
   }
   return { ok: false, mensaje: 'Acción desconocida.' };
 }

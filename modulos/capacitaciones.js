@@ -9,7 +9,7 @@ const SEG_URL = NOTA_URL + '?p=seguimiento';
 const REC_URL = NOTA_URL + '?p=recibida';
 const ANTE_URL = 'https://docs.google.com/spreadsheets/d/1OZmvW2-FypFH78tUMrxT_xSGGBtpCckGPAw8MkHyRuw/edit#gid=6';
 const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JPqngTquMpNr5uqQPot4uhGI/edit';
-const CAP_PANEL = 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';
+const CAP_PANEL = RESPALDO ? 'https://script.google.com/macros/s/AKfycbwKduTFNC4b6s5OLYcPNCjI1GbgQD2ymFN5yqBK7D1fh1pPRMzS_kpB4khnKqEhu4qYEA/exec' : 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';   // sin GitHub: la aplicación de Google directa (pide la clave del panel en el link privado)
 let CAPT = null, CAPRED = 'Red Trelew', CAPBANDA = '', CAPTODOS = false;
 async function capApi(accion, datos, ms) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
@@ -607,7 +607,7 @@ function capFirmanteModal(f) {
 }
 
 // ---------- Fase 7: agenda, cumplimiento, matriz y jefaturas (libro CAPACITACIONES · Agenda_codigo.gs)
-const CAP_AGENDA_WEB = 'https://hyslhmh-sudo.github.io/capacitaciones/agenda.html';
+const CAP_AGENDA_WEB = RESPALDO ? CAP_API + '?a=1' : 'https://hyslhmh-sudo.github.io/capacitaciones/agenda.html';   // la página de GitHub solo envuelve a la de Google
 const CAP_EST_TURNO = { Libre: 'gr', Pendiente: 'wa', Reservado: 'ok', 'Clase abierta': 'pa', Realizado: 'ok', Suspendido: 'er', Cancelado: 'er', 'No se presentó': 'er', 'Sin uso': 'gr', Anulado: 'gr' };
 let CAPAG = { desde: '' }, CAPCU = { grupo: '', filtro: 'todos', q: '' }, CAPMT = null;
 const capChipT = e => '<span class="chip ' + (CAP_EST_TURNO[e] || 'gr') + '">' + esc(e || 's/d') + '</span>';

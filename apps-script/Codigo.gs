@@ -60,7 +60,7 @@ function claveOk_(est, clave) {
 // ------------------------------------------------------------------ ENTRADA
 function doGet(e) {
   // Respaldo sin GitHub: las mismas páginas, servidas desde Google (archivos HTML del proyecto: web_portal, web_diagnostico, web_app)
-  const pag = e && e.parameter && e.parameter.p, PAGS = { portal: 'Portal HyS · Gestión (respaldo)', diagnostico: 'Diagnóstico de residuos · Referentes', app: 'Manifiestos · Carga de residuos' };
+  const pag = e && e.parameter && e.parameter.p, PAGS = { portal: 'Portal HyS · Gestión (respaldo)', diagnostico: 'Diagnóstico de residuos · Referentes', app: 'Manifiestos · Carga de residuos', mipyv: 'MIPyV · Registro de visita (respaldo)' };
   if (pag && PAGS[pag]) return HtmlService.createHtmlOutputFromFile('web_' + pag).setTitle(PAGS[pag]).addMetaTag('viewport', 'width=device-width, initial-scale=1').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   const accion = (e && e.parameter && e.parameter.accion) || 'estado';
   if (accion === 'lista') return json_({ ok: true, lista: listaActivos_() });
