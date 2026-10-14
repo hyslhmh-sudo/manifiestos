@@ -16,6 +16,7 @@ const RINF = {
   LOGO_PIE: '1DnztPPclcsCNA23DDlAF-90Uchf6QdzN',   // logo de HySL («Hospitales más seguros para las personas»)
   TRELEW: ['HZT', 'HMH'],                          // con estos, paleta azul y logo HZT/HMH; con otros, colores de la Secretaría de Salud
   SS: { AZUL: '#21708C', ACENTO: '#FF682C', TEXTO: '#343A40' },
+  ENTREGA_DIAS: 7,   // PROT-RES-003 (punto 6, regla 5, y punto 10): los manifiestos se remiten a HySL una vez por semana; no se retienen más de una semana
   DESTINOS: ['Jefatura de Área Externa (CAPS)', 'STyC', 'Dirección del establecimiento', 'Secretaría de Salud']
 };
 
@@ -48,7 +49,8 @@ function resInfCalcular_(x) {
   const S = {};
   Object.keys(elegido).forEach(k => { const i = k.indexOf('|'), cod = k.slice(0, i); S[k] = { cod: cod, nombre: (L.info[cod] || {}).nombre || cod, sitio: elegido[k], tipo: tipoBC[k] || '', dias: {} }; });
   L.retiros.forEach(r => { if (r.fecha > hasta) return; const k = r.cod + '|' + sinTildes_(r.sitio), s = S[k]; if (!s) return; if (!s.tipo && r.tipo) s.tipo = r.tipo;
-    const d = s.dias[r.fecha] = s.dias[r.fecha] || { fecha: r.fecha, nros: [], y1: 0, y3: 0, otras: 0, enKg: 0 }; if (r.nro && d.nros.indexOf(r.nro) < 0) d.nros.push(r.nro);
+    const d = s.dias[r.fecha] = s.dias[r.fecha] || { fecha: r.fecha, nros: [], y1: 0, y3: 0, otras: 0, enKg: 0, llego: '', cargado: '' };
+    if (r.llego && r.llego > d.llego) d.llego = r.llego; if (r.cargado && r.cargado > d.cargado) d.cargado = r.cargado; if (r.nro && d.nros.indexOf(r.nro) < 0) d.nros.push(r.nro);
     d.y1 += r.y1; d.y3 += r.y3; d.otras += r.otras; if (r.enKg) d.enKg++; });
   const meses = rctMeses_(desde, hasta), dif = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
   const sitios = Object.keys(S).map(k => {
@@ -61,19 +63,21 @@ function resInfCalcular_(x) {
     R.forEach(d => { d.desdeAnt = ant ? dif(ant.fecha, d.fecha) : null; d.excede = d.desdeAnt != null && d.desdeAnt > lim; if (d.excede) fuera.push({ desde: ant.fecha, nrosDesde: ant.nros, hasta: d.fecha, nrosHasta: d.nros, dias: d.desdeAnt }); ant = d; });
     const sinRetiroFinal = R.length ? dif(R[R.length - 1].fecha, hasta) : null;
     if (R.length && sinRetiroFinal > lim) fuera.push({ desde: R[R.length - 1].fecha, nrosDesde: R[R.length - 1].nros, hasta: '', nrosHasta: [], dias: sinRetiroFinal, abierto: true });
+    const ent = R.filter(d => d.llego).map(d => ({ fecha: d.fecha, nros: d.nros, llego: d.llego, dias: dif(d.fecha, d.llego) })), tarde = ent.filter(e => e.dias > RINF.ENTREGA_DIAS);
     const gaps = R.slice(1).map(d => d.desdeAnt), cuenta = {}; R.forEach(d => cuenta[d.fecha.slice(0, 7)] = (cuenta[d.fecha.slice(0, 7)] || 0) + 1);
     return { cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, noAplica: /no corresponde|no aplica/i.test(sinTildes_(frec)), origen: origen, limite: lim, esperados: esperados,
       retiros: R.length, manifiestos: R.reduce((a, d) => a + d.nros.length, 0), cumplimiento: esperados ? Math.round(100 * R.length / esperados) : null,
       intervaloProm: gaps.length ? Math.round(10 * gaps.reduce((a, b) => a + b, 0) / gaps.length) / 10 : null, intervaloMax: gaps.length ? Math.max.apply(null, gaps) : null,
       primero: R.length ? R[0].fecha : '', ultimo: R.length ? R[R.length - 1].fecha : '', sinRetiroFinal: sinRetiroFinal, fuera: fuera, porMes: cuenta,
+      entrega: { con: ent.length, sin: R.length - ent.length, prom: ent.length ? Math.round(10 * ent.reduce((a, e) => a + e.dias, 0) / ent.length) / 10 : null, max: ent.length ? Math.max.apply(null, ent.map(e => e.dias)) : null, tarde: tarde },
       y1: Math.round(R.reduce((a, d) => a + d.y1, 0)), y3: Math.round(R.reduce((a, d) => a + d.y3, 0)), enKg: R.reduce((a, d) => a + d.enKg, 0),
-      detalle: R.map(d => ({ fecha: d.fecha, nros: d.nros, y1: Math.round(d.y1), y3: Math.round(d.y3), desdeAnt: d.desdeAnt, excede: d.excede })) };
+      detalle: R.map(d => ({ fecha: d.fecha, nros: d.nros, y1: Math.round(d.y1), y3: Math.round(d.y3), desdeAnt: d.desdeAnt, excede: d.excede, llego: d.llego, demora: d.llego ? dif(d.fecha, d.llego) : null })) };
   }).sort((a, b) => (a.nombre + (a.tipo === 'CAPS' ? 'z' : 'a') + a.sitio).localeCompare(b.nombre + (b.tipo === 'CAPS' ? 'z' : 'a') + b.sitio));
   const ests = Array.from(new Set(sitios.map(s => s.cod))), tot = sitios.reduce((a, s) => a + s.retiros, 0), esp = sitios.filter(s => s.esperados).reduce((a, s) => a + s.esperados, 0);
   return { ok: true, desde: desde, hasta: hasta, hastaPedido: x.hasta, hoy: hoy, dias: dPer, meses: meses, sitios: sitios, establecimientos: ests.map(c => ({ cod: c, nombre: (L.info[c] || {}).nombre || c })),
     totales: { sitios: sitios.length, conRetiros: sitios.filter(s => s.retiros).length, retiros: tot, manifiestos: sitios.reduce((a, s) => a + s.manifiestos, 0),
       esperados: Math.round(esp), cumplimiento: esp ? Math.round(100 * sitios.filter(s => s.esperados).reduce((a, s) => a + s.retiros, 0) / esp) : null,
-      intervalosFuera: sitios.reduce((a, s) => a + s.fuera.length, 0), sitiosBajo: sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80).length } };
+      intervalosFuera: sitios.reduce((a, s) => a + s.fuera.length, 0), entregaCon: sitios.reduce((a, s) => a + s.entrega.con, 0), entregaTarde: sitios.reduce((a, s) => a + s.entrega.tarde.length, 0), plazoEntrega: RINF.ENTREGA_DIAS, sitiosBajo: sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80).length } };
 }
 
 // ------------------------------------------------------------------ Entrada: vista previa o documento
@@ -120,6 +124,7 @@ function resInfDocumento_(x, R) {
       return t; };
     const COMP = nota('comp', 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo y Decreto N.º 351/79; Resolución SRT N.º 905/2015, Anexo I (funciones del Servicio de Higiene y Seguridad en el Trabajo).');
     const MANI = nota('mani', 'Ley N.º 24.051 de Residuos Peligrosos, arts. 12 y 13 (manifiesto), y Decreto N.º 831/93; Ley XI N.º 35 (Código Ambiental de la Provincia del Chubut).');
+    const PROT = nota('prot', 'PROT-RES-003 «Manifiesto de residuos peligrosos: retiro, verificación y registro» (HZT), punto 6, regla 5 («Los manifiestos van a Higiene y Seguridad una vez por semana») y punto 10 (prohibido retener manifiestos más de una semana sin remitirlos).');
     const ANEXO = nota('anexo', 'Contrato vigente de recolección, tratamiento y disposición final de residuos patogénicos, Anexo I «Forma de ejecución de los trabajos · De las frecuencias de recolección». Cuando el contrato no fija la frecuencia de un sitio, se usa la frecuencia registrada en BASE COMÚN › SITIOS.');
     const T = R.totales, conEsp = R.sitios.filter(s => s.esperados), bajos = R.sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80), sinRet = R.sitios.filter(s => !s.retiros && !s.noAplica);
 
@@ -147,6 +152,7 @@ function resInfDocumento_(x, R) {
       (sinRet.length ? (sinRet.length === 1 ? 'Un sitio no registra retiros en el período: ' : sinRet.length + ' sitios no registran retiros en el período: ') + sinRet.slice(0, 6).map(s => s.sitio).join(', ') + (sinRet.length > 6 ? ', entre otros' : '') + '.' : ''));
     P_(T.intervalosFuera ? 'Se identificaron ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' entre retiros mayores que el admisible para la frecuencia de cada sitio, con las fechas y los números de manifiesto que lo acreditan en el punto 4. Se recomienda poner esta información en conocimiento de la empresa prestadora y de la Secretaría de Salud, que gestiona el contrato, para que se regularice la frecuencia.'
       : 'No se identificaron intervalos entre retiros mayores que el admisible para la frecuencia de cada sitio.');
+    if (T.entregaTarde) P_(T.entregaTarde + (T.entregaTarde === 1 ? ' manifiesto llegó' : ' manifiestos llegaron') + ' a la oficina después del plazo de una semana que fija el protocolo de manifiestos (punto 4.4).');
     G('Revisar: uno o dos párrafos en prosa; debe leerse en un minuto.');
 
     // ---------------- 1. PRESENTACIÓN
@@ -158,6 +164,7 @@ function resInfDocumento_(x, R) {
     H1('2. Método de trabajo');
     P_('Se tomaron los manifiestos cargados en el Sistema HyS para el período indicado. Se considera un retiro cada fecha en que la empresa retiró residuos de un sitio, con uno o más manifiestos. Para cada sitio se informa la frecuencia pactada' + ANEXO + ', los retiros esperados en el período, los realizados, el intervalo promedio y el máximo entre retiros, y los intervalos que superan el admisible.');
     TAB([['Frecuencia pactada', 'Retiros esperados por mes', 'Intervalo máximo admisible'], ['Diaria (lunes a sábado)', '26', '3 días'], ['Tres días por semana', '13', '5 días'], ['Dos días por semana', '8,7', '6 días'], ['Semanal', '4,3', '10 días'], ['Quincenal', '2,2', '20 días'], ['Mensual', '1', '40 días'], ['Sin frecuencia definida', 's/d', '30 días (referencia)']], [170, 150, 150]);
+    P_('Entrega de los manifiestos a la oficina: quien carga cada manifiesto registra el día en que llegó el papel a la oficina (no el día de la carga). Con ese dato se calcula cuántos días pasaron desde el retiro y se marcan los que superaron el plazo de una semana (' + RINF.ENTREGA_DIAS + ' días) que fija el protocolo de manifiestos' + PROT + '. Este dato se registra desde el 14/10/2026; los manifiestos cargados antes no lo tienen.');
     P_('Limitaciones: el informe refleja solo lo cargado en el sistema. Un retiro sin manifiesto cargado no aparece y baja el cumplimiento; por eso, antes de reclamar, conviene verificar con el establecimiento que la carga esté completa.' + (R.hastaPedido > R.hasta ? ' El período elegido termina después de la fecha del informe: los datos llegan hasta el ' + fTxt(R.hasta) + '.' : ''));
 
     // ---------------- 3. DESCRIPCIÓN DE LOS HECHOS
@@ -188,6 +195,17 @@ function resInfDocumento_(x, R) {
     H2('4.3 Sitios sin retiros en el período');
     P_(sinRet.length ? sinRet.map(s => s.sitio + (R.establecimientos.length > 1 ? ' (' + s.cod + ')' : '')).join(', ') + '. Puede tratarse de falta de retiro o de manifiestos no cargados: corresponde verificarlo con el establecimiento.' : 'Todos los sitios incluidos registran retiros en el período.');
 
+    H2('4.4 Entrega de los manifiestos a la oficina');
+    const EN = R.sitios.filter(s => s.entrega.con);
+    if (!EN.length) P_('Ningún manifiesto del período tiene registrado el día de llegada a la oficina (el dato se registra desde el 14/10/2026).');
+    else {
+      P_('Días entre el retiro y la llegada del manifiesto a la oficina, por sitio. El plazo es de una semana (' + RINF.ENTREGA_DIAS + ' días)' + PROT + '.');
+      TAB([['Sitio', 'Con fecha de llegada', 'Promedio (días)', 'Máximo (días)', 'Fuera de plazo']].concat(EN.map(s => [(R.establecimientos.length > 1 ? s.cod + ' · ' : '') + s.sitio, s.entrega.con + ' de ' + s.retiros, num(s.entrega.prom), num(s.entrega.max), String(s.entrega.tarde.length)])), [150, 80, 75, 75, 90],
+        EN.map((s, i) => s.entrega.tarde.length ? i + 1 : null).filter(i => i));
+      const TT = []; EN.forEach(s => s.entrega.tarde.forEach(t => TT.push([s.sitio, fTxt(t.fecha), t.nros.join(', ') || 's/d', fTxt(t.llego), String(t.dias)])));
+      if (TT.length) { P_('Manifiestos entregados fuera de plazo:'); TAB([['Sitio', 'Retiro', 'N.º de manifiesto', 'Llegó a la oficina', 'Días']].concat(TT), [120, 70, 130, 90, 60]); }
+    }
+
     // ---------------- 5. CONCLUSIÓN
     H1('5. Conclusión');
     P_('En el período analizado ' + (T.esperados ? 'la frecuencia de retiro alcanzó el ' + pc(T.cumplimiento) + ' de lo pactado' : 'no puede medirse el cumplimiento por falta de frecuencias definidas') + (T.intervalosFuera ? ', con ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' mayores que el admisible' : '') + (sinRet.length ? ' y ' + sinRet.length + (sinRet.length === 1 ? ' sitio' : ' sitios') + ' sin retiros registrados' : '') + '. Los datos surgen de los manifiestos cargados y quedan disponibles con su número para el control de la prestación.');
@@ -198,6 +216,7 @@ function resInfDocumento_(x, R) {
     const rec = [];
     if (T.intervalosFuera || bajos.length) rec.push('Poner en conocimiento de la empresa prestadora y de la Secretaría de Salud los intervalos y sitios con cumplimiento menor al 80 %, con las fechas y números de manifiesto del punto 4, y solicitar que se regularice la frecuencia del Anexo I del contrato.');
     if (sinRet.length) rec.push('Verificar con cada establecimiento si los sitios sin retiros no tuvieron retiro o si faltan cargar manifiestos, y completar la carga.');
+    if (T.entregaTarde) rec.push('Recordar a los responsables de los sitios con manifiestos fuera de plazo la remisión semanal a Higiene y Seguridad en sobre cerrado, según el protocolo PROT-RES-003 (punto 8, pasos 24 a 29), y que ante la pérdida de un manifiesto se informe para pedir la copia a la empresa.');
     if (sd.length) rec.push('Definir la frecuencia de retiro de los sitios que no la tienen (' + sd.slice(0, 5).map(s => s.sitio).join(', ') + (sd.length > 5 ? ', entre otros' : '') + ') e incorporarla al contrato en la próxima renovación.');
     if (!rec.length) rec.push('Sostener la frecuencia actual y la carga de los manifiestos en el sistema.');
     rec.forEach((t, i) => P_((i + 1) + '. ' + t));
@@ -212,12 +231,12 @@ function resInfDocumento_(x, R) {
     // ---------------- ANEXO: detalle de retiros por sitio (fechas exactas y números de manifiesto)
     if (x.detalle !== false) {
       b.appendPageBreak(); H1('Anexo · Detalle de retiros por sitio');
-      P_('Fecha de cada retiro, día de la semana, números de manifiesto, volumen y días desde el retiro anterior. En rojo, los intervalos mayores que el admisible.');
+      P_('Fecha de cada retiro, día de la semana, números de manifiesto, volumen, días desde el retiro anterior y día en que el manifiesto llegó a la oficina. En rojo, los intervalos mayores que el admisible; ⚠, los manifiestos entregados fuera de plazo.');
       R.sitios.forEach(s => {
         H2(s.sitio + (R.establecimientos.length > 1 && s.nombre !== s.sitio ? ' · ' + s.nombre : '') + ' · ' + s.frecuencia + ' (admisible ' + s.limite + ' días)');
         if (!s.detalle.length) { P_('Sin retiros cargados en el período.'); return; }
-        TAB([['Fecha', 'Día', 'N.º de manifiesto', 'Y1 (dm³)', 'Y3 (dm³)', 'Días desde el anterior']].concat(s.detalle.map(d => [fTxt(d.fecha), dia(d.fecha), d.nros.join(', ') || 's/d', d.y1 ? num(d.y1) : '—', d.y3 ? num(d.y3) : '—', d.desdeAnt == null ? '—' : String(d.desdeAnt)])),
-          [70, 40, 150, 60, 60, 90], s.detalle.map((d, i) => d.excede ? i + 1 : null).filter(i => i));
+        TAB([['Fecha', 'Día', 'N.º de manifiesto', 'Y1 (dm³)', 'Y3 (dm³)', 'Días desde el anterior', 'Llegó a la oficina']].concat(s.detalle.map(d => [fTxt(d.fecha), dia(d.fecha), d.nros.join(', ') || 's/d', d.y1 ? num(d.y1) : '—', d.y3 ? num(d.y3) : '—', d.desdeAnt == null ? '—' : String(d.desdeAnt), d.llego ? fTxt(d.llego) + ' (' + d.demora + ' d)' + (d.demora > RINF.ENTREGA_DIAS ? ' ⚠' : '') : '—'])),
+          [62, 32, 110, 52, 52, 72, 95], s.detalle.map((d, i) => d.excede ? i + 1 : null).filter(i => i));
       });
     }
 

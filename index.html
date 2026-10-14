@@ -197,6 +197,7 @@ const AYUDA = {
   vol: { t: 'Cantidad retirada', que: 'Cuánto se llevaron de esa corriente. Elegí la unidad: kg si el establecimiento tiene balanza; si no, dm³. Para dm³: cantidad de bolsas × capacidad de cada bolsa (1 dm³ = 1 litro). Ejemplo: 12 bolsas de 80 litros = 960 dm³.', donde: 'Sección 3, «Información de residuos», columna «Cant. real» (si está vacía, la «Cant. estimada»). La columna «U.M.» indica la unidad.', ej: '960 dm³ o 85 kg', s: 'res' },
   estado: { t: 'Estado físico', que: 'Si el residuo es sólido, líquido o semisólido (pastoso).', donde: 'Sección 3, «Información de residuos», columna «Estado físico».', ej: 'Sólido', s: 'res' },
   firma: { t: '¿Firmó el transportista?', que: 'Fijate si el conductor del camión firmó el manifiesto antes de irse.', donde: 'Sección 6, «Certificaciones», renglón «Transportista».', ej: 'Sí', s: 'cert' },
+  llego: { t: '¿Qué día llegó el manifiesto a la oficina?', que: 'El día en que el papel llegó a la oficina que lo carga (por ejemplo, del CAPS a la oficina de Higiene y Seguridad). No es el día en que se carga en el sistema. Sirve para medir cuánto tarda en llegar cada manifiesto.', donde: 'Conviene anotar la fecha de recepción en el sobre o en el manifiesto cuando llega.', ej: '15/09/2026' },
   original: { t: '¿Quedó el original en el hospital?', que: 'El original es la hoja para el generador, es decir, para el hospital: tiene que quedar acá. El duplicado es para el transportista, el triplicado para el operador y el cuadruplicado para la autoridad ambiental.', donde: 'Al pie de cada hoja dice para quién es.', ej: 'Sí', s: 'pie' },
   foto: { t: 'Foto del manifiesto', que: 'Una foto del original, la hoja completa y que se lea. Ahí quedan la patente del camión y el nombre del conductor, que no hace falta escribir. Apoyala sobre una mesa, con buena luz.', donde: 'Toda la hoja original.', ej: 'Foto de frente, sin sombras', s: 'todo' },
   cfoto: { t: 'Foto del certificado', que: 'Una foto del certificado completo y que se lea. Apoyalo sobre una mesa, con buena luz.', donde: 'Toda la hoja del certificado.', ej: 'Foto de frente, sin sombras', s: null },
@@ -490,6 +491,7 @@ function nuevoManifiesto(prev, soloLugar) {
   const u = ultimoMan(), sitioU = s.some(x => x.sitio === u.sitio) ? u.sitio : '', fechaU = soloLugar ? '' : (u.fecha || '');
   M = prev || { tipo: 'manifiesto', idLocal: idNuevo(), sitio: soloLugar || (s.length === 1 ? s[0].sitio : sitioU), nro: '', fecha: fechaU, _fecha: fechaU ? isoATxt(fechaU) : '', res: [], firma: '', original: '', foto: '', obs: '', _recordado: !soloLugar && !!(sitioU || fechaU) };
   if (!M.res.length) M.res = corrCfg().map(x => nuevoRes(x.c, M.sitio));
+  if (M.llego == null) M.llego = '';
   PASO = 0; ERR = {}; DESDE_REV = false; VISTA = 'man'; pasoMan();
 }
 function bloqueado() {
@@ -529,7 +531,7 @@ function pasoMan0() {
         '<select data-k="uni" data-i="' + i + '" data-chg="repMan" style="width:64px;flex:none;padding-left:6px;padding-right:2px">' + ['dm³', 'kg'].map(u => '<option' + (u === r.uni ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div></div>' +
         '</div>' + (ERR['cant' + i] || ERR['tam' + i] || ERR['vol' + i] ? '<div class="err">' + esc(ERR['cant' + i] || ERR['tam' + i] || ERR['vol' + i]) + '</div>' : '') + '</div>').join('');
   } else if (PASO === 2) {
-    h += '<h1>Control del papel</h1>' + campo('firma', siNo('firma'), ERR.firma) + campo('original', siNo('original'), ERR.original) +
+    h += '<h1>Control del papel</h1>' + campo('llego', campoFecha('llego', 'M', ERR.llego) + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn sec" style="min-height:34px;padding:4px 10px" data-act="llegoMismo">El mismo día del retiro</button><button type="button" class="btn sec" style="min-height:34px;padding:4px 10px" data-act="llegoHoy">Hoy</button></div>', ERR.llego) + campo('firma', siNo('firma'), ERR.firma) + campo('original', siNo('original'), ERR.original) +
       (M.original === 'No' ? '<div class="notice">El original tiene que quedar en el establecimiento. Avisá a tu jefatura para recuperarlo.</div>' : '') +
       bloqueFoto(M, 'foto', M.fecha, 'foto', 'man') +
       '<div class="field"><div class="lab"><label for="f_obs">Observaciones (opcional)</label></div><textarea id="f_obs" data-k="obs" rows="3" placeholder="Por ejemplo: quedaron bolsas sin retirar">' + esc(M.obs) + '</textarea></div>';
@@ -539,7 +541,7 @@ function pasoMan0() {
     h += '<h1>Revisá antes de guardar</h1>' +
       bloque('Retiro', 0, fila('Sitio', esc(M.sitio)) + fila('N.º de manifiesto', esc(M.nro)) + fila('Fecha de recolección', fechaTxt(M.fecha))) +
       bloque('Residuos', 1, M.res.filter(tieneDatos).map(r => fila(esc(r.corriente) + ' · ' + esc(r.contenedor), esc(r.cant) + (r.uni === 'dm³' ? ' × ' + esc(r.tam) + ' = ' + nf(r.vol) + ' dm³' : ' · ' + esc(r.vol) + ' kg'))).join('')) +
-      bloque('Control del papel', 2, fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto o escaneo', M.foto ? (/^data:application\/pdf/.test(M.foto) ? 'PDF cargado' : 'Foto cargada') : M.lote ? 'En lote escaneado' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
+      bloque('Control del papel', 2, fila('Llegó a la oficina', M.llego ? fechaTxt(M.llego) + (M.fecha && M.llego > M.fecha ? ' (' + Math.round((new Date(M.llego) - new Date(M.fecha)) / 864e5) + ' días después del retiro)' : '') : '—') + fila('Firmó el transportista', M.firma) + fila('Original en el establecimiento', M.original) + fila('Foto o escaneo', M.foto ? (/^data:application\/pdf/.test(M.foto) ? 'PDF cargado' : 'Foto cargada') : M.lote ? 'En lote escaneado' : '—') + (M.obs ? fila('Observaciones', esc(M.obs)) : '')) +
       (sinFotoMan() ? '<div class="notice"><b>Falta la foto del manifiesto.</b> Podés guardarlo igual, pero tenés que subirla antes del ' + limiteFoto(M.fecha) + ': desde «Mis registros» (botón «Subir foto») o en el lote .zip de ' + mesTxt(M.fecha) + '.' + (M.fecha >= '2027-01' ? ' Si no se regulariza, después de esa fecha no se pueden cargar manifiestos nuevos.' : '') + '</div>' : '') +
       (!navigator.onLine ? '<div class="notice">No hay señal: se guarda en este equipo y se envía solo cuando vuelva la conexión.</div>' : '');
   }
@@ -568,6 +570,11 @@ function validar() {
       else if (Number(r.vol) > (r.uni === 'kg' ? 5000 : 30000)) ERR['vol' + i] = 'Revisá la cantidad: parece demasiado para un retiro.';
     });
   } else if (PASO === 2) {
+    const fl = document.getElementById('f_llego'); if (fl && fl.value !== (M._llego || '')) escribirFecha(fl);
+    if (!M.llego && !M._llego && sitiosCfg().length === 1 && M.fecha) { M.llego = M.fecha; M._llego = isoATxt(M.fecha); }   // un solo lugar: se carga donde se retira
+    if (!M.llego && !M.reemplaza) ERR.llego = M._llego ? 'Completá la fecha como dd/mm/aaaa.' : 'Falta el día en que llegó el manifiesto a la oficina.';
+    else if (M.llego && M.fecha && M.llego < M.fecha) ERR.llego = 'No puede ser anterior a la fecha del retiro (' + fechaTxt(M.fecha) + ').';
+    else if (M.llego && M.llego > hoyISO()) ERR.llego = 'No puede ser posterior a hoy.';
     if (!M.firma) ERR.firma = 'Respondé Sí o No.';
     if (!M.original) ERR.original = 'Respondé Sí o No.';
   }
@@ -583,7 +590,7 @@ function adelante() {
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
   if (!M.reemplaza) LS.set('ultman_' + SES.est, { sitio: M.sitio, fecha: M.fecha });
   COLA = COLA.filter(c => !(c.est === SES.est && c.estado === 'error' && c.tipo === 'manifiesto' && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)); guardarCola();
-  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
+  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, llego: M.llego || '', firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
 }
@@ -784,6 +791,8 @@ const ACT = {
   quitarFoto: b => { const o = b.dataset.arg === 'M' ? M : C; if (o === M) leer(); o.foto = ''; o.fotoNombre = ''; o === M ? pasoMan() : pasoCert(); },
   cal: b => { if (b.dataset.obj === 'M' && M) leer(); const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
   calMes: b => { let m = CAL.m + Number(b.dataset.arg), y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } if (y < 2025 || y > new Date().getFullYear()) return; CAL.m = m; CAL.y = y; calendario(); },
+  llegoMismo: () => { leer(); M.llego = M.fecha || ''; M._llego = isoATxt(M.llego); delete ERR.llego; pasoMan(); },
+  llegoHoy: () => { leer(); M.llego = hoyISO(); M._llego = isoATxt(M.llego); delete ERR.llego; pasoMan(); },
   calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
   corregirLocal: b => { const c = COLA.find(x => x.datos.idLocal === b.dataset.arg); if (!c) return; COLA = COLA.filter(x => x !== c); guardarCola();
     if (c.tipo === 'manifiesto') { const d = c.datos; nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, firma: d.firma, original: d.original, foto: d.foto, obs: d.obs, res: corrCfg().map(x => Object.assign(nuevoRes(x.c, d.sitio), d.res.find(r => r.corriente === x.c) || {})) }); }
@@ -1354,7 +1363,7 @@ function regCorregir(i) {
   const r = REG.registros[i]; if (!r) return; const d = r.datos || {}, toma = ks => { const o = {}; ks.forEach(k => { if (d[k] != null && d[k] !== '') o[k] = String(d[k]); }); return o; };
   if (r.tipo === 'manifiesto') {
     const res = corrCfg().map(x => { const e = (d.res || []).find(z => z.corriente === x.c), n = nuevoRes(x.c, d.sitio); if (e) Object.assign(n, { cant: String(e.cant == null ? '' : e.cant), tam: String(e.tam == null ? '' : e.tam), vol: String(e.vol == null ? '' : e.vol), uni: e.uni || 'dm³' }); return n; });
-    return nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, _fecha: String(d.fecha).split('-').reverse().join('/'), res: res, firma: d.firma || '', original: d.original || '', foto: '', fotoUrl: r.url || '', obs: d.obs || '', reemplaza: r.id, _nroOrig: d.nro, _sitioOrig: d.sitio });
+    return nuevoManifiesto({ tipo: 'manifiesto', idLocal: idNuevo(), sitio: d.sitio, nro: d.nro, fecha: d.fecha, _fecha: String(d.fecha).split('-').reverse().join('/'), res: res, llego: d.llego || '', _llego: d.llego ? String(d.llego).split('-').reverse().join('/') : '', firma: d.firma || '', original: d.original || '', foto: '', fotoUrl: r.url || '', obs: d.obs || '', reemplaza: r.id, _nroOrig: d.nro, _sitioOrig: d.sitio });
   }
   if (r.tipo === 'certificado') { const m = String(d.mes || '').split('-'); return nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: m[1] || '', mesA: m[0] || '', mes: d.mes, ncert: d.ncert, ftrat: d.ftrat, res: d.res || [], _ftrat: d.ftrat ? d.ftrat.split('-').reverse().join('/') : '', foto: '', fotoUrl: r.url || '', reemplaza: r.id }); }
   const base = { _corr: true, fotoUrl: r.url || '', reemplaza: r.id };

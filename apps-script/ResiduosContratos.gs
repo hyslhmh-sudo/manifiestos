@@ -86,16 +86,18 @@ function rctRetiros_(g, desde) {
   E.forEach(f => { const c = limpio_(f.v[0]); if (!c) return; porNombre[sinTildes_(f.v[1])] = c; info[c] = { cod: c, nombre: limpio_(f.v[1]), tipo: limpio_(f.v[3]), area: limpio_(f.v[4]) }; });
   const tipoSitio = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 7).forEach(r => tipoSitio[limpio_(r.v[0]) + '|' + sinTildes_(r.v[1])] = limpio_(r.v[4])); } catch (e) {}
   const gm = g.getSheetByName('MANIFIESTOS'), n = gm.getLastRow() - 5, R = {};
-  if (n > 0) gm.getRange(6, 1, n, 13).getValues().forEach(r => {
+  if (n > 0) gm.getRange(6, 1, n, 14).getValues().forEach(r => {
     const cod = porNombre[sinTildes_(r[0])]; if (!cod) return; const f = resFecha_(r[3]); if (!f || f < desde) return;
     const sitio = limpio_(r[1]) || info[cod].nombre, k = cod + '|' + sitio + '|' + limpio_(r[6]) + '|' + f;
-    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, otras: 0, enKg: false };
+    const x = R[k] = R[k] || { cod: cod, sitio: sitio, tipo: tipoSitio[cod + '|' + sinTildes_(sitio)] || '', fecha: f, nro: limpio_(r[6]), y1: 0, y3: 0, otras: 0, enKg: false, llego: rctObsFecha_(r[13], 'Llegó a la oficina'), cargado: rctObsFecha_(r[13], 'Cargado') };
     let cant = Number(String(r[9]).replace(',', '.')) || 0; const uni = sinTildes_(r[10]);
     if (/kg/.test(uni)) { x.enKg = true; return; }   // Impeesa factura por dm³: lo cargado en kg no se suma al volumen
     const cor = limpio_(r[7]); if (cor === 'Y1') x.y1 += cant; else if (cor === 'Y3') x.y3 += cant; else if (cor) x.otras += cant;
   });
   return { retiros: Object.keys(R).map(k => R[k]), info: info };
 }
+// Fecha dd/mm/aaaa anotada en las observaciones del manifiesto («Llegó a la oficina: …», «Cargado: …») → aaaa-mm-dd
+function rctObsFecha_(obs, etiqueta) { const m = new RegExp(etiqueta + ':\\s*(\\d{2})/(\\d{2})/(\\d{4})').exec(String(obs || '')); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
 const rctMeses_ = (desde, hasta) => { const out = []; let y = Number(desde.slice(0, 4)), m = Number(desde.slice(5, 7)); const fin = hasta.slice(0, 7);
   for (let i = 0; i < 120; i++) { const k = y + '-' + ('0' + m).slice(-2); if (k > fin) break; out.push(k); m++; if (m > 12) { m = 1; y++; } } return out; };
 
