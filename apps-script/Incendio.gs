@@ -365,30 +365,61 @@ function incRegistrarFalla_(e, fallas, d) {
   CacheService.getScriptCache().remove('inc_tablero');
   return va;
 }
+// Problemas que surgen del INVENTARIO (sin esperar el control): carga vencida, prueba hidráulica vencida y estado Sobrecarga, Recargar
+// o Fuera de servicio. Solo en los establecimientos con CORREOS_FALLA (HMH). Abre o completa el problema del extintor en FALLAS. (14/10/2026)
+function incFallasInventario_() {
+  const hoy = incHoy_(), E = incLeer_('EXTINTORES', INC.H_EXT).filter(e => !/baja/i.test(e.ESTADO || '')), ab = incFallasAbiertas_(), con = {}; let n = 0;
+  E.forEach(e => {
+    const cod = limpio_(e.ESTABLECIMIENTO); if (!(cod in con)) con[cod] = incCorreosFalla_(cod, e.SITIO).length > 0; if (!con[cod]) return;
+    const vto = incISO_(e.VTO_CARGA), ph = incISO_(e.PRUEBA_HIDRAULICA_VENCE), probs = [];
+    if (vto && vto < hoy) probs.push('Carga vencida');
+    if (!vto) probs.push('Sin dato del vencimiento de la carga (revisar la tarjeta)');
+    if (ph && ph < hoy) probs.push('Prueba hidráulica vencida');
+    if (INC_ESTADO_FALLA.test(e.ESTADO || '')) probs.push('Estado: ' + e.ESTADO);
+    if (!probs.length) return;
+    const f = ab.find(z => z.ID_EXTINTOR === e.ID), previos = f ? String(f.PROBLEMAS || '').split(' · ') : [];
+    if (probs.every(p => previos.indexOf(p) >= 0)) return;
+    incRegistrarFalla_(e, probs, { quien: 'Inventario (vencimiento o estado)', fecha: hoy, obs: '', fotos: {}, id: 'INVENTARIO' }); n++;
+  });
+  return n;
+}
+// Extintores que vencen en los próximos 30 días (carga o prueba hidráulica), para el correo
+function incPorVencer_(cod, E) {
+  const hoy = incHoy_(), lim = incSumarDias_(hoy, INC.DIAS_POR_VENCER);
+  return E.filter(e => limpio_(e.ESTABLECIMIENTO) === cod && !/baja/i.test(e.ESTADO || '')).map(e => {
+    const v = incISO_(e.VTO_CARGA), p = incISO_(e.PRUEBA_HIDRAULICA_VENCE), q = [];
+    if (v && v >= hoy && v <= lim) q.push('Carga vence el ' + incTxt_(v)); if (p && p >= hoy && p <= lim) q.push('Prueba hidráulica vence el ' + incTxt_(p));
+    return q.length ? { e: e, txt: q.join(' · '), fecha: [v, p].filter(x => x && x >= hoy && x <= lim).sort()[0] } : null; }).filter(Boolean).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
 // Correo único de un establecimiento con todos los extintores con problemas
-function incMailResumen_(cod, para, nuevos, siguen, resueltos, E) {
+function incMailResumen_(cod, para, nuevos, siguen, resueltos, E, porVencer) {
+  porVencer = porVencer || [];
   const nom = (pEstablecimientos_().filas.find(r => limpio_(r.v[0]) === cod) || { v: [cod, cod] }).v[1], hoy = incHoy_();
   const esc_ = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const ext = id => E.find(x => x.ID === id) || { ID: id }, dias = f => Math.round((new Date(hoy + 'T12:00:00') - new Date((incISO_(f.FECHA) || hoy) + 'T12:00:00')) / 864e5);
   const nombre = e => (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID, ubic = e => [e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ') || 's/d';
+  const venc = e => 'Carga: ' + (incISO_(e.VTO_CARGA) ? (incISO_(e.VTO_CARGA) < hoy ? 'vencida el ' : 'hasta ') + incTxt_(incISO_(e.VTO_CARGA)) : 'sin dato') + ' · Prueba hidráulica: ' + (incISO_(e.PRUEBA_HIDRAULICA_VENCE) ? (incISO_(e.PRUEBA_HIDRAULICA_VENCE) < hoy ? 'vencida el ' : 'hasta ') + incTxt_(incISO_(e.PRUEBA_HIDRAULICA_VENCE)) : 'sin dato');
   const fotos = e => INC.FOTOS.filter(f => /^http/.test(String(e[f[0]] || ''))).map(f => '<a href="' + e[f[0]] + '">' + f[1] + '</a>').join(' · ');
   const th = 'style="text-align:left;padding:6px 8px;background:#EEF4F6;color:#4F616B;font-size:12px"', td = 'style="padding:6px 8px;border-top:1px solid #E4EBEE;vertical-align:top;font-size:13px"';
   const tabla = (L, extra) => '<table style="border-collapse:collapse;width:100%;margin:4px 0 14px"><tr><th ' + th + '>Extintor</th><th ' + th + '>Ubicación</th><th ' + th + '>Problemas</th><th ' + th + '>' + extra[0] + '</th></tr>' +
     L.map(f => { const e = ext(f.ID_EXTINTOR); return '<tr><td ' + td + '><b>' + esc_(nombre(e)) + '</b><br><span style="color:#4F616B">' + esc_([e.TIPO, e.AGENTE, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' · ')) + (e.NRO_INVENTARIO ? ' · inv. ' + esc_(e.NRO_INVENTARIO) : '') + '</span></td>' +
-      '<td ' + td + '>' + esc_(ubic(e)) + '</td><td ' + td + '><b>' + esc_(String(f.PROBLEMAS || '').split(' · ').join(', ')) + '</b>' + (fotos(e) ? '<br><span style="font-size:12px">' + fotos(e) + '</span>' : '') + '</td><td ' + td + '>' + extra[1](f) + '</td></tr>'; }).join('') + '</table>';
-  const tot = nuevos.length + siguen.length;
+      '<td ' + td + '>' + esc_(ubic(e)) + '</td><td ' + td + '><b>' + esc_(String(f.PROBLEMAS || '').split(' · ').join(', ')) + '</b><br><span style="font-size:12px;color:#4F616B">' + esc_(venc(e)) + '</span>' + (fotos(e) ? '<br><span style="font-size:12px">' + fotos(e) + '</span>' : '') + '</td><td ' + td + '>' + extra[1](f) + '</td></tr>'; }).join('') + '</table>';
+  const tot = nuevos.length + siguen.length;   // (porVencer va aparte: todavía no son problemas)
   const asunto = cod + ' · Extintores con problemas: ' + (tot ? tot + ' sin resolver' + (nuevos.length ? ' (' + nuevos.length + (nuevos.length > 1 ? ' nuevos)' : ' nuevo)') : '') : 'todos resueltos') + (resueltos.length ? ' · ' + resueltos.length + ' resuelto' + (resueltos.length > 1 ? 's' : '') : '');
-  const intro = tot ? 'Estos son los extintores del ' + nom + ' con problemas que dificultan o impiden su uso, registrados en el Sistema HyS. Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto. Este correo llega el día en que aparecen problemas nuevos y, mientras queden sin resolver, cada ' + INC.DIAS_RECORDATORIO + ' días.'
+  const intro = tot ? 'Estos son los extintores del ' + nom + ' con problemas que dificultan o impiden su uso, registrados en el Sistema HyS. Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto. Incluye los vencimientos del inventario (carga y prueba hidráulica) y lo que se registra en los controles. Este correo llega a las ' + INC.HORA_RESUMEN + ' h cuando hay novedades y, mientras queden problemas sin resolver, cada ' + INC.DIAS_RECORDATORIO + ' días.'
     : 'Se marcaron como resueltos los siguientes extintores del ' + nom + '. Gracias por la gestión.';
   const norma = 'Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).';
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:760px"><p>' + esc_(intro) + '</p>' +
-    (nuevos.length ? '<p style="margin:14px 0 4px"><b>Nuevos (' + nuevos.length + ')</b></p>' + tabla(nuevos, ['Detectado', f => esc_(incTxt_(incISO_(f.FECHA))) + '<br><span style="color:#4F616B">' + esc_(f.DETECTO || '') + '</span>']) : '') +
+    (nuevos.length ? '<p style="margin:14px 0 4px"><b>Nuevos (' + nuevos.length + ')</b></p>' + tabla(nuevos, ['Detectado', f => esc_(incTxt_(incISO_(f.FECHA)))]) : '') +
     (siguen.length ? '<p style="margin:14px 0 4px"><b>Siguen sin resolver (' + siguen.length + ')</b></p>' + tabla(siguen.sort((a, b) => dias(b) - dias(a)), ['Hace', f => '<b>' + dias(f) + (dias(f) === 1 ? ' día' : ' días') + '</b><br><span style="color:#4F616B">desde el ' + esc_(incTxt_(incISO_(f.FECHA))) + '</span>']) : '') +
-    (resueltos.length ? '<p style="margin:14px 0 4px"><b>Resueltos (' + resueltos.length + ')</b></p>' + tabla(resueltos, ['Resuelto', f => esc_(incTxt_(incISO_(f.RESUELTO))) + '<br><span style="color:#4F616B">' + esc_([f.RESUELTO_POR, f.RESOLUCION].filter(Boolean).join(': ')) + '</span>']) : '') +
+    (porVencer.length ? '<p style="margin:14px 0 4px"><b>Vencen en los próximos ' + INC.DIAS_POR_VENCER + ' días (' + porVencer.length + ')</b></p><table style="border-collapse:collapse;width:100%;margin:4px 0 14px"><tr><th ' + th + '>Extintor</th><th ' + th + '>Ubicación</th><th ' + th + '>Vencimiento</th></tr>' +
+      porVencer.map(x => '<tr><td ' + td + '><b>' + esc_(nombre(x.e)) + '</b></td><td ' + td + '>' + esc_(ubic(x.e)) + '</td><td ' + td + '>' + esc_(x.txt) + '</td></tr>').join('') + '</table>' : '') +
+    (resueltos.length ? '<p style="margin:14px 0 4px"><b>Resueltos (' + resueltos.length + ')</b></p>' + tabla(resueltos, ['Resuelto', f => esc_(incTxt_(incISO_(f.RESUELTO))) + (f.RESOLUCION ? '<br><span style="color:#4F616B">' + esc_(f.RESOLUCION) + '</span>' : '')]) : '') +
     '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH</p>' +
     '<p><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px"></p></div>';
-  const lin = f => { const e = ext(f.ID_EXTINTOR); return '- ' + nombre(e) + ' · ' + ubic(e) + ': ' + String(f.PROBLEMAS || '').split(' · ').join(', '); };
+  const lin = f => { const e = ext(f.ID_EXTINTOR); return '- ' + nombre(e) + ' · ' + ubic(e) + ': ' + String(f.PROBLEMAS || '').split(' · ').join(', ') + ' (' + venc(e) + ')'; };
   const texto = intro + (nuevos.length ? '\n\nNuevos:\n' + nuevos.map(lin).join('\n') : '') + (siguen.length ? '\n\nSiguen sin resolver:\n' + siguen.map(f => lin(f) + ' (hace ' + dias(f) + ' días)').join('\n') : '') +
+    (porVencer.length ? '\n\nVencen en los próximos ' + INC.DIAS_POR_VENCER + ' días:\n' + porVencer.map(x => '- ' + nombre(x.e) + ' · ' + ubic(x.e) + ': ' + x.txt).join('\n') : '') +
     (resueltos.length ? '\n\nResueltos:\n' + resueltos.map(lin).join('\n') : '') + '\n\n' + norma + '\n\nServicio de Higiene y Seguridad Laboral · HZT / HMH';
   try {
     const op = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' };
@@ -402,18 +433,19 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E) {
 // Activador diario (6 h): arma y manda el correo único de cada establecimiento. fuerza = true lo manda aunque no toque (botón del portal).
 function resumenFallasIncendio(fuerza) {
   if (!PropertiesService.getScriptProperties().getProperty(INC.P_LIBRO)) return { ok: false, mensaje: 'Módulo no instalado.' };
+  incHojaFallas_(); try { incFallasInventario_(); } catch (e) { Logger.log('Inventario: ' + e.message); }   // vencidos y estados del inventario, sin esperar el control
   const hoy = incHoy_(), lim = incSumarDias_(hoy, -INC.DIAS_RECORDATORIO), E = incLeer_('EXTINTORES', INC.H_EXT), F = incFallasTodas_(), props = PropertiesService.getScriptProperties(), out = [];
-  const cods = F.map(f => limpio_(f.ESTABLECIMIENTO)).filter((c, i, a) => c && a.indexOf(c) === i);
+  const cods = F.map(f => limpio_(f.ESTABLECIMIENTO)).concat(E.map(e => limpio_(e.ESTABLECIMIENTO))).filter((c, i, a) => c && a.indexOf(c) === i && incCorreosFalla_(c, '').length);
   cods.forEach(cod => {
     const mias = F.filter(f => limpio_(f.ESTABLECIMIENTO) === cod), abiertas = mias.filter(f => !/^resuel/i.test(f.ESTADO || ''));
     const nuevos = abiertas.filter(f => !incISO_(f.ULTIMO_AVISO)), siguen = abiertas.filter(f => incISO_(f.ULTIMO_AVISO)), resueltos = mias.filter(f => /^resuel/i.test(f.ESTADO || '') && !incISO_(f.CIERRE_AVISADO) && incISO_(f.ULTIMO_AVISO));
-    const ult = props.getProperty('INC_RESUMEN_' + cod) || '';
-    const toca = nuevos.length || resueltos.length || (abiertas.length && (!ult || ult <= lim)) || (fuerza === true && (abiertas.length || resueltos.length));
+    const ult = props.getProperty('INC_RESUMEN_' + cod) || '', pv = incPorVencer_(cod, E), pvYa = JSON.parse(props.getProperty('INC_PV_' + cod) || '[]'), pvNuevos = pv.filter(x => pvYa.indexOf(x.e.ID + '|' + x.txt) < 0);
+    const toca = nuevos.length || resueltos.length || pvNuevos.length || (abiertas.length && (!ult || ult <= lim)) || (fuerza === true && (abiertas.length || resueltos.length || pv.length));
     if (!toca) return;
     const para = incCorreosFalla_(cod, (abiertas[0] || resueltos[0] || {}).SITIO); if (!para.length) return;
-    const r = incMailResumen_(cod, para, nuevos, siguen, resueltos, E); out.push(cod + ': ' + r);
+    const r = incMailResumen_(cod, para, nuevos, siguen, resueltos, E, pv); out.push(cod + ': ' + r);
     if (!/^Enviado/.test(r)) return;
-    props.setProperty('INC_RESUMEN_' + cod, hoy);
+    props.setProperty('INC_RESUMEN_' + cod, hoy); props.setProperty('INC_PV_' + cod, JSON.stringify(pv.map(x => x.e.ID + '|' + x.txt)));
     abiertas.forEach(f => { const o = Object.assign({}, f); delete o.fila; o.ULTIMO_AVISO = hoy; o.AVISOS = (Number(o.AVISOS) || 0) + 1; incEscribir_('FALLAS', INC.H_FAL, f.fila, incFechasFalla_(o)); });
     resueltos.forEach(f => { const o = Object.assign({}, f); delete o.fila; o.CIERRE_AVISADO = hoy; incEscribir_('FALLAS', INC.H_FAL, f.fila, incFechasFalla_(o)); });
   });
