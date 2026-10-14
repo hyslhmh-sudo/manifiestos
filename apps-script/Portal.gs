@@ -23,7 +23,7 @@ function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Da
 // Clave de la caché: misma acción y mismos datos (sin «fresco», en orden) = misma respuesta.
 function pcClave_(accion, x) { const o = {}; Object.keys(x || {}).filter(k => k !== 'fresco').sort().forEach(k => o[k] = x[k]); return 'pc|' + pcGen_() + '|' + accion + '|' + JSON.stringify(o); }
 const PC_LEER = ['p_ficha', 'p_mi', 'p_res_tablero', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
-const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op)$/;
+const PC_NO_CAMBIA = /^p_(ping|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op|dat_(libros|hojas|hoja|papelera|historial))$/;
 function portal_(d) {
   if (!esMaestra_(d.clave)) return { ok: false, error: 'clave', mensaje: 'La clave de Higiene y Seguridad no es correcta.' };
   const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? pcClave_(d.accion, x0) : '';
@@ -41,6 +41,7 @@ function portal_(d) {
 }
 function portalAccion_(d) {
   const x = d.datos || {};
+  if (/^p_dat_/.test(d.accion)) return typeof datPortal_ === 'function' ? datPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Datos.gs.' };   // editor general (14.53)
   switch (d.accion) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
     case 'p_resumen': return pResumen_(x.fresco);

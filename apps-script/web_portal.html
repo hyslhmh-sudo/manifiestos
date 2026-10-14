@@ -404,6 +404,7 @@ function marco(activo, contenido) {
     grp('inc', 'fire_extinguisher', '10 · Protección contra incendios', it('#inc', '', 'Extintores · tablero', 1) + it('#incest/HMH', '', 'Extintores del HMH', 1) + it('#incest/HZT', '', 'Extintores de la red HZT', 1) + it('#incnov', '', 'Novedades y recorridas', 1)) +
     '<div class="titu mod">Más</div>' +
     it('#accesos', 'key', 'Accesos (DNI y claves)') +
+    it('#datos', 'table_view', 'Datos · editar todo') +
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
     grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)'))) +
@@ -486,7 +487,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-13 · 14.23';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-14 · 14.53';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1FlKnLlYM5lLLJjEoAzNXtliAY34p3Nb3Q1xz3tFKDGc/edit';
 const AYUDA = {
@@ -503,6 +504,7 @@ const AYUDA = {
   '#resfrec': ['1 · Residuos · Frecuencias de retiro', ['Retiros (manifiestos cargados) de cada sitio y establecimiento de la provincia: por mes, por año, promedio mensual, por semana y días entre retiros.', 'Se compara con la frecuencia que fija el contrato (Pactado / mes): diaria salvo domingos = 26; 3 días por semana = 13; semanal = 4,3; quincenal = 2,2; mensual = 1. Cumplimiento: verde 90 % o más, amarillo 70 a 89 %, rojo menos de 70 %.', '«Ver»: por sitio, por establecimiento o «Comparar contratos» (resumen por contrato y grupo). Filtros de área, contrato, período (desde y hasta) y buscador.', 'Los contratos, sus grupos y la frecuencia de cada establecimiento o tipo de sitio se cargan en el libro general, hojas CONTRATOS, CONTRATO_GRUPOS y CONTRATO_ALCANCE (botón «Contratos (planilla)»). Hoy está cargado el contrato de Impeesa 2026; el anterior se suma como otra fila con ESTADO = Anterior.', 'Si los manifiestos se cargan con atraso, la frecuencia real aparece más baja: revisá la fecha del último retiro.']],
   '#rescosto': ['1 · Residuos · Contrato y costos', ['Datos del contrato elegido (empresa, expediente, resolución, vigencia, grupos de precio y cupos) y, por grupo, la lista de sus establecimientos con el volumen facturable de cada mes (Y1 + Y3 en dm³: Impeesa factura ambas corrientes) desde el inicio del contrato y su valor al precio por dm³ del grupo.', 'Cupo total: el excedente se factura solo si la suma de todos los grupos supera el cupo total del contrato en el mes (cláusulas SEGUNDA y SÉPTIMA). El recuadro «Cupo total del contrato» compara mes a mes el cupo con lo cargado por todos los establecimientos; como no todos cargan, lo cargado es un mínimo.', 'Referencia del grupo: ▲ marca el mes en que un establecimiento, por sí solo, superó la cantidad que la cláusula TERCERA asigna a todo su grupo; la columna «Meses sobre la referencia» cuenta los meses cerrados en que pasó. En la vista de cada hospital está el % de la referencia mes por mes.', 'No se suman totales de la red: que un establecimiento no cargue sus manifiestos no significa que no genere residuos. Los que no cargan figuran «Sin manifiestos cargados en el sistema».', 'El excedente no se reparte por establecimiento ni por grupo.', 'Tocá un establecimiento para abrir su vista (1 · Residuos › Tablero › establecimiento): ahí está su cuadro «Contrato y costo» mes por mes.', 'Precios y cupos: libro general, hoja CONTRATO_GRUPOS (si cambia el precio, otra fila con la fecha DESDE nueva).']],
   '#m8serv': ['Edificios y servicios', ['Cada fila es un edificio o un servicio de un establecimiento. El tipo decide qué ítems del catálogo se aplican; la criticidad (1 a 3) pesa en la prioridad.', 'Para sumar un establecimiento de la red, agregá primero su edificio (tipo Edificio) y después sus servicios.']],
+  '#datos': ['Datos · editar todo', ['Llave general del sistema: cualquier dato de cualquier libro (libro general, BASE COMÚN, BASE DE TRABAJADORES, claves, libros de cada establecimiento y de cada módulo) se puede buscar, cambiar, agregar o eliminar desde acá. Las pantallas de cada módulo siguen siendo la forma cómoda de cargar.', 'Elegí el libro y la hoja; tocá una fila para ver todas sus columnas. «Duplicar como fila nueva» sirve para cargar una parecida. Las columnas con fórmula se calculan solas y no se pisan.', 'Si la fila cambió en la planilla mientras la editabas, avisa y no guarda: volvé a abrirla.', 'Cada cambio queda en BASE COMÚN › HISTORIAL (antes y después) y se ve en «Historial de cambios». Cada fila eliminada queda en BASE COMÚN › PAPELERA y se puede restaurar.', 'Otra planilla que no esté en la lista: pegá su enlace. Para que quede en la lista: propiedad del script DATOS_LIBROS_EXTRA («ID|Nombre», separados por coma).', 'Algunos tableros (tablero de control, residuos) se recalculan de madrugada; para ver un cambio enseguida, usá «Actualizar» en esa pantalla.', 'Sin GitHub: la misma pantalla está en el portal de respaldo, y todo se puede hacer también en las planillas.']],
   '#rgrl': ['RGRL · Relevamiento General de Riesgos Laborales', ['Es el formulario del Anexo I de la Res. SRT 463/09 (formulario A general, Dto. 351/79), con el mismo texto y numeración: datos generales, 161 condiciones a cumplir, planillas A (cancerígenos), B (PCB) y C (sustancias a declarar), gremios, contratistas y responsable.', 'Uno por establecimiento o sitio (red Trelew y HSST). Elegí el establecimiento y el lugar y tocá «Empezar». Se actualiza una vez al año: abrí el anterior y «Copiar para este año».', 'Cada condición: Sí, No o No aplica (tocá de nuevo para borrar). Con «No», la fecha de regularización es obligatoria para guardarlo como completo.', 'Vencido (más de 12 meses) = aviso en el tablero. Todo queda en la planilla «M8 · RGRL y mediciones» (hojas RGRL, RGRL_RESPUESTAS y RGRL_PLANILLAS) y se puede completar a mano.']],
   '#medic': ['Mediciones con vencimiento', ['Puesta a tierra y continuidad de masas (Res. SRT 900/15), iluminación (Res. SRT 84/12), ruido (Res. SRT 85/12), pararrayos y otras.', '«Cargar medición»: establecimiento, lugar, tipo, fecha y protocolo (PDF o foto). Si no cargás el vencimiento, es la fecha + 12 meses. La nueva reemplaza a la anterior del mismo tipo y lugar.', 'Vencidas o que vencen en 30 días: urgentes en el tablero de control y en esta pantalla.', 'Recordatorio por correo los jueves a las 7 h a los correos de «Recordatorio a», mientras siga vencida o por vencer. «Ver el recordatorio» muestra el texto sin enviarlo.']],
   '#m8libros': ['Libros para la red', ['Generar: elegí el establecimiento y sus servicios; el libro queda en la carpeta del módulo › LIBROS DE LA RED. Compartilo vos con el referente como editor.', 'El referente completa solo las columnas amarillas (respuesta, observación y foto) y te avisa.', 'Importar: pegá el enlace del libro completo. Se crea un relevamiento por servicio y, si lo marcás, sus hallazgos.']],
@@ -4329,6 +4331,137 @@ function medForm(m) {
 }
 </script>
 <script>
+// Portal HyS · Datos (editor general) · versión 14.53 (14/10/2026) · servidor: Datos.gs (acciones p_dat_…)
+// Regla del sistema: Higiene y Seguridad agrega, cambia y elimina cualquier dato de cualquier libro desde el portal.
+// Cada cambio queda en BASE COMÚN › HISTORIAL; cada fila eliminada, en BASE COMÚN › PAPELERA (se puede restaurar).
+// Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
+let DATL = null, DATH = null, DATD = null;
+const DATS = { id: '', hoja: '', q: '', desde: 0, orden: 'nuevas', enc: 0, vista: 'hoja' };
+const datCab = (extra) => '<div class="cab"><div><span class="mu peq">Gestión</span><h1>Datos · editar todo</h1><span class="mu peq">Cualquier dato de cualquier libro del sistema: buscar, cambiar, agregar o eliminar filas. Cada cambio queda en el historial y lo eliminado va a la papelera.</span></div><div class="filtros">' + (extra || '') + '</div></div>';
+function datRuta() {
+  const p = location.hash.replace(/^#datos\/?/, '').split('/').map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
+  if (p[0] === 'papelera' || p[0] === 'historial') { DATS.vista = p[0]; return; }
+  DATS.vista = 'hoja'; if (p[0] && p[0] !== DATS.id) { DATS.id = p[0]; DATS.hoja = ''; DATH = null; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; }
+  if (p[1] !== undefined && p[1] !== DATS.hoja) { DATS.hoja = p[1]; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; }
+}
+const datIr = () => { const h = '#datos/' + encodeURIComponent(DATS.id) + (DATS.hoja ? '/' + encodeURIComponent(DATS.hoja) : ''); if (location.hash !== h) location.hash = h; else datos(); };
+
+async function datos(fresco) {
+  datRuta();
+  if (!DATL || fresco === 'libros') { cargando('#datos', 'Buscando los libros del sistema…'); try { DATL = await api('p_dat_libros', { fresco: fresco === 'libros' }, 180000); } catch (e) { return; } }
+  if (!DATL.ok) return marco('#datos', datCab() + '<div class="aviso error">' + esc(DATL.mensaje || DATL.error || 'No se pudo leer.') + (/instalar|desconocida/i.test(DATL.mensaje || DATL.error || '') ? ' Falta instalar Datos.gs en el Sistema HyS.' : '') + '</div>');
+  if (DATS.vista === 'papelera') return datPapelera();
+  if (DATS.vista === 'historial') return datHistorial();
+  const grupos = {}; DATL.libros.forEach(l => (grupos[l.grupo] = grupos[l.grupo] || []).push(l));
+  const otro = DATS.id && !DATL.libros.some(l => l.id === DATS.id);
+  const selLibro = '<select class="c" id="dtLib"><option value="">Elegí un libro…</option>' + Object.keys(grupos).map(g => '<optgroup label="' + esc(g) + '">' + grupos[g].map(l => '<option value="' + esc(l.id) + '"' + (l.id === DATS.id ? ' selected' : '') + '>' + esc(l.nombre) + '</option>').join('') + '</optgroup>').join('') + (otro ? '<option value="' + esc(DATS.id) + '" selected>Planilla por enlace</option>' : '') + '</select>';
+  let cuerpo = '';
+  if (DATS.id) {
+    if (!DATH || DATH.id !== DATS.id || fresco === 'hojas') { cargando('#datos', 'Abriendo el libro…'); try { DATH = await api('p_dat_hojas', { id: DATS.id }, 120000); } catch (e) { return; } if (!DATH.ok) { const m = DATH.mensaje || DATH.error; DATH = null; return marco('#datos', datCab() + '<div class="aviso error">' + esc(m || 'No se pudo abrir el libro.') + '</div>'); } }
+    if (!DATS.hoja) { const v = DATH.hojas.find(h => !h.oculta && h.filas > 1) || DATH.hojas[0]; DATS.hoja = v ? v.nombre : ''; }
+    const hojas = '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:10px 0">' + DATH.hojas.map(h => '<button class="btn ' + (h.nombre === DATS.hoja ? 'pri' : 'sec') + ' peq" data-hoja="' + esc(h.nombre) + '">' + esc(h.nombre) + (h.oculta ? ' (oculta)' : '') + ' <span class="mu">' + Math.max(0, h.filas) + '</span></button>').join('') + '</div>';
+    cuerpo = '<section class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>' + esc(DATH.nombre) + '</h2><a class="btn sec peq" href="' + esc(DATH.url) + '" target="_blank" rel="noopener">Abrir la planilla ↗</a></div>' + hojas + '<div id="dtHoja"><div class="cargando">Leyendo la hoja…</div></div></section>';
+  } else cuerpo = '<section class="card peq">Elegí un libro de la lista o pegá el enlace de cualquier otra planilla de Google. Los libros salen de la configuración del sistema: si falta alguno, sumalo con la propiedad del script DATOS_LIBROS_EXTRA o pegá su enlace.</section>';
+  marco('#datos', datCab('<button class="btn sec" id="dtPap">Papelera</button><button class="btn sec" id="dtHis">Historial de cambios</button><button class="btn sec" id="dtAct">Actualizar lista</button>') +
+    '<section class="card"><div class="filtros" style="align-items:flex-end"><label class="f" style="flex:2;min-width:240px">Libro' + selLibro + '</label><label class="f" style="flex:2;min-width:240px">…o enlace de otra planilla<input class="c" id="dtUrl" placeholder="https://docs.google.com/spreadsheets/d/…"></label><button class="btn sec" id="dtUrlOk">Abrir</button></div></section>' + cuerpo);
+  $('dtLib').onchange = e => { DATS.id = e.target.value; DATS.hoja = ''; DATH = null; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; if (DATS.id) datIr(); else location.hash = '#datos'; };
+  $('dtUrlOk').onclick = () => { const m = ($('dtUrl').value.match(/[-\w]{25,}/) || [])[0]; if (!m) return toast('Pegá el enlace completo de la planilla.'); DATS.id = m; DATS.hoja = ''; DATH = null; datIr(); };
+  $('dtAct').onclick = () => datos('libros'); $('dtPap').onclick = () => location.hash = '#datos/papelera'; $('dtHis').onclick = () => location.hash = '#datos/historial';
+  document.querySelectorAll('[data-hoja]').forEach(b => b.onclick = () => { DATS.hoja = b.dataset.hoja; DATS.desde = 0; DATS.q = ''; DATS.enc = 0; datIr(); });
+  if (DATS.id && DATS.hoja) datLeerHoja();
+}
+
+async function datLeerHoja() {
+  const box = $('dtHoja'); if (!box) return;
+  box.innerHTML = '<div class="cargando">Leyendo la hoja…</div>';
+  const pedido = { id: DATS.id, hoja: DATS.hoja, q: DATS.q, desde: DATS.desde, orden: DATS.orden, enc: DATS.enc || undefined };
+  let D; try { D = await api('p_dat_hoja', pedido, 120000); } catch (e) { box.innerHTML = '<div class="aviso error">No se pudo leer. <button class="link" id="dtRe">Reintentar</button></div>'; $('dtRe').onclick = datLeerHoja; return; }
+  if (!$('dtHoja') || pedido.hoja !== DATS.hoja || pedido.id !== DATS.id) return;
+  if (!D.ok) { box.innerHTML = '<div class="aviso error">' + esc(D.mensaje || D.error || 'No se pudo leer.') + '</div>'; return; }
+  DATD = D; DATS.enc = D.enc;
+  const vis = D.cab.map((c, j) => j).slice(0, 7), pag = D.porPagina || 100;
+  const celda = (f, j) => { const v = String(f.v[j] == null ? '' : f.v[j]); return '<td' + (f.f && f.f.indexOf(j) >= 0 ? ' title="Fórmula: se calcula sola"' : '') + '>' + esc(v.length > 80 ? v.slice(0, 80) + '…' : v) + '</td>'; };
+  box.innerHTML = '<div class="filtros" style="align-items:flex-end;margin-bottom:10px"><label class="f" style="flex:2;min-width:200px">Buscar en la hoja<input class="c" id="dtQ" type="search" value="' + esc(DATS.q) + '" placeholder="Palabras, código, DNI, fecha…"></label>' +
+    '<label class="f">Orden<select class="c" id="dtOrd"><option value="nuevas"' + (DATS.orden === 'nuevas' ? ' selected' : '') + '>Últimas filas primero</option><option value="planilla"' + (DATS.orden !== 'nuevas' ? ' selected' : '') + '>Como en la planilla</option></select></label>' +
+    '<label class="f" style="width:130px">Encabezados en la fila<input class="c" id="dtEnc" type="number" min="1" value="' + D.enc + '"></label><button class="btn pri" id="dtNueva">+ Agregar fila</button></div>' +
+    '<div class="mu peq" style="margin-bottom:6px">' + D.total + ' fila(s)' + (DATS.q ? ' con «' + esc(DATS.q) + '»' : '') + '. Tocá una fila para ver y cambiar todas sus columnas (' + D.cab.length + ').' + (D.total > pag ? ' Se muestran de a ' + pag + '.' : '') + '</div>' +
+    (D.filas.length ? '<div style="overflow-x:auto"><table><thead><tr><th>Fila</th>' + vis.map(j => '<th>' + esc(D.cab[j]) + '</th>').join('') + (D.cab.length > vis.length ? '<th>…</th>' : '') + '</tr></thead><tbody>' +
+      D.filas.map((f, i) => '<tr class="cl" data-i="' + i + '" style="cursor:pointer"><td class="mu">' + f.fila + '</td>' + vis.map(j => celda(f, j)).join('') + (D.cab.length > vis.length ? '<td class="mu">+' + (D.cab.length - vis.length) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' : '<div class="mu peq">Sin filas' + (DATS.q ? ' que coincidan' : '') + '.</div>') +
+    (D.total > pag ? '<div class="filtros" style="margin-top:10px;justify-content:center"><button class="btn sec peq" id="dtAnt"' + (D.desde <= 0 ? ' disabled' : '') + '>← Anteriores</button><span class="mu peq">' + (D.desde + 1) + '–' + Math.min(D.desde + pag, D.total) + ' de ' + D.total + '</span><button class="btn sec peq" id="dtSig"' + (D.desde + pag >= D.total ? ' disabled' : '') + '>Siguientes →</button></div>' : '');
+  let tq; $('dtQ').oninput = e => { clearTimeout(tq); tq = setTimeout(() => { DATS.q = e.target.value.trim(); DATS.desde = 0; datLeerHoja(); }, 450); };
+  $('dtOrd').onchange = e => { DATS.orden = e.target.value; DATS.desde = 0; datLeerHoja(); };
+  $('dtEnc').onchange = e => { DATS.enc = Number(e.target.value) || 0; DATS.desde = 0; datLeerHoja(); };
+  $('dtNueva').onclick = () => datFila(null);
+  if ($('dtAnt')) $('dtAnt').onclick = () => { DATS.desde = Math.max(0, D.desde - pag); datLeerHoja(); };
+  if ($('dtSig')) $('dtSig').onclick = () => { DATS.desde = D.desde + pag; datLeerHoja(); };
+  box.querySelectorAll('tr[data-i]').forEach(tr => tr.onclick = () => datFila(D.filas[Number(tr.dataset.i)]));
+}
+
+// Ver, cambiar, duplicar o eliminar una fila (o agregar una nueva)
+function datFila(f) {
+  const D = DATD, nueva = !f, fo = f && f.f || [];
+  const campo = (c, j) => { const v = nueva ? '' : String(f.v[j] == null ? '' : f.v[j]), ro = fo.indexOf(j) >= 0, op = D.listas && D.listas[j];
+    const ctl = ro ? '<input class="c" value="' + esc(v) + '" disabled title="Tiene fórmula: se calcula sola">'
+      : op ? '<select class="c" data-j="' + j + '"><option value=""></option>' + op.concat(v && op.indexOf(v) < 0 ? [v] : []).map(o => '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+      : v.length > 60 || /\n/.test(v) ? '<textarea class="c" data-j="' + j + '">' + esc(v) + '</textarea>' : '<input class="c" data-j="' + j + '" value="' + esc(v) + '">';
+    return '<label class="f' + (v.length > 60 ? ' ancho' : '') + '">' + esc(c) + (ro ? ' <span class="mu peq">(fórmula)</span>' : '') + ctl + '</label>'; };
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Fila"><h2>' + (nueva ? 'Agregar fila · ' : 'Fila ' + f.fila + ' · ') + esc(DATS.hoja) + '</h2><div class="aviso error" id="mErr" hidden></div>' +
+    '<div class="mu peq" style="margin-bottom:8px">Fechas como dd/mm/aaaa. Lo que dejes igual no se toca. ' + (nueva ? 'Las columnas con fórmula se completan solas.' : 'Cada cambio queda en BASE COMÚN › HISTORIAL.') + '</div>' +
+    '<div class="campos">' + D.cab.map(campo).join('') + '</div>' +
+    '<div class="acciones"><div style="display:flex;gap:8px;flex-wrap:wrap">' + (nueva ? '' : '<button class="btn sec" id="mDup">Duplicar como fila nueva</button><button class="btn sec" id="mDel" style="color:var(--er)">Eliminar fila</button>') + '</div><div style="display:flex;gap:8px"><button class="btn sec" id="mCan">Cancelar</button><button class="btn pri" id="mOk">' + (nueva ? 'Agregar' : 'Guardar') + '</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  const err = m => { $('mErr').textContent = m; $('mErr').hidden = false; };
+  const leer = () => { const o = {}; document.querySelectorAll('#ov [data-j]').forEach(el => o[el.dataset.j] = el.value); return o; };
+  const ocupado = (b, t) => { b.disabled = true; b.textContent = t; };
+  $('mCan').onclick = cerrar;
+  $('mOk').onclick = async () => {
+    const o = leer(), b = $('mOk');
+    if (nueva) { if (!Object.keys(o).some(k => String(o[k]).trim())) return err('Completá al menos un dato.'); ocupado(b, 'Agregando…');
+      try { const r = await api('p_dat_agregar', { id: DATS.id, hoja: DATS.hoja, enc: D.enc, valores: o }, 90000); if (!r.ok) { b.disabled = false; b.textContent = 'Agregar'; return err(r.mensaje || 'No se pudo agregar.'); } toast('Agregada en la fila ' + r.fila + '.'); cerrar(); datLeerHoja(); } catch (e) { b.disabled = false; b.textContent = 'Agregar'; } return; }
+    const cambios = {}, antes = {}; Object.keys(o).forEach(j => { const v0 = String(f.v[j] == null ? '' : f.v[j]); if (o[j] !== v0) { cambios[j] = o[j]; antes[j] = v0; } });
+    if (!Object.keys(cambios).length) return cerrar();
+    ocupado(b, 'Guardando…');
+    try { const r = await api('p_dat_guardar', { id: DATS.id, hoja: DATS.hoja, enc: D.enc, fila: f.fila, cambios: cambios, antes: antes }, 90000);
+      if (!r.ok) { b.disabled = false; b.textContent = 'Guardar'; return err(r.mensaje || 'No se pudo guardar.'); }
+      toast('Guardado: ' + r.cambios + ' cambio(s).'); cerrar(); datLeerHoja(); } catch (e) { b.disabled = false; b.textContent = 'Guardar'; }
+  };
+  if (!nueva) {
+    $('mDup').onclick = () => { const o = leer(); cerrar(); datFila(null); Object.keys(o).forEach(j => { const el = document.querySelector('#ov [data-j="' + j + '"]'); if (el) el.value = o[j]; }); };
+    $('mDel').onclick = async () => { const b = $('mDel');
+      if (!b.dataset.ok) { b.dataset.ok = '1'; b.textContent = '¿Seguro? Tocá de nuevo para eliminar'; return; }
+      ocupado(b, 'Eliminando…');
+      try { const r = await api('p_dat_eliminar', { id: DATS.id, hoja: DATS.hoja, enc: D.enc, fila: f.fila, antes: f.v }, 90000);
+        if (!r.ok) { b.disabled = false; b.textContent = 'Eliminar fila'; delete b.dataset.ok; return err(r.mensaje || 'No se pudo eliminar.'); }
+        toast('Fila eliminada. Queda en la papelera por si hay que restaurarla.'); cerrar(); datLeerHoja(); } catch (e) { b.disabled = false; b.textContent = 'Eliminar fila'; } };
+  }
+}
+
+async function datPapelera() {
+  cargando('#datos', 'Leyendo la papelera…');
+  let P; try { P = await api('p_dat_papelera', {}, 90000); } catch (e) { return; }
+  marco('#datos', datCab('<button class="btn sec" id="dtVol">← Volver a los libros</button><button class="btn sec" id="dtHis">Historial de cambios</button>') +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Papelera (' + (P.lista || []).length + ')</h2><span class="mu peq">Filas eliminadas desde esta pantalla. «Restaurar» la vuelve a poner al final de su hoja. También están en BASE COMÚN › PAPELERA.</span></div>' +
+    ((P.lista || []).length ? '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Libro › hoja</th><th>Fila</th><th>Datos</th><th>Estado</th><th></th></tr></thead><tbody>' + P.lista.map(r => '<tr><td>' + esc(r.fecha) + '</td><td><b>' + esc(r.libro) + '</b><div class="mu peq">' + esc(r.hoja) + '</div></td><td>' + esc(r.fila) + '</td><td class="peq">' + esc((r.valores || []).filter(v => v !== '' && v != null).slice(0, 6).join(' · ').slice(0, 200)) + '</td><td class="peq">' + esc(r.estado) + '</td><td>' + (r.estado === 'Eliminada' ? '<button class="btn sec peq" data-res="' + r.n + '">Restaurar</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="mu peq" style="padding:14px 18px">La papelera está vacía.</div>') + '</section>');
+  $('dtVol').onclick = () => location.hash = '#datos' + (DATS.id ? '/' + encodeURIComponent(DATS.id) + (DATS.hoja ? '/' + encodeURIComponent(DATS.hoja) : '') : '');
+  $('dtHis').onclick = () => location.hash = '#datos/historial';
+  document.querySelectorAll('[data-res]').forEach(b => b.onclick = async () => { b.disabled = true; b.textContent = 'Restaurando…';
+    try { const r = await api('p_dat_restaurar', { n: Number(b.dataset.res) }, 90000); if (!r.ok) { toast(r.mensaje || 'No se pudo restaurar.'); b.disabled = false; b.textContent = 'Restaurar'; return; } toast('Restaurada en ' + r.libro + ' › ' + r.hoja + ', fila ' + r.fila + '.'); datPapelera(); } catch (e) { b.disabled = false; b.textContent = 'Restaurar'; } });
+}
+
+async function datHistorial(q) {
+  cargando('#datos', 'Leyendo el historial…');
+  let H; try { H = await api('p_dat_historial', { q: q || '' }, 90000); } catch (e) { return; }
+  marco('#datos', datCab('<button class="btn sec" id="dtVol">← Volver a los libros</button><button class="btn sec" id="dtPap">Papelera</button>') +
+    '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Historial de cambios</h2><span class="mu peq">Los últimos cambios hechos desde el portal (esta pantalla y las de cada módulo). Completo en BASE COMÚN › HISTORIAL.</span>' +
+    '<div class="filtros" style="margin-top:8px"><input class="c" id="dtHq" type="search" placeholder="Buscar (hoja, código, campo, valor…)" value="' + esc(q || '') + '"><button class="btn sec" id="dtHok">Buscar</button></div></div>' +
+    ((H.lista || []).length ? '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Hoja</th><th>Fila o código</th><th>Campo</th><th>Antes</th><th>Después</th><th>Origen</th></tr></thead><tbody>' + H.lista.map(r => '<tr>' + r.map((c, i) => '<td' + (i >= 4 && i <= 5 ? ' class="peq"' : '') + '>' + esc(String(c).slice(0, 160)) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '<div class="mu peq" style="padding:14px 18px">Sin cambios registrados' + (q ? ' con esa búsqueda' : '') + '.</div>') + '</section>');
+  $('dtVol').onclick = () => location.hash = '#datos' + (DATS.id ? '/' + encodeURIComponent(DATS.id) + (DATS.hoja ? '/' + encodeURIComponent(DATS.hoja) : '') : '');
+  $('dtPap').onclick = () => location.hash = '#datos/papelera';
+  $('dtHok').onclick = () => datHistorial($('dtHq').value.trim()); $('dtHq').onkeydown = e => { if (e.key === 'Enter') datHistorial($('dtHq').value.trim()); };
+}
+</script>
+<script>
 // Portal HyS · 10 · Protección contra incendios (Incendio.gs) · versión 0 (14/10/2026)
 // Inventario de extintores de la red Trelew y del HSST, vencimientos (carga y prueba hidráulica) y control mensual con 3 fotos
 // obligatorias (panorámica con el entorno, marbete y N.º de inventario). Alarma: 3 meses sin control.
@@ -4885,6 +5018,7 @@ function routerPantalla() {
   if (ruta === 'capmat') return capMatriz();
   if (ruta === 'acciones') return acciones();
   if (ruta === 'accesos') return accesosPantalla();
+  if (ruta === 'datos') return datos();
   if (ruta === 'm8') return m8Tablero();
   if (ruta === 'rgrl') return rgrlLista(a);
   if (ruta === 'medic') return medicionesPantalla();
