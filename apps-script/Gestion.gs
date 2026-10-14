@@ -7,7 +7,7 @@
  * Paso de lo que ya existe («Traer de los módulos», también cada mañana con el precalentado):
  *   · DIAGNÓSTICO › PLAN_ACCION (diagnósticos de residuos, agua, plagas y cocinas, y auditorías), con su estado e historial.
  *   · M8 › HALLAZGOS_PLAN (servicios e infraestructura).
- *   · Agua NO APTA abierta y casos de plagas abiertos (incluye el registro MIPyV).
+ *   · Agua NO APTA abierta (directo) y revisiones de plagas atrasadas (incluye el registro MIPyV); lo abierto en plazo es alerta, no hallazgo.
  * Las hojas de origen no se borran. Al cerrar una acción en Gestión se marca también en su plan de origen (PLAN_ACCION o HALLAZGOS_PLAN).
  */
 
@@ -302,13 +302,14 @@ function gesTraer_(x) {
       });
     } catch (e) { res.errores.push('Infraestructura (M8): ' + e.message); }
 
-    // 3) Agua NO APTA y casos de plagas abiertos (lo que junta el tablero)
+    // 3) Agua NO APTA y revisiones de plagas atrasadas (lo que junta el tablero)
     try {
       const T = tbTablero_(!!x.fresco), abiertas = {};
       (T.acciones || []).forEach(a => {
         let k, src;
         if (a.origen === 'Agua') { k = 'AGUA|' + a.cod + '|' + a.ref + '|' + a.limite; src = { modulo: GES.MODULOS[1], origen: 'Análisis de agua', desc: 'Agua NO APTA en el punto ' + (a.ref || 's/d'), accion: 'Limpiar y desinfectar, y repetir el análisis', prioridad: 'Actuar ya', plazo: 21, limite: a.limite, fuente: 'Dto. 351/79, Anexo I, arts. 57 y 58; Código Alimentario Argentino (CAA), art. 982', directo: true }; }
-        else if (/^Plagas/.test(a.origen)) { k = (a.origen === 'Plagas' ? 'PLAGAS|' : 'MIPYV|') + a.cod + '|' + a.ref; src = { modulo: GES.MODULOS[2], origen: 'Caso de plagas', desc: a.que, accion: 'Seguir el caso hasta el cierre: ' + a.que, prioridad: 'Resolver rápido', limite: a.limite || '', fuente: 'Programa MIPyV o contrato' }; }
+        // Plagas: solo la revisión atrasada es hallazgo; lo abierto en plazo es un recordatorio del módulo («alerta no es hallazgo»)
+        else if (/^Plagas/.test(a.origen) && a.vencida) { k = (a.origen === 'Plagas' ? 'PLAGAS|' : 'MIPYV|') + a.cod + '|' + a.ref; src = { modulo: GES.MODULOS[2], origen: 'Caso de plagas', desc: 'Revisión atrasada (desde ' + a.limite + '): ' + a.que, accion: 'Hacer la revisión atrasada y cerrar el caso: ' + a.que, prioridad: 'Resolver rápido', plazo: 30, fuente: 'Programa MIPyV o contrato' }; }
         else return;
         abiertas[k] = true;
         if (alta(Object.assign({ cod: limpio_(a.cod), sitio: a.donde, ref: a.ref, estado: 'En curso', recurso: 'Gestión' }, src), k, false)) res[src.origen === 'Análisis de agua' ? 'agua' : 'plagas']++;
