@@ -41,7 +41,7 @@ async function resInforme(fresco) {
       (F.tipo === 'Semestral' ? '<label class="f">Semestre<select class="c" id="riS">' + anios.flatMap(y => [y + '-2', y + '-1']).map(s => op(s, (s.slice(5) === '1' ? '1.º semestre ' : '2.º semestre ') + s.slice(0, 4), F.sem)).join('') + '</select></label>' : '') +
       (F.tipo === 'Anual' ? '<label class="f">Año<select class="c" id="riA">' + anios.map(y => op(y, y, F.anio)).join('') + '</select></label>' : '') +
       (F.tipo === 'Período' ? '<label class="f">Desde<input class="c" type="date" id="riD" value="' + esc(F.desde) + '"></label><label class="f">Hasta<input class="c" type="date" id="riH" value="' + esc(F.hasta) + '"></label>' : '') +
-      '<span class="mu peq">' + (per ? 'Del ' + fechaTxt(per.desde) + ' al ' + fechaTxt(per.hasta) + (per.hasta > O.hoy ? ' (los datos llegan hasta hoy)' : '') : 'Elegí las fechas') + '</span></div></section>' +
+      '<span class="mu peq" id="riPer">' + (per ? 'Del ' + fechaTxt(per.desde) + ' al ' + fechaTxt(per.hasta) + (per.hasta > O.hoy ? ' (los datos llegan hasta hoy)' : '') : 'Elegí las fechas') + '</span></div></section>' +
     '<section class="card"><h2>2. Destinatario</h2><div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end">' +
       '<label class="f">Destinatario<input class="c" id="riDe" list="riDeL" value="' + esc(F.dest) + '" placeholder="Elegí o escribí" style="min-width:260px"><datalist id="riDeL">' + O.destinos.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
       '<label class="f">Nombre y cargo (opcional)<input class="c" id="riCa" value="' + esc(F.cargo) + '" placeholder="Ej.: Sr. Fernando Funes, Jefe de Área Externa" style="min-width:300px"></label></div></section>' +
@@ -58,7 +58,12 @@ async function resInforme(fresco) {
   const set = (k, v) => { RINFF[k] = v; rinfGuardar(); };
   $('riAct').onclick = () => resInforme(true);
   $('riT').onchange = e => { set('tipo', e.target.value); resInforme(); };
-  [['riM', 'mes'], ['riS', 'sem'], ['riA', 'anio'], ['riD', 'desde'], ['riH', 'hasta']].forEach(([id, k]) => { if ($(id)) $(id).onchange = e => { set(k, e.target.value); resInforme(); }; });
+  [['riM', 'mes'], ['riS', 'sem'], ['riA', 'anio']].forEach(([id, k]) => { if ($(id)) $(id).onchange = e => { set(k, e.target.value); resInforme(); }; });
+  // Fechas libres: se guardan mientras se escriben, sin volver a dibujar la pantalla (si no, el año queda en el primer dígito)
+  const rotulo = () => { const p = rinfPeriodo(), ok = p && /^\d{4}-\d{2}-\d{2}$/.test(p.desde) && /^\d{4}-\d{2}-\d{2}$/.test(p.hasta) && p.desde.slice(0, 4) > '1999' && p.hasta.slice(0, 4) > '1999';
+    $('riPer').textContent = !ok ? 'Completá las dos fechas (día, mes y año)' : p.desde > p.hasta ? '«Desde» es posterior a «Hasta»' : 'Del ' + fechaTxt(p.desde) + ' al ' + fechaTxt(p.hasta) + (p.hasta > O.hoy ? ' (los datos llegan hasta hoy)' : ''); };
+  [['riD', 'desde'], ['riH', 'hasta']].forEach(([id, k]) => { if ($(id)) $(id).oninput = $(id).onchange = e => { RINFF[k] = e.target.value; rinfGuardar(); rotulo(); }; });
+  if ($('riD')) rotulo();
   $('riDe').onchange = e => set('dest', e.target.value.trim()); $('riCa').onchange = e => set('cargo', e.target.value.trim()); $('riDet').onchange = e => set('detalle', e.target.checked);
   const marcar = (lista, on) => { const s = new Set(RINFF.sel); lista.forEach(k => on ? s.add(k) : s.delete(k)); set('sel', Array.from(s)); resInforme(); };
   document.querySelectorAll('.rinfS').forEach(c => c.onchange = () => marcar([c.value], c.checked));
@@ -68,7 +73,7 @@ async function resInforme(fresco) {
     O.establecimientos.forEach(e => e.sitios.forEach(x => { const tw = ['HZT', 'HMH'].includes(e.cod); if ((g === 'tw' && tw) || (g === 'twcaps' && tw && esCaps(x)) || (g === 'caps' && esCaps(x))) s.add(clave(e, x)); }));
     set('sel', Array.from(s)); resInforme(); });
   const pedir = async generar => {
-    const p = rinfPeriodo(); if (!p) return toast('Elegí el período.'); if (!RINFF.sel.length) return toast('Elegí al menos un sitio.');
+    const p = rinfPeriodo(); if (!p || !/^\d{4}-\d{2}-\d{2}$/.test(p.desde) || !/^\d{4}-\d{2}-\d{2}$/.test(p.hasta) || p.desde.slice(0, 4) < '2000') return toast('Completá las fechas del período (día, mes y año).'); if (p.desde > p.hasta) return toast('«Desde» es posterior a «Hasta».'); if (!RINFF.sel.length) return toast('Elegí al menos un sitio.');
     if (generar && !RINFF.dest) return toast('Indicá el destinatario.');
     const datos = { desde: p.desde, hasta: p.hasta, sitios: RINFF.sel, tipoPeriodo: RINFF.tipo, destinatario: RINFF.dest, cargo: RINFF.cargo, detalle: RINFF.detalle, generar: generar };
     $('riRes').innerHTML = '<p class="mu" style="margin-top:10px">' + (generar ? 'Generando el informe (puede tardar hasta un minuto)…' : 'Calculando…') + '</p>';
