@@ -192,6 +192,7 @@ const RGRL = {
   CARPETA_M8: '1_2lcPXz9MVwHufCbsRy5KAO-IA5Q0PYW',   // MÓDULO 8 · SERVICIOS E INFRAESTRUCTURA
   P_LIBRO: 'RGRL_ID', VIGENCIA_MESES: 12, AVISO_DIAS: 30,
   REMITENTE: 'belenpellegrini.hys@gmail.com', CORREO_DEFECTO: 'belenpellegrini.hys@gmail.com', HORA_AVISO: 7,
+  AVISO_DESDE: '2026-10-22',   // primer recordatorio (pedido de Belén, 14/10/2026); antes de esa fecha el disparador no envía nada
   H_REL: ['ID', 'ESTABLECIMIENTO', 'LUGAR', 'FECHA', 'VENCE', 'ESTADO', 'N_ESTABLECIMIENTO', 'EMPRESA', 'CUIT', 'ACTIVIDAD_REV3', 'DOMICILIO', 'CP', 'LOCALIDAD', 'PROVINCIA',
     'TRABAJADORES', 'SUPERFICIE_M2', 'GREMIOS', 'CONTRATISTAS', 'RESPONSABLE', 'CUIL_RESPONSABLE', 'CARGO_RESPONSABLE', 'TITULO_MATRICULA', 'OBSERVACIONES', 'ARCHIVO', 'CARGADO_POR', 'ACTUALIZADO'],
   H_RESP: ['ID_RGRL', 'ESTABLECIMIENTO', 'LUGAR', 'N', 'SECCION', 'CONDICION', 'RESPUESTA', 'FECHA_REGULARIZACION', 'NORMATIVA', 'OBSERVACION', 'ACTUALIZADO'],
@@ -352,6 +353,7 @@ function rgrlPortal_(accion, x) {
 // enviar = false (vista previa desde el portal): devuelve el texto sin mandar.
 function recordarMediciones(enviar) {
   if (enviar === undefined || (enviar && typeof enviar === 'object')) enviar = true;   // desde el disparador
+  if (enviar && RGRL.AVISO_DESDE && rgrlHoy_() < RGRL.AVISO_DESDE) return 'El recordatorio empieza el ' + rgrlTxt_(RGRL.AVISO_DESDE) + ': hoy no se envía nada.';
   const V = rgrlMedVigentes_().filter(m => m.estado === 'vencida' || m.estado === 'porvencer' || m.estado === 'sd');
   if (!V.length) return 'Sin mediciones vencidas ni por vencer: no se envía nada.';
   const nom = {}; try { pEstablecimientos_().filas.forEach(r => nom[limpio_(r.v[0])] = r.v[1]); } catch (e) {}
