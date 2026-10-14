@@ -406,21 +406,29 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E, porVencer) {
       '<td ' + td + '>' + esc_(ubic(e)) + '</td><td ' + td + '><b>' + esc_(String(f.PROBLEMAS || '').split(' · ').join(', ')) + '</b><br><span style="font-size:12px;color:#4F616B">' + esc_(venc(e)) + '</span>' + (fotos(e) ? '<br><span style="font-size:12px">' + fotos(e) + '</span>' : '') + '</td><td ' + td + '>' + extra[1](f) + '</td></tr>'; }).join('') + '</table>';
   const tot = nuevos.length + siguen.length;   // (porVencer va aparte: todavía no son problemas)
   const asunto = cod + ' · Extintores con problemas: ' + (tot ? tot + ' sin resolver' + (nuevos.length ? ' (' + nuevos.length + (nuevos.length > 1 ? ' nuevos)' : ' nuevo)') : '') : 'todos resueltos') + (resueltos.length ? ' · ' + resueltos.length + ' resuelto' + (resueltos.length > 1 ? 's' : '') : '');
-  const intro = tot ? 'Estos son los extintores del ' + nom + ' con problemas que dificultan o impiden su uso, registrados en el Sistema HyS. Se solicita su revisión y la reposición, recarga o reparación que corresponda, y avisar a Higiene y Seguridad cuando quede resuelto. Incluye los vencimientos del inventario (carga y prueba hidráulica) y lo que se registra en los controles. Este correo llega a las ' + INC.HORA_RESUMEN + ' h cuando hay novedades y, mientras queden problemas sin resolver, cada ' + INC.DIAS_RECORDATORIO + ' días.'
-    : 'Se marcaron como resueltos los siguientes extintores del ' + nom + '. Gracias por la gestión.';
+  // Texto del correo (pedido de Belén 14/10/2026): saludo, motivo, detalle y cierre; tono cordial, sin la frase de cada cuántos días llega
+  const saludo = 'Buenos días:';
+  const motivo = nuevos.length ? 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para informarles cuáles son los extintores del ' + nom + ' que presentan problemas que dificultan o impiden su uso.'
+    : siguen.length ? 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para recordarles cuáles son los extintores del ' + nom + ' que siguen con problemas que dificultan o impiden su uso.'
+    : 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para informarles que los siguientes extintores del ' + nom + ' quedaron resueltos.';
+  const detalle = tot ? 'Abajo va el detalle de cada uno' + (nuevos.length && siguen.length ? ', separados entre los nuevos y los que siguen pendientes' : '') + (resueltos.length ? ', y también los que ya quedaron resueltos' : '') + '. La información surge de los vencimientos del inventario (carga y prueba hidráulica) y de lo registrado en los controles.'
+    : 'Abajo va el detalle.';
+  const pedido = tot ? 'Les pido, por favor, su revisión y la reposición, recarga o reparación que corresponda, y que me avisen cuando cada uno quede resuelto, así lo actualizo en el registro.' : 'Muchas gracias por la gestión.';
+  const cierre = 'Quedo a disposición por cualquier consulta.', saludoFinal = 'Saludos cordiales,';
+  const intro = [motivo, detalle, pedido].join(' ');
   const norma = 'Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).';
-  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:760px"><p>' + esc_(intro) + '</p>' +
+  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:760px"><p>' + esc_(saludo) + '</p><p>' + esc_(motivo) + '</p><p>' + esc_(detalle) + '</p><p>' + esc_(pedido) + '</p>' +
     (nuevos.length ? '<p style="margin:14px 0 4px"><b>Nuevos (' + nuevos.length + ')</b></p>' + tabla(nuevos, ['Detectado', f => esc_(incTxt_(incISO_(f.FECHA)))]) : '') +
     (siguen.length ? '<p style="margin:14px 0 4px"><b>Siguen sin resolver (' + siguen.length + ')</b></p>' + tabla(siguen.sort((a, b) => dias(b) - dias(a)), ['Hace', f => '<b>' + dias(f) + (dias(f) === 1 ? ' día' : ' días') + '</b><br><span style="color:#4F616B">desde el ' + esc_(incTxt_(incISO_(f.FECHA))) + '</span>']) : '') +
     (porVencer.length ? '<p style="margin:14px 0 4px"><b>Vencen en los próximos ' + INC.DIAS_POR_VENCER + ' días (' + porVencer.length + ')</b></p><table style="border-collapse:collapse;width:100%;margin:4px 0 14px"><tr><th ' + th + '>Extintor</th><th ' + th + '>Ubicación</th><th ' + th + '>Vencimiento</th></tr>' +
       porVencer.map(x => '<tr><td ' + td + '><b>' + esc_(nombre(x.e)) + '</b></td><td ' + td + '>' + esc_(ubic(x.e)) + '</td><td ' + td + '>' + esc_(x.txt) + '</td></tr>').join('') + '</table>' : '') +
     (resueltos.length ? '<p style="margin:14px 0 4px"><b>Resueltos (' + resueltos.length + ')</b></p>' + tabla(resueltos, ['Resuelto', f => esc_(incTxt_(incISO_(f.RESUELTO))) + (f.RESOLUCION ? '<br><span style="color:#4F616B">' + esc_(f.RESOLUCION) + '</span>' : '')]) : '') +
-    '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p><p>Servicio de Higiene y Seguridad Laboral · HZT / HMH</p>' +
+    '<p>' + esc_(cierre) + '</p><p>' + esc_(saludoFinal) + '<br>Servicio de Higiene y Seguridad Laboral · HZT / HMH</p><p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p>' +
     '<p><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px"></p></div>';
   const lin = f => { const e = ext(f.ID_EXTINTOR); return '- ' + nombre(e) + ' · ' + ubic(e) + ': ' + String(f.PROBLEMAS || '').split(' · ').join(', ') + ' (' + venc(e) + ')'; };
-  const texto = intro + (nuevos.length ? '\n\nNuevos:\n' + nuevos.map(lin).join('\n') : '') + (siguen.length ? '\n\nSiguen sin resolver:\n' + siguen.map(f => lin(f) + ' (hace ' + dias(f) + ' días)').join('\n') : '') +
+  const texto = saludo + '\n\n' + motivo + '\n\n' + detalle + '\n\n' + pedido + (nuevos.length ? '\n\nNuevos:\n' + nuevos.map(lin).join('\n') : '') + (siguen.length ? '\n\nSiguen sin resolver:\n' + siguen.map(f => lin(f) + ' (hace ' + dias(f) + ' días)').join('\n') : '') +
     (porVencer.length ? '\n\nVencen en los próximos ' + INC.DIAS_POR_VENCER + ' días:\n' + porVencer.map(x => '- ' + nombre(x.e) + ' · ' + ubic(x.e) + ': ' + x.txt).join('\n') : '') +
-    (resueltos.length ? '\n\nResueltos:\n' + resueltos.map(lin).join('\n') : '') + '\n\n' + norma + '\n\nServicio de Higiene y Seguridad Laboral · HZT / HMH';
+    (resueltos.length ? '\n\nResueltos:\n' + resueltos.map(lin).join('\n') : '') + '\n\n' + cierre + '\n\n' + saludoFinal + '\nServicio de Higiene y Seguridad Laboral · HZT / HMH\n\n' + norma;
   try {
     const op = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' };
     try { op.inlineImages = { logo: DriveApp.getFileById(DGM_LOGO_PIE).getBlob() }; } catch (x) { op.htmlBody = html.replace(/<p><img[^>]*><\/p>/, ''); }
