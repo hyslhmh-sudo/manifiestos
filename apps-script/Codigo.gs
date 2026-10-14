@@ -200,8 +200,6 @@ function guardarManifiesto_(est, m) {
   const esc = foto ? '' : escaneoDe_(E.carpeta, m.nro);
   const obs = [
     'Cargó: ' + quien_(m.persona),
-    // Llegada del papel a la oficina que carga (lo informa quien carga) y día de la carga: miden la demora en la entrega (14.27)
-    /^\d{4}-\d{2}-\d{2}$/.test(m.llego || '') ? 'Llegó a la oficina: ' + m.llego.split('-').reverse().join('/') : '', 'Cargado: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy'),
     'Firmó transportista: ' + (m.firma || 's/d'), 'Original en el establecimiento: ' + (m.original || 's/d'),
     foto ? 'Foto: ' + foto : esc ? 'Escaneo: ' + esc : m.lote ? 'En lote escaneado: ' + m.lote : 'Sin foto', m.obs ? 'Obs.: ' + m.obs : '', 'app:' + (m.idLocal || Utilities.getUuid())
   ].filter(Boolean).join(' · ');

@@ -193,7 +193,7 @@ function regListar_(cod, maestra, meses) {
     const L = regLibro_(cod);
     regManifiestos_(L.ss, desde).forEach(m => pon({ tema: 'Residuos', tipo: 'manifiesto', id: m.id, fecha: m.fecha, lugar: m.sitio, sinFoto: !/(Foto|Escaneo): *https?:/.test(m.obs), historico: m.origen !== 'App', titulo: 'Manifiesto ' + m.nro + ' · ' + m.sitio,
       detalle: m.res.map(r => r.corriente + ' ' + (r.vol || r.cant) + ' ' + r.uni).join(' · '), cargo: regObs_(m.obs, 'Cargó') || m.origen, url: regObs_(m.obs, 'Foto') || regObs_(m.obs, 'Escaneo'),
-      editable: regPuede_(maestra, m.fecha), datos: { sitio: m.sitio, nro: m.nro, fecha: m.fecha, firma: regObs_(m.obs, 'Firmó transportista'), llego: (/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(regObs_(m.obs, 'Llegó a la oficina') || '') || []).slice(1).reverse().join('-'), original: regObs_(m.obs, 'Original en el establecimiento'), obs: regObs_(m.obs, 'Obs\\.'), res: m.res } }));
+      editable: regPuede_(maestra, m.fecha), datos: { sitio: m.sitio, nro: m.nro, fecha: m.fecha, firma: regObs_(m.obs, 'Firmó transportista'), original: regObs_(m.obs, 'Original en el establecimiento'), obs: regObs_(m.obs, 'Obs\\.'), res: m.res } }));
     regCertificados_(L.ss, desde).forEach(c => pon({ tema: 'Residuos', tipo: 'certificado', id: c.id, fecha: c.fecha, titulo: 'Certificado ' + c.ncert + ' · ' + c.mes, detalle: c.empresa + (c.res.length ? ' · ' + c.res.map(r => r.corriente + ' ' + r.vol + ' ' + r.uni).join(' · ') : ''),
       cargo: regObs_(c.ref, 'Cargó'), url: /^https?:/.test(c.ref) ? c.ref.split(' · ')[0] : '', editable: regPuede_(maestra, c.fecha), datos: { empresa: c.empresa, mes: c.mes, ncert: c.ncert, ftrat: c.ftrat, res: c.res } }));
   } catch (e) {}
