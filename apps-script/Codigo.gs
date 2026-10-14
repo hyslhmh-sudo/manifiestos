@@ -96,6 +96,9 @@ function doPost(e) {
     if (String(d.accion).indexOf('r_') === 0) return json_(typeof radRed_ === 'function' ? radRed_(d) : { ok: false, mensaje: 'El módulo de radiaciones todavía no está instalado.' });   // módulo 9 · radiaciones (personal con dosímetro y eventos)
     if (String(d.accion).indexOf('m_') === 0) return json_(miRed_(d));    // «Mi establecimiento»: agua, plagas, documentos y pendientes
     if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun } }));
+    // «No se recibieron manifiestos esta semana» (remisión semanal, PROT-RES-003 · ResiduosRemision.gs)
+    if (d.accion === 'remision_obs') { if (!acc.maestra && (acc.modulos || []).indexOf('Residuos') < 0) return json_({ ok: false, error: 'permiso', mensaje: 'No tenés asignado el módulo de residuos.' });
+      return json_(conLock_(() => remObsGuardar_(d.est, d.datos, acc.nombre || quien_((d.datos || {}).persona)))); }
     // Si trae «reemplaza», es una corrección desde «Mis registros» (Registros.gs): guarda la nueva y anula la anterior
     if (d.accion === 'manifiesto' && !(d.datos && d.datos.reemplaza) && !esMaestra_(d.clave)) { const b = fotosBloqueo_(d.est); if (b) return json_({ ok: false, error: 'bloqueo', mensaje: b }); }
     if (d.accion === 'manifiesto') return json_(conLock_(() => d.datos && d.datos.reemplaza ? regCorregir_(d.est, 'manifiesto', d.datos.reemplaza, esMaestra_(d.clave), quien_(d.datos.persona), () => guardarManifiesto_(d.est, d.datos), d.datos.idLocal) : guardarManifiesto_(d.est, d.datos)));
@@ -127,7 +130,9 @@ function config_(est) {
   const ultimas = agruparManifiestos_(man.slice(-400)).slice(-60);
   return { ok: true, est: est, nombre: E.nombre, sitios: sitios, empresas: CFG.EMPRESAS, corrientes: CFG.CORRIENTES,
     referente: { nombre: dato('Referente de residuos'), mail: dato('Correo de la referente') },
-    ultimas: ultimas, certificados: cert.slice(-24), avance: avance, lotes: leerLotes_(ss), fotoObligatoriaDesde: FOTO_OBLIGATORIA_DESDE, fotosPend: fotosPendientes_(est, ss), bloqueo: fotosBloqueo_(est, ss), diaLimite: FOTO_DIA_LIMITE, actualizado: new Date().toISOString() };
+    ultimas: ultimas, certificados: cert.slice(-24), avance: avance, lotes: leerLotes_(ss), fotoObligatoriaDesde: FOTO_OBLIGATORIA_DESDE, fotosPend: fotosPendientes_(est, ss), bloqueo: fotosBloqueo_(est, ss), diaLimite: FOTO_DIA_LIMITE,
+    remision: (() => { try { return typeof remEst_ === 'function' ? remEst_(est) : null; } catch (e) { return null; } })(),   // remisión semanal de manifiestos (ResiduosRemision.gs)
+    actualizado: new Date().toISOString() };
 }
 function leerManifiestos_(ss) {
   const sh = ss.getSheetByName('MANIFIESTOS'), n = sh.getLastRow() - 5;

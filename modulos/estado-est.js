@@ -18,6 +18,11 @@ function eeEstilos() { if (document.getElementById('eeCss')) return; const st = 
 const eeCuad = (urg, grave) => urg ? (grave ? 'AY' : 'RR') : (grave ? 'PL' : 'VI');
 
 // Arma la lista de temas a atender de un establecimiento: { tema, cuad, texto, detalle, ir }
+// Texto de una observación de remisión semanal: quién la indicó, recordatorio del protocolo y repeticiones del último mes
+function remObsTxt(o, rec) {
+  const quien = String(o.quien || '').split(/ \(| · /)[0], r = (rec || 'Recordar al CAPS el protocolo de trabajo: remisión semanal de manifiestos a Higiene y Seguridad (PROT-RES-003).');
+  return (quien && quien !== 's/d' ? 'Lo indicó ' + quien + ' el ' + fechaTxt(o.fecha).slice(0, 5) + '. ' : '') + (/caps|centro/i.test(o.sitio) ? r : r.replace('al CAPS', 'al sitio')) + (o.veces > 1 ? ' ' + o.veces + '.ª vez en el último mes.' : '');
+}
 function eeItems(cod, f) {
   const T = TB || {}, hoy = new Date().toISOString().slice(0, 10), sem = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   const L = [], add = (tema, urg, grave, texto, detalle, ir) => L.push({ tema: tema, cuad: eeCuad(urg, grave), texto: texto, detalle: detalle || '', ir: ir || '' });
@@ -35,6 +40,14 @@ function eeItems(cod, f) {
     else if (Number(dg.pct) < 50) add('Residuos', false, true, 'Diagnóstico de residuos con ' + Math.round(dg.pct) + ' % de cumplimiento', 'Menos de la mitad de los requisitos', '#diag/' + encodeURIComponent(cod));
   }
   de((T.auditorias || {}).paraVerificar).forEach(a => add('Residuos', true, false, 'Auditoría interna para verificar', a.id, '#audr/' + encodeURIComponent(a.id)));
+  // Remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs): sitios sin manifiestos de 2 semanas y «no se recibieron»
+  const RM = T.remision || {};
+  if (RM.activa) { const av = de(RM.avisos).filter(a => !a.silenciado);
+    if (av.length) add('Residuos', true, false, av.length + (av.length > 1 ? ' sitios' : ' sitio') + ' sin manifiestos cargados de las últimas 2 semanas',
+      av.slice(0, 3).map(a => a.sitio + ' (último ' + fechaTxt(a.ultimo) + (a.nro ? ', N.º ' + a.nro : '') + ')').join(' · ') + (av.length > 3 ? ' · …' : '') + '. Remisión semanal a HyS (PROT-RES-003).', fc); }
+  const vistoRM = {};
+  de(RM.observaciones).forEach(o => { const k = o.sitio.toLowerCase(); if (vistoRM[k]) return; vistoRM[k] = 1;   // la más reciente de cada sitio
+    add('Residuos', true, false, o.sitio + ': no se recibieron manifiestos (semana del ' + fechaTxt(o.semana) + ')', remObsTxt(o, RM.recordar), fc); });
   // Acciones abiertas de todos los módulos, agrupadas por tema y cuadrante
   const temaDe = o => /agua/i.test(o) ? 'Agua' : /plaga/i.test(o) ? 'Plagas' : /infraestr|servicios/i.test(o) ? 'Infraestructura' : 'Residuos';
   const grupos = {};

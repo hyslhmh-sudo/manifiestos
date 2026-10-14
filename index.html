@@ -73,6 +73,10 @@
   .revh { display:flex; justify-content:space-between; align-items:baseline; margin-top:18px; } .revh h2 { margin:0 0 6px; font-size:16px; } .revh .link { padding:4px 0; }
   .rev div:last-child { border-bottom:0; } .rev span { color:var(--mu); } .rev b { text-align:right; }
   .notice { background:var(--wabg); color:var(--wa); padding:12px 14px; border-radius:12px; font-size:14px; margin:12px 0; }
+  .remAl { background:var(--erbg); color:var(--er); border:2px solid var(--er); border-radius:14px; padding:14px 16px; margin:12px 0; font-size:14.5px; line-height:1.45; }
+  .remAl b.t { display:block; font-size:17px; margin-bottom:6px; } .remAl ul { margin:8px 0 10px; padding-left:18px; color:var(--tx); } .remAl li { margin:6px 0; }
+  .remAl .pie { display:block; font-size:12.5px; } .remAl .mini { display:inline-block; font:inherit; font-size:13px; font-weight:700; border-radius:8px; padding:6px 10px; margin:6px 6px 0 0; border:2px solid var(--er); background:#fff; color:var(--er); cursor:pointer; }
+  .remAl .mini:disabled { opacity:.5; cursor:default; }
   .notice.ok { background:var(--okbg); color:var(--ok); }
   /* Ayuda */
   .ov { position:fixed; inset:0; background:rgba(52,58,64,.55); z-index:20; display:flex; align-items:flex-end; justify-content:center; }
@@ -777,6 +781,7 @@ const ACT = {
   cambiarEst: () => { const p = SES && SES.persona; SES = null; CFG = null; LS.del('ses'); LOG = { est: '', clave: '', dni: '' }; PERSONA_PREV = p && !p.propia ? p : null; ingreso(); }, confirmarOtra: () => confirmarOtra(), quienCarga: () => quienCarga(),
   inicio: () => inicio(), consulta: () => consulta(), avance: () => avance(), actualizar: () => { actualizarConfig(false); sincronizar(); },
   nuevoManifiesto: () => nuevoManifiesto(), nuevoCertificado: () => nuevoCertificado(),
+  remCargar: b => { const s = remSitios()[Number(b.dataset.arg)]; if (s) nuevoManifiesto(null, s.sitio); }, remNoRecibido: b => { const s = remSitios()[Number(b.dataset.arg)]; if (s) remNoRecibido(s); },
   adelante: () => adelante(), atras: () => atras(), irPaso: b => { leer(); PASO = Number(b.dataset.arg); DESDE_REV = true; ERR = {}; pasoMan(); },
   sino: b => { leer(); M[b.dataset.k2] = b.dataset.arg; delete ERR[b.dataset.k2]; pasoMan(); },
   guardarCert: () => guardarCert(),
@@ -859,6 +864,7 @@ function inicio() {
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · ' + (SES.persona.propia ? '' : '<button class="link" data-act="quienCarga">Cambiar de persona</button> · ') + '<button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
     (err ? '<button class="notice" data-act="consulta" style="display:block;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;background:var(--erbg);color:var(--er)"><b>' + err + ' carga(s) no se pudieron registrar.</b> Tocá acá para verlas y corregirlas o descartarlas.</button>' : '') +
+    (puede('Residuos') ? remCartel() : '') +
     '<h2>Lo que tenés pendiente</h2>' +
     (!MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
@@ -875,6 +881,39 @@ function inicio() {
     '<h2>' + (puede('Documentos') ? 'Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado') + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
+}
+
+// ------------------------------------------------------------------ Remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
+// Sitios sin manifiestos cargados de las últimas 2 semanas (CFG.remision, lo arma el sistema). Desaparece cuando se carga un manifiesto
+// reciente del sitio o cuando se indica «No se recibieron manifiestos esta semana» (queda como observación y se revisa la semana siguiente).
+function remSitios() {
+  const R = CFG && CFG.remision; if (!R || !R.activa || !R.sitios || !R.sitios.length) return [];
+  const hoy = hoyISO(), callados = LS.get('remCalla_' + SES.est, {});
+  return R.sitios.filter(s => !(callados[s.sitio] && (new Date(hoy) - new Date(callados[s.sitio])) / 864e5 < 7) &&
+    !miCola().some(c => c.tipo === 'manifiesto' && c.datos && c.datos.sitio === s.sitio && c.datos.fecha && c.datos.fecha > s.ultimo));
+}
+function remCartel() {
+  const L = remSitios(); if (!L.length) return '';
+  const dias = n => n === 1 ? '1 día' : n + ' días';
+  return '<div class="remAl" id="remAl"><b class="t">⚠ Hay manifiestos sin cargar</b>Los manifiestos se envían a Higiene y Seguridad una vez por semana (PROT-RES-003) y se cargan dentro de la semana en que llegan. ' +
+    (L.length > 1 ? 'Estos sitios no tienen' : 'Este sitio no tiene') + ' manifiestos cargados de las últimas ' + (CFG.remision.plazo === 14 ? '2 semanas' : dias(CFG.remision.plazo)) + ':<ul>' +
+    L.map((s, i) => '<li><b>' + esc(s.sitio) + '</b> · último manifiesto cargado: ' + fechaTxt(s.ultimo) + (s.nro ? ' (N.º ' + esc(s.nro) + ')' : '') + ', hace ' + dias(s.dias) +
+      (s.plazo > 14 ? ' <small>(retiro ' + (s.plazo >= 40 ? 'mensual' : 'quincenal') + ': plazo de ' + s.plazo + ' días)</small>' : '') +
+      '<br><button type="button" class="mini" data-act="remCargar" data-arg="' + i + '">Cargar manifiesto</button><button type="button" class="mini" data-act="remNoRecibido" data-arg="' + i + '">No se recibieron manifiestos esta semana</button></li>').join('') +
+    '</ul><span class="pie">El aviso de cada sitio desaparece cuando se carga un manifiesto reciente de ese sitio, o cuando se indica que no se recibieron manifiestos esta semana: eso queda registrado como observación para Higiene y Seguridad y vuelve a revisarse la semana siguiente.</span></div>';
+}
+function remNoRecibido(s) {
+  preguntar('¿Confirmás que esta semana no se recibieron manifiestos de ' + s.sitio + '? Queda registrado como observación para Higiene y Seguridad.', 'Sí, registrar', async () => {
+    if (!navigator.onLine) return preguntar('Sin señal: no se puede registrar ahora. Probá cuando vuelva la conexión.', 'Entendido', () => {});
+    const bs = document.querySelectorAll('#remAl .mini'); bs.forEach(b => b.disabled = true);
+    try {
+      const r = await api('remision_obs', { sitio: s.sitio, persona: SES.persona });
+      if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo registrar.');
+      const c = LS.get('remCalla_' + SES.est, {}); c[s.sitio] = hoyISO(); LS.set('remCalla_' + SES.est, c);
+      if (r.remision && CFG) { CFG.remision = r.remision; LS.set('cfg_' + SES.est, CFG); }
+      inicio();
+    } catch (e) { bs.forEach(b => b.disabled = false); preguntar((e.message === 'tiempo' || e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.', 'Entendido', () => {}); }
+  });
 }
 
 // Diagnóstico y auditoría interna: abre la página para referentes con la misma sesión

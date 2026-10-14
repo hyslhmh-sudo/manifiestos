@@ -21,7 +21,7 @@ function portalAccion_(d) {
   switch (d.accion) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
     case 'p_resumen': return pResumen_(x.fresco);
-    case 'p_tablero': return tbTablero_(x.fresco);   // tablero de control (Tablero.gs)
+    case 'p_tablero': { const t = tbTablero_(x.fresco); try { if (t && t.ok !== false && typeof remRed_ === 'function') t.remision = remRed_(x.fresco); } catch (e) {} return t; }   // tablero de control (Tablero.gs) + remisión semanal de manifiestos (ResiduosRemision.gs)
     case 'p_res_tablero': return typeof resTablero_ === 'function' ? resTablero_(x.fresco) : { ok: false, mensaje: 'Falta instalar ResiduosTablero.gs.' };   // 1 · Residuos: tablero general (14.22)
     case 'p_res_frecuencias': return typeof resFrecuencias_ === 'function' ? resFrecuencias_(x) : { ok: false, mensaje: 'Falta instalar ResiduosContratos.gs.' };   // frecuencias de retiro (14.23)
     case 'p_res_inf_opciones': return typeof resInfOpciones_ === 'function' ? resInfOpciones_() : { ok: false, mensaje: 'Falta instalar ResiduosInforme.gs.' };   // informe de frecuencia de retiro (14.26)
