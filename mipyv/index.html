@@ -231,6 +231,14 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 .ext-foto-ico{font-size:2rem;}
 .ext-listo{width:100%; margin-top:14px; min-height:56px; border:0; border-radius:14px; background:var(--verde-ok); color:#fff; font-family:inherit; font-size:1.05rem; font-weight:800;}
 .ext-listo:disabled{background:#B9C3C8;}
+.ext-agregar{width:100%; margin-top:12px; min-height:54px; border:2px dashed var(--mod-primary); border-radius:14px; background:#fff; font-family:inherit; font-size:1rem; font-weight:800; color:var(--mod-primary);}
+.ext-fila.nuevo{border-style:dashed;}
+.ext-opc{display:flex; flex-wrap:wrap; gap:8px;}
+.ext-opc button{flex:1 1 30%; min-height:48px; border-radius:12px; border:2px solid var(--gris-borde); background:#fff; font-family:inherit; font-size:1rem; font-weight:700; color:var(--texto);}
+.ext-opc button.on{background:var(--mod-primary); border-color:var(--mod-primary); color:#fff;}
+.ext-inp, .ext-com{width:100%; box-sizing:border-box; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
+.ext-quitar{width:100%; margin-top:10px; min-height:44px; border:0; background:none; font-family:inherit; font-size:.95rem; color:#B4361F; text-decoration:underline;}
+.ext-vto{font-weight:700;} .ext-vto.er{color:#B4361F !important;} .ext-vto.wa{color:#8A5200 !important;}
 .ext-card input[type=month]{width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:12px; font-family:inherit; font-size:1.05rem;}
 .ext-sinfecha{margin-top:8px;}
 .auto-hallazgos{background:#FDECEA; color:#8A1C12; border-radius:14px; padding:12px 14px; margin-bottom:14px; font-weight:600; font-size:.92rem; white-space:pre-line;}
@@ -626,7 +634,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 
     <section class="screen" data-step="h-extintores">
       <div class="step-title">Control de extintores</div>
-      <div class="step-sub">Tocá cada extintor: 5 preguntas y 3 fotos</div>
+      <div class="step-sub">Tocá cada extintor: 5 preguntas y 3 fotos. Si falta alguno en la lista, agregalo con sus datos y 3 fotos.</div>
       <div id="extintoresList"></div>
     </section>
 

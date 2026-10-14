@@ -6,7 +6,10 @@
  *    La manda doGet junto con los catálogos.
  *  - guardarControlExtintor_(data): el control mensual de un extintor que manda la app (5 respuestas y 3 fotos).
  *    Guarda las fotos en Drive › SISTEMA HyS › MÓDULO 10 › Establecimientos › establecimiento › Controles › año-mes,
- *    agrega la fila en CONTROLES y actualiza el último control del extintor. No duplica si la app reintenta.
+ *    agrega la fila en CONTROLES (con el comentario opcional) y actualiza el último control del extintor. No duplica si la app reintenta.
+ *  - guardarAltaExtintor_(data): un extintor que no estaba en la lista y Javier agregó desde la app (todos los datos y 3 fotos
+ *    obligatorios). Lo suma a EXTINTORES con un ID nuevo (EXT-establecimiento-NNN); las fotos van a … › establecimiento › Altas › año-mes.
+ *    Si el N.º de inventario ya estaba cargado, lo agrega igual y deja «Revisar» en Observaciones. No duplica si la app reintenta.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18. No envía correos.
  */
 const INC_LIBRO_ID = '10lyFIV8UDQGGiNu3DegHiyxqR5xinSgn82XFmO5VWw0';   // PROTECCIÓN CONTRA INCENDIOS · Sistema HyS
@@ -43,12 +46,12 @@ function extintoresParaApp_(ss) {
   })).filter((e) => e.lugares.length);
 }
 
-function incCarpetaControles_(cod, mes) {
+function incCarpetaControles_(cod, mes, sub) {
   const raiz = subcarpeta(DriveApp.getFolderById(INC_CARPETA_ID), 'Establecimientos');
   let dir = null; const it = raiz.getFolders();
   while (it.hasNext()) { const f = it.next(); if (f.getName() === cod || f.getName().indexOf(cod + ' · ') === 0) { dir = f; break; } }
   if (!dir) dir = raiz.createFolder(cod);
-  return subcarpeta(subcarpeta(dir, 'Controles'), mes);
+  return subcarpeta(subcarpeta(dir, sub || 'Controles'), mes);
 }
 
 function guardarControlExtintor_(data) {
@@ -73,14 +76,61 @@ function guardarControlExtintor_(data) {
   const resultado = INC_PREGUNTAS.every((k) => data[k] === 'Sí') ? 'Conforme' : 'Con observaciones';
   const quien = String(data.operario || 'Operario MIPyV') + (data.operario_acompanante ? ' (con ' + data.operario_acompanante + ')' : '') + ' · MIPyV';
   const fila = { ID: data.id_control, FECHA: fecha, ESTABLECIMIENTO: cod, SITIO: e.SITIO, ID_EXTINTOR: e.ID, RESULTADO: resultado,
-    OBSERVACIONES: 'Cargado desde MIPyV (tarea ' + (data.id_tarea || 's/d') + ').', QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente' };
+    OBSERVACIONES: (String(data.OBSERVACIONES || '').trim() ? String(data.OBSERVACIONES).trim() + ' · ' : '') + 'Cargado desde MIPyV (tarea ' + (data.id_tarea || 's/d') + ').', QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente' };
   INC_PREGUNTAS.forEach((k) => fila[k] = data[k]); Object.assign(fila, links);
   shC.getRange(Math.max(shC.getLastRow(), 5) + 1, 1, 1, C.H.length).setValues([C.H.map((h) => fila[h] == null ? '' : fila[h])]);
   // Último control del extintor (si este es el más reciente)
   const ult = e.ULTIMO_CONTROL instanceof Date ? e.ULTIMO_CONTROL : null;
   if (!ult || ult <= fecha) {
-    const cambios = Object.assign({ ULTIMO_CONTROL: fecha, RESULTADO_CONTROL: resultado + ' (MIPyV)', ACTUALIZADO: new Date() }, links);
+    const com = String(data.OBSERVACIONES || '').trim();
+    const cambios = Object.assign({ ULTIMO_CONTROL: fecha, RESULTADO_CONTROL: resultado + ' (MIPyV)' + (com ? ': ' + com : ''), ACTUALIZADO: new Date() }, links);
     Object.keys(cambios).forEach((k) => { const j = E.H.indexOf(k); if (j >= 0) shE.getRange(e._fila, j + 1).setValue(cambios[k]); });
   }
   return { resultado: resultado };
+}
+
+// Lugar de MIPyV (id_establecimiento) → establecimiento y sitio del sistema HyS
+function incLugarSistema_(ss, idLugar) {
+  const ev = ss.getSheetByName('establecimientos').getDataRange().getValues(), eh = ev[0];
+  const r = ev.slice(1).find((x) => String(x[eh.indexOf('id_establecimiento')]).trim() === String(idLugar).trim());
+  if (!r) throw new Error('El lugar ' + idLugar + ' no está en la hoja establecimientos.');
+  const cod = String(r[eh.indexOf('codigo_sistema')]).trim(), sit = String(r[eh.indexOf('sitio_sistema')]).trim();
+  if (!cod || !sit) throw new Error('Al lugar ' + idLugar + ' le falta codigo_sistema o sitio_sistema en la hoja establecimientos.');
+  return { cod: cod, sitio: INC_SITIO_ALIAS[incNorm_(sit)] || sit };
+}
+const INC_ALTA_REQ = ['PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA'];
+function guardarAltaExtintor_(data) {
+  if (!data.id_alta || !data.lugar_id) throw new Error('Falta el lugar del extintor.');
+  const libro = SpreadsheetApp.openById(INC_LIBRO_ID), shE = libro.getSheetByName('EXTINTORES'), shS = libro.getSheetByName('SITIOS_INC');
+  const E = incTabla_(shE), marca = '[' + data.id_alta + ']';
+  const ya = E.filas.find((x) => String(x.OBSERVACIONES || '').indexOf(marca) >= 0); if (ya) return { duplicado: true, id: ya.ID };   // la app reintentó
+  const faltan = INC_ALTA_REQ.filter((k) => !String(data[k] || '').trim()); if (faltan.length) throw new Error('Faltan datos del extintor: ' + faltan.join(', '));
+  const fotos = listaDeFotos(data); if (fotos.length < 3) throw new Error('Faltan fotos (son 3).');
+  const L = incLugarSistema_(SpreadsheetApp.getActiveSpreadsheet(), data.lugar_id), cod = L.cod;
+  // El lugar tiene que estar en SITIOS_INC para que aparezca en el tablero: si falta, se agrega
+  const S = incTabla_(shS);
+  if (!S.filas.some((x) => String(x.ESTABLECIMIENTO).trim() === cod && incNorm_(x.SITIO) === incNorm_(L.sitio))) {
+    const fs = { ESTABLECIMIENTO: cod, SITIO: L.sitio, TIPO_SITIO: 's/d (revisar)', RESPONSABLES_CONTROL: 'Belén Pellegrini · Melani · Javier Tramaleo', ACTIVO: 'Sí', OBSERVACIONES: 'Agregado desde MIPyV al cargar un extintor.', ACTUALIZADO: new Date() };
+    shS.getRange(Math.max(shS.getLastRow(), 5) + 1, 1, 1, S.H.length).setValues([S.H.map((h) => fs[h] == null ? '' : fs[h])]);
+  }
+  const n = E.filas.filter((x) => String(x.ESTABLECIMIENTO).trim() === cod).reduce((m, x) => Math.max(m, Number(String(x.ID).split('-').pop()) || 0), 0) + 1;
+  const id = 'EXT-' + cod + '-' + ('00' + n).slice(-3);
+  const inv = incNorm_(data.NRO_INVENTARIO).replace(/\s+/g, '');
+  const rep = /^s\/?d/.test(inv) ? null : E.filas.find((x) => String(x.ESTABLECIMIENTO).trim() === cod && !/baja/i.test(x.ESTADO) && incNorm_(x.NRO_INVENTARIO).replace(/\s+/g, '') === inv);
+  const fecha = new Date(data.fecha || new Date()), mes = Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM'), carpeta = incCarpetaControles_(cod, mes, 'Altas'), links = {};
+  INC_FOTOS.forEach(([k, et], i) => {
+    const nombre = data.id_alta + ' · ' + id + ' · ' + et + '.jpg';
+    const m = String(fotos[i]).match(/^data:([^;]+);base64,(.*)$/);
+    links[k] = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(m ? m[2] : String(fotos[i])), m ? m[1] : 'image/jpeg', nombre)).getUrl();
+  });
+  const quien = String(data.operario || 'Operario MIPyV') + (data.operario_acompanante ? ' (con ' + data.operario_acompanante + ')' : '') + ' · MIPyV';
+  const vto = /^\d{4}-\d{2}-\d{2}/.test(data.VTO_CARGA) ? new Date(data.VTO_CARGA.slice(0, 10) + 'T12:00:00') : String(data.VTO_CARGA);
+  const obs = ['Alta ' + Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM-dd') + ' · ' + quien + ' ' + marca + '.',
+    rep ? 'Revisar: el N.º de inventario ya estaba cargado en ' + rep.ID + '.' : '', String(data.OBSERVACIONES || '').trim()].filter(Boolean).join(' ');
+  const o = { ID: id, ESTABLECIMIENTO: cod, SITIO: L.sitio, NRO_EXTINTOR: String(data.NRO_EXTINTOR || '').trim(), PLANTA: data.PLANTA, SECTOR: String(data.SECTOR).trim(), UBICACION: String(data.UBICACION).trim(),
+    TIPO: data.TIPO, AGENTE: data.AGENTE, CAPACIDAD_KG: String(data.CAPACIDAD_KG).trim(), NRO_INVENTARIO: String(data.NRO_INVENTARIO).trim(), VTO_CARGA: vto, PRUEBA_HIDRAULICA_VENCE: 's/d (revisar)',
+    ESTADO: 'Operativo', OBSERVACIONES: obs, ACTUALIZADO: new Date() };
+  Object.assign(o, links);
+  shE.getRange(Math.max(shE.getLastRow(), 5) + 1, 1, 1, E.H.length).setValues([E.H.map((h) => o[h] == null ? '' : o[h])]);
+  return { id: id };
 }

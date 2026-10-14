@@ -875,7 +875,7 @@ function inicio() {
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
-    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos por extintor', true) + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos por extintor · agregar extintores', true) + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
@@ -1588,12 +1588,46 @@ async function incLista(fresco) {
     miVolver(); window.scrollTo(0, 0); return;
   }
   const L = INCX.extintores.filter(e => e.SITIO === INCSIT && !e.est.baja), hechos = L.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
-  const tag = e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes ? '<span class="tag ok">Controlado</span>' : e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : '<span class="tag wa">Falta</span>';
+  // Carga vencida o que vence en 30 días: se marca siempre, además del control del mes
+  const tag = e => '<span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' + (e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : e.est.carga === 'porvencer' ? '<span class="tag wa">Vence ' + fechaTxt(e.VTO_CARGA) + '</span>' : '') +
+    (String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes ? '<span class="tag ok">Controlado</span>' : '<span class="tag wa">Falta control</span>') + '</span>';
   $('app').innerHTML = miTit(INCSIT, 'Tocá un extintor para cargar su control. ' + hechos + ' de ' + L.length + ' controlados este mes.') +
     (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' · ' + esc([e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' ')) + '</b><small>' +
-      esc([e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') + '</small></div>' + tag(e) + '</button>').join('') + '</div>' : '<p class="mu">No hay extintores cargados en este lugar. Avisale a Higiene y Seguridad.</p>') +
+      esc([e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') + '</small></div>' + tag(e) + '</button>').join('') + '</div>' : '<p class="mu">No hay extintores cargados en este lugar. Si hay alguno, agregalo con el botón de abajo.</p>') +
+    '<div class="menu" style="margin-top:12px"><button class="big" data-act="incAlta"><b>➕ Agregar un extintor</b><span>Si hay uno que no está en la lista: sus datos y 3 fotos</span></button></div>' +
     '<p class="mu" style="font-size:13px">' + (S.length > 1 ? '<button class="link" data-act="incSit" data-arg="">Cambiar de lugar</button> · ' : '') + '<button class="link" data-act="incAct">Actualizar la lista</button></p>';
   miVolver(); window.scrollTo(0, 0);
+}
+// Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios (Incendio.gs › i_ext_alta)
+function incAlta() { F = { _f: 'incAlta', SITIO: INCSIT }; MIV = { f: formIncAlta }; formIncAlta(); }
+function formIncAlta() {
+  VISTA = 'mi'; vista('form'); const L = INCX.listas;
+  $('app').innerHTML = miTit('Agregar un extintor', esc(INCSIT) + ' · completá todo y sacá las 3 fotos') + fErr +
+    fSeg('PLANTA', 'Planta', L.plantas) + fInp('SECTOR', 'Sector o servicio', 'text', 'Ej.: Guardia, Farmacia, Pasillo central') +
+    fInp('UBICACION', '¿Dónde está exactamente?', 'text', 'Ej.: en la pared, al lado de la puerta del office') +
+    fSeg('TIPO', 'Tipo (está escrito en el extintor)', L.tipos) + fSel('AGENTE', 'Agente extintor', [['', 'Elegí…']].concat(L.agentes.filter(a => a !== 's/d'))) +
+    fInp('CAPACIDAD_KG', 'Capacidad (kg)', 'number', 'Ej.: 5') +
+    fInp('NRO_INVENTARIO', 'N.º de inventario', 'text', 'El número de la chapita', 'Si no tiene, escribí s/d') +
+    fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete)') +
+    fInp('NRO_EXTINTOR', 'N.º del extintor (opcional)', 'text', 'Si tiene un número pintado o en un cartel') +
+    fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica (opcional)', 'date') +
+    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Algo que convenga saber de este extintor');
+  bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incAltaGuardar">Agregar</button>');
+}
+async function incAltaGuardar() {
+  const faltan = (INCX.listas.requeridos || []).filter(r => !String(F[r[0]] || '').trim()).map(r => r[1]); if (faltan.length) return miErr('Falta completar: ' + faltan.join(', ') + '.');
+  const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const d = { quien: SES.persona.nombre, fotos: {} };
+  ['SITIO', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA', 'NRO_EXTINTOR', 'PRUEBA_HIDRAULICA_VENCE', 'OBSERVACIONES'].forEach(k => d[k] = String(F[k] || '').trim());
+  INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
+  const b = document.querySelector('[data-act="incAltaGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const antes = ESPERA_MS; ESPERA_MS = 180000;
+  try { const r = await api('i_ext_alta', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; INCX = null; vista('form');
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Extintor agregado: ' + esc(r.id) + '.</b><br>Ya está en el inventario con sus 3 fotos. Higiene y Seguridad lo ve en el portal.</div>' +
+      '<div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b><span>' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Agregar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
 function incCtl(id) {
   const e = INCX.extintores.find(x => x.ID === id); if (!e) return;
@@ -1620,7 +1654,7 @@ async function incGuardar() {
       '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
-Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar() });
+Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar() });
 
 function rxListo(aviso, volver) {
   vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Guardado.</b><br>Ya está registrado en el sistema.</div>' + (aviso ? '<div class="notice">' + esc(aviso) + ' Avisale a Higiene y Seguridad.</div>' : '') +

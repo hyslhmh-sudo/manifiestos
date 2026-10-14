@@ -32,12 +32,12 @@ async function incTablero(fresco) {
     '<div class="filtros">' + incLink(INCT.libro, 'Planilla del módulo') + ' ' + incLink(INCT.carpeta, 'Carpeta de fotos') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '') +
     kpi('Con observación', T.conObs, 'sobrecarga, recargar o fuera de servicio', T.conObs ? 'var(--er)' : '') + kpi('Controlados', T.controlAlDia, (T.sinControl + T.controlAtrasado) + ' sin control en los últimos 3 meses', (T.controlAtrasado) ? 'var(--wa)' : '') +
-    kpi('Prueba hidráulica', T.pruebaVencida, T.pruebaSd + ' sin dato (revisar)', T.pruebaVencida ? 'var(--er)' : '') + '</div>' +
+    kpi('Prueba hidráulica', T.pruebaVencida, (T.pruebaPorVencer ? T.pruebaPorVencer + ' vencen en 30 días · ' : '') + T.pruebaSd + ' sin dato (revisar)', T.pruebaVencida ? 'var(--er)' : '') + '</div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Por lugar</h2><span class="mu peq">Tocá un lugar para ver sus extintores y cargar el control.</span></div><div style="overflow-x:auto"><table><thead><tr><th>Lugar</th><th>Controlan</th><th>Extintores</th><th>Carga vencida</th><th>Con observación</th><th>Último control</th></tr></thead><tbody>' +
     Object.keys(grupos).sort((a, b) => a === 'HMH' ? -1 : b === 'HMH' ? 1 : a.localeCompare(b)).map(c => '<tr><td colspan="6" style="background:var(--pa1);font-weight:700;color:var(--az)">' + esc(incNom(c)) + '</td></tr>' + grupos[c].map(fila).join('')).join('') +
     '</tbody></table></div></section>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 20).join('') : '<div class="mu">Nada pendiente.</div>') +
-    '<p class="mu peq" style="margin-top:8px">El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
+    '<p class="mu peq" style="margin-top:8px">Los vencimientos (carga y prueba hidráulica) avisan 30 días antes. El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
   $('icAct').onclick = () => incTablero(true);
   document.querySelectorAll('tr.cl[data-h]').forEach(tr => tr.onclick = () => location.hash = tr.dataset.h);
 }
@@ -50,7 +50,7 @@ async function incEst(a, fresco) {
   if (sitio !== undefined) INCF.sitio = sitio || '';
   if (!INCD[cod] || fresco) { cargando('#incest', 'Abriendo los extintores de ' + incNom(cod) + '…'); try { INCD[cod] = await api('p_inc_detalle', { cod: cod }, 180000); } catch (e) { return; } }
   const D = INCD[cod]; if (!D.ok) { delete INCD[cod]; return incNoInstalado('#incest', D); }
-  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
+  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'porvencer' && (e.est.carga === 'porvencer' || e.est.prueba === 'porvencer')) || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
     && (!q || sinTildesJs([e.ID, e.NRO_EXTINTOR, e.NRO_INVENTARIO, e.SECTOR, e.UBICACION, e.PLANTA].join(' ')).indexOf(q) >= 0));
   const ult = id => D.controles.find(c => c.ID_EXTINTOR === id);
   const fila = e => { const c = ult(e.ID), i = D.extintores.indexOf(e);
@@ -59,13 +59,13 @@ async function incEst(a, fresco) {
       '<td>' + esc([e.TIPO, e.AGENTE].filter(Boolean).join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : '') + '</div></td>' +
       '<td class="peq">' + esc(e.NRO_INVENTARIO || 's/d') + '</td>' +
       '<td>' + incChip(INC_CARGA, e.est.carga, e.VTO_CARGA ? fechaTxt(e.VTO_CARGA) : '') + '</td>' +
-      '<td>' + incChip(INC_CARGA, e.est.prueba === 'vencida' ? 'vencida' : e.est.prueba === 'aldia' ? 'aldia' : 'sd', /^\d{4}-/.test(e.PRUEBA_HIDRAULICA_VENCE || '') ? fechaTxt(e.PRUEBA_HIDRAULICA_VENCE) : '') + '</td>' +
+      '<td>' + incChip(INC_CARGA, INC_CARGA[e.est.prueba] ? e.est.prueba : 'sd', /^\d{4}-/.test(e.PRUEBA_HIDRAULICA_VENCE || '') ? fechaTxt(e.PRUEBA_HIDRAULICA_VENCE) : '') + '</td>' +
       '<td>' + incChipEst(e.ESTADO) + '</td>' +
       '<td>' + incChip(INC_CTRL, e.est.control, e.ULTIMO_CONTROL ? fechaTxt(e.ULTIMO_CONTROL) + (e.RESULTADO_CONTROL ? ' · ' + esc(e.RESULTADO_CONTROL) : '') : '') +
         (c || e.FOTO_PANORAMICA ? '<div class="peq">' + [incLink(e.FOTO_PANORAMICA, 'Panorámica'), incLink(e.FOTO_MARBETE, 'Marbete'), incLink(e.FOTO_INVENTARIO, 'Inventario')].filter(Boolean).join(' · ') + '</div>' : '') + '</td>' +
       '<td class="peq" style="max-width:240px">' + esc(e.OBSERVACIONES || '') + '</td>' +
       '<td style="white-space:nowrap"><button class="btn pri" data-ctl="' + i + '">Control</button> <button class="btn sec" data-edit="' + i + '">Editar</button></td></tr>'; };
-  const ver = [['todos', 'Todos'], ['vencida', 'Carga vencida'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
+  const ver = [['todos', 'Todos'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
   marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
     L.length + ' extintor(es) en la lista · ' + D.extintores.filter(e => e.est.carga === 'vencida' && (!INCF.sitio || e.SITIO === INCF.sitio)).length + ' con la carga vencida · controlan: ' + esc(((D.sitios.find(s => s.SITIO === INCF.sitio) || D.sitios[0] || {}).RESPONSABLES_CONTROL) || 's/d') + '</span></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="icSit"><option value="">Todos los lugares</option>' + D.sitios.map(s => '<option' + (s.SITIO === INCF.sitio ? ' selected' : '') + '>' + esc(s.SITIO) + '</option>').join('') + '</select></label>' +
@@ -86,9 +86,9 @@ async function incEst(a, fresco) {
 }
 function incRecargar(D, msg) { if (msg) toast(msg); INCT = null; TB = null; delete INCD[D.cod]; incEst(encodeURIComponent(D.cod), true); }
 
-// ---------- Alta o corrección de un extintor
+// ---------- Alta o corrección de un extintor. En el alta todo es obligatorio, también las 3 fotos (pedido de Belén 14/10/2026).
 function incExtForm(D, e) {
-  const L = D.listas, iso = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : '';
+  const L = D.listas, iso = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : '', fotos = {};
   const v = Object.assign({ ESTABLECIMIENTO: D.cod, SITIO: INCF.sitio || (D.sitios[0] || {}).SITIO, ESTADO: 'Operativo', PRUEBA_HIDRAULICA_VENCE: '' }, e || {});
   v.VTO_CARGA = iso(v.VTO_CARGA); const phTxt = /^s\/d/i.test(v.PRUEBA_HIDRAULICA_VENCE || ''); v.PRUEBA_HIDRAULICA_VENCE = iso(v.PRUEBA_HIDRAULICA_VENCE);
   modal(e ? 'Extintor ' + (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) : 'Agregar extintor', [['SITIO', 'Lugar', D.sitios.map(s => s.SITIO)], ['NRO_EXTINTOR', 'N.º del extintor'], ['NRO_CHAPA', 'N.º de chapa'], ['PLANTA', 'Planta', L.plantas],
@@ -96,18 +96,31 @@ function incExtForm(D, e) {
     ['VTO_CARGA', 'Vencimiento de la carga', 'date'], ['PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica', 'date'], ['ESTADO', 'Estado', L.estados], ['OBSERVACIONES', 'Observaciones', null, 1]], v,
     async out => {
       if (!out.SITIO) return 'Elegí el lugar.'; if (!out.TIPO) return 'Elegí el tipo de extintor.';
+      if (!e) { const faltan = (L.requeridos || []).filter(r => !String(out[r[0]] || '').trim()).map(r => r[1]); if (faltan.length) return 'Falta completar: ' + faltan.join(', ') + '.';
+        const sinF = L.fotos.filter(f => !fotos[f[0]]).map(f => f[1]); if (sinF.length) return 'Faltan las fotos: ' + sinF.join(', ') + '. Para agregar un extintor son obligatorias las 3.'; }
       if (!out.PRUEBA_HIDRAULICA_VENCE) out.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
-      const r = await api('p_inc_ext_guardar', Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod }, out), 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      const r = await api('p_inc_ext_guardar', Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod, fotos: fotos }, out), 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       incRecargar(D, e ? 'Extintor actualizado.' : 'Extintor agregado (' + r.id + ').'); return '';
-    }, phTxt ? '<p class="mu peq" style="margin:0">Prueba hidráulica: sin dato. Si no la sabés, dejala vacía y queda «s/d (revisar)».</p>' : '');
+    }, incFotosHtml(L, e ? 'Fotos (opcional: solo para reemplazar las que tiene)' : '3 fotos obligatorias') +
+      '<p class="mu peq" style="margin:0">' + (e ? '' : 'Para agregar un extintor todos los datos son obligatorios (si no tiene N.º de inventario, escribí «s/d»). ') +
+      (phTxt || !e ? 'Prueba hidráulica: si no la sabés, dejala vacía y queda «s/d (revisar)».' : '') + '</p>');
+  incFotosOnchange(fotos);
+}
+// Entradas de las 3 fotos (panorámica con el entorno, marbete y N.º de inventario), para el alta y para el control
+function incFotosHtml(L, titulo) {
+  return '<div class="card" style="margin:12px 0;padding:12px 14px;background:var(--pa1)"><b>' + esc(titulo) + '</b><div class="campos" style="margin-top:8px">' +
+    L.fotos.map(f => '<label class="f">' + esc(f[1]) + '<input class="c" type="file" accept="image/*" capture="environment" data-incfoto="' + f[0] + '"><span class="mu peq" id="if_' + f[0] + '">' + esc(f[2]) + '</span></label>').join('') + '</div></div>';
+}
+function incFotosOnchange(fotos) {
+  document.querySelectorAll('#ov [data-incfoto]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.incfoto, msg = $('if_' + k); if (!f) return;
+    try { if (!/^image\//.test(f.type)) throw new Error('Tiene que ser una foto.'); fotos[k] = await achicar(f); msg.textContent = 'Lista: ' + f.name; msg.style.color = 'var(--ok)'; } catch (x) { delete fotos[k]; msg.textContent = x.message || 'No se pudo leer la foto.'; msg.style.color = 'var(--er)'; } });
 }
 
 // ---------- Control mensual con 3 fotos obligatorias
 function incControlForm(D, e) {
   const L = D.listas, fotos = {}, hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   const campos = [['FECHA', 'Fecha del control', 'date']].concat(L.chequeos.map(c => [c[0], c[1], ['Sí', 'No']]), [['ESTADO', 'Estado del extintor (si cambió)', L.estados], ['VTO_CARGA', 'Nuevo vencimiento de la carga (solo si se recargó)', 'date'], ['OBSERVACIONES', 'Observaciones', null, 1]]);
-  const extra = '<div class="card" style="margin:12px 0;padding:12px 14px;background:var(--pa1)"><b>3 fotos obligatorias</b><div class="campos" style="margin-top:8px">' +
-    L.fotos.map(f => '<label class="f">' + esc(f[1]) + '<input class="c" type="file" accept="image/*" capture="environment" data-incfoto="' + f[0] + '"><span class="mu peq" id="if_' + f[0] + '">' + esc(f[2]) + '</span></label>').join('') + '</div></div>' +
+  const extra = incFotosHtml(L, '3 fotos obligatorias') +
     '<p class="mu peq" style="margin:0">' + esc([e.ID, e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + ' · carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + '. Si alguna verificación da «No», el control queda «Con observaciones».</p>';
   modal('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), campos, { FECHA: hoy }, async out => {
     const faltan = L.chequeos.filter(c => !out[c[0]]).map(c => c[1]); if (faltan.length) return 'Falta responder: ' + faltan.join(', ') + '.';
@@ -116,6 +129,5 @@ function incControlForm(D, e) {
     const r = await api('p_inc_control', datos, 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
     incRecargar(D, 'Control guardado: ' + r.resultado + '.'); return '';
   }, extra);
-  document.querySelectorAll('#ov [data-incfoto]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.incfoto, msg = $('if_' + k); if (!f) return;
-    try { if (!/^image\//.test(f.type)) throw new Error('Tiene que ser una foto.'); fotos[k] = await achicar(f); msg.textContent = 'Lista: ' + f.name; msg.style.color = 'var(--ok)'; } catch (x) { delete fotos[k]; msg.textContent = x.message || 'No se pudo leer la foto.'; msg.style.color = 'var(--er)'; } });
+  incFotosOnchange(fotos);
 }

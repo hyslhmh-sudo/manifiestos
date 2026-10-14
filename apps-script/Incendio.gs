@@ -12,8 +12,9 @@
  *   CONTROLES    un control mensual por extintor: 5 verificaciones, resultado y 3 fotos obligatorias (panorámica con el entorno,
  *                marbete y N.º de inventario)
  *   LISTAS · AYUDA
- * Fotos: MÓDULO 10 › Establecimientos › establecimiento › Controles › año-mes.
- * Avisos: carga vencida o que vence en 30 días; prueba hidráulica vencida; sin control en los últimos 3 meses (el control es mensual,
+ * Fotos: MÓDULO 10 › Establecimientos › establecimiento › Controles › año-mes (controles) y › Altas › año-mes (extintores agregados).
+ * Agregar extintores: HyS (portal), Melani, SOMI y MAREM («Mi establecimiento») y Javier Tramaleo (MIPyV); datos y 3 fotos obligatorios.
+ * Avisos: carga o prueba hidráulica vencida, y 30 días antes de cada vencimiento (aparecen en los tableros); sin control en los últimos 3 meses (el control es mensual,
  * pero la alarma recién aparece a los 3 meses, pedido de Belén 14/10/2026).
  * Carga inicial: importarExtintoresIncendio() lee la planilla «Inventario de Extintores» de Belén (INC.FUENTE) y no pisa lo ya cargado.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL). No envía correos.
@@ -180,14 +181,15 @@ function incFoto_(cod, a, sub, etiqueta) {
   return incCarpetaEst_(cod, sub).createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], nombre)).getUrl();
 }
 const incHoy_ = () => Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+const incTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
 function incSumarDias_(f, d) { const x = new Date(f + 'T12:00:00'); x.setDate(x.getDate() + d); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); }
 function incSumarMeses_(f, m) { const x = new Date(f + 'T12:00:00'); x.setMonth(x.getMonth() + m); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); }
 
-// Estado de un extintor: carga (vencida · porvencer · aldia · sd), prueba hidráulica (vencida · aldia · sd) y control (sin · atrasado · aldia)
+// Estado de un extintor: carga y prueba hidráulica (vencida · porvencer: 30 días antes · aldia · sd) y control (sin · atrasado · aldia)
 function incEstadoExt_(e, hoy) {
   const vto = incISO_(e.VTO_CARGA), ph = incISO_(e.PRUEBA_HIDRAULICA_VENCE), uc = incISO_(e.ULTIMO_CONTROL);
   const carga = !vto ? 'sd' : vto < hoy ? 'vencida' : vto <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
-  const prueba = !ph ? 'sd' : ph < hoy ? 'vencida' : 'aldia';
+  const prueba = !ph ? 'sd' : ph < hoy ? 'vencida' : ph <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
   const control = !uc ? 'sin' : uc < incSumarMeses_(hoy, -INC.MESES_ALARMA) ? 'atrasado' : 'aldia';
   const fuera = /baja/i.test(e.ESTADO), obs = /sobrecarg|recarg|fuera/i.test(e.ESTADO);
   return { carga: carga, prueba: prueba, control: control, baja: fuera, conObs: obs };
@@ -198,8 +200,10 @@ function incDatos_() {
   return { sit: sit, ext: ext };
 }
 function incResumen_(l, hoy) {
-  const v = l.filter(e => !/baja/i.test(e.ESTADO)).map(e => incEstadoExt_(e, hoy)), c = k => v.filter(x => x[k[0]] === k[1]).length;
-  return { total: v.length, cargaVencida: c(['carga', 'vencida']), porVencer: c(['carga', 'porvencer']), cargaSd: c(['carga', 'sd']), pruebaVencida: c(['prueba', 'vencida']), pruebaSd: c(['prueba', 'sd']),
+  const u = l.filter(e => !/baja/i.test(e.ESTADO)), v = u.map(e => incEstadoExt_(e, hoy)), c = k => v.filter(x => x[k[0]] === k[1]).length;
+  const fechas = (campo, k, est) => u.filter((e, i) => v[i][k] === est).map(e => incISO_(e[campo])).filter(Boolean).sort();
+  return { total: v.length, cargaVencida: c(['carga', 'vencida']), porVencer: c(['carga', 'porvencer']), cargaSd: c(['carga', 'sd']), pruebaVencida: c(['prueba', 'vencida']), pruebaPorVencer: c(['prueba', 'porvencer']), pruebaSd: c(['prueba', 'sd']),
+    vencidaDesde: fechas('VTO_CARGA', 'carga', 'vencida')[0] || '', proximoVto: fechas('VTO_CARGA', 'carga', 'porvencer')[0] || '', proximaPrueba: fechas('PRUEBA_HIDRAULICA_VENCE', 'prueba', 'porvencer')[0] || '',
     sinControl: c(['control', 'sin']), controlAtrasado: c(['control', 'atrasado']), controlAlDia: c(['control', 'aldia']), conObs: v.filter(x => x.conObs).length };
 }
 function incTablero_(fresco) {
@@ -211,10 +215,12 @@ function incTablero_(fresco) {
   // Avisos para el tablero de inicio: por lugar (carga vencida, prueba vencida, 3 meses sin control)
   const avisos = [];
   lugares.forEach(L => { const r = L.r; if (!r.total) return;
-    if (r.cargaVencida) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: r.cargaVencida + (r.cargaVencida > 1 ? ' extintores con la carga vencida' : ' extintor con la carga vencida') });
+    if (r.cargaVencida) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: r.cargaVencida + (r.cargaVencida > 1 ? ' extintores con la carga vencida' : ' extintor con la carga vencida') + (r.vencidaDesde ? ' (desde el ' + incTxt_(r.vencidaDesde) + ')' : '') });
     if (r.pruebaVencida) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: r.pruebaVencida + ' con la prueba hidráulica vencida' });
     const sinC = r.controlAtrasado + (hoy >= incSumarMeses_(INC.INICIO, INC.MESES_ALARMA) ? r.sinControl : 0); if (sinC && (!L.ultimoControl || L.ultimoControl < incSumarMeses_(hoy, -INC.MESES_ALARMA))) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: 'Más de 3 meses sin control de extintores' + (L.ultimoControl ? ' (último: ' + L.ultimoControl + ')' : ' (nunca controlado)') });
-    if (r.porVencer) avisos.push({ nivel: 'av', cod: L.cod, sitio: L.sitio, texto: r.porVencer + ' con la carga por vencer (30 días)' }); });
+    // 30 días antes del vencimiento (pedido de Belén 14/10/2026): carga y prueba hidráulica
+    if (r.porVencer) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: r.porVencer + (r.porVencer > 1 ? ' extintores con la carga por vencer' : ' extintor con la carga por vencer') + ': vence el ' + incTxt_(r.proximoVto) + ' (aviso 30 días antes)' });
+    if (r.pruebaPorVencer) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: r.pruebaPorVencer + ' con la prueba hidráulica por vencer: vence el ' + incTxt_(r.proximaPrueba) + ' (aviso 30 días antes)' }); });
   const out = { ok: true, hoy: hoy, lugares: lugares, avisos: avisos, totales: incResumen_(D.ext, hoy), libro: pInc_().getUrl(),
     carpeta: DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty(INC.P_CARPETA)).getUrl() };
   try { ca.put('inc_tablero', JSON.stringify(out), 600); } catch (e) {}
@@ -227,18 +233,36 @@ function incDetalle_(cod, sitio) {
   const ids = {}; ext.forEach(e => ids[e.ID] = true);
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
-    listas: { tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS } };
+    listas: { requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS } };
 }
-// Alta o corrección de un extintor (solo HyS desde el portal)
-function incExtGuardar_(x, quien) {
+// Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
+// MIPyV (Javier Tramaleo). En el alta los datos y las 3 fotos son obligatorios (pedido de Belén 14/10/2026). La corrección (con ID) es solo del portal.
+const INC_REQ_ALTA = [['SITIO', 'el lugar'], ['PLANTA', 'la planta'], ['SECTOR', 'el sector o servicio'], ['UBICACION', 'dónde está exactamente'], ['TIPO', 'el tipo'],
+  ['AGENTE', 'el agente extintor'], ['CAPACIDAD_KG', 'la capacidad (kg)'], ['NRO_INVENTARIO', 'el N.º de inventario (si no tiene, «s/d»)'], ['VTO_CARGA', 'el vencimiento de la carga (está en la tarjeta)']];
+function incExtGuardar_(x, quien, codPermitido) {
   const cod = limpio_(x.ESTABLECIMIENTO), sitio = limpio_(x.SITIO); if (!cod || !sitio) return { ok: false, mensaje: 'Faltan el establecimiento y el lugar.' };
+  if (codPermitido && (cod !== codPermitido || x.ID)) return { ok: false, mensaje: 'Desde la aplicación solo se pueden agregar extintores de este establecimiento.' };
   const L = incLeer_('EXTINTORES', INC.H_EXT); let e = x.ID ? L.find(o => o.ID === x.ID) : null;
   if (x.ID && !e) return { ok: false, mensaje: 'No encontré ese extintor.' };
-  const o = e ? Object.assign({}, e) : { ID: 'EXT-' + cod + '-' + ('00' + (L.filter(z => limpio_(z.ESTABLECIMIENTO) === cod).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3) };
-  ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x) o[k] = x[k]; });
+  const fotos = x.fotos || {};
+  if (!e) {   // alta: todo obligatorio
+    if (!incDatos_().sit.some(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(sitio))) return { ok: false, mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
+    const faltan = INC_REQ_ALTA.filter(r => !limpio_(x[r[0]])).map(r => r[1]); if (faltan.length) return { ok: false, mensaje: 'Falta completar: ' + faltan.join(', ') + '.' };
+    if (!/^s\/d/i.test(x.VTO_CARGA) && !incISO_(x.VTO_CARGA)) return { ok: false, mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
+    const sinFoto = INC.FOTOS.filter(f => !/^data:image\//.test(String(fotos[f[0]] || ''))).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
+    const inv = sinTildes_(x.NRO_INVENTARIO).replace(/\s+/g, '');
+    const rep = /^s\/?d/.test(inv) ? null : L.find(z => limpio_(z.ESTABLECIMIENTO) === cod && !/baja/i.test(z.ESTADO) && sinTildes_(z.NRO_INVENTARIO).replace(/\s+/g, '') === inv);
+    if (rep) return { ok: false, mensaje: 'Ese N.º de inventario ya está cargado: ' + rep.ID + ' (' + [rep.SITIO, rep.SECTOR, rep.UBICACION].filter(Boolean).join(' · ') + '). Si es el mismo extintor, buscalo en la lista; si se mudó, avisale a Higiene y Seguridad.' };
+  }
+  const o = e ? Object.assign({}, e) : { ID: 'EXT-' + cod + '-' + ('00' + (L.filter(z => limpio_(z.ESTABLECIMIENTO) === cod).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3), ESTADO: 'Operativo' };
+  ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x && (e || x[k] !== '')) o[k] = limpio_(x[k]); });
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
+  if (!e && !o.PRUEBA_HIDRAULICA_VENCE) o.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ULTIMO_CONTROL'].forEach(k => { if (o[k] && !(o[k] instanceof Date) && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
-  o.ACTUALIZADO = new Date(); delete o.fila;
+  const et = o.ID + (o.NRO_EXTINTOR ? ' n.º ' + o.NRO_EXTINTOR : '') + ' · ' + o.SITIO, sub = ['Altas', incHoy_().slice(0, 7)];
+  INC.FOTOS.forEach(f => { if (/^data:image\//.test(String(fotos[f[0]] || ''))) o[f[0]] = incFoto_(cod, fotos[f[0]], sub, et + ' · ' + f[1]); });
+  if (!e) o.OBSERVACIONES = 'Alta ' + incHoy_() + ' · ' + quien + '.' + (o.OBSERVACIONES ? ' ' + o.OBSERVACIONES : '');
+  o.ACTUALIZADO = new Date(); delete o.fila; delete o.est;
   incEscribir_('EXTINTORES', INC.H_EXT, e ? e.fila : null, o);
   CacheService.getScriptCache().remove('inc_tablero');
   return { ok: true, id: o.ID };
@@ -280,13 +304,15 @@ function incPortal_(accion, x) {
 }
 
 // ------------------------------------------------------------------ «MI ESTABLECIMIENTO» (DNI y clave personal, módulo «Incendio» en ACCESOS): acciones «i_…»
-// Desde Código.gs › doPost, después de validar acceso y módulo: ver los extintores del establecimiento y cargar el control mensual.
+// Desde Código.gs › doPost, después de validar acceso y módulo: ver los extintores del establecimiento, cargar el control mensual
+// y agregar un extintor que no está en la lista (con todos sus datos y las 3 fotos).
 function incRed_(d) {
   if (!PropertiesService.getScriptProperties().getProperty(INC.P_LIBRO)) return { ok: false, mensaje: 'El módulo de incendio todavía no está habilitado.' };
   const x = d.datos || {}, cod = limpio_(d.est), quien = x.quien || 'Mi establecimiento';
   switch (d.accion) {
     case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); return r; }
     case 'i_control': return conLock_(() => incControlGuardar_(x, quien, cod));
+    case 'i_ext_alta': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }
   return { ok: false, error: 'Acción desconocida.' };
 }
