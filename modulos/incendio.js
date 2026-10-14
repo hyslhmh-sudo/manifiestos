@@ -1,4 +1,4 @@
-// Portal HyS · 10 · Protección contra incendios (Incendio.gs) · versión 0 (14/10/2026)
+// Portal HyS · 7 · Protección contra incendios (Incendio.gs) · versión 0 (14/10/2026)
 // Inventario de extintores de la red Trelew y del HSST, vencimientos (carga y prueba hidráulica) y control mensual con 3 fotos
 // obligatorias (panorámica con el entorno, marbete y N.º de inventario). Alarma: 3 meses sin control.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
@@ -11,7 +11,7 @@ const incLink = (u, t) => u ? '<a class="link" href="' + esc(u) + '" target="_bl
 const incPend = e => /^pendiente/i.test(e.VERIFICACION || '');
 const incNom = c => { const f = (RES && RES.filas || []).find(x => x.cod === c); return f ? f.nombre : c; };
 function incNoInstalado(hash, r) {
-  return marco(hash, '<div class="cab"><div><span class="mu peq">10 · Protección contra incendios</span><h1>Protección contra incendios</h1></div></div><div class="aviso ' + (r && r.instalado === false ? '' : 'error') + '">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer el módulo.') + '</div>' +
+  return marco(hash, '<div class="cab"><div><span class="mu peq">7 · Protección contra incendios</span><h1>Protección contra incendios</h1></div></div><div class="aviso ' + (r && r.instalado === false ? '' : 'error') + '">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer el módulo.') + '</div>' +
     (r && r.instalado === false ? '<section class="card"><h2>Cómo se instala</h2><ol class="peq"><li>En el editor de Apps Script del «Sistema HyS», elegí la función <b>construirModuloIncendio</b> y tocá «Ejecutar» (una sola vez).</li><li>Después elegí <b>importarExtintoresIncendio</b> y tocá «Ejecutar»: trae los extintores de la planilla «Inventario de Extintores».</li><li>Volvé acá y tocá «Actualizar».</li></ol></section>' : ''));
 }
 
@@ -29,7 +29,7 @@ async function incTablero(fresco) {
       '<td>' + (r.conObs ? '<span class="chip er">' + r.conObs + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + '</td>' +
       '<td>' + (L.ultimoControl ? fechaTxt(L.ultimoControl) : '<span class="mu">Nunca</span>') + (r.controlAtrasado ? ' <span class="chip er mini">' + r.controlAtrasado + ' con más de 3 meses</span>' : '') + '</td></tr>'; };
   const at = (INCT.avisos || []).map(a => ['<a class="at" href="' + (a.h || '#incest/' + encodeURIComponent(a.cod) + '/' + encodeURIComponent(a.sitio)) + '"><span class="tag ' + a.nivel + '">' + (a.nivel === 'er' ? 'Urgente' : a.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span><span><b>' + esc(a.sitio) + ': ' + esc(a.texto) + '</b><small>' + esc(incNom(a.cod)) + '</small></span></a>']);
-  marco('#inc', '<div class="cab"><div><span class="mu peq">10 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual (3 fotos por extintor). Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
+  marco('#inc', '<div class="cab"><div><span class="mu peq">7 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual (3 fotos por extintor). Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
     '<div class="filtros">' + incLink(INCT.libro, 'Planilla del módulo') + ' ' + incLink(INCT.carpeta, 'Carpeta de fotos') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '') +
     kpi('Con observación', T.conObs, 'sobrecarga, recargar o fuera de servicio', T.conObs ? 'var(--er)' : '') + kpi('Controlados', T.controlAlDia, (T.sinControl + T.controlAtrasado) + ' sin control en los últimos 3 meses', (T.controlAtrasado) ? 'var(--wa)' : '') +
@@ -70,7 +70,7 @@ async function incEst(a, fresco) {
         '<button class="btn pri" data-ctl="' + i + '">Control</button> <button class="btn sec" data-edit="' + i + '">Editar</button></td></tr>'; };
   const pend = L.filter(incPend);
   const ver = [['todos', 'Todos'], ['falla', 'Con problema abierto'], ['verificar', 'Para verificar'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
-  marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
+  marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">7 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
     L.length + ' extintor(es) en la lista · ' + D.extintores.filter(e => e.est.carga === 'vencida' && (!INCF.sitio || e.SITIO === INCF.sitio)).length + ' con la carga vencida · controlan: ' + esc(((D.sitios.find(s => s.SITIO === INCF.sitio) || D.sitios[0] || {}).RESPONSABLES_CONTROL) || 's/d') + '</span></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="icSit"><option value="">Todos los lugares</option>' + D.sitios.map(s => '<option' + (s.SITIO === INCF.sitio ? ' selected' : '') + '>' + esc(s.SITIO) + '</option>').join('') + '</select></label>' +
     '<label class="f">Ver<select class="c" id="icVer">' + ver.map(v => '<option value="' + v[0] + '"' + (v[0] === INCF.ver ? ' selected' : '') + '>' + v[1] + '</option>').join('') + '</select></label>' +
@@ -159,7 +159,7 @@ async function incNovPortal(fresco) {
     '<td>' + esc(n.ESTABLECIMIENTO) + ' · ' + esc(n.SECTOR) + '</td><td class="peq" style="max-width:280px">' + esc(n.DETALLE || '') + (n.FOTO ? '<div>' + incLink(n.FOTO, 'Foto') + '</div>' : '') + '</td><td class="peq">' + esc(n.QUIEN || '') + '</td>' +
     '<td>' + (ab ? '<button class="btn pri" data-nres="' + esc(n.ID) + '">Resuelta</button>' : '<span class="chip ok">Resuelta</span><div class="mu peq">' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ' · ' + esc(n.RESOLUCION) : '') + (n.RESUELTO_POR ? ' · ' + esc(n.RESUELTO_POR) : '') + '</div>') + '</td></tr>';
   const tabla = (L, ab) => '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Qué</th><th>Dónde</th><th>Detalle</th><th>Quién</th><th></th></tr></thead><tbody>' + L.map(n => fila(n, ab)).join('') + '</tbody></table></div>';
-  marco('#incnov', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">10 · Protección contra incendios</a></span><h1>Novedades y recorridas</h1><span class="mu peq">Recorridas de seguridad y novedades (principio de incendio, alarma, uso de un extintor, salidas obstruidas…). Se avisan por correo solo a Higiene y Seguridad.</span></div>' +
+  marco('#incnov', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">7 · Protección contra incendios</a></span><h1>Novedades y recorridas</h1><span class="mu peq">Recorridas de seguridad y novedades (principio de incendio, alarma, uso de un extintor, salidas obstruidas…). Se avisan por correo solo a Higiene y Seguridad.</span></div>' +
     '<div class="filtros">' + incLink(INCNP.libro, 'Planilla del módulo') + '<button class="btn sec" id="inAct">Actualizar</button></div></div>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Abiertas (' + INCNP.abiertas.length + ')</h2></div>' + (INCNP.abiertas.length ? tabla(INCNP.abiertas, true) : '<p class="mu" style="padding:14px 18px">No hay novedades abiertas.</p>') + '</section>' +
     (INCNP.recorridas.length ? '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Últimas recorridas</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Sector</th><th>Resultado</th><th>Puntos en «No»</th><th>Quién</th></tr></thead><tbody>' +

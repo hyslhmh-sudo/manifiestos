@@ -1,6 +1,6 @@
 // Portal HyS · Estado del establecimiento (ficha): matriz urgencia × gravedad y vistas por tema
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero), del resumen (p_resumen), de siniestros (p_sin_lista) y del módulo 8 (m8_datos), filtrados por establecimiento.
+// No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero), del resumen (p_resumen), de siniestros (p_sin_lista) y del módulo 6 (m8_datos), filtrados por establecimiento.
 // Cuadrantes (mismo vocabulario que los plazos técnicos de los informes): Actuar ya (urgente y grave), Resolver rápido (urgente y leve),
 // Planificar (no urgente y grave), Vigilar (no urgente y leve). Las reglas están en eeItems().
 let EE = { vista: 'matriz' };
@@ -81,7 +81,7 @@ function eeItems(cod, f) {
   });
   // Documentos propios del establecimiento
   de((T.docsEst || {}).avisos).forEach(d => add('Documentos', d.estado === 'vencido', false, (d.codigo || 'Documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), d.titulo || '', '#docest/' + encodeURIComponent(cod)));
-  // Personal y RAR: siniestros (4 · Personal y RAR › Siniestros, acción p_sin_lista). Se leen aparte: si todavía no llegaron, no suman.
+  // Personal y RAR: siniestros (8 · Personal y RAR › Siniestros, acción p_sin_lista). Se leen aparte: si todavía no llegaron, no suman.
   const hace = d => d ? Math.max(0, Math.floor((Date.now() - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 864e5)) : 0;
   const SL = typeof SINP !== 'undefined' && SINP && SINP.lista ? SINP.lista : [];
   SL.filter(s => s.est === cod || (f.nombre && s.est === f.nombre)).forEach(s => {
@@ -93,7 +93,7 @@ function eeItems(cod, f) {
   // Infraestructura: mediciones con vencimiento (puesta a tierra, iluminación, ruido…) y RGRL (Rgrl.gs, datos del tablero)
   de(T.mediciones || []).forEach(m => { if (m.estado === 'vencida' || m.estado === 'porvencer') add('Infraestructura', true, true, m.tipo + (m.estado === 'vencida' ? ' vencida' : ' por vencer'), (m.estado === 'vencida' ? 'Venció el ' : 'Vence el ') + fechaTxt(m.vence) + ' · coordinar la medición y cargar el protocolo', '#medic'); });
   de(T.rgrl || []).forEach(r => { if (r.estadoVto === 'vencida') add('Infraestructura', false, true, 'RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' (' + r.lugar + ')' : ''), 'Se actualiza una vez al año (Res. SRT 463/09)', '#rgrl/' + encodeURIComponent(r.id)); else if (r.noVencidas) add('Infraestructura', true, false, r.noVencidas + ' condición(es) del RGRL con la fecha de regularización vencida', r.lugar || r.cod, '#rgrl/' + encodeURIComponent(r.id)); });
-  // Infraestructura: hallazgos abiertos del módulo 8, con la misma regla que las acciones de los otros módulos
+  // Infraestructura: hallazgos abiertos del módulo 6, con la misma regla que las acciones de los otros módulos
   if (typeof M8 !== 'undefined' && M8 && M8.ok) {
     const estDe = {}; (M8.relevamientos || []).forEach(x => estDe[x.id] = x.est || ((M8.servicios || []).find(v => v.id === x.servicio) || {}).est);
     const g8 = {};
@@ -103,7 +103,7 @@ function eeItems(cod, f) {
       const k = eeCuad(urg, grave) + '|' + (venc ? 'v' : pronto ? 'p' : 'a'); (g8[k] = g8[k] || []).push(h);
     });
     Object.keys(g8).forEach(k => { const [cuad, tipo] = k.split('|'), l = g8[k];
-      L.push({ tema: 'Infraestructura', cuad: cuad, texto: l.length + ' hallazgo(s) ' + (tipo === 'v' ? 'vencido(s)' : tipo === 'p' ? 'que vencen en 7 días' : 'abierto(s)') + ' del módulo 8',
+      L.push({ tema: 'Infraestructura', cuad: cuad, texto: l.length + ' hallazgo(s) ' + (tipo === 'v' ? 'vencido(s)' : tipo === 'p' ? 'que vencen en 7 días' : 'abierto(s)') + ' del módulo 6',
         detalle: l.slice(0, 2).map(h => [h.servicio, h.item || h.cod].filter(Boolean).join(': ')).join(' · ') + (l.length > 2 ? ' · …' : ''), ir: '#m8plan' }); });
   }
   return L;
@@ -120,7 +120,7 @@ async function estadoEst(cod) {
   EE.cod = cod; eeDibujar(cod);
   eeExtras(cod, false);
 }
-// Siniestros y módulo 8 se leen aparte (no frenan la matriz): al llegar, se redibuja si la ficha sigue abierta
+// Siniestros y módulo 6 se leen aparte (no frenan la matriz): al llegar, se redibuja si la ficha sigue abierta
 async function eeExtras(cod, fresco) {
   const pedir = [];
   if (fresco || typeof SINP === 'undefined' || !SINP) pedir.push(api('p_sin_lista', {}, 120000).then(r => { if (r && r.ok) SINP = r; }).catch(() => {}));
@@ -164,9 +164,9 @@ function eeDibujar(cod) {
       'Documentos': ['', btn('#docest/' + ce, 'Documentos propios') + btn('#notas', 'Notas enviadas y recibidas')],
       'Personal y RAR': ['<dl class="datos">' + (sinE ? dato('Siniestros abiertos', String(sinE.filter(x => x.abierto).length)) + dato('En ILT hoy', String(sinE.filter(x => x.estado === 'En ILT').length)) + dato('Investigación pendiente', String(sinE.filter(x => x.estadoHys === 'Pendiente de análisis').length)) : dato('Siniestros', EE.leyendo ? 'leyendo…' : 's/d')) + dato('Personal en la base', f.trabajadores == null ? 's/d' : String(f.trabajadores)) + dato('Capacitados / activos', f.activos ? (f.capacitados || 0) + ' de ' + f.activos : 's/d') + '</dl>',
         btn('#trab/' + ce, 'Personas') + btn('#sin', 'Siniestros') + btn('#nte', 'NTE · nómina de expuestos')],
-      'Infraestructura': [m8E ? '<dl class="datos">' + dato('Hallazgos abiertos', String(m8E.length)) + dato('Vencidos', String(m8E.filter(h => h.limite && h.limite < new Date().toISOString().slice(0, 10)).length)) + '</dl>' : '<p class="mu peq">' + (EE.leyendo ? 'Leyendo el módulo 8…' : 'Sin datos del módulo 8.') + '</p>', btn('#m8', 'Servicios e infraestructura') + btn('#m8plan', 'Hallazgos y plan')]
+      'Infraestructura': [m8E ? '<dl class="datos">' + dato('Hallazgos abiertos', String(m8E.length)) + dato('Vencidos', String(m8E.filter(h => h.limite && h.limite < new Date().toISOString().slice(0, 10)).length)) + '</dl>' : '<p class="mu peq">' + (EE.leyendo ? 'Leyendo el módulo 6…' : 'Sin datos del módulo 6.') + '</p>', btn('#m8', 'Servicios e infraestructura') + btn('#m8plan', 'Hallazgos y plan')]
     }[V] || ['', ''];
-    const sinReglas = EE.leyendo && (V === 'Personal y RAR' || V === 'Infraestructura') ? '<p class="mu peq">Leyendo siniestros y hallazgos del módulo 8…</p>' : '';
+    const sinReglas = EE.leyendo && (V === 'Personal y RAR' || V === 'Infraestructura') ? '<p class="mu peq">Leyendo siniestros y hallazgos del módulo 6…</p>' : '';
     cuerpo = '<div class="ee-v"><div>' + matriz(lt) + sinReglas + '</div>' +
       '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">' + esc(V) + '</h3>' + extra[0] + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + extra[1] + '</div></section></div>';
   }

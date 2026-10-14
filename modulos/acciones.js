@@ -1,7 +1,7 @@
 // Portal HyS · Acciones de todos los módulos
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Acciones de todos los módulos (vista unificada)
-// Junta lo abierto de Residuos (diagnóstico y auditorías), Agua, Plagas y Módulo 8. Cada módulo sigue guardando en su planilla.
+// Junta lo abierto de Residuos (diagnóstico y auditorías), Agua, Plagas y Módulo 6. Cada módulo sigue guardando en su planilla.
 let ACCF = { cod: '', origen: '', estado: 'abiertas', q: '' };
 async function acciones(fresco) {
   if (!TB || TB.vacio || fresco) { cargando('#acciones', 'Juntando las acciones de todos los módulos…');
@@ -38,7 +38,7 @@ async function acciones(fresco) {
     '<section class="card tabla"><table><thead><tr><th>Estado</th><th>Establecimiento</th><th>Módulo</th><th>Qué hay que hacer</th><th>Dónde</th><th>Fecha límite</th><th>A cargo</th></tr></thead><tbody>' +
       (vis.length ? vis.map(a => '<tr class="cl" data-ir="' + esc(a.ir) + '"><td>' + ch(a) + '</td><td><b>' + esc(a.cod) + '</b></td><td class="peq">' + esc(a.origen) + (a.ref ? '<div class="mu">' + esc(a.ref) + '</div>' : '') + '</td><td>' + esc(a.que || '—') + (a.prioridad ? '<div class="mu peq">Prioridad: ' + esc(a.prioridad) + '</div>' : '') + '</td><td class="peq">' + esc(a.donde || '—') + '</td><td>' + esc(a.limite ? fechaTxt(a.limite) : 's/d') + '</td><td class="peq">' + esc(a.aCargo || 's/d') + '</td></tr>').join('')
         : '<tr><td colspan="7" class="mu">No hay acciones con estos filtros.</td></tr>') + '</tbody></table></section>' +
-    '<p class="mu peq">Fuentes: plan de acción de residuos (diagnósticos y auditorías), agua NO APTA (15 días hábiles), casos de plagas abiertos y hallazgos del módulo 8 (30, 90 o 180 días).</p>');
+    '<p class="mu peq">Fuentes: plan de acción de residuos (diagnósticos y auditorías), agua NO APTA (15 días hábiles), casos de plagas abiertos y hallazgos del módulo 6 (30, 90 o 180 días).</p>');
   const re = () => acciones();
   $('acAct').onclick = () => acciones(true);
   $('acE').onchange = e => { ACCF.cod = e.target.value; re(); }; $('acO').onchange = e => { ACCF.origen = e.target.value; re(); }; $('acS').onchange = e => { ACCF.estado = e.target.value; re(); };

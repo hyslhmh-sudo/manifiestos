@@ -1,6 +1,6 @@
-// Portal HyS · 6 · Cocinas hospitalarias
+// Portal HyS · 4 · Cocinas hospitalarias
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ Módulo 6 · Cocinas hospitalarias (Modulo6.gs)
+// ------------------------------------------------------------------ Módulo 4 · Cocinas hospitalarias (Modulo6.gs)
 // Tablero, personas de cocina (carnet de manipulador y libreta sanitaria) y relevamiento BPM / HACCP con el mismo formulario del diagnóstico.
 let COCT = null, COCP = { cod: '*', filtro: '', L: null, cargado: '' };
 const COC_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'gr'] };
@@ -20,7 +20,7 @@ async function cocTablero(fresco) {
   const avisos = COCT.avisos.filter(v => !A || E.some(e => e.cod === v.cod));
   const nom = c => (COCT.establecimientos.find(e => e.cod === c) || { nombre: c }).nombre;
   const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
-  marco('#coc', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Cocinas hospitalarias</h1><span class="mu peq">Buenas prácticas de manufactura (BPM) en todos los establecimientos y sistema HACCP en los no rurales · personas que manipulan alimentos.</span></div>' +
+  marco('#coc', '<div class="cab"><div><span class="mu peq">4 · Cocinas</span><h1>Cocinas hospitalarias</h1><span class="mu peq">Buenas prácticas de manufactura (BPM) en todos los establecimientos y sistema HACCP en los no rurales · personas que manipulan alimentos.</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="ccA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="ccAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('#cocdiag', 'Relevados', cocFrac(T.relevados, T.establecimientos), 'establecimientos con relevamiento cerrado') + kpi('#cocdiag', 'Cumplimiento promedio', T.promedio == null ? '—' : T.promedio + ' %', 'de los relevados') +
     kpi('#cocdiag', 'Con puntos críticos', T.criticos, T.enviados ? T.enviados + ' enviado(s) por referentes para revisar' : 'algún punto crítico en 0', T.criticos ? 'var(--er)' : '') +
@@ -43,7 +43,7 @@ async function cocLista() {
   if (!COCT) cargando('#cocdiag', 'Leyendo los relevamientos…');
   if (!(await cocDatos())) return;
   const E = COCT.establecimientos.slice().sort((a, b) => (a.area + (a.rural ? '1' : '0') + a.nombre).localeCompare(b.area + (b.rural ? '1' : '0') + b.nombre));
-  marco('#cocdiag', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Relevamiento BPM / HACCP</h1><span class="mu peq">Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Línea de base: el informe propone mejoras (punto 6) que pasan al plan de acción.</span></div></div>' +
+  marco('#cocdiag', '<div class="cab"><div><span class="mu peq">4 · Cocinas</span><h1>Relevamiento BPM / HACCP</h1><span class="mu peq">Hospitales rurales: BPM. Zonales, subzonales y regional: BPM y HACCP. Puestos sanitarios: solo si tienen servicio de alimentación. Línea de base: el informe propone mejoras (punto 6) que pasan al plan de acción.</span></div></div>' +
     '<section class="card tabla"><table><thead><tr><th>Establecimiento</th><th>Área</th><th>Alcance</th><th>Último relevamiento</th><th>Resultado</th><th></th></tr></thead><tbody>' +
     E.map(e => '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td><td class="peq">' + esc(String(e.area).replace('Área Programática ', '')) + '</td><td class="peq">' + esc(e.alcance) + '</td><td>' + (e.diag ? fechaTxt(e.diag.fecha) : '—') + '</td><td>' + chipDiag(e.diag) + '</td><td><span class="link">' + (e.diag ? 'Abrir' : 'Empezar') + '</span></td></tr>').join('') +
     '</tbody></table></section>');
@@ -84,7 +84,7 @@ async function cocPersonas(cod) {
   const L = R.personas.filter(p => p.ACTIVO !== 'No' || f === 'baja').filter(p => !f || (f === 'atencion' ? p.estado !== 'vigente' : f === 'empresa' ? p.ORIGEN === 'Empresa' : f === 'baja' ? p.ACTIVO === 'No' : true))
     .sort((a, b) => (a.ESTABLECIMIENTO + a.APELLIDO_Y_NOMBRE).localeCompare(b.ESTABLECIMIENTO + b.APELLIDO_Y_NOMBRE));
   const S = R.resumen, chipF = (v, t) => '<button class="fchip' + (f === v ? ' on' : '') + '" data-cf="' + v + '">' + t + '</button>';
-  marco('#cocper', '<div class="cab"><div><span class="mu peq">6 · Cocinas</span><h1>Personas de cocina</h1><span class="mu peq">Carnet de manipulador de alimentos (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.</span></div>' +
+  marco('#cocper', '<div class="cab"><div><span class="mu peq">4 · Cocinas</span><h1>Personas de cocina</h1><span class="mu peq">Carnet de manipulador de alimentos (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.</span></div>' +
     '<div class="filtros"><label class="f">Establecimiento<select class="c" id="cpE">' + selectorEst(cod, false, true) + '</select></label>' + (cod !== '*' ? '<button class="btn pri" id="cpNuevo">+ Agregar persona</button>' : '') + '</div></div>' +
     '<div class="tb5">' + [['Personas', S.total, S.empresa ? S.empresa + ' de empresa' : 'activas'], ['Carnet vigente', cocFrac(S.carnetVigente, S.total), 'manipulador de alimentos'], ['Libreta vigente', cocFrac(S.libretaVigente, S.total), 'libreta sanitaria'], ['Vencidos o sin documento', S.vencidos, S.porVencer ? S.porVencer + ' vencen en 60 días' : 'carnet o libreta'], ['Sin dato', S.sinDato, 'falta la fecha o el documento']]
       .map(k => '<div class="kpi2"><span>' + k[0] + '</span><b>' + k[1] + '</b><small>' + k[2] + '</small></div>').join('') + '</div>' +

@@ -5,7 +5,7 @@ let NTE = null;
 async function nte(cod) {
   if (!RES) { try { RES = await api('p_resumen', {}, 240000); } catch (e) { return; } }
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
-  const cabecera = '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
+  const cabecera = '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>NTE · Nómina de trabajadores expuestos</h1><span class="mu">Formato del Autoseguro Público Provincial (Res. SRT 37/2010 y 81/2019): toda la dotación, con códigos ESOP o «NO EXPUESTO». Se actualiza cada 12 meses y ante altas, bajas o cambios de puesto.</span></div></div>' +
     '<section class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="min-width:320px">Establecimiento<select class="c" id="nEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label></section>';
   if (!cod) { marco('#nte', cabecera); $('nEst').onchange = e => location.hash = '#nte/' + encodeURIComponent(e.target.value); return; }
   cargando('#nte', 'Revisando la base de personal y la matriz de exposición…');

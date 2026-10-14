@@ -1,4 +1,4 @@
-// Portal HyS · 8 · Servicios e infraestructura › RGRL y Mediciones (Rgrl.gs) · versión 0 (14/10/2026)
+// Portal HyS · 6 · Servicios e infraestructura › RGRL y Mediciones (Rgrl.gs) · versión 0 (14/10/2026)
 // RGRL: el Relevamiento General de Riesgos Laborales tal cual el Anexo I de la Res. SRT 463/09 (formulario A general, Dto. 351/79):
 // datos generales, 161 condiciones a cumplir (Sí · No · No aplica, fecha de regularización, normativa), planillas A, B y C, gremios,
 // contratistas y responsable. Uno por establecimiento o sitio; se actualiza una vez al año.
@@ -9,7 +9,7 @@ let RG = null, RGF = null, RGL = { cod: '', est: '' };
 const RG_VTO = { vigente: ['Vigente', 'ok'], porvencer: ['Urgente: vence en menos de 30 días', 'er'], vencida: ['Vencida', 'er'], sd: ['Sin fecha', 'gr'] };
 const rgChip = (e, f) => { const x = RG_VTO[e] || RG_VTO.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (f ? '<div class="mu peq">' + (e === 'vencida' ? 'venció ' : 'vence ') + fechaTxt(f) + '</div>' : ''); };
 const rgNom = c => { const f = (RES && RES.filas || []).find(x => x.cod === c); return f ? f.nombre : c; };
-const rgCab = (t, sub, extra) => '<div class="cab"><div><span class="mu peq">8 · Servicios e infraestructura</span><h1>' + t + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div><div class="filtros">' + (extra || '') + '<button class="btn sec" id="rgAct">Actualizar</button></div></div>';
+const rgCab = (t, sub, extra) => '<div class="cab"><div><span class="mu peq">6 · Servicios e infraestructura</span><h1>' + t + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div><div class="filtros">' + (extra || '') + '<button class="btn sec" id="rgAct">Actualizar</button></div></div>';
 async function rgCargar(ruta, fresco) {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   if (!RG || fresco) { cargando(ruta, 'Leyendo RGRL y mediciones…'); try { RG = await api('p_rgrl_datos', {}, 180000); } catch (e) { return false; }

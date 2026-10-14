@@ -6,7 +6,7 @@ async function trabajadores(cod) {
   TRAB.cod = cod || TRAB.cod || '';
   const pintar = () => {
     const D = TRAB.datos;
-    marco('#trab', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Personas</h1></div>' +
+    marco('#trab', '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>Personas</h1></div>' +
       '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + selectorEst(TRAB.cod || '*', true, true) + '</select></label>' +
       '<label class="f">Buscar por CUIL, DNI, apellido, función o servicio<input class="c" id="tQ" value="' + esc(TRAB.q) + '" style="min-width:260px"></label><button class="btn sec" id="tBus">Buscar</button>' +
       (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '<a class="btn sec" href="#importar">Importar base de Personal</a></div></div>' +
@@ -102,7 +102,7 @@ async function importar() {
   pasoImp();
 }
 function pasoImp() {
-  const P = IMP; let h = '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Importar una base</h1></div></div>' +
+  const P = IMP; let h = '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>Importar una base</h1></div></div>' +
     '<p class="mu" style="margin:0">El sistema compara por DNI: agrega a quien no está, actualiza lo que cambió y marca a quien ya no figura. <b>Nunca borra.</b> Antes de escribir, muestra todo para que lo revises.</p>';
   if (P.paso === 1) {
     h += '<section class="card" style="display:flex;flex-direction:column;gap:14px"><h2>1 · Archivo y establecimiento</h2>' +

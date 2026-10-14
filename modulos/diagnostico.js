@@ -12,7 +12,7 @@ const DCFG_RES = {
   nombre: cod => ((RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: r => { if (RES) { const f = RES.filas.find(x => x.cod === DG.cod); if (f) { f.diag = { pct: r.pct, fecha: DG.cab.FECHA, estado: r.estado, criticos: r.criticos }; LS.set('res', RES); } } }
 };
-let DCFG = DCFG_RES;   // el módulo 6 (cocinas) usa el mismo formulario con su propia configuración (DCFG_COC)
+let DCFG = DCFG_RES;   // el módulo 4 (cocinas) usa el mismo formulario con su propia configuración (DCFG_COC)
 async function diagLista() {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#diag'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   const F = RES.filas.slice().sort((a, b) => (a.area + (a.cabecera ? '0' : '1') + a.nombre).localeCompare(b.area + (b.cabecera ? '0' : '1') + b.nombre));

@@ -1,11 +1,11 @@
-// Portal HyS · Diagnóstico de 3 · Agua y 5 · Plagas (DiagModulos.gs)
+// Portal HyS · Diagnóstico de 2 · Agua y 3 · Plagas (DiagModulos.gs)
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // Lista de establecimientos con su último relevamiento y el mismo formulario del diagnóstico de residuos (diagForm), con su configuración.
 const DGMP = {
-  agua: { ruta: '#aguadiag', tab: '#agua', mod: '3 · Agua', h1: 'Diagnóstico de agua', ico: 'water_drop', pal: 'diagnóstico',
+  agua: { ruta: '#aguadiag', tab: '#agua', mod: '2 · Agua', h1: 'Diagnóstico de agua', ico: 'water_drop', pal: 'diagnóstico',
     sub: 'Documentación y registros, tanques y cisternas (cada reservorio del inventario es un lugar), seguridad de quien limpia o toma muestras, y puntos de consumo y agua caliente. Los CAPS se relevan dentro del hospital del que dependen.',
     txtLugares: 'Estas preguntas se responden en cada tanque, cisterna o lugar que se recorre. Si un lugar no existe o no se revisó, dejalo sin completar.' },
-  plagas: { ruta: '#plgdiag', tab: '#plagas', mod: '5 · Plagas', h1: 'Diagnóstico de plagas', ico: 'pest_control', pal: 'diagnóstico',
+  plagas: { ruta: '#plgdiag', tab: '#plagas', mod: '3 · Plagas', h1: 'Diagnóstico de plagas', ico: 'pest_control', pal: 'diagnóstico',
     sub: 'Manejo integrado de plagas (MIP) en toda la red: programa y registros, productos y seguridad de quien aplica, condiciones del edificio, residuos y exterior, y situación actual. El registro de intervenciones (MIPyV) sigue solo en Trelew.',
     txtLugares: 'Estas preguntas se responden en cada lugar que se recorre. Si un lugar no existe o no se revisó, dejalo sin completar.' }
 };

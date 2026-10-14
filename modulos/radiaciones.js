@@ -1,4 +1,4 @@
-// Portal HyS · 9 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026)
+// Portal HyS · 5 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026)
 // Rayos X: radiología, tomografía, arco en C y odontológicos, para toda la red. Personal expuesto y dosímetros (altas, bajas a pedido,
 // reactivaciones, extravíos), controles dosimétricos mensuales (PDF), eventos (registros anormales, extravíos, exposición accidental),
 // salas y equipos (habilitación, plano de plomado, blindaje, levantamiento radiométrico, control de calidad), documentos y requisitos legales.
@@ -15,7 +15,7 @@ const radSitTxt = x => x.SITIO ? '<div class="mu peq">' + esc(x.SITIO) + '</div>
 const radChipRx = v => '<span class="chip ' + (v === 'Sí' ? 'ok' : v === 'No' ? 'gr' : 'wa') + '">' + esc(v || 'A confirmar') + '</span>';
 const radNom = c => { const f = (RES && RES.filas || []).find(x => x.cod === c) || (RADT && RADT.establecimientos || []).find(x => x.cod === c); return f ? f.nombre : c; };
 function radNoInstalado(hash, r) {
-  return marco(hash, '<div class="cab"><div><span class="mu peq">9 · Radiaciones ionizantes</span><h1>Radiaciones ionizantes</h1></div></div><div class="aviso ' + (r && r.instalado === false ? '' : 'error') + '">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer el módulo.') + '</div>' +
+  return marco(hash, '<div class="cab"><div><span class="mu peq">5 · Radiaciones ionizantes</span><h1>Radiaciones ionizantes</h1></div></div><div class="aviso ' + (r && r.instalado === false ? '' : 'error') + '">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer el módulo.') + '</div>' +
     (r && r.instalado === false ? '<section class="card"><h2>Cómo se instala</h2><ol class="peq"><li>En el editor de Apps Script del «Sistema HyS», elegí la función <b>construirModuloRadiaciones</b> y tocá «Ejecutar» (una sola vez).</li><li>Se crea el libro «RADIACIONES IONIZANTES · Sistema HyS» y la carpeta SISTEMA HyS › MÓDULO 9 · RADIACIONES IONIZANTES.</li><li>Volvé a esta pantalla y tocá «Actualizar».</li></ol></section>' : ''));
 }
 // ------------------------------------------------------------------ Tablero de la red
@@ -35,7 +35,7 @@ async function radTablero(fresco) {
     if (r.habPorVencer) at.push(['wa', r.habPorVencer + ' habilitación(es) vencen en 60 días', e.nombre, h + '/sal']);
     if (r.sinAutorizacion) at.push(['wa', r.sinAutorizacion + ' persona(s) con dosímetro sin autorización individual cargada', e.nombre, h + '/per']);
     if (r.habSinDato || r.sinPlano) at.push(['gr', (r.habSinDato ? r.habSinDato + ' equipo(s) sin dato de habilitación' : '') + (r.habSinDato && r.sinPlano ? ' · ' : '') + (r.sinPlano ? r.sinPlano + ' sin plano de plomado' : ''), e.nombre, h + '/sal']); });
-  marco('#rad', '<div class="cab"><div><span class="mu peq">9 · Radiaciones ionizantes</span><h1>Radiaciones ionizantes</h1><span class="mu peq">Rayos X (radiología, tomografía, arco en C y odontológicos) en toda la red: personal expuesto y dosímetros, controles mensuales, eventos, salas y equipos.</span></div>' +
+  marco('#rad', '<div class="cab"><div><span class="mu peq">5 · Radiaciones ionizantes</span><h1>Radiaciones ionizantes</h1><span class="mu peq">Rayos X (radiología, tomografía, arco en C y odontológicos) en toda la red: personal expuesto y dosímetros, controles mensuales, eventos, salas y equipos.</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="rdA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
     '<label class="f">Abrir un establecimiento<select class="c" id="rdE">' + selectorEst('', false) + '</select></label>' +
     radLink(RADT.libro, 'Planilla del módulo') + ' ' + radLink(RADT.carpeta, 'Carpeta del módulo') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
@@ -62,7 +62,7 @@ async function radTablero(fresco) {
 async function radEst(a, fresco) {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   const [cod, tab] = String(a || '').split('/').map(decodeURIComponent);
-  if (!cod) { marco('#radest', '<div class="cab"><div><span class="mu peq">9 · Radiaciones ionizantes</span><h1>Elegí un establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="rdSel">' + selectorEst('', false) + '</select></label></div>');
+  if (!cod) { marco('#radest', '<div class="cab"><div><span class="mu peq">5 · Radiaciones ionizantes</span><h1>Elegí un establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="rdSel">' + selectorEst('', false) + '</select></label></div>');
     $('rdSel').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value); }; return; }
   if (RADF.cod !== cod) RADF.sitio = ''; RADF.cod = cod; if (tab && RAD_TABS.some(t => t[0] === tab)) RADF.tab = tab;
   if (!RADD[cod] || fresco) { cargando('#radest', 'Abriendo radiaciones de ' + radNom(cod) + '…'); try { RADD[cod] = await api('p_rad_detalle', { cod: cod }, 180000); } catch (e) { return; } }
@@ -70,7 +70,7 @@ async function radEst(a, fresco) {
   const R = D.resumen, sf = RADF.sitio, de = (l, todos) => !sf ? l : l.filter(x => (x.SITIO || '') === sf || (todos && !x.SITIO));
   const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
   const cuerpo = { sit: radSit, per: radPer, con: radCon, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
-  marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">9 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
+  marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">5 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
     R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
     '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
     '<div class="tabs" style="margin-bottom:14px">' + RAD_TABS.map(t => '<a class="btn ' + (t[0] === RADF.tab ? 'pri' : 'sec') + '" href="#radest/' + encodeURIComponent(cod) + '/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>' + cuerpo);

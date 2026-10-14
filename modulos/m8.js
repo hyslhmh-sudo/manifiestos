@@ -1,6 +1,6 @@
-// Portal HyS · Módulo 8 · Servicios hospitalarios e infraestructura
+// Portal HyS · Módulo 6 · Servicios hospitalarios e infraestructura
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ Módulo 8 · Servicios hospitalarios e infraestructura (Modulo8.gs, en la planilla del módulo 8)
+// ------------------------------------------------------------------ Módulo 6 · Servicios hospitalarios e infraestructura (Modulo8.gs, en la planilla del módulo 6)
 // Tiene su propia dirección de Apps Script (M8_API_FIJA).
 const M8_API_FIJA = 'https://script.google.com/macros/s/AKfycbzatb2E3LkLq0E_tx8KQd0PKglLKJtGuEp_52I0JkN2aYVhk9D9i2XPkItmWlz9w9Md/exec';
 const M8_LINKS = {
@@ -19,22 +19,22 @@ async function m8api(accion, datos, ms) {
   try {
     const r = await fetch(url, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, datos: datos || {} }), signal: ctl.signal });
     const j = JSON.parse(await r.text());
-    if (j.error === 'clave') { toast('La clave del módulo 8 no coincide: configurala en la planilla, menú Módulo 8 › Configurar clave del portal.'); throw new Error('clave8'); }
+    if (j.error === 'clave') { toast('La clave del módulo 6 no coincide: configurala en la planilla, menú Módulo 8 › Configurar clave del portal.'); throw new Error('clave8'); }
     return j;
-  } catch (e) { if (e.message !== 'clave8') toast(e.name === 'AbortError' ? 'El módulo 8 tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el módulo 8.'); throw e; }
+  } catch (e) { if (e.message !== 'clave8') toast(e.name === 'AbortError' ? 'El módulo 6 tardó demasiado. Probá de nuevo.' : 'No se pudo conectar con el módulo 6.'); throw e; }
   finally { clearTimeout(t); }
 }
 async function m8cargar(ruta, fresco) {
   if (!M8 || fresco) {
-    cargando(ruta, 'Leyendo el módulo 8…');
-    try { M8 = await m8api('m8_datos'); } catch (e) { marco(ruta, '<div class="aviso error">No se pudo leer el módulo 8. <button class="link" id="m8re">Reintentar</button></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
-    if (!M8.ok) { marco(ruta, '<div class="aviso error">' + esc(M8.mensaje || 'Error del módulo 8.') + '</div>'); M8 = null; return false; }
+    cargando(ruta, 'Leyendo el módulo 6…');
+    try { M8 = await m8api('m8_datos'); } catch (e) { marco(ruta, '<div class="aviso error">No se pudo leer el módulo 6. <button class="link" id="m8re">Reintentar</button></div>'); const b = $('m8re'); if (b) b.onclick = () => m8cargar(ruta, true).then(ok => ok && router()); return false; }
+    if (!M8.ok) { marco(ruta, '<div class="aviso error">' + esc(M8.mensaje || 'Error del módulo 6.') + '</div>'); M8 = null; return false; }
   }
   return true;
 }
 const m8chip = s => s === 'ROJO' ? '<span class="chip er">Rojo</span>' : s === 'AMARILLO' ? '<span class="chip wa">Amarillo</span>' : s === 'VERDE' ? '<span class="chip ok">Verde</span>' : '<span class="chip gr">Sin datos</span>';
 const m8prio = p => p === 'Actuar ya' ? '<span class="chip er">Actuar ya</span>' : p === 'Resolver rápido' ? '<span class="chip wa">Resolver rápido</span>' : p === 'Planificar' ? '<span class="chip ok">Planificar</span>' : '<span class="chip gr">' + esc(p || '—') + '</span>';
-const m8cab = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">8 · Servicios e infraestructura</span><h1>' + t + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div><div class="filtros">' + (botones || '') + '<button class="btn sec" id="m8act">Actualizar</button></div></div>';
+const m8cab = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">6 · Servicios e infraestructura</span><h1>' + t + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div><div class="filtros">' + (botones || '') + '<button class="btn sec" id="m8act">Actualizar</button></div></div>';
 const m8act = fn => { const b = $('m8act'); if (b) b.onclick = async () => { if (await m8cargar(location.hash.split('/')[0], true)) fn(); }; };
 
 // Tablero del módulo
@@ -45,7 +45,7 @@ async function m8Tablero() {
   const vencidos = abiertos.filter(h => h.limite && h.limite < hoy), urgentes = abiertos.filter(h => h.prioridad === 'Actuar ya');
   const ultimo = {}; R.forEach(r => { if (!ultimo[r.servicio] || r.fecha > ultimo[r.servicio].fecha) ultimo[r.servicio] = r; });
   const kpi = (n, t, s) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + s + '</small></div>';
-  marco('#m8', m8cab('Tablero del módulo 8', 'Diagnóstico y auditoría de infraestructura e instalaciones por edificio y servicio.', '<a class="btn pri" href="#m8rel/nuevo">Nuevo relevamiento</a>') +
+  marco('#m8', m8cab('Tablero del módulo 6', 'Diagnóstico y auditoría de infraestructura e instalaciones por edificio y servicio.', '<a class="btn pri" href="#m8rel/nuevo">Nuevo relevamiento</a>') +
     '<div class="tb5">' + kpi(Object.keys(ultimo).length + ' de ' + S.length, 'Servicios relevados', 'Edificios y servicios cargados en SERVICIOS') +
     kpi(Object.values(ultimo).filter(r => r.semaforo === 'ROJO').length, 'En rojo', 'Último relevamiento de cada servicio') +
     kpi(urgentes.length, 'Actuar ya', 'Hallazgos abiertos a 30 días') + kpi(vencidos.length, 'Vencidos', 'Hallazgos abiertos con fecha límite pasada') + '</div>' +
@@ -54,7 +54,7 @@ async function m8Tablero() {
     '</tbody></table></section>' +
     '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Requiere atención</h2>' + (vencidos.concat(urgentes.filter(h => vencidos.indexOf(h) < 0)).slice(0, 12).map(h => '<a class="at" href="#m8plan"><span><b>' + esc(h.item) + '</b><small>' + esc(h.servicio) + ' · ' + esc(h.prioridad) + ' · límite ' + fechaTxt(h.limite) + (h.limite && h.limite < hoy ? ' (vencido)' : '') + '</small></span></a>').join('') || '<div class="mu">Nada urgente.</div>') + '</section>' +
     '<section class="card" style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn sec" href="' + M8_LINKS.planilla + '" target="_blank" rel="noopener">Planilla del módulo ↗</a><a class="btn sec" href="' + M8_LINKS.campo + '" target="_blank" rel="noopener">Listas de campo ↗</a><a class="btn sec" href="' + M8_LINKS.modelo + '" target="_blank" rel="noopener">Modelo de informe ↗</a><a class="btn sec" href="' + M8_LINKS.carpeta + '" target="_blank" rel="noopener">Carpeta del módulo ↗</a><a class="btn sec" href="' + M8_LINKS.manual + '" target="_blank" rel="noopener">Manual para la red ↗</a></section>' +
-    '<p class="mu peq">Datos al ' + new Date(M8.actualizado).toLocaleString('es-AR') + ' · módulo 8 versión ' + esc(M8.version) + '.</p>');
+    '<p class="mu peq">Datos al ' + new Date(M8.actualizado).toLocaleString('es-AR') + ' · módulo 6 versión ' + esc(M8.version) + '.</p>');
   document.querySelectorAll('tr.cl[data-h]').forEach(tr => tr.onclick = () => location.hash = tr.dataset.h);
   m8act(m8Tablero);
 }

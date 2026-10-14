@@ -1,6 +1,6 @@
 // Portal HyS · 4 · Siniestros (lista, investigación y estadísticas)
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ Módulo 4 · Siniestros (Modulo4.gs): toda la red, solo lectura. Se cargan y corrigen desde «Mi establecimiento».
+// ------------------------------------------------------------------ Módulo 8 · Siniestros (Modulo4.gs): toda la red, solo lectura. Se cargan y corrigen desde «Mi establecimiento».
 let SINP = null, SINPF = { est: '', estado: 'Abiertos', tipo: '', q: '' };
 const sinChip = e => '<span class="chip ' + (e === 'En ILT' || e === 'Denunciado' ? 'wa' : e === 'Rechazado' || e === 'Inculpable' ? 'er' : 'ok') + '">' + esc(e) + '</span>';
 const sinLinksP = (L, t) => (L || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + t + (L.length > 1 ? ' ' + (i + 1) : '') + ' ↗</a>').join(' · ');
@@ -12,7 +12,7 @@ async function sinPortal(id, fresco) {
   const delAnio = L.filter(s => s.fecha.slice(0, 4) === anio), ests = Array.from(new Set(L.map(s => s.est))).sort();
   const kpi = (t, n, sub) => '<div class="kpi2"><span>' + t + '</span><b>' + n + '</b><small>' + sub + '</small></div>';
   const sel = (id, ops, val) => '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
-  marco('#sin', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Siniestros</h1><span class="mu peq">Los cargan Personal y la secretaría desde «Mi establecimiento». Acá se ven todos, con diagnóstico y exposición.</span></div>' +
+  marco('#sin', '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>Siniestros</h1><span class="mu peq">Los cargan Personal y la secretaría desde «Mi establecimiento». Acá se ven todos, con diagnóstico y exposición.</span></div>' +
     '<div class="filtros"><button class="btn sec" id="sinAct">Actualizar</button><a class="btn sec" href="' + esc(SINP.libro) + '" target="_blank" rel="noopener">Libro de siniestros ↗</a></div></div>' +
     '<div class="tb5">' + kpi('Siniestros ' + anio, delAnio.length, delAnio.filter(s => s.tipo === 'In itinere').length + ' in itinere · ' + delAnio.filter(s => s.tipo === 'Enfermedad profesional').length + ' enf. profesional') +
       kpi('En ILT hoy', L.filter(s => s.estado === 'En ILT').length, 'abiertos con baja') + kpi('Días de baja ' + anio, delAnio.reduce((a, s) => a + (Number(s.dias) || 0), 0), 'suma de los siniestros del año') +
@@ -194,7 +194,7 @@ async function sinEst(fresco) {
   const barras = (t, filas) => { const max = Math.max(1, ...filas.map(f => f[1])); return '<section class="card"><h3 style="margin:0 0 8px;font-size:14px">' + t + '</h3>' + (filas.length ? filas.slice(0, 12).map(f => '<div style="display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 34px;gap:8px;align-items:center;font-size:12.5px;margin:3px 0"><span>' + esc(f[0]) + '</span><span style="background:#EEF4F6;border-radius:4px;height:12px"><span style="display:block;height:12px;border-radius:4px;background:' + (/Sin investigar|s\/d/.test(f[0]) ? '#B9CED6' : '#5894A7') + ';width:' + Math.round(f[1] * 100 / max) + '%"></span></span><b style="text-align:right">' + f[1] + '</b></div>').join('') : '<div class="mu peq">Sin datos.</div>') + '</section>'; };
   const sel = (id, ops, val) => '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
   const ests = Object.keys(r.trabajadores.por || {});
-  marco('#sinest', '<div class="cab"><div><span class="mu peq">4 · Personal y RAR</span><h1>Estadísticas de siniestros</h1><span class="mu peq">' + fechaTxt(r.desde) + ' a ' + fechaTxt(r.hasta) + ' · ' + esc(r.ests.join(' y ')) + ' · ' + r.trabajadores.total + ' trabajadores</span></div>' +
+  marco('#sinest', '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>Estadísticas de siniestros</h1><span class="mu peq">' + fechaTxt(r.desde) + ' a ' + fechaTxt(r.hasta) + ' · ' + esc(r.ests.join(' y ')) + ' · ' + r.trabajadores.total + ' trabajadores</span></div>' +
     '<div class="filtros"><label class="f">Período' + sel('seP', [['anio', 'Este año'], ['trim', 'Trimestre actual'], ['trimAnt', 'Trimestre anterior'], ['anioAnt', 'Año anterior'], ['otro', 'Otras fechas']], SEST.per) + '</label>' +
       (SEST.per === 'otro' ? '<label class="f">Desde<input class="c" type="date" id="seD" value="' + esc(SEST.desde) + '"></label><label class="f">Hasta<input class="c" type="date" id="seH" value="' + esc(SEST.hasta) + '"></label>' : '') +
       '<label class="f">Establecimiento' + sel('seE', [['', 'Todos']].concat((SEST.est ? [SEST.est] : ests).map(e => [e, e])), SEST.est) + '</label><button class="btn sec" id="seAct">Actualizar</button></div></div>' +

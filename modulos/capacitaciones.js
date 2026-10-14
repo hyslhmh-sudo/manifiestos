@@ -1,6 +1,6 @@
-// Portal HyS · 7 · Capacitaciones
+// Portal HyS · 9 · Capacitaciones
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
-// ------------------------------------------------------------------ 7 · Capacitaciones · Tablero
+// ------------------------------------------------------------------ 9 · Capacitaciones · Tablero
 // Lee el libro «CAPACITACIONES · Sistema HyS» a través de su propia aplicación web (CAP_API).
 // Si CAP_API está vacía, el menú sigue abriendo el panel y la planilla de siempre.
 const CAP_API = 'https://script.google.com/macros/s/AKfycbxXz2AuN9nx5JkiNVI0LFYpEG-0ciYTXH9pN6QnO3SIaIltljCi8sbRB4PwiDx9Jf4Ugw/exec';   // pegá acá la URL de la aplicación web del libro de capacitaciones (termina en /exec)
@@ -37,7 +37,7 @@ function capError(e) {
   const txt = m === 'clave' ? 'El libro de capacitaciones no pudo confirmar tu clave con el portal. Salí del portal, volvé a entrar y probá de nuevo.'
     : (e && e.name === 'AbortError') ? 'El libro de capacitaciones tardó demasiado. Probá «Actualizar» en un rato.'
     : 'No se pudo leer el libro de capacitaciones' + (m && m !== 'error' ? ': ' + m : '.') ;
-  return '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
+  return '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
     '<div class="aviso error">' + esc(txt) + '</div>' +
     '<section class="card peq">Mientras tanto, todo sigue funcionando como siempre: <a href="' + CAP_PANEL + '" target="_blank" rel="noopener">panel de carga ↗</a> · <a href="' + CAP_LIBRO + '" target="_blank" rel="noopener">libro CAPACITACIONES (hoja TABLERO) ↗</a> · <a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener">catálogo actual ↗</a></section>';
 }
@@ -101,7 +101,7 @@ async function capTablero(fresco) {
     T.participacion.map(p => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px">' + esc(p.nombre) + '</td><td style="padding:8px;text-align:right">' + p.registros + '</td><td style="padding:8px;text-align:right">' + p.personas + '</td><td style="padding:8px;text-align:right">' + (p.aprobados ? p.aprobados : '—') + '</td></tr>').join('') +
     '</tbody></table></div><span class="mu peq">«—»: sin evaluación o cargada sin nota antes de octubre (queda como registro histórico).</span>';
 
-  marco('#cap', '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
+  marco('#cap', '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
     '<div class="filtros"><a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a><button class="btn sec" id="capAct">Actualizar</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">' +
       kpi('Personas capacitadas', K.personas, 'personas distintas') +
@@ -120,12 +120,12 @@ async function capTablero(fresco) {
   document.querySelectorAll('.capCopiar').forEach(x => x.onclick = () => { const l = x.dataset.l; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast('Link copiado.')).catch(() => { window.prompt('Copiá el link:', l); }); });
 }
 
-// ------------------------------------------------------------------ 7 · Capacitaciones · Catálogo, alta, dictados, inscriptos y firmantes (fase 5)
+// ------------------------------------------------------------------ 9 · Capacitaciones · Catálogo, alta, dictados, inscriptos y firmantes (fase 5)
 // Todo pasa por el libro «CAPACITACIONES · Sistema HyS» (CAP_API). Si el portal falla, lo mismo se hace en el libro (menú Capacitaciones HyS).
 let CAPC = null, CAPF = { filtro: 'act', q: '' }, CAPA = null, CAPD = null;
 const capNorm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const capVacio = v => { v = String(v == null ? '' : v).trim(); return !v || v === 's/d'; };
-const capTit = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">7 · Capacitaciones</span><h1>' + esc(t) + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div>' + (botones ? '<div class="filtros">' + botones + '</div>' : '') + '</div>';
+const capTit = (t, sub, botones) => '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>' + esc(t) + '</h1>' + (sub ? '<span class="mu peq">' + sub + '</span>' : '') + '</div>' + (botones ? '<div class="filtros">' + botones + '</div>' : '') + '</div>';
 const capEst = e => '<span class="chip ' + (/^activ/i.test(e) ? 'ok' : /borrador|revisi/i.test(e) ? 'wa' : /cancel|suspend|inactiv|anulad/i.test(e) ? 'er' : 'gr') + '">' + esc(e || 's/d') + '</span>';
 const capIco = n => '<span class="ms" aria-hidden="true" style="font-size:22px;vertical-align:-5px">' + esc(capVacio(n) ? 'health_and_safety' : n) + '</span>';
 // Galería de íconos: los de la lista ICONOS del libro + una selección de Material Symbols útiles para HyS. Se puede escribir cualquier otro nombre.

@@ -1,4 +1,4 @@
-// Portal HyS · 2 · Documentos (registro de informes, documentos de establecimientos, modelos y bandeja)
+// Portal HyS · 10 · Documentos (registro de informes, documentos de establecimientos, modelos y bandeja)
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Registro de informes (numeración HYSL automática; el pedido manual se quitó el 12/10/2026)
 let DOCS = { est: '', anio: new Date().getFullYear() };
@@ -11,7 +11,7 @@ async function documentos(est) {
   const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (sel === e.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('');
   const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
   const filas = (R.filas || []);
-  marco('#docs', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Registro de informes</h1><span class="mu">Los informes que genera el sistema toman solos su número HYSL (correlativo por establecimiento y por año). Un número no se borra: se anula con motivo. Las notas las numera el hospital (Mesa de Entradas).</span></div></div>' +
+  marco('#docs', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Registro de informes</h1><span class="mu">Los informes que genera el sistema toman solos su número HYSL (correlativo por establecimiento y por año). Un número no se borra: se anula con motivo. Las notas las numera el hospital (Mesa de Entradas).</span></div></div>' +
     '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><h2>Registro</h2><div class="filtros"><label class="f">Establecimiento<select class="c" id="fEst">' + opEst(DOCS.est, true) + '</select></label><label class="f">Año<select class="c" id="fAn">' + [0, 1, 2].map(i => { const y = new Date().getFullYear() - i; return '<option' + (y === DOCS.anio ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div></div>' +
     (filas.length ? '<table><thead><tr><th>Código</th><th>Fecha</th><th>Asunto</th><th>Origen</th><th>Estado</th><th>Archivo</th><th></th></tr></thead><tbody>' + filas.map(f => { const v = f.v;
       return '<tr><td><b>' + esc(v[0]) + '</b></td><td>' + fechaTxt(v[8]) + '</td><td>' + esc(v[9]) + (v[15] ? '<div class="mu peq">' + esc(v[15]) + '</div>' : '') + '</td><td class="peq">' + esc(v[10]) + '</td><td>' + chipE(v[14]) + '</td><td class="peq">' +
@@ -31,7 +31,7 @@ async function documentos(est) {
 }
 
 
-// ------------------------------------------------------------------ 2 · Documentos de los establecimientos (toda la red; misma hoja y carpeta que «Mi establecimiento»)
+// ------------------------------------------------------------------ 10 · Documentos de los establecimientos (toda la red; misma hoja y carpeta que «Mi establecimiento»)
 let DE = { L: null, est: '', tema: '', estado: 'vivos', q: '' };
 const DE_ESTADO = { vigente: ['ok', 'Vigente'], sinvenc: ['gr', 'Sin vencimiento'], porvencer: ['wa', 'Por vencer'], vencido: ['er', 'Vencido'], reemplazado: ['gr', 'Reemplazado'], anulado: ['gr', 'Anulado'] };
 const deVivo = d => /^(vigente|sinvenc|porvencer|vencido)$/.test(d.estado);
@@ -59,7 +59,7 @@ async function docEst(cod, fresco) {
     (!q || [d.codigo, d.titulo, d.tipo, d.cod, nom(d.cod)].join(' ').toLowerCase().indexOf(q) >= 0))
     .sort((a, b) => nom(a.cod).localeCompare(nom(b.cod), 'es') || a.tema.localeCompare(b.tema, 'es') || String(a.codigo || a.titulo).localeCompare(String(b.codigo || b.titulo), 'es'));
   const opc = (lista, sel, todos) => '<option value="">' + todos + '</option>' + lista.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === sel ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
-  marco('#docest', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Documentos de los establecimientos</h1><span class="mu">Manuales, guías, POE, protocolos y PTS propios de cada establecimiento. Los cargan los referentes desde «Mi establecimiento» o vos desde acá.</span></div>' +
+  marco('#docest', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Documentos de los establecimientos</h1><span class="mu">Manuales, guías, POE, protocolos y PTS propios de cada establecimiento. Los cargan los referentes desde «Mi establecimiento» o vos desde acá.</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="deAct">Actualizar</button><button class="btn pri" id="deNuevo">+ Cargar documento</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
       '<div class="kpi2"><span>Documentos vigentes</span><b>' + vivos.length + '</b><small>en ' + conDocs.length + ' establecimiento(s)</small></div>' +
@@ -132,7 +132,7 @@ async function modelos() {
   let planes = []; try { planes = (await api('p_plan_listar', {})).informes || []; } catch (e) {}
   const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   const T = BJ_TIPOS_UI[MOD.tipo], infs = planes.filter(p => !MOD.cod || p.cod === MOD.cod);
-  marco('#modelos', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Modelos para completar</h1><span class="mu">Generá la planilla prellenada, mandala y, cuando vuelva completa, subila en <a class="link" href="#bandeja">Bandeja de entrada</a>. Siempre es una hoja de cálculo.</span></div></div>' +
+  marco('#modelos', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Modelos para completar</h1><span class="mu">Generá la planilla prellenada, mandala y, cuando vuelva completa, subila en <a class="link" href="#bandeja">Bandeja de entrada</a>. Siempre es una hoja de cálculo.</span></div></div>' +
     '<section class="card"><h2>1. ¿Qué modelo?</h2><div class="grid g2" style="margin-top:10px">' + Object.keys(BJ_TIPOS_UI).map(k => '<button class="card" data-mt="' + k + '" style="text-align:left;cursor:pointer;border:2px solid ' + (k === MOD.tipo ? 'var(--az)' : 'var(--ln)') + '"><b>' + esc(BJ_TIPOS_UI[k].t) + '</b><div class="mu peq" style="margin-top:4px">' + esc(BJ_TIPOS_UI[k].d) + '</div><div class="peq" style="margin-top:6px">Para: ' + esc(BJ_TIPOS_UI[k].para) + '</div></button>').join('') +
       '<div class="card" style="opacity:.6"><b>RAR y NTE · RGRL</b><div class="mu peq" style="margin-top:4px">Formatos de la SRT, en hoja de cálculo. Próximamente, con el eje Riesgos.</div></div></div></section>' +
     '<section class="card"><h2>2. ¿Para qué establecimiento?</h2><div class="grid g3" style="margin-top:10px"><label class="f">Establecimiento<select class="c" id="mEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === MOD.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label>' +
@@ -164,7 +164,7 @@ async function bandeja(propuesta) {
     '<table style="margin-top:10px"><thead><tr><th style="width:30px"><input type="checkbox" checked data-todos></th><th>Qué</th><th>Dato</th><th>Ahora</th><th>Queda</th></tr></thead><tbody>' +
     o.CAMBIOS.map((c, j) => '<tr><td><input type="checkbox" checked data-j="' + j + '"></td><td>' + esc(c.clave) + '</td><td>' + esc(bjCampo(c.campo)) + '</td><td class="mu">' + esc(c.antes || '—') + '</td><td><b>' + esc(c.despues) + '</b></td></tr>').join('') + '</tbody></table>') +
     '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn sec" data-rech>Rechazar</button><button class="btn pri" data-apl>Aplicar lo marcado</button></div></section>';
-  marco('#bandeja', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Bandeja de entrada</h1><span class="mu">Subí la planilla completa. El sistema muestra qué cambiaría y vos elegís qué aplicar: nada se cambia sin tu aprobación.</span></div><a class="btn" href="#modelos">Generar un modelo</a></div>' +
+  marco('#bandeja', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Bandeja de entrada</h1><span class="mu">Subí la planilla completa. El sistema muestra qué cambiaría y vos elegís qué aplicar: nada se cambia sin tu aprobación.</span></div><a class="btn" href="#modelos">Generar un modelo</a></div>' +
     '<section class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><label class="btn pri" style="cursor:pointer">Subir planilla completa (.xlsx)<input type="file" id="bjFile" accept=".xlsx,.xls,.ods" hidden></label><button class="btn sec" id="bjDrive">Revisar la carpeta de Drive</button><span class="mu peq">También podés dejar los archivos en Drive › SISTEMA HyS › 07 BANDEJA DE ENTRADA.</span></section>' +
     (rev.length ? '<h2 style="margin:6px 0 0">Para revisar (' + rev.length + ')</h2>' + rev.map(tarjeta).join('') : '<section class="card"><div class="vacio">No hay nada para revisar.</div></section>') +
     (resto.length ? '<section class="card tabla"><h2 style="padding:14px 18px 0">Recibidos anteriormente</h2><table><thead><tr><th>Fecha</th><th>Modelo</th><th>Establecimiento</th><th>Estado</th><th>Resultado</th></tr></thead><tbody>' + resto.map(o => '<tr><td>' + esc(fechaTxt(o.FECHA)) + '</td><td>' + esc(o.TITULO) + (o.REFERENCIA ? '<div class="mu peq">' + esc(o.REFERENCIA) + '</div>' : '') + '</td><td>' + esc(o.ESTABLECIMIENTO) + '</td><td><span class="chip ' + (/Aplicado/.test(o.ESTADO) ? 'ok' : 'gr') + '">' + esc(o.ESTADO) + '</span></td><td class="peq">' + esc(o.APLICADO || o.RESUMEN) + '</td></tr>').join('') + '</tbody></table></section>' : ''));
@@ -192,7 +192,7 @@ async function bandeja(propuesta) {
 }
 
 
-// ------------------------------------------------------------------ 2 · Documentos › Notas enviadas y recibidas (solo lectura; 12/10/2026)
+// ------------------------------------------------------------------ 10 · Documentos › Notas enviadas y recibidas (solo lectura; 12/10/2026)
 // Lee el libro DOCUMENTOS · Sistema HyS (hojas REGISTRO y RECIBIDAS) con la acción p_notas (Notas_portal.gs).
 // Cargar, registrar envío y respuesta o anular se sigue haciendo en la aplicación de notas o en la planilla.
 let NT = { R: null, tab: 'env', sitio: '', alerta: '', anio: 0, q: '' };
@@ -203,7 +203,7 @@ async function notas(tab, fresco) {
   if (!NT.R || fresco) {
     cargando('#notas', 'Leyendo las notas…');
     try { NT.R = await api('p_notas', { anio: NT.anio }, 120000); } catch (e) { return; }
-    if (!NT.R.ok) return marco('#notas', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Notas</h1></div></div><section class="card"><p>' + esc(NT.R.mensaje || NT.R.error || 'No se pudieron leer las notas.') + '</p></section>');
+    if (!NT.R.ok) return marco('#notas', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Notas</h1></div></div><section class="card"><p>' + esc(NT.R.mensaje || NT.R.error || 'No se pudieron leer las notas.') + '</p></section>');
   }
   const R = NT.R, S = R.resumen || {}, env = NT.tab === 'env', H = R.hojas || {};
   const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
@@ -221,7 +221,7 @@ async function notas(tab, fresco) {
     '<div class="mu peq">' + esc([n.remitente, n.firmante, n.problematica].filter(Boolean).join(' · ')) + '</div>' + (n.respondeA ? '<div class="peq">Responde a ' + esc(n.respondeA) + '</div>' : '') + '</td><td class="peq">' + esc(n.sitio || '—') + '</td>' +
     '<td class="peq">' + (n.requiere ? 'Sí' : 'No') + '</td><td class="peq">' + esc(n.vence || '—') + '</td><td>' + chip(n.alerta) + '<div class="mu peq">' + esc(n.estado) + '</div></td><td class="peq">' + (link(n.archivo, 'Escaneo') || '<span class="mu">—</span>') + '</td></tr>';
   const vacio = env ? 'No hay notas enviadas con estos filtros. Las notas se crean en «Nueva nota» y quedan en la hoja REGISTRO.' : 'No hay notas recibidas con estos filtros. Se cargan en «Nota recibida» y quedan en la hoja RECIBIDAS.';
-  marco('#notas', '<div class="cab"><div><span class="mu peq">2 · Documentos</span><h1>Notas enviadas y recibidas</h1><span class="mu">Lo que está en el libro DOCUMENTOS · Sistema HyS. Para cargar o cambiar algo, usá los botones de la derecha o la planilla.</span></div>' +
+  marco('#notas', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Notas enviadas y recibidas</h1><span class="mu">Lo que está en el libro DOCUMENTOS · Sistema HyS. Para cargar o cambiar algo, usá los botones de la derecha o la planilla.</span></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn pri" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><button class="btn sec" id="ntAct">Actualizar</button></div></div>' +
     (R.avisos || []).map(a => '<section class="card" style="border-left:4px solid #8A5200">' + esc(a) + '</section>').join('') +
     '<div class="tb5">' + kpi('Enviadas', S.enviadas || 0, (S.sinEnviar || 0) + ' sin enviar') + kpi('Esperando respuesta', S.esperando || 0, 'enviadas, dentro del plazo') + kpi('Enviadas vencidas', S.vencidasEnv || 0, 'sin respuesta y con plazo cumplido', S.vencidasEnv ? '#9B2C22' : '') +
