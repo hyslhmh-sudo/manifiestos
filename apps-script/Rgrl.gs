@@ -363,7 +363,7 @@ function recordarMediciones(enviar) {
     const asunto = 'Recordatorio · ' + (venc ? venc + (venc > 1 ? ' mediciones vencidas' : ' medición vencida') : '') + (venc && L.length > venc ? ' y ' : '') + (L.length > venc ? (L.length - venc) + ' por vencer' : '') + ' (' + Array.from(new Set(L.map(m => m.cod))).join(', ') + ')';
     const linea = m => m.tipo + ' · ' + (nom[m.cod] || m.cod) + (m.lugar && m.lugar !== m.cod ? ' (' + m.lugar + ')' : '') + ': ' + (m.estado === 'vencida' ? 'venció el ' + rgrlTxt_(m.vence) + ' (hace ' + (-m.dias) + ' días)' : m.estado === 'porvencer' ? 'vence el ' + rgrlTxt_(m.vence) + (m.dias === 0 ? ' (hoy)' : ' (en ' + m.dias + ' días)') : 'sin fecha de vencimiento');
     const saludo = 'Buenos días:', motivo = 'Les escribo para recordarles las mediciones que están vencidas o que vencen en los próximos ' + RGRL.AVISO_DIAS + ' días:',
-      pedido = 'Les pido, por favor, coordinar la medición y enviarme el protocolo firmado por el profesional, así lo cargo en el registro. Este recordatorio se repite los jueves hasta que la medición nueva quede cargada.',
+      pedido = 'Les pido, por favor, coordinar la medición y enviarme el protocolo firmado por el profesional.',
       cierre = 'Quedo a disposición por cualquier consulta.', firma = 'Saludos cordiales,\nServicio de Higiene y Seguridad Laboral · HZT / HMH',
       norma = 'Normativa: ' + Array.from(new Set(L.filter(m => m.norma).map(m => m.tipo + ' (' + m.norma + ')'))).join('; ') + '. Ley 19.587 y Dto. 351/79.';
     const texto = saludo + '\n\n' + motivo + '\n\n' + L.map(m => '- ' + linea(m)).join('\n') + '\n\n' + pedido + '\n\n' + cierre + '\n\n' + firma + '\n\n' + norma;
