@@ -126,7 +126,7 @@ function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
     setF(ab._fila, o);
     return nuevos.length ? va : 'Ya tenía un problema abierto: sigue en el correo cada 3 días hasta que se marque resuelto.';
   }
-  const o = { ID: 'FAL-' + String(e.ESTABLECIMIENTO).trim() + '-' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyMMddHHmmss'), FECHA: new Date(Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM-dd') + 'T12:00:00'),
+  const o = { ID: 'FAL-' + String(e.ESTABLECIMIENTO).trim() + '-' + Utilities.formatDate(new Date(), ZONA_HORARIA, 'yyMMddHHmmss') + '-' + String(e.ID).split('-').pop(), FECHA: new Date(Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM-dd') + 'T12:00:00'),
     ESTABLECIMIENTO: String(e.ESTABLECIMIENTO).trim(), SITIO: e.SITIO, ID_EXTINTOR: e.ID, PROBLEMAS: fallas.join(' · '), DETECTO: quien, ID_CONTROL: id, ESTADO: 'Abierta', AVISOS: 0, HISTORIAL: linea };
   shF.getRange(Math.max(shF.getLastRow(), 5) + 1, 1, 1, F.H.length).setValues([F.H.map((h) => o[h] == null ? '' : o[h])]);
   return va;

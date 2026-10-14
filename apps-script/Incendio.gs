@@ -360,7 +360,7 @@ function incRegistrarFalla_(e, fallas, d) {
     incEscribir_('FALLAS', INC.H_FAL, ab.fila, incFechasFalla_(o));
     return nuevos.length ? va : 'Ya tenía un problema abierto desde el ' + incTxt_(incISO_(ab.FECHA)) + ': sigue en el correo cada ' + INC.DIAS_RECORDATORIO + ' días hasta que se marque resuelto.';
   }
-  incEscribir_('FALLAS', INC.H_FAL, null, incFechasFalla_({ ID: 'FAL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss'), FECHA: incISO_(d.fecha) || hoy, ESTABLECIMIENTO: cod, SITIO: e.SITIO, ID_EXTINTOR: e.ID,
+  incEscribir_('FALLAS', INC.H_FAL, null, incFechasFalla_({ ID: 'FAL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + '-' + e.ID.split('-').pop(), FECHA: incISO_(d.fecha) || hoy, ESTABLECIMIENTO: cod, SITIO: e.SITIO, ID_EXTINTOR: e.ID,
     PROBLEMAS: fallas.join(' · '), DETECTO: d.quien, ID_CONTROL: d.id, ESTADO: 'Abierta', AVISOS: 0, HISTORIAL: linea }));
   CacheService.getScriptCache().remove('inc_tablero');
   return va;
