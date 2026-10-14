@@ -10,6 +10,9 @@
  *  - guardarAltaExtintor_(data): un extintor que no estaba en la lista y Javier agregó desde la app (todos los datos y 3 fotos
  *    obligatorios). Lo suma a EXTINTORES con un ID nuevo (EXT-establecimiento-NNN); las fotos van a … › establecimiento › Altas › año-mes.
  *    Si el N.º de inventario ya estaba cargado, lo agrega igual y deja «Revisar» en Observaciones. No duplica si la app reintenta.
+ *  - guardarEdicionExtintor_(data): corrección del nombre (N.º) y la ubicación (lugar, planta, sector, ubicación) de un extintor.
+ *    El cambio se anota en CAMBIOS y el extintor queda «Pendiente» en VERIFICACION hasta que Belén lo verifica en el portal.
+ *    Si el lugar nuevo es de otro establecimiento, no lo mueve: lo anota para que lo revise HyS.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18. No envía correos.
  */
 const INC_LIBRO_ID = '10lyFIV8UDQGGiNu3DegHiyxqR5xinSgn82XFmO5VWw0';   // PROTECCIÓN CONTRA INCENDIOS · Sistema HyS
@@ -129,8 +132,34 @@ function guardarAltaExtintor_(data) {
     rep ? 'Revisar: el N.º de inventario ya estaba cargado en ' + rep.ID + '.' : '', String(data.OBSERVACIONES || '').trim()].filter(Boolean).join(' ');
   const o = { ID: id, ESTABLECIMIENTO: cod, SITIO: L.sitio, NRO_EXTINTOR: String(data.NRO_EXTINTOR || '').trim(), PLANTA: data.PLANTA, SECTOR: String(data.SECTOR).trim(), UBICACION: String(data.UBICACION).trim(),
     TIPO: data.TIPO, AGENTE: data.AGENTE, CAPACIDAD_KG: String(data.CAPACIDAD_KG).trim(), NRO_INVENTARIO: String(data.NRO_INVENTARIO).trim(), VTO_CARGA: vto, PRUEBA_HIDRAULICA_VENCE: 's/d (revisar)',
-    ESTADO: 'Operativo', OBSERVACIONES: obs, ACTUALIZADO: new Date() };
+    ESTADO: 'Operativo', OBSERVACIONES: obs, ACTUALIZADO: new Date(), VERIFICACION: 'Pendiente',
+    CAMBIOS: Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy') + ' · ' + quien + ': Alta' };
   Object.assign(o, links);
   shE.getRange(Math.max(shE.getLastRow(), 5) + 1, 1, 1, E.H.length).setValues([E.H.map((h) => o[h] == null ? '' : o[h])]);
   return { id: id };
+}
+
+// Corrección del nombre y la ubicación de un extintor (queda pendiente de verificar por HyS)
+function guardarEdicionExtintor_(data) {
+  if (!data.id_edit || !data.ID_EXTINTOR) throw new Error('Falta el extintor.');
+  const libro = SpreadsheetApp.openById(INC_LIBRO_ID), shE = libro.getSheetByName('EXTINTORES'), E = incTabla_(shE), marca = '[' + data.id_edit + ']';
+  const e = E.filas.find((x) => String(x.ID) === String(data.ID_EXTINTOR));
+  if (!e) throw new Error('El extintor ' + data.ID_EXTINTOR + ' no está en el sistema HyS.');
+  if (String(e.CAMBIOS || '').indexOf(marca) >= 0) return { duplicado: true };   // la app reintentó
+  const quien = String(data.operario || 'Operario MIPyV') + (data.operario_acompanante ? ' (con ' + data.operario_acompanante + ')' : '') + ' · MIPyV';
+  const nuevo = {}, notas = [];
+  ['NRO_EXTINTOR', 'PLANTA', 'SECTOR', 'UBICACION'].forEach((k) => { if (k in data && String(data[k] == null ? '' : data[k]).trim() !== '' || k === 'NRO_EXTINTOR' && k in data) nuevo[k] = String(data[k] == null ? '' : data[k]).trim(); });
+  if (data.lugar_id) {
+    const L = incLugarSistema_(SpreadsheetApp.getActiveSpreadsheet(), data.lugar_id);
+    if (L.cod === String(e.ESTABLECIMIENTO).trim()) nuevo.SITIO = L.sitio;
+    else notas.push('pidió pasarlo a ' + (data.lugar_nombre || data.lugar_id) + ' (otro establecimiento): revisar');
+  }
+  const nombres = { NRO_EXTINTOR: 'Nombre o N.º', SITIO: 'Lugar', PLANTA: 'Planta', SECTOR: 'Sector', UBICACION: 'Ubicación' };
+  const dif = Object.keys(nuevo).filter((k) => incNorm_(e[k]) !== incNorm_(nuevo[k])).map((k) => nombres[k] + ': «' + (String(e[k] || '').trim() || '—') + '» → «' + (nuevo[k] || '—') + '»');
+  const txt = dif.concat(notas).join('; ');
+  const cambios = { CAMBIOS: (Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy') + ' · ' + quien + ': ' + (txt || 'sin cambios') + ' ' + marca + (e.CAMBIOS ? '\n' + e.CAMBIOS : '')).slice(0, 2000), ACTUALIZADO: new Date() };
+  if (txt) cambios.VERIFICACION = 'Pendiente';
+  Object.keys(nuevo).forEach((k) => { if (incNorm_(e[k]) !== incNorm_(nuevo[k])) cambios[k] = nuevo[k]; });
+  Object.keys(cambios).forEach((k) => { const j = E.H.indexOf(k); if (j >= 0) shE.getRange(e._fila, j + 1).setValue(cambios[k]); });
+  return { cambios: dif.length };
 }

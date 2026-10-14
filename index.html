@@ -875,7 +875,7 @@ function inicio() {
     (puede('Agua') ? '<h2>Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
-    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos por extintor · agregar extintores', true) + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos · agregar o corregir extintores', true) + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
@@ -1598,6 +1598,29 @@ async function incLista(fresco) {
     '<p class="mu" style="font-size:13px">' + (S.length > 1 ? '<button class="link" data-act="incSit" data-arg="">Cambiar de lugar</button> · ' : '') + '<button class="link" data-act="incAct">Actualizar la lista</button></p>';
   miVolver(); window.scrollTo(0, 0);
 }
+// Corregir el nombre (N.º) y la ubicación de un extintor (Incendio.gs › i_ext_editar). Queda pendiente de verificar por Higiene y Seguridad.
+function incEdit() {
+  const e = F._e; F = { _f: 'incEdit', _e: e, ID: e.ID, NRO_EXTINTOR: e.NRO_EXTINTOR || '', SITIO: e.SITIO || '', PLANTA: e.PLANTA || '', SECTOR: e.SECTOR || '', UBICACION: e.UBICACION || '' };
+  MIV = { f: formIncEdit }; formIncEdit();
+}
+function formIncEdit() {
+  VISTA = 'mi'; vista('form'); const e = F._e, L = INCX.listas;
+  $('app').innerHTML = miTit('Corregir extintor', esc(e.ID + (e.NRO_INVENTARIO ? ' · inventario ' + e.NRO_INVENTARIO : '')) + ' · cambiá lo que esté mal') + fErr +
+    fInp('NRO_EXTINTOR', 'Nombre o N.º del extintor', 'text', 'Ej.: 12, o «Extintor del office»') + fSel('SITIO', 'Lugar', INCX.sitios.map(s => s.SITIO)) +
+    fSeg('PLANTA', 'Planta', L.plantas) + fInp('SECTOR', 'Sector o servicio', 'text') + fInp('UBICACION', '¿Dónde está exactamente?', 'text') +
+    '<p class="mu" style="font-size:13px">Higiene y Seguridad recibe el cambio y lo verifica.</p>';
+  bar('<button class="btn sec" data-act="incEditVolver">Cancelar</button><button class="btn pri" data-act="incEditGuardar">Guardar cambios</button>');
+}
+async function incEditGuardar() {
+  if (!String(F.SECTOR || '').trim() || !String(F.UBICACION || '').trim()) return miErr('El sector y la ubicación no pueden quedar vacíos.');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const d = { ID: F.ID, quien: SES.persona.nombre }; ['NRO_EXTINTOR', 'SITIO', 'PLANTA', 'SECTOR', 'UBICACION'].forEach(k => d[k] = String(F[k] || '').trim());
+  const b = document.querySelector('[data-act="incEditGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try { const r = await api('i_ext_editar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; INCX = null; vista('form');
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
+}
 // Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios (Incendio.gs › i_ext_alta)
 function incAlta() { F = { _f: 'incAlta', SITIO: INCSIT }; MIV = { f: formIncAlta }; formIncAlta(); }
 function formIncAlta() {
@@ -1636,6 +1659,7 @@ function incCtl(id) {
 function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
   $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
+    '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
@@ -1654,7 +1678,7 @@ async function incGuardar() {
       '<div class="menu"><button class="big main" data-act="incLista"><b>Siguiente extintor</b><span>Volver a la lista de ' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
-Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar() });
+Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
 
 function rxListo(aviso, volver) {
   vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Guardado.</b><br>Ya está registrado en el sistema.</div>' + (aviso ? '<div class="notice">' + esc(aviso) + ' Avisale a Higiene y Seguridad.</div>' : '') +
