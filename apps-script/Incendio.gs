@@ -37,7 +37,7 @@ const INC = {
     'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ESTADO', 'ULTIMO_CONTROL', 'RESULTADO_CONTROL', 'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'ACTUALIZADO',
     'VERIFICACION', 'CAMBIOS'],   // VERIFICACION: «Pendiente» si lo agregó o cambió alguien desde la aplicación o MIPyV; «Verificado …» cuando HyS lo revisa
   H_CON: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'ID_EXTINTOR', 'EN_LUGAR', 'ACCESO_LIBRE', 'MANOMETRO', 'PRECINTO', 'SENALIZACION', 'RESULTADO',
-    'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'QUIEN', 'CARGADO', 'ESTADO', 'PROBLEMAS', 'AVISO_CORREO'],
+    'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'QUIEN', 'CARGADO', 'ESTADO', 'PROBLEMAS', 'AVISO_CORREO', 'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'],   // vencimientos que se leyeron en el control (marbete)
   CHEQUEOS: [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manómetro en verde (o peso correcto si es CO2)'],
     ['PRECINTO', 'Precinto y seguro colocados'], ['SENALIZACION', 'Señalización completa']],
   FOTOS: [['FOTO_PANORAMICA', 'Panorámica', 'El extintor y su entorno: que se vea dónde está, la señal y el acceso.'],
@@ -240,6 +240,7 @@ function incTablero_(fresco) {
     // 30 días antes del vencimiento (pedido de Belén 14/10/2026): carga y prueba hidráulica
     if (r.porVencer) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: r.porVencer + (r.porVencer > 1 ? ' extintores con la carga por vencer' : ' extintor con la carga por vencer') + ': vence el ' + incTxt_(r.proximoVto) + ' (aviso 30 días antes)' });
     if (r.pruebaPorVencer) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: r.pruebaPorVencer + ' con la prueba hidráulica por vencer: vence el ' + incTxt_(r.proximaPrueba) + ' (aviso 30 días antes)' }); });
+  if (typeof incSrvAvisos_ === 'function') incSrvAvisos_().forEach(a => avisos.unshift(a));   // novedades de la recorrida de seguridad (IncendioServicios.gs)
   const out = { ok: true, hoy: hoy, lugares: lugares, avisos: avisos, totales: incResumen_(D.ext, hoy), libro: pInc_().getUrl(),
     carpeta: DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty(INC.P_CARPETA)).getUrl() };
   try { ca.put('inc_tablero', JSON.stringify(out), 600); } catch (e) {}
@@ -453,10 +454,16 @@ function incControlGuardar_(x, quien, codPermitido) {
   const sinFoto = INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
   const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' n.º ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
   const fotos = {}; INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));
+  // Vencimientos leídos en el control (pedido de Belén 14/10/2026): carga obligatoria (de la tarjeta), prueba hidráulica si figura
+  const vto = /^s\/d/i.test(x.VTO_CARGA || '') ? '' : incISO_(x.VTO_CARGA) || '', ph = /^s\/d/i.test(x.PRUEBA_HIDRAULICA_VENCE || '') ? 's/d (revisar)' : incISO_(x.PRUEBA_HIDRAULICA_VENCE) || '';
+  if (!vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
   const probs = (Array.isArray(x.PROBLEMAS) ? x.PROBLEMAS : String(x.PROBLEMAS || '').split(' · ')).map(limpio_).filter(p => INC.PROBLEMAS.indexOf(p) >= 0);
+  if (vto && vto < fecha && probs.indexOf('Carga vencida') < 0) probs.push('Carga vencida');
+  if (!vto && probs.indexOf('Sin tarjeta (marbete) o ilegible') < 0) probs.push('Sin tarjeta (marbete) o ilegible');
   const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
   const c = { ID: 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
-    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · ') };
+    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · '),
+    VTO_CARGA: vto ? incFecha_(vto) : 's/d (no se lee)', PRUEBA_HIDRAULICA_VENCE: ph && ph !== 's/d (revisar)' ? incFecha_(ph) : ph };
   INC.CHEQUEOS.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
   // Aviso por correo si el extintor quedó con algo que dificulta o impide su uso (por ahora, HMH: SOMI y Mantenimiento)
   const fallas = incFallas_(x, probs, x.ESTADO && INC.ESTADOS.indexOf(x.ESTADO) >= 0 ? x.ESTADO : '');
@@ -465,7 +472,9 @@ function incControlGuardar_(x, quien, codPermitido) {
   const o = Object.assign({}, e); delete o.fila;
   if (!o.ULTIMO_CONTROL || incISO_(o.ULTIMO_CONTROL) <= fecha) Object.assign(o, { ULTIMO_CONTROL: incFecha_(fecha), RESULTADO_CONTROL: res + (c.OBSERVACIONES ? ': ' + c.OBSERVACIONES : '') }, fotos);
   if (x.ESTADO && INC.ESTADOS.indexOf(x.ESTADO) >= 0) o.ESTADO = x.ESTADO;
-  if (x.VTO_CARGA) o.VTO_CARGA = incFecha_(x.VTO_CARGA);
+  if (vto) o.VTO_CARGA = vto;
+  if (ph) o.PRUEBA_HIDRAULICA_VENCE = ph;
+  incAnotarCambio_(o, e, quien + ' (control)', '');   // si el control cambió el vencimiento, queda en CAMBIOS
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (o[k] && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
   o.ACTUALIZADO = new Date(); incEscribir_('EXTINTORES', INC.H_EXT, e.fila, o);
   CacheService.getScriptCache().remove('inc_tablero');
@@ -484,21 +493,29 @@ function incPortal_(accion, x) {
     case 'p_inc_verificar': return conLock_(() => incVerificar_(x.ids, quien));
     case 'p_inc_resolver': return conLock_(() => incResolverFalla_(x, quien));
   }
+  const r = typeof incSrvPortal_ === 'function' ? incSrvPortal_(accion, x, quien) : null; if (r) return r;
   return { ok: false, error: 'Acción desconocida.' };
 }
 
 // ------------------------------------------------------------------ «MI ESTABLECIMIENTO» (DNI y clave personal, módulo «Incendio» en ACCESOS): acciones «i_…»
 // Desde Código.gs › doPost, después de validar acceso y módulo: ver los extintores del establecimiento, cargar el control mensual
 // y agregar un extintor que no está en la lista (con todos sus datos y las 3 fotos).
-function incRed_(d) {
+function incRed_(d, acc) {
   if (!PropertiesService.getScriptProperties().getProperty(INC.P_LIBRO)) return { ok: false, mensaje: 'El módulo de incendio todavía no está habilitado.' };
-  const x = d.datos || {}, cod = limpio_(d.est), quien = x.quien || 'Mi establecimiento';
+  const x = d.datos || {}, cod = limpio_(d.est);
+  // Empresas de servicio (SOMI, MAREM): cada registro lleva quién lo hizo (DNI cruzado con la base de personal) · IncendioServicios.gs
+  if (acc && acc.servicio && /^i_(control|ext_alta|ext_editar|resolver|recorrida|novedad|nov_resolver)$/.test(d.accion)) {
+    const idn = incSrvIdentidad_(x.identidad, acc, cod); if (!idn.ok) return idn; x.quien = idn.quien;
+  }
+  const quien = x.quien || 'Mi establecimiento';
   switch (d.accion) {
-    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); return r; }
+    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); return r; }
     case 'i_control': return conLock_(() => incControlGuardar_(x, quien, cod));
-    case 'i_resolver': return conLock_(() => incResolverFalla_(x, quien, cod));
+    case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
+      return conLock_(() => incResolverFalla_(x, quien, cod));
     case 'i_ext_editar': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ESTABLECIMIENTO: cod }), quien, cod));
     case 'i_ext_alta': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }
+  const r = typeof incSrvRed_ === 'function' ? incSrvRed_(d, acc, cod, x, quien) : null; if (r) return r;
   return { ok: false, error: 'Acción desconocida.' };
 }

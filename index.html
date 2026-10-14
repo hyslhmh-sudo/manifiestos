@@ -1669,7 +1669,8 @@ async function incAltaGuardar() {
 }
 function incCtl(id) {
   const e = INCX.extintores.find(x => x.ID === id); if (!e) return;
-  F = { _f: 'inc', ID_EXTINTOR: id, FECHA: new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), _e: e }; MIV = { f: formInc }; formInc();
+  const iso = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : '';
+  F = { _f: 'inc', ID_EXTINTOR: id, FECHA: new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), VTO_CARGA: iso(e.VTO_CARGA), PRUEBA_HIDRAULICA_VENCE: iso(e.PRUEBA_HIDRAULICA_VENCE), _e: e }; MIV = { f: formInc }; formInc();
 }
 function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
@@ -1677,6 +1678,9 @@ function formInc() {
     '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
     (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Se avisa por correo cada 3 días hasta que se marque resuelto.<br><button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button></div>' : '') +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
+    '<h2>Vencimientos (mirá la tarjeta)</h2>' + fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete). Si no coincide con lo que dice la tarjeta, corregilo. Obligatorio.') +
+    fSeg('VTO_NOSE', '¿La tarjeta no se lee o no tiene?', ['No se lee']) +
+    fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica', 'date', '', 'Está en la tarjeta o grabado en el cilindro. Si no figura, dejalo vacío.') +
     fChk('PROBLEMAS', '¿Tiene algún problema? Marcá todos los que veas (si no tiene ninguno, no marques nada)', (INCX.listas && INCX.listas.problemas) || []) +
     (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa por correo a SOMI y a Mantenimiento del HMH ese día y cada 3 días hasta que se marque resuelto.</p>' : '') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
@@ -1685,8 +1689,9 @@ function formInc() {
 async function incGuardar() {
   const falta = INC_CHQ.filter(c => !F[c[0]]).map(c => c[1]); if (falta.length) return miErr('Falta responder: ' + falta.join(', ') + '.');
   const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
+  if (!F.VTO_CARGA && F.VTO_NOSE !== 'No se lee') return miErr('Falta el vencimiento de la carga (está en la tarjeta). Si no se lee, tocá «No se lee».');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, OBSERVACIONES: F.OBSERVACIONES || '', PROBLEMAS: String(F.PROBLEMAS || '').split(' · ').filter(Boolean), quien: SES.persona.nombre, fotos: {} };
+  const d = { ID_EXTINTOR: F.ID_EXTINTOR, FECHA: F.FECHA, VTO_CARGA: F.VTO_NOSE === 'No se lee' ? 's/d (no se lee)' : F.VTO_CARGA, PRUEBA_HIDRAULICA_VENCE: F.PRUEBA_HIDRAULICA_VENCE || '', OBSERVACIONES: F.OBSERVACIONES || '', PROBLEMAS: String(F.PROBLEMAS || '').split(' · ').filter(Boolean), quien: SES.persona.nombre, fotos: {} };
   INC_CHQ.forEach(c => d[c[0]] = F[c[0]]); INC_FOT.forEach(f => d.fotos[f[0]] = F[f[0]]);
   const b = document.querySelector('[data-act="incGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   const antes = ESPERA_MS; ESPERA_MS = 180000;
@@ -1803,7 +1808,7 @@ Object.assign(ACT, {
   guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
   sinCorr: b => sinCorr(b.dataset.arg), sinVolverVer: () => { F = null; SIN_VER ? sinVer(SIN_VER) : siniestros(); }, sinNovCorr: b => sinNovCorr(b.dataset.arg), sinAnular: b => { F = null; sinAnular(b.dataset.arg); },
   sinAnularNov: b => { F = null; const s = SIN && SIN.lista.find(x => x.novedades.some(n => n.id === b.dataset.arg)); if (s) sinAnular(s.id, b.dataset.arg); }, sinAnularOk: () => sinAnularOk(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
-  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); }, fquitarN: b => { if (!F || !F[b.dataset.k]) return; F[b.dataset.k].splice(Number(b.dataset.arg), 1); MIV.f(); },
+  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.k === 'VTO_NOSE' && F.VTO_NOSE === b.dataset.arg ? '' : b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); }, fquitarN: b => { if (!F || !F[b.dataset.k]) return; F[b.dataset.k].splice(Number(b.dataset.arg), 1); MIV.f(); },
   soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
 });
 document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });

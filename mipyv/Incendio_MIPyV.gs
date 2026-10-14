@@ -48,7 +48,7 @@ function extintoresParaApp_(ss) {
   return T.filas.filter((e) => !/baja/i.test(e.ESTADO)).map((e) => ({
     id: String(e.ID), lugares: porSitio[String(e.ESTABLECIMIENTO).trim() + '|' + incNorm_(e.SITIO)] || [],
     nro: String(e.NRO_EXTINTOR || ''), planta: String(e.PLANTA || ''), sector: String(e.SECTOR || ''), ubicacion: String(e.UBICACION || ''),
-    tipo: String(e.TIPO || ''), kg: String(e.CAPACIDAD_KG || ''), inv: String(e.NRO_INVENTARIO || ''), vto: incIso_(e.VTO_CARGA), ultimo: incIso_(e.ULTIMO_CONTROL),
+    tipo: String(e.TIPO || ''), kg: String(e.CAPACIDAD_KG || ''), inv: String(e.NRO_INVENTARIO || ''), vto: incIso_(e.VTO_CARGA), ph: incIso_(e.PRUEBA_HIDRAULICA_VENCE), ultimo: incIso_(e.ULTIMO_CONTROL),
   })).filter((e) => e.lugares.length);
 }
 
@@ -79,10 +79,15 @@ function guardarControlExtintor_(data) {
     const m = String(fotos[i]).match(/^data:([^;]+);base64,(.*)$/);
     links[k] = carpeta.createFile(Utilities.newBlob(Utilities.base64Decode(m ? m[2] : String(fotos[i])), m ? m[1] : 'image/jpeg', nombre)).getUrl();
   });
-  const resultado = INC_PREGUNTAS.every((k) => data[k] === 'Sí') ? 'Conforme' : 'Con observaciones';
+  // Vencimientos leídos en la tarjeta (pedido de Belén 14/10/2026): carga (o «no se lee») y prueba hidráulica si figura
+  const fIso = (v) => /^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10) : '', vto = fIso(data.VTO_CARGA), ph = fIso(data.PRUEBA_HIDRAULICA_VENCE);
+  const noSeLee = /^s\/d/i.test(String(data.VTO_CARGA || '')), hoyIso = Utilities.formatDate(fecha, ZONA_HORARIA, 'yyyy-MM-dd'), vencida = !!vto && vto < hoyIso;
+  const dFecha = (iso) => new Date(iso + 'T12:00:00');
+  const resultado = INC_PREGUNTAS.every((k) => data[k] === 'Sí') && !vencida && !noSeLee ? 'Conforme' : 'Con observaciones';
   const quien = String(data.operario || 'Operario MIPyV') + (data.operario_acompanante ? ' (con ' + data.operario_acompanante + ')' : '') + ' · MIPyV';
   const fila = { ID: data.id_control, FECHA: fecha, ESTABLECIMIENTO: cod, SITIO: e.SITIO, ID_EXTINTOR: e.ID, RESULTADO: resultado,
-    OBSERVACIONES: (String(data.OBSERVACIONES || '').trim() ? String(data.OBSERVACIONES).trim() + ' · ' : '') + 'Cargado desde MIPyV (tarea ' + (data.id_tarea || 's/d') + ').', QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente' };
+    OBSERVACIONES: (String(data.OBSERVACIONES || '').trim() ? String(data.OBSERVACIONES).trim() + ' · ' : '') + 'Cargado desde MIPyV (tarea ' + (data.id_tarea || 's/d') + ').', QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente',
+    VTO_CARGA: vto ? dFecha(vto) : noSeLee ? 's/d (no se lee)' : '', PRUEBA_HIDRAULICA_VENCE: ph ? dFecha(ph) : '', PROBLEMAS: [vencida ? 'Carga vencida' : '', noSeLee ? 'Sin tarjeta (marbete) o ilegible' : ''].filter(Boolean).join(' · ') };
   INC_PREGUNTAS.forEach((k) => fila[k] = data[k]); Object.assign(fila, links);
   shC.getRange(Math.max(shC.getLastRow(), 5) + 1, 1, 1, C.H.length).setValues([C.H.map((h) => fila[h] == null ? '' : fila[h])]);
   // Último control del extintor (si este es el más reciente)
@@ -90,15 +95,19 @@ function guardarControlExtintor_(data) {
   if (!ult || ult <= fecha) {
     const com = String(data.OBSERVACIONES || '').trim();
     const cambios = Object.assign({ ULTIMO_CONTROL: fecha, RESULTADO_CONTROL: resultado + ' (MIPyV)' + (com ? ': ' + com : ''), ACTUALIZADO: new Date() }, links);
+    const antes = (v) => v instanceof Date ? Utilities.formatDate(v, ZONA_HORARIA, 'yyyy-MM-dd') : String(v || ''), dif = [];
+    if (vto && antes(e.VTO_CARGA) !== vto) { cambios.VTO_CARGA = dFecha(vto); dif.push('Vencimiento de la carga: «' + (antes(e.VTO_CARGA) || '—') + '» → «' + vto + '»'); }
+    if (ph && antes(e.PRUEBA_HIDRAULICA_VENCE) !== ph) { cambios.PRUEBA_HIDRAULICA_VENCE = dFecha(ph); dif.push('Prueba hidráulica: «' + (antes(e.PRUEBA_HIDRAULICA_VENCE) || '—') + '» → «' + ph + '»'); }
+    if (dif.length) cambios.CAMBIOS = (Utilities.formatDate(new Date(), ZONA_HORARIA, 'dd/MM/yyyy') + ' · ' + quien + ' (control): ' + dif.join('; ') + (e.CAMBIOS ? '\n' + e.CAMBIOS : '')).slice(0, 2000);
     Object.keys(cambios).forEach((k) => { const j = E.H.indexOf(k); if (j >= 0) shE.getRange(e._fila, j + 1).setValue(cambios[k]); });
   }
   // Aviso por correo si quedó algo en «No» y el lugar tiene CORREOS_FALLA en SITIOS_INC (regla de Belén 14/10/2026: HMH → SOMI y Mantenimiento)
-  const mal = INC_PREGUNTAS.filter((k) => data[k] === 'No');
+  const mal = INC_PREGUNTAS.filter((k) => data[k] === 'No').concat(vencida ? ['VTO'] : [], noSeLee ? ['SINTARJETA'] : []);
   if (mal.length) { const av = incAvisoFallaMipyv_(libro, e, mal, quien, fecha, String(data.OBSERVACIONES || '').trim(), links, data.id_control);
     if (av) { const C2 = incTabla_(shC), f = C2.filas.find((z) => String(z.ID) === String(data.id_control)), j = C2.H.indexOf('AVISO_CORREO'); if (f && j >= 0) shC.getRange(f._fila, j + 1).setValue(av); } }
   return { resultado: resultado };
 }
-const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización' };
+const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización', VTO: 'Carga vencida', SINTARJETA: 'Sin tarjeta (marbete) o ilegible' };
 function incAvisoFallaMipyv_(libro, e, mal, quien, fecha, obs, links, id) {
   const S = incTabla_(libro.getSheetByName('SITIOS_INC')).filas.filter((z) => String(z.ESTABLECIMIENTO).trim() === String(e.ESTABLECIMIENTO).trim() && z.ACTIVO !== 'No');
   const sit = S.find((z) => incNorm_(z.SITIO) === incNorm_(e.SITIO)) || S.find((z) => String(z.CORREOS_FALLA || '').trim());
