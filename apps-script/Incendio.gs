@@ -408,12 +408,12 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E, porVencer) {
   const asunto = cod + ' · Extintores con problemas: ' + (tot ? tot + ' sin resolver' + (nuevos.length ? ' (' + nuevos.length + (nuevos.length > 1 ? ' nuevos)' : ' nuevo)') : '') : 'todos resueltos') + (resueltos.length ? ' · ' + resueltos.length + ' resuelto' + (resueltos.length > 1 ? 's' : '') : '');
   // Texto del correo (pedido de Belén 14/10/2026): saludo, motivo, detalle y cierre; tono cordial, sin la frase de cada cuántos días llega
   const saludo = 'Buenos días:';
-  const motivo = nuevos.length ? 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para informarles cuáles son los extintores del ' + nom + ' que presentan problemas que dificultan o impiden su uso.'
-    : siguen.length ? 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para recordarles cuáles son los extintores del ' + nom + ' que siguen con problemas que dificultan o impiden su uso.'
-    : 'Les escribo desde el Servicio de Higiene y Seguridad Laboral para informarles que los siguientes extintores del ' + nom + ' quedaron resueltos.';
+  const motivo = nuevos.length ? 'Les escribo para informarles cuáles son los extintores del ' + nom + ' que presentan problemas que dificultan o impiden su uso.'
+    : siguen.length ? 'Les escribo para recordarles cuáles son los extintores del ' + nom + ' que siguen con problemas que dificultan o impiden su uso.'
+    : 'Les escribo para informarles que los siguientes extintores del ' + nom + ' quedaron resueltos.';
   const detalle = tot ? 'Abajo va el detalle de cada uno' + (nuevos.length && siguen.length ? ', separados entre los nuevos y los que siguen pendientes' : '') + (resueltos.length ? ', y también los que ya quedaron resueltos' : '') + '. La información surge de los vencimientos del inventario (carga y prueba hidráulica) y de lo registrado en los controles.'
     : 'Abajo va el detalle.';
-  const pedido = tot ? 'Les pido, por favor, su revisión y la reposición, recarga o reparación que corresponda, y que me avisen cuando cada uno quede resuelto, así lo actualizo en el registro.' : 'Muchas gracias por la gestión.';
+  const pedido = tot ? 'Les pido, por favor, su revisión y la reposición, recarga o reparación que corresponda, y que me avisen cuando cada uno quede resuelto.' : 'Muchas gracias por la gestión.';
   const cierre = 'Quedo a disposición por cualquier consulta.', saludoFinal = 'Saludos cordiales,';
   const intro = [motivo, detalle, pedido].join(' ');
   const norma = 'Los extintores deben mantenerse en condiciones de uso, a la vista y con acceso libre (Ley 19.587; Dto. 351/79, cap. 18).';
