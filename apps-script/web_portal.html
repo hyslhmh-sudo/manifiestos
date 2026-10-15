@@ -2012,11 +2012,14 @@ async function capApi(accion, datos, ms) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);
   try {
     let txt = '';
-    for (let intento = 0; intento < 2; intento++) {   // si Google responde una página de error, se reintenta una vez
+    // Si Google responde una página de error (p. ej. «No se puede abrir el archivo en estos momentos», libro ocupado un instante),
+    // se reintenta: las consultas hasta 4 veces; las que guardan, una sola vez (para no duplicar nada). 15/10/2026.
+    const veces = /guardar|nuev|alta|anular|emitir|enviar|cerrar|subir|borrar|agregar|aplicar|rehacer|suspend|confirmar|marcar|descartar/i.test(accion) ? 2 : 4;
+    for (let intento = 0; intento < veces; intento++) {
       const r = await fetch(CAP_API, { method: 'POST', body: JSON.stringify({ accion: accion, clave: CLAVE, datos: datos || {} }), signal: ctl.signal });
       txt = await r.text();
       if (!/^\s*</.test(txt)) break;
-      await new Promise(ok => setTimeout(ok, 1500));
+      if (intento < veces - 1) await new Promise(ok => setTimeout(ok, 2000 * (intento + 1)));
     }
     if (/^\s*</.test(txt)) {   // página de error de Google: se muestra su mensaje para saber qué pasó
       const doc = new DOMParser().parseFromString(txt, 'text/html'); doc.querySelectorAll('script,style').forEach(x => x.remove());
