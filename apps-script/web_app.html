@@ -1951,7 +1951,7 @@ Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosR
 // Reemplaza al panel de carga viejo. Solo con DNI y clave personal y el módulo «Capacitaciones» marcado en Accesos.
 // Correo y teléfono se guardan directo; servicio, función o lugar de trabajo quedan propuestos hasta que HyS los aprueba.
 let QO = null, QR = null, QP = null, QJ = null, QML = null;
-const qDl = (k, t, ops, ph) => '<div class="field">' + fLab(t)<input data-f="' + k + '" list="dl_' + k + '" value="' + esc(F[k] || '') + '" placeholder="' + esc(ph || 'Escribí o elegí de la lista') + '"><datalist id="dl_' + k + '">' + (ops || []).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist></div>';
+const qDl = (k, t, ops, ph) => '<div class="field">' + fLab(t) + '<input data-f="' + k + '" list="dl_' + k + '" value="' + esc(F[k] || '') + '" placeholder="' + esc(ph || 'Escribí o elegí de la lista') + '"><datalist id="dl_' + k + '">' + (ops || []).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist></div>';
 const qMsg = e => e && e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : (e && e.message) || 'No se pudo completar.';
 async function qOpc() { if (QO) return QO; const r = await api('q_opciones', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); QO = r.listas; return QO; }
 function qSinRed(t) { $('app').innerHTML = miTit(t) + '<p class="mu">Para esto hace falta señal.</p>'; miVolver(); }
