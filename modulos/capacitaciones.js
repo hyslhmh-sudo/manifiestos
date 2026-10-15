@@ -870,3 +870,51 @@ function capReglaModal(x) {
     if (r) { v.cerrar(); toast(r.mensaje); CAPCU.t = null; capMatriz(); }
   };
 }
+
+// ------------------------------------------------------------------ Para validar (14.67)
+// Lo que carga la secretaría en la base de capacitaciones y espera a HyS: altas nuevas, cambios propuestos y avisos.
+// Lo lee y lo escribe el Sistema HyS (CapValidar.gs, acciones p_cv_…), no el panel viejo.
+let CAPV = null;
+async function capValidar(fresco) {
+  if (!CAPV || fresco) { cargando('#capval', 'Leyendo lo que espera validación…'); try { CAPV = await api('p_cv_datos', {}, 120000); } catch (e) { return; } }
+  if (!CAPV.ok) return marco('#capval', capTit('Para validar') + '<div class="aviso error">' + esc(CAPV.mensaje || CAPV.error || 'No se pudo leer.') + (/desconocida/i.test(CAPV.mensaje || CAPV.error || '') ? ' Falta instalar CapValidar.gs en el Sistema HyS.' : '') + '</div>');
+  const V = CAPV, L = V.listas, n = V.altas.length + V.propuestas.length;
+  const fila = (t, s, btns) => '<div class="item" style="align-items:flex-start"><span style="min-width:0"><b style="font-size:14px">' + t + '</b><br><small class="mu">' + s + '</small></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' + btns + '</span></div>';
+  const b = (cls, data, txt) => '<button class="btn ' + cls + '" style="min-height:32px;padding:4px 12px;font-size:12.5px" ' + data + '>' + txt + '</button>';
+  marco('#capval', capTit('Para validar', 'Lo que cargó la secretaría y espera tu revisión. Al validar se actualiza la base de capacitaciones y queda en su historial de cambios.', '<a class="btn sec" href="' + esc(V.libro) + '" target="_blank" rel="noopener">Abrir la base ↗</a>') +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"><div class="kpi2"><span>Altas nuevas</span><b' + (V.altas.length ? ' style="color:#B4361F"' : '') + '>' + V.altas.length + '</b><small>personas para revisar</small></div>' +
+      '<div class="kpi2"><span>Cambios propuestos</span><b' + (V.propuestas.length ? ' style="color:#B4361F"' : '') + '>' + V.propuestas.length + '</b><small>aprobar o rechazar</small></div><div class="kpi2"><span>Otros avisos</span><b>' + V.avisos.length + '</b><small>sin marcar como revisados</small></div></div>' +
+    '<section class="card" style="margin-top:12px"><h2 style="margin:0 0 6px;font-size:16px">Altas nuevas</h2>' + (V.altas.length ? '<div style="display:flex;flex-direction:column">' + V.altas.map(a =>
+      fila(esc(a.APELLIDOS + ', ' + a.NOMBRES) + ' <span class="mu">· DNI ' + esc(a.DNI) + '</span>', esc([a.FUNCION + (a.FUNCION_DETALLE ? ' (' + a.FUNCION_DETALLE + ')' : ''), a.SERVICIO, a.ESTABLECIMIENTO, a.EMPRESA].filter(String).join(' · ')) + '<br>' + esc(a.MOTIVO_REVISION || 'Para revisar') + (a.FUNCION === 'Otra' ? ' · <b style="color:#8A5200">función «Otra»: conviene corregirla</b>' : ''),
+        b('pri', 'data-va="' + esc(a.DNI) + '"', 'Revisar y validar'))).join('') + '</div>' : '<div class="mu">No hay altas para validar.</div>') + '</section>' +
+    '<section class="card" style="margin-top:12px"><h2 style="margin:0 0 6px;font-size:16px">Cambios propuestos</h2>' + (V.propuestas.length ? '<div style="display:flex;flex-direction:column">' + V.propuestas.map(p =>
+      fila(esc(p.persona) + ' <span class="mu">· DNI ' + esc(p.dni) + '</span>', esc(p.campo) + ': «' + esc(p.actual || 'vacío') + '» → <b>«' + esc(p.propuesto) + '»</b> · ' + esc(p.fecha) + (p.motivo ? ' · ' + esc(p.motivo) : '') + (p.enBase ? '' : ' · <b style="color:#B4361F">la persona no está en la base</b>'),
+        b('pri', 'data-pa="' + esc(p.id) + '"', 'Aprobar') + b('sec', 'data-pr="' + esc(p.id) + '"', 'Rechazar'))).join('') + '</div>' : '<div class="mu">No hay cambios para aprobar.</div>') + '</section>' +
+    '<section class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0 0 6px;font-size:16px">Otros avisos</h2>' + (V.avisos.length ? b('sec', 'id="cvTodos"', 'Marcar todos como revisados') : '') + '</div>' +
+      (V.avisos.length ? '<details class="peq"><summary style="cursor:pointer;font-weight:700;color:var(--az)">Ver los ' + V.avisos.length + ' avisos (funciones «Otra», servicios o establecimientos fuera del catálogo, altas desde la web)</summary><div style="display:flex;flex-direction:column;margin-top:6px">' + V.avisos.map(v =>
+        fila(esc(v.tipo) + ' · ' + esc(v.persona), esc(v.fecha) + (v.detalle ? ' · ' + esc(v.detalle) : ''), b('sec', 'data-av="' + v.fila + '"', 'Revisado'))).join('') + '</div></details>' : '<div class="mu">No hay avisos sin revisar.</div>') + '</section>' +
+    '<p class="mu peq">Si el portal no anda: en la base de capacitaciones, PROPUESTAS › ESTADO (Aprobada o Rechazada), PERSONAS › REVISAR = No y AVISOS › RESUELTO con la fecha.</p>');
+  const op = (arr, v) => (v && arr.indexOf(v) < 0 ? [v] : []).concat(arr);
+  document.querySelectorAll('[data-va]').forEach(x => x.onclick = () => { const a = V.altas.find(z => z.DNI === x.dataset.va);
+    modal('Validar alta · ' + a.APELLIDOS + ', ' + a.NOMBRES, [['APELLIDOS', 'Apellidos'], ['NOMBRES', 'Nombres'], ['FUNCION', 'Función', op(L.funciones, a.FUNCION)], ['FUNCION_DETALLE', 'Detalle de la función'], ['SERVICIO', 'Servicio', op(L.servicios, a.SERVICIO)],
+      ['ESTABLECIMIENTO', 'Establecimiento', op(L.establecimientos, a.ESTABLECIMIENTO)], ['VINCULO', 'Vínculo', op(L.vinculos, a.VINCULO)], ['EMPRESA', 'Empresa (si es tercerizado)', op([''].concat(L.empresas), a.EMPRESA)], ['EMAIL', 'Correo'], ['TELEFONO', 'Teléfono']], a, async o => {
+      if (!o.APELLIDOS || !o.NOMBRES || !o.FUNCION || !o.ESTABLECIMIENTO) return 'Completá apellidos, nombres, función y establecimiento.';
+      const r = await api('p_cv_alta', { dni: a.DNI, datos: o }, 90000); if (!r.ok) return r.mensaje || 'No se pudo validar.';
+      toast('Validada' + (r.cambios ? ' con ' + r.cambios + ' corrección(es)' : '') + '.'); capValidar(true); return ''; },
+      '<p class="mu peq" style="margin:8px 0 0">DNI ' + esc(a.DNI) + ' · ' + esc(a.FUENTES || '') + '. Corregí lo que haga falta y tocá Guardar: queda validada (REVISAR = No) y sus avisos, resueltos.</p>'); });
+  document.querySelectorAll('[data-pa]').forEach(x => x.onclick = async () => { x.disabled = true; const r = await api('p_cv_propuesta', { id: x.dataset.pa, decision: 'aprobar' }, 90000).catch(() => null); if (!r || !r.ok) { x.disabled = false; return toast((r && r.mensaje) || 'No se pudo aprobar.'); } toast('Aprobada: ya está en la base.'); capValidar(true); });
+  document.querySelectorAll('[data-pr]').forEach(x => x.onclick = () => modal('Rechazar el cambio', [['motivo', 'Motivo', null, 1]], {}, async o => {
+    if (!o.motivo) return 'Escribí el motivo.'; const r = await api('p_cv_propuesta', { id: x.dataset.pr, decision: 'rechazar', motivo: o.motivo }, 90000); if (!r.ok) return r.mensaje || 'No se pudo.'; toast('Rechazada.'); capValidar(true); return ''; }));
+  document.querySelectorAll('[data-av]').forEach(x => x.onclick = async () => { x.disabled = true; const r = await api('p_cv_avisos', { filas: [Number(x.dataset.av)] }, 90000).catch(() => null); if (!r || !r.ok) { x.disabled = false; return toast('No se pudo.'); } x.closest('.item').remove(); });
+  if ($('cvTodos')) $('cvTodos').onclick = async () => { $('cvTodos').disabled = true; const r = await api('p_cv_avisos', { filas: V.avisos.map(v => v.fila) }, 120000).catch(() => null); if (!r || !r.ok) { $('cvTodos').disabled = false; return toast('No se pudo.'); } toast(r.n + ' aviso(s) marcados como revisados.'); capValidar(true); };
+}
+// Aviso arriba del tablero de capacitaciones si hay algo para validar (se consulta cada 5 minutos como máximo)
+let CAPV_N = null, CAPV_T = 0;
+async function capAvisoValidar(activo) {
+  if (activo !== '#cap') return; const h0 = location.hash;
+  if (CAPV_N == null || Date.now() - CAPV_T > 300000) { try { const r = await api('p_cv_cuenta', {}, 60000); if (!r || !r.ok) return; CAPV_N = r; CAPV_T = Date.now(); } catch (e) { return; } }
+  const m = $('main'), n = CAPV_N.altas + CAPV_N.propuestas; if (!m || !n || location.hash !== h0 || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+  const d = document.createElement('a'); d.id = 'cvBanda'; d.href = '#capval'; d.className = 'aviso'; d.style.cssText = 'display:block;margin:0 0 12px;font-weight:700;text-decoration:none';
+  d.textContent = 'Para validar: ' + (CAPV_N.altas ? CAPV_N.altas + ' alta(s) nueva(s)' : '') + (CAPV_N.altas && CAPV_N.propuestas ? ' y ' : '') + (CAPV_N.propuestas ? CAPV_N.propuestas + ' cambio(s) propuesto(s)' : '') + ' de la secretaría. Tocá para revisar →';
+  const cab = m.querySelector('.cab'); if (cab) cab.after(d); else m.prepend(d);
+}
