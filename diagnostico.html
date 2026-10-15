@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Página para referentes · Higiene y Seguridad</title>
+<title>Mi establecimiento · Evaluaciones · Higiene y Seguridad</title>
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -156,7 +156,7 @@ main:not(.ref) .barra { margin: 0 -40px; padding: 12px 40px; }
 </style>
 </head>
 <body>
-<div class="top"><div><b>Página para referentes</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><div style="display:flex;gap:14px"><button class="link" id="inicio" hidden>Inicio</button><button class="link" id="salir" hidden>Salir</button></div></div>
+<div class="top"><div><b>Mi establecimiento · Evaluaciones</b><br><span>Servicio de Higiene y Seguridad · Red provincial de salud · Chubut</span></div><div style="display:flex;gap:14px"><button class="link" id="inicio" hidden>Inicio</button><button class="link" id="salir" hidden>Salir</button></div></div>
 <main class="ref" id="raiz"></main>
 <div id="ov" class="ov" hidden></div>
 <div id="toast" class="toast" hidden></div>
@@ -220,9 +220,13 @@ async function ingreso(msg) {
 }
 function salir(msg) { SES = null; LS.del('ses'); $('inicio').hidden = true; ingreso(msg); }
 function empezar() { $('salir').hidden = false; $('salir').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Salir igual?')) return; salir(); };
-  $('inicio').hidden = false; $('inicio').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Volver al inicio igual?')) return; inicioRef(); }; inicioRef(); }
+  $('inicio').hidden = false; $('inicio').textContent = RESP_G ? 'Inicio' : '← Mi establecimiento'; $('inicio').onclick = () => { if (DG && DG.sucio && !confirm('Hay cambios sin guardar. ¿Volver igual?')) return; RESP_G ? inicioRef() : volverMi(); }; DESDE_MI ? irDirecto() : inicioRef(); }
 // ------------------------------------------------------------------ Inicio del referente y auditoría interna (Auditoria.gs › audRed_)
+// 14.68: todo se entra desde «Mi establecimiento» (pedido de Belén). Esta página ya no tiene inicio propio: vuelve a Mi establecimiento.
+const DESDE_MI = /^#(cocina|diagnostico|auditoria)$/.test(location.hash), RESP_G = /googleusercontent\.com$/.test(location.hostname);   // en el respaldo de Google se mantiene el inicio propio
+function volverMi() { if (/googleusercontent\.com$/.test(location.hostname)) { try { window.close(); } catch (e) {} return; } location.href = /github\.io/.test(location.host) ? './' : 'https://hyslhmh-sudo.github.io/manifiestos/'; }
 function inicioRef() {
+  if (!RESP_G) return volverMi();
   DG = null; AR = null;
   $('raiz').innerHTML = '<div class="cab"><div><span class="mu peq">' + esc(SES.nombre) + '</span><h1>Página para referentes</h1><span class="mu">Elegí qué querés hacer.</span></div></div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">' +
@@ -502,8 +506,10 @@ async function diagSubirFotos(k, files) {
 }
 window.addEventListener('beforeunload', e => { if (DG && (DG.sucio || DG.subiendo)) { e.preventDefault(); e.returnValue = ''; } });
 
-SES ? empezar() : ingreso();
-if (SES && location.hash === '#cocina') { DCFG = DCFG_COC; diagForm(SES.est); }
+if (!DESDE_MI && !RESP_G) volverMi();   // sin entrar desde Mi establecimiento: va a Mi establecimiento (los enlaces viejos siguen sirviendo)
+else if (!SES) ingreso();
+else empezar();
+function irDirecto() { if (location.hash === '#cocina') { DCFG = DCFG_COC; diagForm(SES.est); } else if (location.hash === '#auditoria') arLista(); else { DCFG = DCFG_RES; diagForm(SES.est); } }
 </script>
 </body>
 </html>

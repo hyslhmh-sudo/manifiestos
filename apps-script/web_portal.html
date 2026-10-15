@@ -267,8 +267,7 @@ const DIAG_URL = RESPALDO ? API_URL + '?p=diagnostico' : 'https://hyslhmh-sudo.g
 const APP_URL = RESPALDO ? API_URL + '?p=app' : 'https://hyslhmh-sudo.github.io/manifiestos/';
 const CAP_URL = 'https://docs.google.com/spreadsheets/d/1rrYVwT83jGfPTYvgIxH9eSaVl1apqmwcoExCvyEDHSw/edit';   // módulo 9 · Capacitaciones (su planilla; tiene su propio panel)
 let BUS = { q: '', r: null };
-const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Les comparto el enlace para completar el diagnóstico de gestión de residuos de su establecimiento: ' + DIAG_URL +
-  ' . Se ingresa con el DNI y la clave personal que les dio Higiene y Seguridad (o, mientras tanto, con la clave del establecimiento). Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
+const diagMensaje = nombre => 'Hola' + (nombre ? ', equipo del ' + nombre : '') + '. Para completar el diagnóstico de gestión de residuos de su establecimiento, entren a «Mi establecimiento» (' + APP_URL + ') y, en «1 · Residuos», toquen «Diagnóstico de residuos». Se ingresa con el DNI y la clave personal que les dio Higiene y Seguridad (o, mientras tanto, con la clave del establecimiento). Se puede completar de a partes (Guardar y seguir después) y agregar fotos desde el celular. Al terminar, tocar «Enviar a Higiene y Seguridad». Ante cualquier duda, consultame. Belén Pellegrini · Higiene y Seguridad';
 // Informes del diagnóstico (Google Doc editable + PDF)
 function informesDiag() {
   const L = DG.D.informes || [], cerrado = DG.estado === 'Cerrado';
@@ -296,12 +295,12 @@ function activarInformes() {
   };
 }
 function compartirDiag(nombre) {
-  return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + DIAG_URL + '" target="_blank" rel="noopener">' + DIAG_URL + '</a></div><div class="mu peq">Cada referente entra con su DNI y su clave personal (Más › «Accesos»); mientras no la tenga, con la clave de su establecimiento.</div></div>' +
+  return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Enlace para los referentes</h2><div class="peq" style="margin-top:4px"><a href="' + APP_URL + '" target="_blank" rel="noopener">' + APP_URL + '</a> › 1 · Residuos › Diagnóstico de residuos</div><div class="mu peq">Cada referente entra con su DNI y su clave personal (Más › «Accesos»); mientras no la tenga, con la clave de su establecimiento.</div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" data-copiar="enlace">Copiar enlace</button><button class="btn sec" data-copiar="mensaje">Copiar mensaje</button><a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(diagMensaje(nombre)) + '">Enviar por WhatsApp</a></div></section>';
 }
 function activarCompartir(nombre) {
   document.querySelectorAll('[data-copiar]').forEach(b => b.onclick = async () => {
-    const t = b.dataset.copiar === 'enlace' ? DIAG_URL : diagMensaje(nombre);
+    const t = b.dataset.copiar === 'enlace' ? APP_URL : diagMensaje(nombre);
     try { await navigator.clipboard.writeText(t); toast(b.dataset.copiar === 'enlace' ? 'Enlace copiado.' : 'Mensaje copiado: pegalo en el correo o el chat.'); }
     catch (e) { prompt('Copiá el texto:', t); }
   });
@@ -408,7 +407,7 @@ function marco(activo, contenido) {
     grp('ges', 'insights', '11 · Gestión', pes('Seguimiento') + it('#ges', '', 'Plan de acción único', 1) + it('#ges/hallazgos', '', 'Hallazgos', 1) + it('#ges/bandeja', '', 'Bandeja de sugeridos', 1) + it('#ges/inversion', '', 'Necesidades de inversión', 1) + it('#tablero', '', 'Problemáticas', 1) + pes('Administración') + it('#ges/reglas', '', 'Reglas automáticas', 1) + it('#ges/alcance', '', 'Alcance (niveles A y B)', 1) + it('#accesos', '', 'Accesos (DNI y claves)', 1) + it('#datos', '', 'Datos · editar todo', 1)) +
     '<div class="titu mod">Más</div>' +
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
-    grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext(DIAG_URL, 'Página para referentes') +
+    grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
     ext(API_URL + '?p=app', 'Mi establecimiento · respaldo') + ext(API_URL + '?p=diagnostico', 'Referentes · respaldo') + ext(API_URL + '?p=mipyv', 'MIPyV · respaldo')) +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button><div style="font-size:11px;margin-top:6px;color:#A9C6D1">Portal ' + esc(VERSION_PORTAL) + (LS.get('verSrv', '') && LS.get('verSrv', '') !== VERSION_PORTAL ? '<br><b style="color:#FFD27A">Apps Script en versión ' + esc(LS.get('verSrv', '')) + ': falta instalar o publicar algo</b>' : '') + '</div></div></nav><main id="main">' + contenido + '</main></div>' +
@@ -492,7 +491,7 @@ async function fichaReg(cod) {
 }
 
 // ------------------------------------------------------------------ FASE 1 · menú por tareas, tablero de control, biblioteca, agua y plagas, ayuda
-const VERSION_PORTAL = '2026-10-14 · 14.67';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
+const VERSION_PORTAL = '2026-10-15 · 14.68';   // tiene que coincidir con VERSION_SISTEMA de Código.gs
 let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1IWO_DYeOJTqGnFcPQdOlSd9SeRp5aETA7psYlhjHBig/edit';   // Manual del Portal HyS v1 (14.61)
 const MANUAL_RESP_URL = 'https://docs.google.com/document/d/1erpAA8aofpX73ZBOg0BDPMwYUz-y-TXA4Ov4wMDIc60/edit';   // Manual de respaldo (sin GitHub)

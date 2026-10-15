@@ -880,7 +880,7 @@ function inicio() {
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
     (puede('Residuos') ? '<h2>1 · Residuos</h2><div class="menu">' + tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') +
-      tile('irDiag', 'Diagnóstico y auditoría interna', 'Relevamiento de residuos y recorrida trimestral') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
+      tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') + tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') + tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') + '</div>' : '') +
     (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
     (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
     (puede('Cocina') ? '<h2>4 · Cocina</h2><div class="menu">' + tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') + tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') + '</div>' : '') +
@@ -927,10 +927,11 @@ function remNoRecibido(s) {
 }
 
 // Diagnóstico y auditoría interna: abre la página para referentes con la misma sesión
-function irDiag() {
+function irDiag(h) {
+  h = h || '#diagnostico';
   try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, dni: SES.dni || '', nombre: SES.nombre })); localStorage.setItem('diag_arNom', JSON.stringify(SES.persona.nombre)); } catch (e) {}
-  if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico', '_blank');   // aplicación de respaldo (sin GitHub)
-  location.href = /github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH;
+  if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico' + h, '_blank');   // aplicación de respaldo (sin GitHub)
+  location.href = (/github\.io/.test(location.host) ? DIAG_PAG : DIAG_GH) + h;
 }
 
 // ------------------------------------------------------------------ Cola: las cargas de estos módulos usan la misma cola que los manifiestos
@@ -1947,7 +1948,7 @@ Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosR
 // ------------------------------------------------------------------ Acciones y campos
 Object.assign(ACT, {
   actualizar: () => { actualizarConfig(false); sincronizar(); miCargar(false); },
-  irDiag: () => irDiag(), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
+  irDiag: () => irDiag(), irDiagRes: () => irDiag('#diagnostico'), irAud: () => irDiag('#auditoria'), aguaInv: () => { F = null; aguaInv(); }, aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
   aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
   guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
