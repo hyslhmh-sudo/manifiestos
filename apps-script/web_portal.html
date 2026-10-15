@@ -2281,9 +2281,9 @@ async function capParticipantes(cod, fresco) {
     '<label class="f">Buscar<input class="c" id="cpQ" value="' + esc(CAPPA.q) + '" placeholder="Nombre, DNI o correo"></label></div>' +
     '<div class="cpn"><button class="btn sec" id="cpMail">Copiar correos (' + F.filter(x => x.correo).length + ')</button><button class="btn sec" id="cpCsv">Descargar planilla</button><button class="btn sec" id="cpAct">Actualizar</button></div></div>' +
     (!L.length ? '<div class="vacio">Todavía nadie la hizo.</div>' : !F.length ? '<div class="vacio">Nadie con ese filtro.</div>' :
-    '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Establecimiento · servicio</th><th>Fecha</th>' + (varios ? '<th>Encuentros</th>' : '') + '<th>Nota</th><th>Vigencia</th><th>Certificado</th></tr></thead><tbody>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Establecimiento · servicio<div class="mu" style="font-weight:400">o institución</div></th><th>Fecha</th>' + (varios ? '<th>Encuentros</th>' : '') + '<th>Nota</th><th>Vigencia</th><th>Certificado</th></tr></thead><tbody>' +
     F.map(x => '<tr class="cl" data-p="' + esc(x.dni) + '"><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.dni) + (x.correo ? ' · ' + esc(x.correo) : '') + '</div></td>' +
-      '<td class="peq">' + esc(x.est) + '<div class="mu">' + esc(x.servicio) + ' · ' + esc(x.funcion) + '</div></td>' +
+      '<td class="peq">' + (/estudiant/i.test(x.publico) ? esc(x.institucion || 's/d') + '<div class="mu">Estudiante</div>' : /extern/i.test(x.publico) && /^s\/d/i.test(x.est) ? esc(x.institucion || 's/d') + '<div class="mu">Profesional externo</div>' : esc(x.est) + '<div class="mu">' + esc(x.servicio) + ' · ' + esc(x.funcion) + '</div>') + '</td>' +
       '<td class="peq" style="white-space:nowrap">' + esc(x.fecha || 's/d') + (x.registros > 1 ? '<div class="mu">' + x.registros + ' registros</div>' : '') + '</td>' +
       (varios ? '<td>' + x.encuentros + ' de ' + r.encuentros + '</td>' : '') +
       '<td>' + (x.nota !== '' ? esc(x.nota) + (x.aprobo ? ' ' + capChip('Aprobó', 'ok') : '') : x.aprobo ? capChip('Aprobó', 'ok') : '<span class="mu">—</span>') + '</td>' +
