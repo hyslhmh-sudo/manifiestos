@@ -105,7 +105,7 @@ const GREG_FERIADOS = [['2025-01-01', 'Año Nuevo'], ['2025-03-03', 'Carnaval'],
   ['2026-08-17', 'Paso a la Inmortalidad del Gral. San Martín'], ['2026-10-12', 'Día del Respeto a la Diversidad Cultural'], ['2026-11-23', 'Día de la Soberanía Nacional (trasladado del 20/11)'],
   ['2026-12-08', 'Inmaculada Concepción de María'], ['2026-12-25', 'Navidad']];
 const GREG_NO_LAB = [['2025-05-02', 'Día no laborable con fines turísticos'], ['2025-08-15', 'Día no laborable con fines turísticos'], ['2025-11-21', 'Día no laborable con fines turísticos'],
-  ['2026-07-10', 'Día no laborable con fines turísticos'], ['2026-12-07', 'Día no laborable con fines turísticos']];
+  ['2026-07-10', 'Día no laborable con fines turísticos'], ['2026-12-07', 'Día no laborable con fines turísticos']];   // Impeesa trabaja estos días (Belén, 14/10/2026)
 function gregFeriados_() {
   const bc = pBC_(); let sh = bc.getSheetByName('FERIADOS');
   if (!sh) {
@@ -113,7 +113,7 @@ function gregFeriados_() {
     encabezar_(sh, 'Feriados nacionales y días no laborables', 'Una fila por día. IMPEESA_NO_RETIRA = Sí: ese día la empresa no retira residuos (feriados nacionales). Los días no laborables con fines turísticos quedan «s/d (revisar)» hasta confirmarlo. Agregar los del año siguiente cuando se publiquen.', GREG_FER_H);
     lista_(sh, 3, 500, ['Sí', 'No', 's/d (revisar)']);
     gesAgregar_(sh, GREG_FER_H, GREG_FERIADOS.map(f => ({ FECHA: f[0], NOMBRE: f[1], TIPO: 'Feriado nacional', IMPEESA_NO_RETIRA: 'Sí', OBSERVACIONES: 'Impeesa no trabaja en feriados nacionales (Belén, 14/10/2026)' }))
-      .concat(GREG_NO_LAB.map(f => ({ FECHA: f[0], NOMBRE: f[1], TIPO: 'Día no laborable', IMPEESA_NO_RETIRA: 's/d (revisar)', OBSERVACIONES: '' }))));
+      .concat(GREG_NO_LAB.map(f => ({ FECHA: f[0], NOMBRE: f[1], TIPO: 'Día no laborable', IMPEESA_NO_RETIRA: 'No', OBSERVACIONES: 'Impeesa trabaja los días no laborables (Belén, 14/10/2026)' }))));
     sh.getRange(6, 1, 500, 1).setNumberFormat('dd/mm/yyyy');
   }
   const F = {}; gesLeer_(sh, GREG_FER_H).forEach(o => { const f = resFecha_(o.FECHA); if (f && /^s[ií]$/i.test(String(o.IMPEESA_NO_RETIRA).trim())) F[f] = o.NOMBRE || 'Feriado'; });
@@ -200,13 +200,17 @@ function gregDetectar_(RG, fresco) {
         if (!porContrato && cuentan.length < (p.veces || 1)) return;
         const peor = L => L.slice().sort((a, b) => b.d - a.d)[0], tramo = g => g.d + ' días, del ' + txt(g.a) + ' al ' + txt(g.b);
         const faltan = []; sinExp.forEach(g => g.faltan.forEach(f => faltan.push(f)));
+        // Sábados pactados sin retiro: si en la ventana no hay ningún retiro en sábado, la empresa no retira los sábados aunque está pactado (Belén, 14/10/2026)
+        const sab = faltan.filter(f => dow(f) === 6), sinSab = ds && ds.indexOf(6) >= 0 && sab.length >= 2 && !F.some(f => f >= desdeV && dow(f) === 6), otros = sinSab ? faltan.filter(f => dow(f) !== 6) : faltan;
         push({ regla: 'RES-01', cod: s.cod, sitio: s.sitio, clave: 'REG|RES-01|' + s.cod + '|' + s.sitio,
           desc: s.sitio + ': ' + catTxt + '. Tiempo máximo de acopio sin frío: ' + horas + ' h.' + (porContrato ? ' La frecuencia del contrato (' + fr + ') permite hasta ' + ic + ' días entre retiros.' : '') +
             (malos.length ? ' En los últimos ' + p.dias + ' días hubo ' + malos.length + ' intervalo(s) de más de ' + horas + ' h entre retiros' +
               (porFer.length ? ': ' + porFer.length + ' por feriados nacionales, en los que Impeesa no retira (el mayor, ' + tramo(peor(porFer)) + ', ' + Array.from(new Set([].concat.apply([], porFer.map(g => g.fer)))).slice(0, 4).map(f => txt(f) + ' ' + FER[f]).join('; ') + ')' : '') +
-              (sinExp.length ? (porFer.length ? ' y ' : ': ') + sinExp.length + ' sin feriado que lo explique' + (faltan.length ? ', con días de retiro del contrato sin manifiesto cargado (' + faltan.slice(0, 6).map(txt).join(', ') + (faltan.length > 6 ? ' y ' + (faltan.length - 6) + ' más' : '') + '): retiro que no se hizo o manifiesto sin cargar' : ' (el mayor, ' + tramo(peor(sinExp)) + ')') : '') + '.' : '') +
+              (sinExp.length ? (porFer.length ? ' y ' : ': ') + sinExp.length + ' sin feriado que lo explique' + (faltan.length ? ', por retiros pactados en el contrato que no se hicieron' + (sinSab ? ': Impeesa no retira los sábados aunque el contrato lo prevé (' + sab.length + ' sábados: ' + sab.slice(0, 5).map(txt).join(', ') + (sab.length > 5 ? '…' : '') + ')' : '') +
+                (otros.length ? (sinSab ? '; además, ' : ' (') + otros.length + ' día(s) hábil(es) sin manifiesto: ' + otros.slice(0, 6).map(txt).join(', ') + (otros.length > 6 ? ' y ' + (otros.length - 6) + ' más' : '') + (sinSab ? ', retiro que no se hizo o manifiesto sin cargar' : ')') : '') : ' (el mayor, ' + tramo(peor(sinExp)) + ')') : '') + '.' : '') +
             (!cuentaFer && porFer.length ? ' Los intervalos por feriado no cuentan para esta regla (parámetro contar_feriados=No).' : '') + ' Sin cámara fría.',
-          accion: porFer.length && !sinExp.length ? 'Acordar con Impeesa un retiro en los fines de semana largos por feriado, o prever cámara fría (3 a 8 °C, con grupo electrógeno)' : sinExp.length && !porFer.length ? 'Pedir a Impeesa los retiros que faltaron (o cargar los manifiestos que falten) y ajustar la frecuencia al tiempo máximo de acopio' : '',
+          accion: sinSab ? 'Reclamar a Impeesa, por la Secretaría de Salud, el retiro de los sábados pactado en el contrato' + (otros.length ? ' y los demás retiros que faltaron (o cargar los manifiestos que falten)' : '') + (porFer.length ? '; para los feriados, acordar un retiro en los fines de semana largos o prever cámara fría' : '')
+            : porFer.length && !sinExp.length ? 'Acordar con Impeesa un retiro en los fines de semana largos por feriado, o prever cámara fría (3 a 8 °C, con grupo electrógeno)' : sinExp.length && !porFer.length ? 'Reclamar a Impeesa, por la Secretaría de Salud, los retiros pactados que no hizo (o cargar los manifiestos que falten)' : '',
           ref: 'Manifiestos ' + txt(desde) + ' a ' + txt(hoy), origen: 'Regla automática' });
       } else {
         const largos = gaps.filter(g => g.d > p2.dias_max), pesados = F.filter(f => f >= desdeV && s.fechas[f] > p2.kg_max);
