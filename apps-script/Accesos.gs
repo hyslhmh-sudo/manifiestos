@@ -6,6 +6,7 @@
  *   ESTABLECIMIENTOS: códigos separados por coma (HZT, HMH) o «Toda la red».
  *   MODULOS: Residuos, Agua, Plagas, Documentos, Accidentes, Cocina, Notas, Radiaciones, Incendio, Diagnóstico, Auditoría, separados por coma, o «Todos».
  *   Diagnóstico y Auditoría (14.69): el diagnóstico y la auditoría interna de residuos se tildan aparte; Residuos solo da manifiestos y certificados.
+ *   Relevamiento de cocina (14.70): aparte de Cocina (que da las personas de cocina).
  *   ESTADO: Activo (entra) · Pendiente · Baja (no entra).
  *   ROL = Servicio (sin DNI, APELLIDO_Y_NOMBRE = empresa: SOMI, MAREM): clave por servicio; se entra sin DNI y cada registro pide quién lo hace.
  * Claves: generarClavesAccesos() pone una clave nueva a cada persona activa con DNI que todavía no la tiene.
@@ -15,7 +16,7 @@
  * Las personas con «Toda la red» no cuentan para esta regla. La clave MAESTRA (Higiene y Seguridad) entra siempre a todo.
  */
 
-const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio', 'Diagnóstico', 'Auditoría'];   // 14.69: Diagnóstico y Auditoría (interna de residuos) se habilitan aparte de Residuos   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
+const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio', 'Diagnóstico', 'Auditoría', 'Relevamiento de cocina'];   // 14.70: el relevamiento de cocina se habilita aparte de Cocina (personas de cocina)   // 14.69: Diagnóstico y Auditoría (interna de residuos) se habilitan aparte de Residuos   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
 const ACC_SOLO_PERSONAL = ['Notas', 'Radiaciones', 'Incendio'];   // módulos que nunca se ven con la clave común del establecimiento (solo con DNI y clave propia)
 // Listas desplegables de ACCESOS (ROL, ESTABLECIMIENTOS, MODULOS, ESTADO): BASE COMÚN › LISTAS, columnas ACCESOS_…; con «Permitir varias selecciones» quedan separados por coma.
 // Qué módulo hace falta para cada acción («d_» y «a_», diagnóstico y auditoría interna de residuos; «s_», siniestros)
@@ -23,6 +24,13 @@ const ACC_PERMISO = { manifiesto: 'Residuos', certificado: 'Residuos', lote: 'Re
   m_analisis: 'Agua', m_plaga_aviso: 'Plagas', m_plaga_registro: 'Plagas', m_documento: 'Documentos', m_accidente: 'Accidentes' };
 
 const accTxt_ = v => String(v == null ? '' : v).trim();
+// Módulos escritos en ACCESOS › MODULOS: cada uno por su nombre (sin importar tildes ni mayúsculas) o por sus primeras 5 letras (14.70: «Relevamiento de cocina» no da «Cocina»)
+const accNorm_ = s => accTxt_(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function accModulosDe_(txt) {
+  const out = []; String(txt || '').split(/[,;·]+/).map(accNorm_).filter(Boolean).forEach(it => {
+    const m = ACC_MODULOS.find(x => accNorm_(x) === it) || ACC_MODULOS.find(x => it.indexOf(accNorm_(x).slice(0, 5)) === 0); if (m && out.indexOf(m) < 0) out.push(m); });
+  return ACC_MODULOS.filter(m => out.indexOf(m) >= 0);
+}
 const accDni_ = v => String(v == null ? '' : v).replace(/\D/g, '');
 const accClaveReal_ = c => !!c && !/^(usa |por ahora|s\/d)/i.test(c);   // textos de aviso que no son claves
 
@@ -34,7 +42,7 @@ function accesosLeer_() {
   const L = sh.getRange(6, 1, sh.getLastRow() - 5, H.length).getDisplayValues().map((r, i) => { const o = { fila: 6 + i }; H.forEach((h, j) => o[h] = accTxt_(r[j])); return o; })
     .filter(o => o.APELLIDO_Y_NOMBRE || o.DNI).map(o => {
       const ests = /toda|todos/i.test(o.ESTABLECIMIENTOS) ? ['*'] : o.ESTABLECIMIENTOS.split(/[,;·]+/).map(accTxt_).filter(Boolean);   // separados por coma (lista desplegable con varias selecciones); hay códigos con espacios: «Gan Gan»
-      const mods = /(^|[,;·])\s*todos\s*($|[,;·])/i.test(o.MODULOS) ? ACC_MODULOS.slice() : ACC_MODULOS.filter(m => new RegExp(m.slice(0, 5), 'i').test(o.MODULOS));
+      const mods = /(^|[,;·])\s*todos\s*($|[,;·])/i.test(o.MODULOS) ? ACC_MODULOS.slice() : accModulosDe_(o.MODULOS);
       return { fila: o.fila, dni: accDni_(o.DNI), nombre: o.APELLIDO_Y_NOMBRE, rol: o.ROL, ests: ests, modulos: mods, clave: o.CLAVE, activo: /^activ/i.test(o.ESTADO) };
     });
   try { c.put('accesos', JSON.stringify(L), 300); } catch (e) {}
@@ -66,7 +74,7 @@ function accHabilitacion_() {
   if (sh && sh.getLastRow() >= 6) {
     L = sh.getRange(6, 1, sh.getLastRow() - 5, 3).getValues().filter(r => accTxt_(r[0])).map(r => {
       let d = r[1]; if (!(d instanceof Date) && accTxt_(d)) { const p = accTxt_(d).split(/[\/\-.]/); d = p.length === 3 ? (p[0].length === 4 ? new Date(+p[0], p[1] - 1, +p[2]) : new Date(+p[2], p[1] - 1, +p[0])) : null; }
-      return { modulo: ACC_MODULOS.find(x => new RegExp('^' + x.slice(0, 5), 'i').test(accTxt_(r[0]))) || accTxt_(r[0]), desde: d instanceof Date && !isNaN(d) ? Utilities.formatDate(d, TZ, 'yyyy-MM-dd') : '', obs: accTxt_(r[2]) };
+      return { modulo: accModulosDe_(r[0])[0] || accTxt_(r[0]), desde: d instanceof Date && !isNaN(d) ? Utilities.formatDate(d, TZ, 'yyyy-MM-dd') : '', obs: accTxt_(r[2]) };
     });
   }
   try { c.put('acc_hab', JSON.stringify(L), 300); } catch (e) {}
@@ -106,7 +114,7 @@ function acceso_(est, clave, dni) {
 }
 // ¿Puede hacer esta acción? (las de consulta, como config, tablero o registros, no piden módulo)
 function accPermite_(accion, acc) {
-  const a = String(accion || ''), m = a === 'd_abrir' || a === 'd_lista' ? '' : /^d_/.test(a) ? 'Diagnóstico' : /^a_/.test(a) ? 'Auditoría' : /^s_/.test(a) ? 'Accidentes' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
+  const a = String(accion || ''), m = a === 'd_abrir' || a === 'd_lista' ? '' : /^d_/.test(a) ? 'Diagnóstico' : /^a_/.test(a) ? 'Auditoría' : /^s_/.test(a) ? 'Accidentes' : /^k_(abrir|guardar|foto)$/.test(a) ? 'Relevamiento de cocina' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
   return !m || acc.modulos.indexOf(m) >= 0;
 }
 
