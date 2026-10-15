@@ -2026,11 +2026,21 @@ async function capApi(accion, datos, ms) {
       const m = ((doc.body && doc.body.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 300);
       throw new Error('El libro de capacitaciones respondió con un error de Google (acción ' + accion + '): ' + (m || 'sin detalle') + '. Mirá en Apps Script › Ejecuciones el último doPost con error.');
     }
-    const j = JSON.parse(txt);
+    const j = JSON.parse(capPublico(txt));
     if (j.error === 'clave') throw new Error('clave');
     if (!j.ok) throw new Error(j.error || 'error');
     return j;
   } finally { clearTimeout(t); }
+}
+// Links para compartir (15/10/2026): los de registro (?d=), inscripción (?i=), capacitación (?k=) y código (?c=) salen con la
+// dirección pública de GitHub (capacitaciones/?d=…), que abre lo mismo sin la página de aviso de Google. También dentro de los QR
+// y de los textos para WhatsApp. Si falta GitHub, la dirección de Google sigue funcionando.
+const CAP_PUB = 'https://hyslhmh-sudo.github.io/capacitaciones/';
+function capPublico(txt) {
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+  return String(txt)
+    .replace(new RegExp(esc(CAP_API) + '\\?(?=[dikc]=)', 'g'), CAP_PUB + '?')
+    .replace(new RegExp(esc(encodeURIComponent(CAP_API)) + '%3F(?=[dikc]%3D)', 'gi'), encodeURIComponent(CAP_PUB) + '%3F');
 }
 function capError(e) {
   const m = e && e.message;
