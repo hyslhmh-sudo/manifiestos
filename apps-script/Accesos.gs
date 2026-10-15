@@ -4,7 +4,8 @@
  * los módulos que tiene asignados. Todo se maneja desde BASE COMÚN › ACCESOS (fila 5 = encabezados):
  *   DNI · APELLIDO_Y_NOMBRE · CORREO · ROL · ESTABLECIMIENTOS · MODULOS · CLAVE · ESTADO · DESDE · OBSERVACIONES
  *   ESTABLECIMIENTOS: códigos separados por coma (HZT, HMH) o «Toda la red».
- *   MODULOS: Residuos, Agua, Plagas, Documentos, Accidentes, separados por coma, o «Todos».
+ *   MODULOS: Residuos, Agua, Plagas, Documentos, Accidentes, Cocina, Notas, Radiaciones, Incendio, Diagnóstico, Auditoría, separados por coma, o «Todos».
+ *   Diagnóstico y Auditoría (14.69): el diagnóstico y la auditoría interna de residuos se tildan aparte; Residuos solo da manifiestos y certificados.
  *   ESTADO: Activo (entra) · Pendiente · Baja (no entra).
  *   ROL = Servicio (sin DNI, APELLIDO_Y_NOMBRE = empresa: SOMI, MAREM): clave por servicio; se entra sin DNI y cada registro pide quién lo hace.
  * Claves: generarClavesAccesos() pone una clave nueva a cada persona activa con DNI que todavía no la tiene.
@@ -14,7 +15,7 @@
  * Las personas con «Toda la red» no cuentan para esta regla. La clave MAESTRA (Higiene y Seguridad) entra siempre a todo.
  */
 
-const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio'];   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
+const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio', 'Diagnóstico', 'Auditoría'];   // 14.69: Diagnóstico y Auditoría (interna de residuos) se habilitan aparte de Residuos   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
 const ACC_SOLO_PERSONAL = ['Notas', 'Radiaciones', 'Incendio'];   // módulos que nunca se ven con la clave común del establecimiento (solo con DNI y clave propia)
 // Listas desplegables de ACCESOS (ROL, ESTABLECIMIENTOS, MODULOS, ESTADO): BASE COMÚN › LISTAS, columnas ACCESOS_…; con «Permitir varias selecciones» quedan separados por coma.
 // Qué módulo hace falta para cada acción («d_» y «a_», diagnóstico y auditoría interna de residuos; «s_», siniestros)
@@ -105,7 +106,7 @@ function acceso_(est, clave, dni) {
 }
 // ¿Puede hacer esta acción? (las de consulta, como config, tablero o registros, no piden módulo)
 function accPermite_(accion, acc) {
-  const a = String(accion || ''), m = /^(d_|a_)/.test(a) ? 'Residuos' : /^s_/.test(a) ? 'Accidentes' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
+  const a = String(accion || ''), m = a === 'd_abrir' || a === 'd_lista' ? '' : /^d_/.test(a) ? 'Diagnóstico' : /^a_/.test(a) ? 'Auditoría' : /^s_/.test(a) ? 'Accidentes' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
   return !m || acc.modulos.indexOf(m) >= 0;
 }
 
