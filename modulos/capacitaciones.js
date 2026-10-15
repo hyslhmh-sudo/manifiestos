@@ -918,3 +918,158 @@ async function capAvisoValidar(activo) {
   d.textContent = 'Para validar: ' + (CAPV_N.altas ? CAPV_N.altas + ' alta(s) nueva(s)' : '') + (CAPV_N.altas && CAPV_N.propuestas ? ' y ' : '') + (CAPV_N.propuestas ? CAPV_N.propuestas + ' cambio(s) propuesto(s)' : '') + ' de la secretaría. Tocá para revisar →';
   const cab = m.querySelector('.cab'); if (cab) cab.after(d); else m.prepend(d);
 }
+
+// ------------------------------------------------------------------ 9 · Capacitaciones · Gestión (14.71): lo que estaba en el panel viejo, ahora en el portal
+// Backend: Sistema HyS › CapGestion.gs (acciones p_cg_…), sobre el libro único CAPACITACIONES · Sistema HyS.
+let CAPP = { q: '', r: null }, CAPCT = null, CAPML = null, CAPCO = { estado: '' };
+const capChip = (t, c) => '<span class="chip mini ' + c + '">' + esc(t) + '</span>';
+const capKp = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
+const capLnk = (u, t) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + ' ↗</a>' : '';
+const capSinInstalar = (ruta, t, r) => marco(ruta, capTit(t) + '<div class="aviso error">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer.') + (/desconocida|instalar/i.test((r && (r.mensaje || r.error)) || '') ? ' Falta instalar CapGestion.gs en el Sistema HyS.' : '') + '</div>');
+
+// ---------- Personas y certificados
+async function capPersonas() {
+  marco('#capper', capTit('Personas y certificados', 'Buscá por DNI, apellido, nombre o correo. Desde la ficha ves sus registros, certificados y lo que le falta, y corregís cualquier dato (queda en el historial).', '<a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a>') +
+    '<section class="card"><div class="filtros"><label class="f" style="flex:1;min-width:240px">Buscar<input class="c" id="ppQ" placeholder="DNI, apellido, nombre o correo" value="' + esc(CAPP.q) + '" autocomplete="off"></label></div><div id="ppRes" style="margin-top:10px"></div></section>' +
+    '<p class="mu peq">Si el portal falla: libro CAPACITACIONES, hojas PERSONAS, REGISTROS y CERTIFICADOS.</p>');
+  const pintar = r => {
+    if (!$('ppRes')) return;
+    if (!r) return $('ppRes').innerHTML = '<div class="mu peq">Escribí al menos 3 letras o números.</div>';
+    if (!r.ok) return $('ppRes').innerHTML = '<div class="aviso error">' + esc(r.mensaje || r.error || 'No se pudo buscar.') + '</div>';
+    $('ppRes').innerHTML = !r.lista.length ? '<div class="vacio">Sin resultados.</div>' : '<div class="mu peq" style="margin-bottom:6px">' + r.total + ' persona(s)' + (r.total > r.lista.length ? ' · se muestran ' + r.lista.length + ': afiná la búsqueda' : '') + '</div><div class="tabla"><table><thead><tr><th>Persona</th><th>Dónde trabaja</th><th>Contacto</th><th>Registros</th></tr></thead><tbody>' +
+      r.lista.map(p => '<tr class="cl" data-p="' + esc(p.dni) + '"><td><b>' + esc(p.nombre) + '</b>' + (p.revisar ? ' ' + capChip('Revisar', 'wa') : '') + '<div class="mu peq">DNI ' + esc(p.dni) + ' · ' + esc(p.publico) + '</div></td><td class="peq">' + esc([p.est, p.servicio, p.funcion].filter(x => !capVacio(x)).join(' · ') || '—') + '</td>' +
+        '<td class="peq">' + (capVacio(p.correo) ? '<span style="color:var(--er)">Sin correo</span>' : esc(p.correo)) + '<div class="mu">' + (capVacio(p.tel) ? 'Sin teléfono' : esc(p.tel)) + '</div></td><td>' + p.registros + '</td></tr>').join('') + '</tbody></table></div>';
+    document.querySelectorAll('tr.cl[data-p]').forEach(tr => tr.onclick = () => location.hash = '#capper/' + tr.dataset.p);
+  };
+  const buscar = async () => { const q = $('ppQ').value.trim(); CAPP.q = q; const n = q.replace(/[.\s]/g, ''); if ((/^\d+$/.test(n) ? n.length : capNorm(q).length) < 3) { CAPP.r = null; return pintar(null); }
+    $('ppRes').innerHTML = '<div class="mu peq">Buscando…</div>'; let r; try { r = await api('p_cg_buscar', { q: q }, 90000); } catch (e) { return; } if ($('ppQ') && $('ppQ').value.trim() === q) { CAPP.r = r; pintar(r); } };
+  $('ppQ').oninput = () => { clearTimeout(capPersonas.t); capPersonas.t = setTimeout(buscar, 450); };
+  $('ppQ').focus(); if (CAPP.q && CAPP.r) pintar(CAPP.r); else pintar(null);
+}
+async function capPersona(dni, fresco) {
+  cargando('#capper', 'Leyendo la ficha…');
+  let r; try { r = await api('p_cg_persona', { dni: dni, fresco: !!fresco }, 120000); } catch (e) { return; }
+  if (location.hash.split('/')[0] !== '#capper') return;
+  if (!r.ok) return capSinInstalar('#capper', 'Persona', r);
+  const D = r.datos, C = r.cumplimiento, nom = D.APELLIDOS + ', ' + D.NOMBRES, vig = r.certificados.filter(c => !/anul|reempl/i.test(c.estado));
+  const fila = (k, v) => '<dt>' + esc(k) + '</dt><dd>' + (capVacio(v) ? '<span class="mu">s/d</span>' : esc(v)) + '</dd>';
+  marco('#capper', '<div><a href="#capper" class="peq">← Personas</a></div>' + capTit(nom, esc('DNI ' + D.DNI + ' · ' + [D.ESTABLECIMIENTO, D.SERVICIO, D.FUNCION].filter(x => !capVacio(x)).join(' · ')),
+      '<button class="btn pri" id="pfEd">Corregir datos</button><a class="btn sec" href="' + esc(r.pagina) + '" target="_blank" rel="noopener">Página de certificados ↗</a>') +
+    '<div class="tb5">' + capKp('Registros', r.registros.length, 'asistencias y evaluaciones') + capKp('Certificados', vig.length, 'vigentes en el sistema') +
+      (C ? capKp('Obligatorias', C.cumplidas + ' / ' + C.obligatorias, C.pct + ' al día', C.obligatorias && C.cumplidas >= C.obligatorias ? 'var(--ok)' : C.cumplidas ? 'var(--wa)' : 'var(--er)') : capKp('Obligatorias', '—', 'no está en la base de trabajadores de HZT y HMH')) +
+      capKp('Revisar', /^s[ií]/i.test(D.REVISAR) ? 'Sí' : 'No', /^s[ií]/i.test(D.REVISAR) ? 'datos a controlar' : 'datos controlados', /^s[ií]/i.test(D.REVISAR) ? 'var(--wa)' : '') + '</div>' +
+    '<div class="grid g2"><section class="card"><h2>Datos</h2><dl class="dl" style="margin-top:8px">' + fila('Correo', D.CORREO) + fila('Teléfono', D.TELEFONO) + fila('Público', D.PUBLICO) + fila('Institución', D.INSTITUCION) + fila('Servicio', D.SERVICIO) + fila('Función', D.PROFESION || D.FUNCION) +
+      fila('Vínculo', D.VINCULO) + (capVacio(D.EMPRESA) ? '' : fila('Empresa', D.EMPRESA)) + (capVacio(D.CARRERA) ? '' : fila('Carrera', D.CARRERA)) + fila('Origen del dato', D.ORIGEN_DE_DATOS) + fila('Última actualización', D.ULTIMA_ACTUALIZACION) + '</dl></section>' +
+    '<section class="card"><h2>Lo que le falta</h2>' + (C ? '<p class="mu peq" style="margin:4px 0 8px">Según la matriz para su función y servicio (' + esc(C.jefatura) + ').</p>' + (capVacio(C.falta) ? '<div style="color:var(--ok);font-weight:700">Tiene todas sus obligatorias.</div>' : C.falta.split(' · ').map(f => '<div class="item"><span>' + esc(f) + '</span></div>').join(''))
+      : '<p class="mu peq">No figura en la base de trabajadores de HZT y HMH (externos, tercerizados, estudiantes u otros establecimientos): no tiene obligatorias calculadas.</p>') + '</section></div>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>Certificados</h2></div>' + (r.certificados.length ? '<table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Tipo</th><th>Horas</th><th>Documento</th><th>Estado</th></tr></thead><tbody>' +
+      r.certificados.map(c => '<tr><td>' + esc(c.fecha) + '</td><td><b>' + esc(c.nombre) + '</b><div class="mu peq">' + esc(c.codigo) + (c.encuentro && c.encuentro !== 's/d' ? ' · encuentro ' + esc(c.encuentro) : '') + ' · ' + esc(c.id) + '</div></td><td class="peq">' + esc(c.tipo) + '</td><td>' + esc(c.horas) + '</td><td>' + (capLnk(c.link, 'PDF') || '<span class="mu">Sin PDF</span>') + '</td><td>' + capChip(c.estado || 's/d', /v[aá]lido/i.test(c.estado) ? 'ok' : /anul/i.test(c.estado) ? 'er' : 'gr') + '</td></tr>').join('') + '</tbody></table>' : '<div class="vacio">Sin certificados.</div>') + '</section>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>Registros</h2></div>' + (r.registros.length ? '<table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Tipo</th><th>Nota</th><th>Vence</th><th>Origen</th></tr></thead><tbody>' +
+      r.registros.map(x => '<tr><td>' + esc(x.fecha) + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (x.encuentro ? ' · encuentro ' + esc(x.encuentro) : '') + (/anul/i.test(x.estado) ? ' · <b style="color:var(--er)">anulado</b>' : '') + '</div></td><td class="peq">' + esc(x.tipo) + '</td><td>' + esc(x.nota ? x.nota + (x.aprobado ? ' (' + x.aprobado + ')' : '') : '—') + '</td><td class="peq">' + esc(x.vence || '—') + '</td><td class="peq">' + esc(x.origen) + '</td></tr>').join('') + '</tbody></table>' : '<div class="vacio">Sin registros.</div>') + '</section>' +
+    (r.historial.length ? '<details class="card peq"><summary style="cursor:pointer;font-weight:700">Historial de cambios (' + r.historial.length + ')</summary>' + r.historial.map(h => '<div class="item"><span><b>' + esc(h.campo) + '</b>: «' + esc(h.antes || 'vacío') + '» → «' + esc(h.despues) + '»<div class="mu">' + esc(h.fecha + ' · ' + h.quien + (h.motivo ? ' · ' + h.motivo : '')) + '</div></span></div>').join('') + '</details>' : ''));
+  $('pfEd').onclick = () => {
+    const L = r.listas, op = (arr, v) => (v && arr.indexOf(v) < 0 ? [v] : []).concat(arr);
+    const NOM = { APELLIDOS: 'Apellidos', NOMBRES: 'Nombres', CORREO: 'Correo', TELEFONO: 'Teléfono', PUBLICO: ['Público', L.publicos], CIUDAD: 'Ciudad', PROVINCIA: 'Provincia', PAIS: 'País', PROFESION: 'Función y detalle (como se ve en la ficha)',
+      INSTITUCION: ['Institución', L.instituciones], ESTABLECIMIENTO: ['Establecimiento (sigla)', L.establecimientos], SERVICIO: ['Servicio', L.servicios], FUNCION: ['Función', L.funciones], VINCULO: ['Vínculo', L.vinculos], EMPRESA: ['Empresa (si es tercerizado)', [''].concat(L.empresas)], CARRERA: 'Carrera (estudiantes)', REVISAR: ['Revisar', ['No', 'Sí']] };
+    const campos = r.editables.map(k => { const n = NOM[k] || k; return Array.isArray(n) ? [k, n[0], op(n[1], D[k])] : [k, n]; }).concat([['motivo', 'Motivo del cambio (queda en el historial)', '', 1]]);
+    modal('Corregir datos · ' + nom, campos, D, async o => {
+      const motivo = o.motivo; delete o.motivo;
+      const res = await api('p_cg_persona_guardar', { dni: D.DNI, datos: o, motivo: motivo }, 90000); if (!res.ok) return res.mensaje || 'No se pudo guardar.';
+      toast(res.cambios ? res.cambios + ' dato(s) corregido(s).' : 'No había cambios.'); capPersona(D.DNI, true); return '';
+    }, '<p class="mu peq" style="margin:8px 0 0">Servicio, función e institución del personal de HZT y HMH vienen de la base de trabajadores: si los cambiás acá, corregilos también allá para que el cumplimiento los tome.</p>');
+  };
+}
+
+// ---------- Contactos y carga de mails
+async function capContactos(fresco) {
+  if (!CAPCT || fresco) { cargando('#capcont', 'Leyendo jefaturas y contactos…'); try { CAPCT = await api('p_cg_contactos', { fresco: !!fresco }, 120000); } catch (e) { return; } }
+  if (location.hash.split('/')[0] !== '#capcont') return;
+  if (!CAPCT.ok) return capSinInstalar('#capcont', 'Contactos', CAPCT);
+  const T = CAPCT;
+  marco('#capcont', capTit('Contactos y mails', 'Correos y teléfonos del personal y de cada jefatura. Pegá una lista de mails: el sistema la cruza por DNI o por nombre, te muestra qué cambia y aplica solo lo que confirmás.', '<a class="btn sec" href="#capjef">Editar jefaturas</a><button class="btn sec" id="ctAct">Actualizar</button>') +
+    '<div class="tb5">' + capKp('Personas', T.personas, 'en el libro') + capKp('Sin correo', T.sinCorreo, 'personas', T.sinCorreo ? 'var(--wa)' : '') + capKp('Sin teléfono', T.sinTel, 'personas') + capKp('Jefaturas sin correo', T.jefSinCorreo, 'de ' + T.jefaturas.length, T.jefSinCorreo ? 'var(--er)' : '') + '</div>' +
+    '<section class="card"><h2>Cargar lista de mails</h2><p class="mu peq" style="margin:4px 0 8px">Una persona por línea, con su correo y su DNI (o apellido y nombre). Sirve lo que copies de una planilla o de un correo. Si la persona ya tenía otro correo, gana el de la lista (el más nuevo).</p>' +
+      '<textarea class="c" id="mlTxt" rows="6" style="width:100%" placeholder="30123456  perez.juan@gmail.com&#10;Gómez, Ana; ana.gomez@hotmail.com"></textarea><div class="cpn" style="margin-top:8px"><button class="btn pri" id="mlPrev">Revisar la lista</button></div><div id="mlRes" style="margin-top:10px"></div></section>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>Jefaturas</h2><span class="mu peq">De mayor a menor personal. Los avisos e informes van al correo del servicio o, si no hay, al del responsable.</span></div><table><thead><tr><th>Jefatura</th><th>Responsable</th><th>Correo</th><th>Personal</th><th>Cumplimiento</th><th>Último informe</th></tr></thead><tbody>' +
+      T.jefaturas.map(j => '<tr><td><b>' + esc(j.jefatura) + '</b>' + (j.prioritaria ? ' ' + capChip('Prioritaria', 'pa') : '') + '<div class="mu peq">' + esc([j.est, j.tel ? 'int. ' + j.tel : ''].filter(Boolean).join(' · ')) + '</div></td><td class="peq">' + esc(j.responsable || '—') + '</td>' +
+        '<td class="peq">' + (j.correo ? esc(j.correo) : capChip('Falta', 'er')) + '</td><td>' + (j.personal || '—') + '</td><td>' + esc(j.pct || '—') + '</td><td class="peq">' + (j.ultimo ? (j.link ? capLnk(j.link, j.ultimo) : esc(j.ultimo)) : '—') + '</td></tr>').join('') + '</tbody></table></section>' +
+    '<p class="mu peq">Si el portal falla: libro CAPACITACIONES, hojas PERSONAS (columna CORREO) y JEFATURAS.</p>');
+  $('ctAct').onclick = () => capContactos(true);
+  $('mlPrev').onclick = async () => {
+    const txt = $('mlTxt').value.trim(); if (!txt) return toast('Pegá la lista primero.');
+    $('mlPrev').disabled = true; $('mlRes').innerHTML = '<div class="mu peq">Cruzando con el libro…</div>';
+    let r; try { r = await api('p_cg_mails_previa', { texto: txt }, 120000); } catch (e) { $('mlPrev').disabled = false; return; } $('mlPrev').disabled = false;
+    if (!r.ok) return $('mlRes').innerHTML = '<div class="aviso error">' + esc(r.mensaje || 'No se pudo leer la lista.') + '</div>';
+    CAPML = r.lista; const cambia = CAPML.filter(x => x.estado === 'Nuevo' || x.estado === 'Reemplaza');
+    const col = e => e === 'Nuevo' ? 'ok' : e === 'Reemplaza' ? 'wa' : e === 'Igual' ? 'gr' : 'er';
+    $('mlRes').innerHTML = '<div class="mu peq" style="margin-bottom:6px">' + CAPML.length + ' línea(s): ' + cambia.length + ' para cargar · ' + CAPML.filter(x => x.estado === 'Igual').length + ' ya estaban · ' + CAPML.filter(x => !x.dni).length + ' sin persona.</div>' +
+      '<div class="tabla"><table><thead><tr><th></th><th>Línea</th><th>Persona</th><th>Correo actual → nuevo</th><th>Estado</th></tr></thead><tbody>' + CAPML.map((x, i) => '<tr><td>' + (x.estado === 'Nuevo' || x.estado === 'Reemplaza' ? '<input type="checkbox" data-ml="' + i + '"' + (x.aviso ? '' : ' checked') + '>' : '') + '</td><td class="peq">' + esc(x.linea) + '</td>' +
+        '<td class="peq">' + (x.dni ? '<b>' + esc(x.persona) + '</b><div class="mu">DNI ' + esc(x.dni) + ' · por ' + esc(x.via) + '</div>' : '—') + '</td><td class="peq">' + (x.dni ? esc(x.actual || 'vacío') + ' → <b>' + esc(x.correo) + '</b>' : esc(x.correo || '')) + (x.aviso ? '<div style="color:var(--er)">' + esc(x.aviso) + '</div>' : '') + '</td><td>' + capChip(x.estado, col(x.estado)) + '</td></tr>').join('') + '</tbody></table></div>' +
+      (cambia.length ? '<div class="cpn" style="margin-top:8px"><button class="btn pri" id="mlAp">Cargar los marcados</button></div>' : '');
+    if ($('mlAp')) $('mlAp').onclick = async () => {
+      const items = Array.from(document.querySelectorAll('[data-ml]:checked')).map(c => CAPML[c.dataset.ml]).map(x => ({ dni: x.dni, correo: x.correo })); if (!items.length) return toast('No hay nada marcado.');
+      $('mlAp').disabled = true; let a; try { a = await api('p_cg_mails_aplicar', { items: items }, 120000); } catch (e) { $('mlAp').disabled = false; return; }
+      if (!a.ok) { $('mlAp').disabled = false; return toast(a.mensaje || 'No se pudo cargar.'); }
+      toast(a.n + ' correo(s) cargado(s).'); $('mlTxt').value = ''; capContactos(true);
+    };
+  };
+}
+
+// ---------- Informes (mensual o a pedido · por jefatura)
+async function capInformes() {
+  cargando('#capinf', 'Preparando los informes…');
+  let op, ct; try { [op, ct] = await Promise.all([api('p_cg_informe_op', {}, 90000), CAPCT && CAPCT.ok ? CAPCT : api('p_cg_contactos', {}, 120000)]); } catch (e) { return; }
+  if (location.hash.split('/')[0] !== '#capinf') return;
+  if (!op.ok) return capSinInstalar('#capinf', 'Informes', op);
+  CAPCT = ct; const jefs = (ct.jefaturas || []).filter(j => j.personal > 0);
+  marco('#capinf', capTit('Informes de capacitación', 'Se generan como Google Doc (versión 0, para revisar) y PDF, con el formato de informe técnico de HySL. Nada se envía solo.') +
+    '<div class="grid g2"><section class="card"><h2>Informe mensual o a pedido</h2><p class="mu peq" style="margin:4px 0 10px">Actividad del mes comparada con el anterior, acumulado del ciclo, cumplimiento de la matriz por establecimiento y servicio, y recomendaciones. Lleva número del registro de documentos (CAP · IT).</p>' +
+      '<div style="display:grid;gap:10px"><label class="f">Período<select class="c" id="inMes">' + op.meses.map((m, i) => '<option value="' + esc(m.valor) + '"' + (i === 1 ? ' selected' : '') + '>Mensual · ' + esc(m.texto) + '</option>').join('') + '<option value="">A pedido · acumulado del ciclo hasta hoy</option></select></label>' +
+      '<label class="f">Destinatario<input class="c" id="inDes" placeholder="Ej.: Dr. Paulo Taurelli"></label><label class="f">Cargo<input class="c" id="inCar" placeholder="Ej.: Director del HZT y del HMH"></label>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="inPru"> Prueba (sin pedir número, para revisar el formato)</label><div class="cpn"><button class="btn pri" id="inGen">Generar informe</button></div><div id="inRes"></div></div></section>' +
+    '<section class="card"><h2>Informe por jefatura</h2><p class="mu peq" style="margin:4px 0 10px">Para cada jefatura: su personal, el porcentaje al día, lo que le falta a cada persona y los próximos dictados que le sirven. Queda en Drive (PDF y Doc) y en la hoja JEFATURAS.</p>' +
+      '<div style="display:grid;gap:10px"><label class="f">Jefatura<select class="c" id="ijJef"><option value="">Elegí…</option>' + jefs.map(j => '<option value="' + esc(j.jefatura) + '">' + esc(j.jefatura) + ' · ' + j.personal + ' personas' + (j.correo ? '' : ' · sin correo') + '</option>').join('') + '</select></label>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;font-size:14px"><input type="checkbox" id="ijBor" style="margin-top:3px"> Preparar el correo para la jefatura como borrador (no se envía: lo revisás y lo enviás desde la Bandeja de correos)</label>' +
+      '<div class="cpn"><button class="btn pri" id="ijGen">Generar informe</button><a class="btn sec" href="#capcorreo">Bandeja de correos</a></div><div id="ijRes"></div></div></section></div>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>Informes anteriores</h2><span class="mu peq">Los últimos del registro de documentos (bloque Capacitación).</span></div>' + (op.previos.length ? '<table><thead><tr><th>Código</th><th>Fecha</th><th>Asunto</th><th>Documentos</th><th>Estado</th></tr></thead><tbody>' +
+      op.previos.map(p => '<tr><td><b>' + esc(p.codigo) + '</b></td><td>' + esc(p.fecha) + '</td><td class="peq">' + esc(p.asunto) + '</td><td class="peq">' + [capLnk(p.doc, 'Doc'), capLnk(p.pdf, 'PDF')].filter(Boolean).join(' · ') + '</td><td>' + esc(p.estado) + '</td></tr>').join('') + '</tbody></table>' : '<div class="vacio">Todavía no hay informes generados desde el portal.</div>') + '</section>');
+  const res = (id, r) => $(id).innerHTML = r.ok ? '<div class="aviso" style="background:#E9F5EE;border-color:#BFE3CC">Listo' + (r.codigo ? ': <b>' + esc(r.codigo) + '</b>' : '') + '. ' + [capLnk(r.doc, 'Google Doc'), capLnk(r.pdf, 'PDF'), capLnk(r.carpeta, 'Carpeta')].filter(Boolean).join(' · ') +
+    (r.borrador ? '<br>Borrador de correo preparado: <a href="#capcorreo">revisalo y envialo desde la Bandeja</a>.' + (r.borrador.aviso ? ' ' + esc(r.borrador.aviso) : '') : '') + (r.aviso ? '<br>' + esc(r.aviso) : '') + (r.notasAlPie === false ? '<br>Las notas al pie quedaron como marcas [[NOTA]]: revisalas.' : '') + '</div>' : '<div class="aviso error">' + esc(r.mensaje || r.error || 'No se pudo generar.') + '</div>';
+  $('inGen').onclick = async () => { $('inGen').disabled = true; $('inRes').innerHTML = '<div class="mu peq">Generando el informe (puede tardar un minuto)…</div>';
+    let r; try { r = await api('p_cg_informe', { mes: $('inMes').value, destinatario: $('inDes').value.trim(), cargo: $('inCar').value.trim(), prueba: $('inPru').checked }, 300000); } catch (e) { $('inGen').disabled = false; $('inRes').innerHTML = ''; return; }
+    $('inGen').disabled = false; res('inRes', r); };
+  $('ijGen').onclick = async () => { const j = $('ijJef').value; if (!j) return toast('Elegí la jefatura.'); $('ijGen').disabled = true; $('ijRes').innerHTML = '<div class="mu peq">Generando…</div>';
+    let r; try { r = await api('p_cg_inf_jefatura', { jefatura: j, borrador: $('ijBor').checked }, 240000); } catch (e) { $('ijGen').disabled = false; $('ijRes').innerHTML = ''; return; }
+    $('ijGen').disabled = false; res('ijRes', r); if (r.ok) CAPCT = null; };
+}
+
+// ---------- Bandeja de correos
+async function capCorreos(fresco) {
+  cargando('#capcorreo', 'Leyendo la bandeja…');
+  let r; try { r = await api('p_cg_correos', { fresco: !!fresco }, 120000); } catch (e) { return; }
+  if (location.hash.split('/')[0] !== '#capcorreo') return;
+  if (!r.ok) return capSinInstalar('#capcorreo', 'Bandeja de correos', r);
+  const E = r.estados, F = CAPCO.estado, lista = r.lista.filter(m => !F || m.estado === F);
+  const col = e => /borrador/i.test(e) ? 'wa' : /envi/i.test(e) ? 'ok' : /descart|error/i.test(e) ? 'er' : 'gr';
+  marco('#capcorreo', capTit('Bandeja de correos', 'Los correos del sistema de capacitaciones. Solo salen solos los de la agenda (confirmación, recordatorios y suspensión). Todo lo demás queda como borrador: lo ves acá y sale cuando tocás «Enviar».',
+      '<a class="btn sec" href="' + esc(r.gmail) + '" target="_blank" rel="noopener">Borradores en Gmail ↗</a><a class="btn sec" href="' + esc(r.libro) + '" target="_blank" rel="noopener">Hoja _MENSAJES ↗</a><button class="btn sec" id="coAct">Actualizar</button>') +
+    (r.remitente ? '' : '<div class="aviso">Gmail de la cuenta del sistema no tiene «Enviar como» ' + esc('belenpellegrini.hys@gmail.com') + ': los borradores salen de esa cuenta con respuesta a tu correo de HyS.</div>') +
+    '<div class="tb5">' + capKp('Para revisar', E.Borrador || 0, 'borradores', E.Borrador ? 'var(--wa)' : '') + Object.keys(E).filter(k => k !== 'Borrador').slice(0, 4).map(k => capKp(esc(k), E[k], 'mensajes')).join('') + '</div>' +
+    '<section class="card tabla"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end"><h2>Mensajes</h2><label class="f">Mostrar<select class="c" id="coF"><option value="">Todos</option>' + Object.keys(E).map(k => '<option' + (k === F ? ' selected' : '') + '>' + esc(k) + '</option>').join('') + '</select></label></div>' +
+    (lista.length ? '<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Para</th><th>Asunto</th><th>Estado</th><th></th></tr></thead><tbody>' + lista.map((m, i) => '<tr><td class="peq">' + esc(m.fecha) + '</td><td class="peq">' + esc(m.tipo) + '</td><td class="peq">' + esc(m.para) + '</td><td>' + esc(m.asunto) + (m.codigo ? '<div class="mu peq">' + esc(m.codigo) + '</div>' : '') + '</td><td>' + capChip(m.estado, col(m.estado)) + '</td>' +
+      '<td>' + (m.estado === 'Borrador' && m.borrador ? '<button class="btn pri" style="min-height:32px;padding:4px 12px;font-size:12.5px" data-co="' + esc(m.id) + '">Ver y enviar</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="vacio">No hay mensajes' + (F ? ' con ese estado' : '') + '.</div>') + '</section>');
+  $('coAct').onclick = () => capCorreos(true);
+  $('coF').onchange = e => { CAPCO.estado = e.target.value; capCorreos(); };
+  document.querySelectorAll('[data-co]').forEach(b => b.onclick = async () => {
+    b.disabled = true; let v; try { v = await api('p_cg_correo_ver', { id: b.dataset.co }, 90000); } catch (e) { b.disabled = false; return; } b.disabled = false;
+    if (!v.ok) return toast(v.mensaje || 'No se pudo abrir el borrador.');
+    const w = capVentana('Revisar antes de enviar', '<dl class="dl"><dt>De</dt><dd>' + esc(v.desde) + '</dd><dt>Para</dt><dd>' + esc(v.para) + '</dd>' + (v.cc ? '<dt>CC</dt><dd>' + esc(v.cc) + '</dd>' : '') + '<dt>Asunto</dt><dd>' + esc(v.asunto) + '</dd>' + (v.adjuntos.length ? '<dt>Adjuntos</dt><dd>' + esc(v.adjuntos.join(', ')) + '</dd>' : '') + '</dl>' +
+      '<iframe id="coPrev" style="width:100%;height:50vh;border:1px solid var(--ln);border-radius:8px;background:#fff" sandbox=""></iframe><p class="mu peq" style="margin:0">Si querés cambiar algo, editalo en Gmail (Borradores) y volvé a abrirlo acá antes de enviar.</p>',
+      '<button class="btn sec" id="coDes">Descartar</button><button class="btn pri" id="coEnv">Enviar</button>');
+    $('coPrev').srcdoc = v.html;
+    $('coEnv').onclick = async () => { $('coEnv').disabled = true; $('coEnv').textContent = 'Enviando…'; let s; try { s = await api('p_cg_correo_enviar', { id: b.dataset.co }, 90000); } catch (e) { $('coEnv').disabled = false; $('coEnv').textContent = 'Enviar'; return; }
+      if (!s.ok) { $('coEnv').disabled = false; $('coEnv').textContent = 'Enviar'; return w.error(s.mensaje || 'No se pudo enviar.'); } w.cerrar(); toast('Enviado.'); capCorreos(true); };
+    $('coDes').onclick = async () => { if (!confirm('¿Descartar este borrador? Se borra de Gmail y queda como «Descartado».')) return; let s; try { s = await api('p_cg_correo_descartar', { id: b.dataset.co }, 90000); } catch (e) { return; }
+      if (!s.ok) return w.error(s.mensaje || 'No se pudo descartar.'); w.cerrar(); toast('Descartado.'); capCorreos(true); };
+  });
+}

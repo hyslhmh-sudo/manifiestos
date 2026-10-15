@@ -125,6 +125,7 @@ function portalAccion_(d) {
       if (String(d.accion).indexOf('p_acc_') === 0) return typeof accPortal_ === 'function' ? accPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // pantalla «Accesos» (Accesos.gs)
       if (String(d.accion).indexOf('p_dgm_') === 0) return typeof dgmPortal_ === 'function' ? dgmPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // diagnóstico de agua y plagas (DiagModulos.gs)
       if (String(d.accion).indexOf('p_coc_') === 0) return typeof cocPortal_ === 'function' ? cocPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Modulo6.gs.' };
+      if (String(d.accion).indexOf('p_cg_') === 0) return typeof cgPortal_ === 'function' ? cgPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar CapGestion.gs.' };   // 9 · Capacitaciones › personas, contactos, informes y correos (14.71)
       if (String(d.accion).indexOf('p_cv_') === 0) return typeof cvPortal_ === 'function' ? cvPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar CapValidar.gs.' };   // 9 · Capacitaciones › Para validar (14.67)
       if (String(d.accion).indexOf('p_inc_') === 0) return typeof incPortal_ === 'function' ? incPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Incendio.gs (módulo 10).' };   // 10 · protección contra incendios
       if (String(d.accion).indexOf('p_rgrl_') === 0) return typeof rgrlPortal_ === 'function' ? rgrlPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Rgrl.gs (módulo 8 › RGRL y mediciones).' };   // 8 · RGRL y mediciones
