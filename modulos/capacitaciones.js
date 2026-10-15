@@ -39,7 +39,7 @@ function capError(e) {
     : 'No se pudo leer el libro de capacitaciones' + (m && m !== 'error' ? ': ' + m : '.') ;
   return '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>Tablero de capacitaciones</h1></div></div>' +
     '<div class="aviso error">' + esc(txt) + '</div>' +
-    '<section class="card peq">Mientras tanto, todo sigue funcionando como siempre: <a href="' + CAP_PANEL + '" target="_blank" rel="noopener">panel de carga ↗</a> · <a href="' + CAP_LIBRO + '" target="_blank" rel="noopener">libro CAPACITACIONES (hoja TABLERO) ↗</a> · <a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener">catálogo actual ↗</a></section>';
+    '<section class="card peq">Mientras tanto, todo sigue funcionando como siempre: <a href="' + CAP_LIBRO + '" target="_blank" rel="noopener">libro CAPACITACIONES (hoja TABLERO) ↗</a> · <a href="' + esc(CAP_URL) + '" target="_blank" rel="noopener">catálogo actual ↗</a></section>';
 }
 async function capTablero(fresco) {
   if (!CAPT) CAPT = LS.get('capt', null);
@@ -111,7 +111,7 @@ async function capTablero(fresco) {
       kpi('Matriz cumplida', K.matriz + ' %', 'de las obligatorias · meta al ' + fechaTxt(T.ciclo.meta), colPct(K.matriz), meta) +
       kpi('Requiere atención', nAt, 'desde el ' + fechaTxt(T.avisosDesde), nAt ? '#B4361F' : '') + '</div>' +
     '<div class="tb2">' + card('Semáforo por servicio', null, '<div class="cpn" id="capRed" style="gap:6px">' + chips + '</div>' + sem) + card('Requiere atención', null, at) + '</div>' +
-    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))">' + card('Capacitaciones abiertas', [CAP_PANEL, 'Panel ↗'], abiertas) + card('Próximos dictados', [CAP_LIBRO, 'Agregar en DICTADOS ↗'], dict) + card('Alcance por público', null, pub) + '</div>' +
+    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))">' + card('Capacitaciones abiertas', ['#capcat', 'Catálogo'], abiertas) + card('Próximos dictados', [CAP_LIBRO, 'Agregar en DICTADOS ↗'], dict) + card('Alcance por público', null, pub) + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">' + card('Registros por mes', null, meses) + card('Participación por capacitación', null, part) + '</div>');
   $('capAct').onclick = () => capTablero(true);
   $('capRed').querySelectorAll('button').forEach(x => x.onclick = () => { CAPRED = x.dataset.red; capTablero(); });
