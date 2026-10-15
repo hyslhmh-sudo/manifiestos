@@ -248,6 +248,7 @@ async function capFichaVer(cod) {
       (F.dictados.length ? '<table><thead><tr><th>Fecha</th><th>Encuentro</th><th>Modalidad y lugar</th><th>Registro abre · cierra</th><th>Estado</th></tr></thead><tbody>' +
         F.dictados.slice().reverse().map(d => '<tr class="cl" data-d="' + esc(d.id) + '"><td>' + esc(d.fecha) + ' ' + esc(d.hora || '') + '</td><td>' + esc(Number(c.ENCUENTROS) > 1 ? d.encuentro + ' de ' + c.ENCUENTROS : '—') + '</td><td>' + esc(d.modalidad) + (capVacio(d.lugar) || /virtual/i.test(d.lugar) ? '' : ' · ' + esc(d.lugar)) + '</td><td class="peq">' + esc(d.abre) + ' · ' + esc(d.cierra) + '</td><td>' + capEst(d.estado) + (d.linkInscripcion ? ' <span class="chip pa">Inscripción</span>' : '') + '</td></tr>').join('') + '</tbody></table>'
         : '<div class="vacio">Todavía no tiene dictados.</div>') + '</section>' +
+    '<section class="card tabla" id="cfPart"><div style="padding:14px 18px"><h2>Participantes</h2></div><div class="vacio">Leyendo quiénes la hicieron…</div></section>' +
     (F.versiones.length ? '<section class="card peq"><h2 style="margin-bottom:6px">Versiones</h2>' + F.versiones.map(v => '<div>Versión ' + esc(v.VERSION) + ' · desde ' + esc(v.DESDE) + (v.HASTA ? ' hasta ' + esc(v.HASTA) : '') + ' · ' + esc(v.QUE_CAMBIO) + '</div>').join('') + '</section>' : ''));
   document.querySelectorAll('tr.cl[data-d]').forEach(r => r.onclick = () => location.hash = '#capins/' + encodeURIComponent(r.dataset.d));
   if ($('cfCop')) $('cfCop').onclick = () => capCopiar(F.link, 'Link copiado.');
@@ -260,6 +261,51 @@ async function capFichaVer(cod) {
   if ($('evGuar')) $('evGuar').onclick = async () => { const r = await capHacer('c_eval_guardar', { codigo: c.CODIGO, idEvaluacion: ev.id, porIntento: $('evPI').value, nota: $('evNo').value, intentos: $('evIn').value, sorteo: $('evSo').value === 'Sí', preguntas: [] }, $('evGuar')); if (r) { if (r.control && !r.control.ok) toast(r.control.errores[0]); else { toast('Evaluación guardada.'); CAPC = null; } } };
   if ($('cfAgr')) $('cfAgr').onclick = () => capEvalModal(c, ev.id);
   if ($('cfNueva')) $('cfNueva').onclick = () => capEvalModal(c, '');
+  capParticipantes(c.CODIGO);
+}
+// ---------- Participantes de una capacitación (15/10/2026): todos los que la hicieron, una fila por persona
+const CAPPA = { anio: '', est: '', serv: '', pub: '', q: '', datos: null };
+async function capParticipantes(cod, fresco) {
+  const box = () => $('cfPart'); if (!box()) return;
+  let r = CAPPA.datos && CAPPA.datos.codigo === cod && !fresco ? CAPPA.datos : null;
+  if (!r) { try { r = await api('p_cg_participantes', { codigo: cod, fresco: !!fresco }, 120000); } catch (e) { r = null; }
+    if (!box()) return;
+    if (!r || !r.ok) { box().innerHTML = '<div style="padding:14px 18px"><h2>Participantes</h2></div><div class="aviso" style="margin:0 18px 14px">' + esc((r && r.mensaje) || 'No se pudo leer la lista. Probá «Actualizar» o mirá el libro, hoja REGISTROS (columna CODIGO).') + '</div>'; return; }
+    if (r.lista && !r.lista.length && !r.codigo) r.codigo = cod; CAPPA.datos = r; }
+  const L = r.lista || [], uni = f => L.map(f).flat().filter(v => v && !/^s\/d/i.test(v)).filter((v, i, a) => a.indexOf(v) === i).sort();
+  const anios = uni(x => x.anios).sort().reverse(), ests = uni(x => x.est), servs = uni(x => x.servicio), pubs = uni(x => x.publico);
+  const q = capNorm(CAPPA.q), F = L.filter(x => (!CAPPA.anio || x.anios.indexOf(CAPPA.anio) >= 0) && (!CAPPA.est || x.est === CAPPA.est) && (!CAPPA.serv || x.servicio === CAPPA.serv) && (!CAPPA.pub || x.publico === CAPPA.pub) &&
+    (!q || capNorm(x.nombre + ' ' + x.dni + ' ' + x.correo).indexOf(q) >= 0));
+  const sel = (id, t, ops, v) => '<label class="f">' + t + '<select class="c" id="' + id + '"><option value="">Todos</option>' + ops.map(o => '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></label>';
+  const vig = F.filter(x => x.vigente).length, apr = F.filter(x => x.aprobo).length, varios = r.encuentros > 1;
+  box().innerHTML = '<div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h2>Participantes</h2>' +
+    '<span class="mu peq">' + F.length + (F.length !== L.length ? ' de ' + L.length : '') + ' persona(s) · ' + vig + ' vigente(s)' + (apr ? ' · ' + apr + ' con evaluación aprobada' : '') + '</span></div>' +
+    '<div class="filtros">' + sel('cpA', 'Año', anios, CAPPA.anio) + sel('cpE', 'Establecimiento', ests, CAPPA.est) + sel('cpS', 'Servicio', servs, CAPPA.serv) + sel('cpP', 'Público', pubs, CAPPA.pub) +
+    '<label class="f">Buscar<input class="c" id="cpQ" value="' + esc(CAPPA.q) + '" placeholder="Nombre, DNI o correo"></label></div>' +
+    '<div class="cpn"><button class="btn sec" id="cpMail">Copiar correos (' + F.filter(x => x.correo).length + ')</button><button class="btn sec" id="cpCsv">Descargar planilla</button><button class="btn sec" id="cpAct">Actualizar</button></div></div>' +
+    (!L.length ? '<div class="vacio">Todavía nadie la hizo.</div>' : !F.length ? '<div class="vacio">Nadie con ese filtro.</div>' :
+    '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Establecimiento · servicio</th><th>Fecha</th>' + (varios ? '<th>Encuentros</th>' : '') + '<th>Nota</th><th>Vigencia</th><th>Certificado</th></tr></thead><tbody>' +
+    F.map(x => '<tr class="cl" data-p="' + esc(x.dni) + '"><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.dni) + (x.correo ? ' · ' + esc(x.correo) : '') + '</div></td>' +
+      '<td class="peq">' + esc(x.est) + '<div class="mu">' + esc(x.servicio) + ' · ' + esc(x.funcion) + '</div></td>' +
+      '<td class="peq" style="white-space:nowrap">' + esc(x.fecha || 's/d') + (x.registros > 1 ? '<div class="mu">' + x.registros + ' registros</div>' : '') + '</td>' +
+      (varios ? '<td>' + x.encuentros + ' de ' + r.encuentros + '</td>' : '') +
+      '<td>' + (x.nota !== '' ? esc(x.nota) + (x.aprobo ? ' ' + capChip('Aprobó', 'ok') : '') : x.aprobo ? capChip('Aprobó', 'ok') : '<span class="mu">—</span>') + '</td>' +
+      '<td class="peq" style="white-space:nowrap">' + (x.vence ? (x.vigente ? capChip('Hasta ' + x.vence, 'ok') : capChip('Venció ' + x.vence, 'er')) : '<span class="mu">s/d</span>') + '</td>' +
+      '<td class="peq">' + (x.certificados.length ? x.certificados.map(c => '<a href="' + esc(c.link || c.ver) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(c.id) + ' ↗</a>').join('<br>') : '<span class="mu">—</span>') + '</td></tr>').join('') +
+    '</tbody></table></div>') +
+    '<div class="mu peq" style="padding:10px 18px 14px">Incluye todo lo registrado: link permanente, dictados y el historial anterior. Tocá una persona para ver su ficha. Respaldo: libro CAPACITACIONES, hoja REGISTROS (columna CODIGO).</div>';
+  const re = () => capParticipantes(cod);
+  [['cpA', 'anio'], ['cpE', 'est'], ['cpS', 'serv'], ['cpP', 'pub']].forEach(([id, k]) => { if ($(id)) $(id).onchange = () => { CAPPA[k] = $(id).value; re(); }; });
+  if ($('cpQ')) $('cpQ').oninput = () => { CAPPA.q = $('cpQ').value; clearTimeout(capParticipantes.t); capParticipantes.t = setTimeout(() => { re(); const i = $('cpQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); };
+  $('cpAct').onclick = () => { box().querySelector('#cpAct').textContent = 'Actualizando…'; capParticipantes(cod, true); };
+  $('cpMail').onclick = () => { const m = F.map(x => x.correo).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i); if (!m.length) return toast('Nadie de la lista tiene correo cargado.'); capCopiar(m.join(', '), m.length + ' correo(s) copiados.'); };
+  $('cpCsv').onclick = () => {
+    const c = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', cab = ['DNI', 'APELLIDO Y NOMBRE', 'CORREO', 'PUBLICO', 'ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'INSTITUCION', 'ULTIMA FECHA', 'PRIMERA FECHA', 'REGISTROS', 'ENCUENTROS', 'NOTA', 'APROBO', 'VENCE', 'VIGENTE', 'CERTIFICADOS', 'ORIGEN'];
+    const filas = F.map(x => [x.dni, x.nombre, x.correo, x.publico, x.est, x.servicio, x.funcion, x.institucion, x.fecha, x.primera, x.registros, x.encuentros, x.nota, x.aprobo ? 'Sí' : 'No', x.vence, x.vigente ? 'Sí' : 'No', x.certificados.map(z => z.id).join(' · '), x.origen]);
+    const blob = new Blob(['﻿' + [cab].concat(filas).map(f => f.map(c).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'Participantes ' + cod + (CAPPA.anio ? ' ' + CAPPA.anio : '') + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
+  box().querySelectorAll('tr.cl[data-p]').forEach(t => t.onclick = () => location.hash = '#capper/' + encodeURIComponent(t.dataset.p));
 }
 // Opciones de una lista sin perder el valor actual aunque no esté en la lista
 const capOps = (lista, actual) => { const o = (lista || []).slice(); if (!capVacio(actual) && o.indexOf(actual) < 0) o.unshift(actual); return o; };

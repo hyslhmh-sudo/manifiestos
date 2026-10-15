@@ -515,10 +515,46 @@ function cgInforme_(x) {
 }
 
 // ================================================================== ENTRADA DESDE EL PORTAL
+// ================================================================== PARTICIPANTES DE UNA CAPACITACIÓN (15/10/2026)
+// Todos los que la hicieron (link permanente, dictados o historial migrado), una fila por persona: último registro,
+// cuántos registros y encuentros, mejor nota, si aprobó, vigencia y certificados. Solo lee.
+function cgParticipantes_(x) {
+  const cod = cgTxt_(x.codigo); if (!cod) return { ok: false, mensaje: 'Falta el código de la capacitación.' };
+  const caps = cgCaps_(), cap = caps[cod] || {}, por = {};
+  cgHoja_('REGISTROS').filas.forEach(r => {
+    if (cgTxt_(r.o.CODIGO) !== cod || /anulad/i.test(cgTxt_(r.o.ESTADO))) return;
+    const dni = cgDni_(r.o.DNI); if (!dni) return;
+    const f = cgFecha_(r.o.FECHA), v = cgFecha_(r.o.VENCE), nota = cgNum_(r.o.NOTA);
+    const p = por[dni] || (por[dni] = { dni: dni, registros: 0, encuentros: {}, ultima: null, primera: null, nota: '', aprobo: false, vence: null, tipos: {}, origenes: {}, certs: [], anios: {} });
+    p.registros++; if (cgTxt_(r.o.ENCUENTRO_N)) p.encuentros[cgTxt_(r.o.ENCUENTRO_N)] = 1;
+    if (f) { if (!p.ultima || f > p.ultima) p.ultima = f; if (!p.primera || f < p.primera) p.primera = f; p.anios[f.getFullYear()] = 1; }
+    if (cgTxt_(r.o.NOTA) && (p.nota === '' || nota > p.nota)) p.nota = nota;
+    if (/^s[ií]/i.test(cgTxt_(r.o.APROBADO))) p.aprobo = true;
+    if (v && (!p.vence || v > p.vence)) p.vence = v;
+    if (cgTxt_(r.o.TIPO)) p.tipos[cgTxt_(r.o.TIPO)] = 1;
+    if (cgTxt_(r.o.ORIGEN)) p.origenes[cgTxt_(r.o.ORIGEN)] = 1;
+    if (!cgVacio_(r.o.ID_CERTIFICADO)) p.certs.push(cgTxt_(r.o.ID_CERTIFICADO));
+  });
+  const links = {};
+  cgHoja_('CERTIFICADOS').filas.forEach(c => { if (cgTxt_(c.o.CODIGO) === cod && por[cgDni_(c.o.DNI)]) links[cgTxt_(c.o.ID_CERTIFICADO)] = { link: cgTxt_(c.o.LINK_PDF), estado: cgTxt_(c.o.ESTADO) }; });
+  const P = {}; cgHoja_('PERSONAS').filas.forEach(z => { const d = cgDni_(z.o.DNI); if (por[d]) P[d] = z.o; });
+  const hoy = new Date(), lista = Object.keys(por).map(d => {
+    const p = por[d], o = P[d] || {};
+    return { dni: d, nombre: o.APELLIDOS ? cgTxt_(o.APELLIDOS) + ', ' + cgTxt_(o.NOMBRES) : 's/d (no está en PERSONAS)', correo: cgVacio_(o.CORREO) ? '' : cgTxt_(o.CORREO),
+      publico: cgTxt_(o.PUBLICO) || 's/d', est: cgTxt_(o.ESTABLECIMIENTO) || 's/d', servicio: cgTxt_(o.SERVICIO) || 's/d', funcion: cgTxt_(o.FUNCION) || 's/d',
+      institucion: cgTxt_(o.INSTITUCION), fecha: cgDma_(p.ultima), primera: cgDma_(p.primera), orden: p.ultima ? p.ultima.getTime() : 0, anios: Object.keys(p.anios),
+      registros: p.registros, encuentros: Object.keys(p.encuentros).length, nota: p.nota === '' ? '' : String(p.nota), aprobo: p.aprobo, tipo: Object.keys(p.tipos).join(' · '),
+      origen: Object.keys(p.origenes).join(' · '), vence: cgDma_(p.vence), vigente: !p.vence || p.vence >= hoy,
+      certificados: p.certs.filter((c, i, a) => a.indexOf(c) === i).map(c => ({ id: c, link: (links[c] || {}).link || '', estado: (links[c] || {}).estado || '', ver: CG.CERTIFICADOS + '?v=' + encodeURIComponent(c) })) };
+  }).sort((a, b) => b.orden - a.orden);
+  return { ok: true, codigo: cod, nombre: cap.nombre || cod, encuentros: cap.encuentros || 1, total: lista.length, lista: lista };
+}
+
 function cgPortal_(accion, x) {
   x = x || {};
   switch (accion) {
     case 'p_cg_buscar': return cgBuscar_(x);
+    case 'p_cg_participantes': return cgParticipantes_(x);
     case 'p_cg_persona': return cgPersona_(x);
     case 'p_cg_persona_guardar': return cgPersonaGuardar_(x);
     case 'p_cg_contactos': return cgContactos_();
