@@ -181,7 +181,7 @@ function cgMailsAplicar_(x) {
       const dni = cgDni_(it.dni), mail = String(it.correo || '').trim().toLowerCase(), p = P.filas.find(z => cgDni_(z.o.DNI) === dni);
       if (!p || !cgMail_(mail) || j < 0) return; const antes = cgTxt_(p.o.CORREO); if (antes.toLowerCase() === mail) return;
       P.sh.getRange(p.fila, j + 1).setValue(mail); cgSet_(P, p.fila, 'ULTIMA_ACTUALIZACION', fecha); p.o.CORREO = mail;
-      hist.push({ FECHA: ahora, QUIEN: CG.QUIEN, HOJA: 'PERSONAS', ID: dni, CAMPO: 'CORREO', ANTES: antes, DESPUES: mail, MOTIVO: String(x.motivo || '').trim() || 'Lista de mails cargada desde el portal' });
+      hist.push({ FECHA: ahora, QUIEN: x.quien || CG.QUIEN, HOJA: 'PERSONAS', ID: dni, CAMPO: 'CORREO', ANTES: antes, DESPUES: mail, MOTIVO: String(x.motivo || '').trim() || 'Lista de mails cargada desde el portal' });
     });
     cgHistorial_(hist);
     return { ok: true, n: hist.length };

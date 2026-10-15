@@ -16,8 +16,8 @@
  * Las personas con «Toda la red» no cuentan para esta regla. La clave MAESTRA (Higiene y Seguridad) entra siempre a todo.
  */
 
-const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio', 'Diagnóstico', 'Auditoría', 'Relevamiento de cocina'];   // 14.70: el relevamiento de cocina se habilita aparte de Cocina (personas de cocina)   // 14.69: Diagnóstico y Auditoría (interna de residuos) se habilitan aparte de Residuos   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
-const ACC_SOLO_PERSONAL = ['Notas', 'Radiaciones', 'Incendio'];   // módulos que nunca se ven con la clave común del establecimiento (solo con DNI y clave propia)
+const ACC_MODULOS = ['Residuos', 'Agua', 'Plagas', 'Documentos', 'Accidentes', 'Cocina', 'Notas', 'Radiaciones', 'Incendio', 'Diagnóstico', 'Auditoría', 'Relevamiento de cocina', 'Capacitaciones'];   // 14.70: el relevamiento de cocina se habilita aparte de Cocina (personas de cocina)   // 14.69: Diagnóstico y Auditoría (interna de residuos) se habilitan aparte de Residuos   // Incendio: módulo 10, control de extintores (Incendio.gs, acciones i_…)
+const ACC_SOLO_PERSONAL = ['Notas', 'Radiaciones', 'Incendio', 'Capacitaciones'];   // módulos que nunca se ven con la clave común del establecimiento (solo con DNI y clave propia)
 // Listas desplegables de ACCESOS (ROL, ESTABLECIMIENTOS, MODULOS, ESTADO): BASE COMÚN › LISTAS, columnas ACCESOS_…; con «Permitir varias selecciones» quedan separados por coma.
 // Qué módulo hace falta para cada acción («d_» y «a_», diagnóstico y auditoría interna de residuos; «s_», siniestros)
 const ACC_PERMISO = { manifiesto: 'Residuos', certificado: 'Residuos', lote: 'Residuos', m_foto_man: 'Residuos', m_reservorio: 'Agua', m_punto: 'Agua', m_limpieza: 'Agua',
@@ -114,7 +114,7 @@ function acceso_(est, clave, dni) {
 }
 // ¿Puede hacer esta acción? (las de consulta, como config, tablero o registros, no piden módulo)
 function accPermite_(accion, acc) {
-  const a = String(accion || ''), m = a === 'd_abrir' || a === 'd_lista' ? '' : /^d_/.test(a) ? 'Diagnóstico' : /^a_/.test(a) ? 'Auditoría' : /^s_/.test(a) ? 'Accidentes' : /^k_(abrir|guardar|foto)$/.test(a) ? 'Relevamiento de cocina' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
+  const a = String(accion || ''), m = a === 'd_abrir' || a === 'd_lista' ? '' : /^d_/.test(a) ? 'Diagnóstico' : /^a_/.test(a) ? 'Auditoría' : /^s_/.test(a) ? 'Accidentes' : /^q_/.test(a) ? 'Capacitaciones' : /^k_(abrir|guardar|foto)$/.test(a) ? 'Relevamiento de cocina' : /^k_/.test(a) ? 'Cocina' : /^r_/.test(a) ? 'Radiaciones' : /^i_/.test(a) ? 'Incendio' : ACC_PERMISO[a];
   return !m || acc.modulos.indexOf(m) >= 0;
 }
 

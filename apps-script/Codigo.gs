@@ -26,7 +26,7 @@ const CFG = {
 };
 const TZ = 'America/Argentina/Buenos_Aires';
 // Versión del sistema: cambia con cada entrega. Se ve al pie del menú del portal. Si no coincide con la del manual, falta instalar algo.
-const VERSION_SISTEMA = '2026-10-15 · 14.71';
+const VERSION_SISTEMA = '2026-10-15 · 14.72';
 function versionSistema() { Logger.log('Sistema HyS · versión ' + VERSION_SISTEMA); }
 const FOTO_OBLIGATORIA_DESDE = '2027-01-01';   // certificados: desde esta fecha la foto es obligatoria al cargarlos
 // Manifiestos: la foto (o el escaneo en el lote .zip del mes) nunca es obligatoria al cargar, pero tiene que estar antes del día 10 del mes siguiente.
@@ -96,6 +96,7 @@ function doPost(e) {
     if (String(d.accion).indexOf('k_') === 0) return json_(typeof cocRed_ === 'function' ? cocRed_(d) : { ok: false, mensaje: 'El módulo de cocinas todavía no está instalado.' });   // módulo 6 · cocinas (personas y relevamiento)
     if (String(d.accion).indexOf('r_') === 0) return json_(typeof radRed_ === 'function' ? radRed_(d) : { ok: false, mensaje: 'El módulo de radiaciones todavía no está instalado.' });   // módulo 9 · radiaciones (personal con dosímetro y eventos)
     if (String(d.accion).indexOf('i_') === 0) return json_(typeof incRed_ === 'function' ? incRed_(d, acc) : { ok: false, mensaje: 'El módulo de incendio todavía no está instalado.' });   // módulo 10 · control de extintores (Incendio.gs)
+    if (String(d.accion).indexOf('q_') === 0) return json_(typeof qRed_ === 'function' ? qRed_(d, acc) : { ok: false, mensaje: 'El módulo de capacitaciones todavía no está instalado.' });   // 9 · Capacitaciones · carga de la secretaría (CapCarga.gs, 14.72)
     if (String(d.accion).indexOf('m_') === 0) return json_(miRed_(d));    // «Mi establecimiento»: agua, plagas, documentos y pendientes
     if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun, servicio: acc.servicio || '' } }));
     // «No se recibieron manifiestos esta semana» (remisión semanal, PROT-RES-003 · ResiduosRemision.gs)

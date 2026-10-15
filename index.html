@@ -888,6 +888,7 @@ function inicio() {
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>5 · Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>7 · Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · 3 fotos · agregar o corregir extintores', true) + tile('incRec', 'Recorrida de seguridad', 'Salidas, puertas, luces, carteles, hidrantes, alarma…') + tile('incNov', 'Informar una novedad', 'Principio de incendio, alarma, olor a quemado, uso de un extintor…') + tile('incNovLista', 'Novedades', 'Lo que está abierto y lo resuelto') + '</div>' : '') +
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>8 · Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
+    (SES.modulos && SES.modulos.indexOf('Capacitaciones') >= 0 ? '<h2>9 · Capacitaciones</h2><div class="menu">' + tile('qPers', 'Personas', 'Correo, teléfono y cambios de servicio o función', true) + tile('qAlta', 'Agregar persona nueva', 'Ingresos, residentes, tercerizados') + tile('qJef', 'Jefaturas y servicios', 'Responsable, correos e interno de cada servicio') + tile('qMails', 'Cargar lista de mails', 'Pegar una lista y revisar antes de cargar') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>10 · Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
     '<h2>' + (puede('Documentos') ? '10 · Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + (SES.servicio ? '' : tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado')) + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
@@ -1945,6 +1946,160 @@ Object.assign(ACT, { irCocina: () => irCocina(), cocPers: () => { F = null; cocP
   kSug: b => { const s = KP.sugeridas[Number(b.dataset.arg)]; kEditar('', { DNI: s.dni, APELLIDO_Y_NOMBRE: s.nombre, ORIGEN: s.empresa ? 'Empresa' : 'Planta', EMPRESA: s.empresa, OBSERVACIONES: [s.funcion, s.servicio].filter(Boolean).join(' · ') }); } });
 
 Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosRes: () => { F = null; REGF = 'Residuos'; registros(true); }, otroMismoLugar: () => nuevoManifiesto(null, ultimoMan().sitio), regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
+
+// ------------------------------------------------------------------ 9 · Capacitaciones · carga de la secretaría (CapCarga.gs, 14.72)
+// Reemplaza al panel de carga viejo. Solo con DNI y clave personal y el módulo «Capacitaciones» marcado en Accesos.
+// Correo y teléfono se guardan directo; servicio, función o lugar de trabajo quedan propuestos hasta que HyS los aprueba.
+let QO = null, QR = null, QP = null, QJ = null, QML = null;
+const qDl = (k, t, ops, ph) => '<div class="field">' + fLab(t)<input data-f="' + k + '" list="dl_' + k + '" value="' + esc(F[k] || '') + '" placeholder="' + esc(ph || 'Escribí o elegí de la lista') + '"><datalist id="dl_' + k + '">' + (ops || []).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist></div>';
+const qMsg = e => e && e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : (e && e.message) || 'No se pudo completar.';
+async function qOpc() { if (QO) return QO; const r = await api('q_opciones', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); QO = r.listas; return QO; }
+function qSinRed(t) { $('app').innerHTML = miTit(t) + '<p class="mu">Para esto hace falta señal.</p>'; miVolver(); }
+// Personas: buscar
+function qPers() {
+  VISTA = 'mi'; MIV = { f: qPers }; vista('wide'); if (!F || F._f !== 'q') F = { _f: 'q', q: (F && F.q) || '' };
+  $('app').innerHTML = miTit('Personas', 'Buscá por DNI, apellido o nombre para actualizar el correo y el teléfono, o proponer un cambio de servicio o función.') +
+    '<div class="field"><label>Buscar</label><input data-f="q" value="' + esc(F.q || '') + '" placeholder="DNI, apellido o nombre" enterkeyhint="search"></div><div class="menu"><button class="big main" data-act="qBuscar"><b>Buscar</b><span>Mínimo 3 letras o números</span></button></div><div id="qRes">' + (QR ? qLista() : '') + '</div>' +
+    '<div class="menu"><button class="big" data-act="qAlta"><b>+ Agregar persona nueva</b><span>Si no está en la lista: ingresos, residentes, tercerizados</span></button></div>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function qLista() {
+  if (!QR.lista.length) return '<p class="mu">Sin resultados. Si es alguien nuevo, usá «Agregar persona nueva».</p>';
+  return '<p class="mu" style="font-size:13px">' + QR.total + ' persona(s)' + (QR.total > QR.lista.length ? ', se muestran ' + QR.lista.length + ': afiná la búsqueda' : '') + '</p><div class="lista">' + QR.lista.map(p =>
+    '<div class="item"><div><b>' + esc(p.nombre) + '</b><small>DNI ' + esc(p.dni) + ' · ' + esc([p.funcion, p.servicio, p.est].filter(x => x && x !== 's/d').join(' · ')) + '<br>' + (p.correo && p.correo !== 's/d' ? esc(p.correo) : '<b style="color:var(--er)">sin correo</b>') + ' · ' + (p.tel && p.tel !== 's/d' ? esc(p.tel) : 'sin teléfono') + '</small>' +
+    '<button class="link" data-act="qCont" data-arg="' + esc(p.dni) + '">Correo y teléfono</button><br><button class="link" data-act="qProp" data-arg="' + esc(p.dni) + '">Proponer cambio de servicio o función</button></div>' + (p.revisar ? '<span class="tag wa">En revisión</span>' : '') + '</div>').join('') + '</div>';
+}
+async function qBuscar() {
+  const q = String(F && F.q || '').trim(); if (q.replace(/[.\s]/g, '').length < 3) return toast('Escribí al menos 3 letras o números.');
+  if (!navigator.onLine) return toast('Para buscar hace falta señal.');
+  $('qRes').innerHTML = '<p class="mu">Buscando…</p>';
+  try { const r = await api('q_buscar', { q: q }); if (!r.ok) throw new Error(r.mensaje || 'No se pudo buscar.'); QR = r; QP = null; $('qRes').innerHTML = qLista(); }
+  catch (e) { $('qRes').innerHTML = '<p style="color:var(--er)">' + esc(qMsg(e)) + '</p>'; }
+}
+// Correo y teléfono (directo)
+function qCont(dni) {
+  const p = QR.lista.find(x => x.dni === dni); if (!p) return;
+  F = { _f: 'qc', dni: dni, nombre: p.nombre, q: (F && F.q) || '', correo: p.correo && p.correo !== 's/d' ? p.correo : '', tel: p.tel && p.tel !== 's/d' ? p.tel : '' }; MIV = { f: qContForm }; qContForm();
+}
+function qContForm() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Correo y teléfono', esc(F.nombre) + ' · DNI ' + esc(F.dni)) + fErr + fInp('correo', 'Correo electrónico', 'email', 'nombre@ejemplo.com') + fInp('tel', 'Teléfono (celular)', 'tel', 'Ej.: 2804123456', 'Solo números, con característica') +
+    '<p class="mu" style="font-size:13px">Se guarda directo. Si la persona tenía otro correo, queda el nuevo.</p>';
+  bar('<button class="btn sec" data-act="qVolver">Cancelar</button><button class="btn pri" data-act="qContOk">Guardar</button>');
+}
+async function qContOk() {
+  if (!F.correo && !F.tel) return miErr('Escribí el correo o el teléfono.');
+  const b = document.querySelector('[data-act="qContOk"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try { const r = await api('q_contacto', { dni: F.dni, correo: F.correo, tel: F.tel }); if (!r.ok) throw new Error(r.mensaje);
+    const p = QR && QR.lista.find(x => x.dni === F.dni); if (p) { if (F.correo) p.correo = F.correo.toLowerCase(); if (F.tel) p.tel = F.tel; }
+    toast(r.mensaje); const q = F.q; F = { _f: 'q', q: q }; qPers(); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(qMsg(e)); }
+}
+// Proponer cambio de datos laborales (queda pendiente)
+async function qProp(dni) {
+  const p = QR.lista.find(x => x.dni === dni); if (!p) return;
+  if (!navigator.onLine) return qSinRed('Proponer un cambio');
+  try { await qOpc(); } catch (e) { return toast(qMsg(e)); }
+  QP = p; F = { _f: 'qp', dni: dni, q: (F && F.q) || '', SERVICIO: '', FUNCION: '', INSTITUCION: '', VINCULO: '', EMPRESA: '', motivo: '' }; MIV = { f: qPropForm }; qPropForm();
+}
+function qPropForm() {
+  VISTA = 'mi'; vista('form'); const L = QO;
+  $('app').innerHTML = miTit('Proponer un cambio', esc(QP.nombre) + ' · DNI ' + esc(QP.dni) + '<br>Hoy figura: ' + esc([QP.funcion, QP.servicio, QP.est].filter(x => x && x !== 's/d').join(' · ') || 's/d')) + fErr +
+    '<p class="mu" style="font-size:13px">Completá solo lo que cambia. Queda pendiente hasta que Higiene y Seguridad lo apruebe.</p>' +
+    qDl('SERVICIO', 'Servicio', L.servicios) + qDl('FUNCION', 'Función', L.funciones) + qDl('INSTITUCION', 'Lugar de trabajo (institución)', L.instituciones) + qDl('VINCULO', 'Vínculo', L.vinculos) + qDl('EMPRESA', 'Empresa (si es tercerizado)', L.empresas) +
+    fTxt('motivo', 'Motivo o aclaración', 'Ej.: pasó a Lavadero desde el 1/10');
+  bar('<button class="btn sec" data-act="qVolver">Cancelar</button><button class="btn pri" data-act="qPropOk">Enviar a revisión</button>');
+}
+async function qPropOk() {
+  const campos = {}; ['SERVICIO', 'FUNCION', 'INSTITUCION', 'VINCULO', 'EMPRESA'].forEach(k => { if (String(F[k] || '').trim()) campos[k] = F[k].trim(); });
+  if (!Object.keys(campos).length) return miErr('Completá al menos un dato que cambie.');
+  const b = document.querySelector('[data-act="qPropOk"]'); if (b) { b.disabled = true; b.textContent = 'Enviando…'; }
+  try { const r = await api('q_proponer', { dni: F.dni, campos: campos, motivo: F.motivo }); if (!r.ok) throw new Error(r.mensaje); toast(r.mensaje); const q = F.q; F = { _f: 'q', q: q }; qPers(); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Enviar a revisión'; } miErr(qMsg(e)); }
+}
+// Alta de una persona nueva
+async function qAlta() {
+  if (!navigator.onLine) return qSinRed('Agregar persona nueva');
+  try { await qOpc(); } catch (e) { return toast(qMsg(e)); }
+  F = { _f: 'qa', dni: '', apellidos: '', nombres: '', establecimiento: 'HMH', institucion: '', servicio: '', funcion: '', vinculo: '', empresa: '', correo: '', tel: '' }; MIV = { f: qAltaForm }; qAltaForm();
+}
+function qAltaForm() {
+  VISTA = 'mi'; vista('form'); const L = QO;
+  $('app').innerHTML = miTit('Agregar persona nueva', 'Para quien todavía no está en la base: ingresos, residentes, tercerizados. Higiene y Seguridad la revisa.') + fErr +
+    fInp('dni', 'DNI (o CUIL)', 'number', 'Solo números') + fInp('apellidos', 'Apellido(s)') + fInp('nombres', 'Nombre(s)') +
+    fSeg('establecimiento', 'Trabaja en', ['HMH', 'HZT', 'Otro']) + (F.establecimiento === 'Otro' ? qDl('institucion', '¿Dónde?', L.instituciones) : '') +
+    qDl('servicio', 'Servicio', L.servicios) + qDl('funcion', 'Función', L.funciones) + qDl('vinculo', 'Vínculo', L.vinculos) + qDl('empresa', 'Empresa (si es tercerizado)', L.empresas) +
+    fInp('correo', 'Correo electrónico', 'email', 'nombre@ejemplo.com') + fInp('tel', 'Teléfono (celular)', 'tel', 'Ej.: 2804123456');
+  bar('<button class="btn sec" data-act="qPersIr">Cancelar</button><button class="btn pri" data-act="qAltaOk">Agregar</button>');
+}
+async function qAltaOk() {
+  if (!F.dni || !F.apellidos || !F.nombres) return miErr('Completá DNI, apellido y nombre.');
+  if (F.establecimiento === 'Otro' && !F.institucion) return miErr('Escribí dónde trabaja.');
+  const b = document.querySelector('[data-act="qAltaOk"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const d = Object.assign({}, F, { establecimiento: F.establecimiento === 'Otro' ? '' : F.establecimiento }); delete d._f;
+  try { const r = await api('q_alta', d); if (!r.ok) throw new Error(r.mensaje); toast(r.mensaje); F = { _f: 'q', q: d.dni }; QR = null; qPers(); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Agregar'; } miErr(qMsg(e)); }
+}
+// Jefaturas y servicios
+async function qJef(fresco) {
+  VISTA = 'mi'; MIV = { f: () => qJef() }; vista('wide');
+  if (!QJ || fresco) {
+    if (!navigator.onLine) return qSinRed('Jefaturas y servicios');
+    $('app').innerHTML = miTit('Jefaturas y servicios') + '<p class="mu">Cargando…</p>'; bar(null);
+    try { const r = await api('q_jefaturas', {}); if (!r.ok) throw new Error(r.mensaje); QJ = r.lista; } catch (e) { $('app').innerHTML = miTit('Jefaturas y servicios') + '<p style="color:var(--er)">' + esc(qMsg(e)) + '</p>'; return miVolver(); }
+  }
+  const q = String((F && F._f === 'qj' && F.q) || ''), n = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(), L = QJ.filter(j => !q || n(j.JEFATURA + ' ' + j.RESPONSABLE).indexOf(n(q)) >= 0);
+  if (!F || F._f !== 'qj') F = { _f: 'qj', q: '' };
+  $('app').innerHTML = miTit('Jefaturas y servicios', 'Quién está a cargo de cada servicio y cómo se lo contacta. Los avisos de capacitación van al correo del servicio o, si no hay, al del responsable.') +
+    '<div class="field"><label>Filtrar</label><input data-f="q" value="' + esc(q) + '" placeholder="Servicio o responsable"></div><div class="menu"><button class="big" data-act="qJefF"><b>Filtrar</b><span>' + QJ.length + ' jefaturas</span></button></div>' +
+    '<div class="lista">' + L.map(j => '<div class="item"><div><b>' + esc(j.JEFATURA) + '</b><small>' + esc(j.RESPONSABLE ? j.RESPONSABLE + (j.CARGO ? ' (' + j.CARGO + ')' : '') : 'Sin responsable cargado') + '<br>' + esc([j.CORREO_SERVICIO || j.CORREO_RESPONSABLE, j.TEL_INTERNO ? 'int. ' + j.TEL_INTERNO : ''].filter(Boolean).join(' · ') || 'Sin correo ni interno') + '</small>' +
+      '<button class="link" data-act="qJefEd" data-arg="' + esc(j.JEFATURA) + '">Actualizar datos</button></div>' + (j.CORREO_SERVICIO || j.CORREO_RESPONSABLE ? '' : '<span class="tag wa">Sin correo</span>') + '</div>').join('') + '</div>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function qJefEd(nombre) {
+  const j = QJ.find(x => x.JEFATURA === nombre); if (!j) return;
+  F = Object.assign({ _f: 'qje', _jef: j.JEFATURA }, j); MIV = { f: qJefForm }; qJefForm();
+}
+function qJefForm() {
+  VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit(F._jef, 'Datos de contacto de la jefatura. El nombre y los servicios que abarca los cambia Higiene y Seguridad.') + fErr +
+    fInp('RESPONSABLE', 'Responsable (Apellido, Nombre)') + fSel('CARGO', 'Cargo', [['', 'Elegí…'], 'Jefe/a', 'Coordinador/a', 'A cargo (A/C)', 'Supervisor/a']) + fInp('DNI_RESPONSABLE', 'DNI del responsable', 'number') +
+    fInp('OTROS_DNI', 'DNI de coordinación o A/C', 'text', 'Separados por punto y coma') + fInp('CORREO_RESPONSABLE', 'Correo del responsable', 'email') + fInp('CORREO_SERVICIO', 'Correo del servicio', 'email', 'Los avisos van acá primero') +
+    fInp('TEL_INTERNO', 'Teléfono interno') + fInp('UBICACION', 'Ubicación', 'text', 'Ej.: Planta baja, ala norte');
+  bar('<button class="btn sec" data-act="qJefIr">Cancelar</button><button class="btn pri" data-act="qJefOk">Guardar</button>');
+}
+async function qJefOk() {
+  const b = document.querySelector('[data-act="qJefOk"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const d = {}; ['RESPONSABLE', 'CARGO', 'DNI_RESPONSABLE', 'OTROS_DNI', 'CORREO_RESPONSABLE', 'CORREO_SERVICIO', 'TEL_INTERNO', 'UBICACION'].forEach(k => d[k] = F[k] || '');
+  try { const r = await api('q_jefatura_guardar', { jefatura: F._jef, datos: d }); if (!r.ok) throw new Error(r.mensaje); toast(r.mensaje); F = null; qJef(true); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(qMsg(e)); }
+}
+// Lista de mails
+function qMails() {
+  VISTA = 'mi'; MIV = { f: qMails }; vista('form'); if (!F || F._f !== 'qm') { F = { _f: 'qm', texto: '' }; QML = null; }
+  $('app').innerHTML = miTit('Cargar lista de mails', 'Una persona por línea, con su correo y su DNI (o apellido y nombre). Sirve lo que copies de una planilla o de un correo.') + fErr +
+    fTxt('texto', 'Lista', '30123456  perez.juan@gmail.com') + '<div class="menu"><button class="big main" data-act="qMlPrev"><b>Revisar la lista</b><span>Todavía no carga nada</span></button></div><div id="qMlRes">' + (QML ? qMlTabla() : '') + '</div>';
+  bar(QML && QML.some(x => x.estado === 'Nuevo' || x.estado === 'Reemplaza') ? '<button class="btn sec" data-act="inicio">Volver</button><button class="btn pri" data-act="qMlOk">Cargar los marcados</button>' : null); if (!QML) miVolver();
+}
+function qMlTabla() {
+  return '<p class="mu" style="font-size:13px">Marcá los que querés cargar. Si la persona tenía otro correo, queda el de la lista.</p><div class="lista">' + QML.map((x, i) => '<div class="item"><div><b>' + esc(x.persona || x.linea) + '</b><small>' + (x.dni ? 'DNI ' + esc(x.dni) + ' · ' + esc(x.actual || 'sin correo') + ' → <b>' + esc(x.correo) + '</b>' : esc(x.estado)) + (x.aviso ? '<br><b style="color:var(--er)">' + esc(x.aviso) + '</b>' : '') + '</small></div>' +
+    (x.estado === 'Nuevo' || x.estado === 'Reemplaza' ? '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-qml="' + i + '"' + (x.aviso ? '' : ' checked') + '> ' + esc(x.estado) + '</label>' : '<span class="tag ' + (x.estado === 'Igual' ? 'ok' : 'wa') + '">' + esc(x.estado === 'Igual' ? 'Ya estaba' : 'Revisar') + '</span>') + '</div>').join('') + '</div>';
+}
+async function qMlPrev() {
+  if (!String(F.texto || '').trim()) return miErr('Pegá la lista primero.');
+  $('qMlRes').innerHTML = '<p class="mu">Revisando…</p>';
+  try { const r = await api('q_mails_previa', { texto: F.texto }); if (!r.ok) throw new Error(r.mensaje); QML = r.lista; qMails(); } catch (e) { $('qMlRes').innerHTML = ''; miErr(qMsg(e)); }
+}
+async function qMlOk() {
+  const items = Array.from(document.querySelectorAll('[data-qml]:checked')).map(c => QML[c.dataset.qml]).map(x => ({ dni: x.dni, correo: x.correo }));
+  if (!items.length) return miErr('No hay nada marcado.');
+  const b = document.querySelector('[data-act="qMlOk"]'); if (b) { b.disabled = true; b.textContent = 'Cargando…'; }
+  try { const r = await api('q_mails_aplicar', { items: items }); if (!r.ok) throw new Error(r.mensaje); toast(r.n + ' correo(s) cargado(s).'); F = null; QML = null; inicio(); }
+  catch (e) { if (b) { b.disabled = false; b.textContent = 'Cargar los marcados'; } miErr(qMsg(e)); }
+}
+Object.assign(ACT, { qPers: () => { F = null; QR = null; qPers(); }, qPersIr: () => { F = { _f: 'q', q: '' }; qPers(); }, qBuscar: () => qBuscar(), qCont: b => qCont(b.dataset.arg), qContOk: () => qContOk(), qProp: b => qProp(b.dataset.arg), qPropOk: () => qPropOk(),
+  qVolver: () => { const q = F && F.q; F = { _f: 'q', q: q || '' }; qPers(); }, qAlta: () => qAlta(), qAltaOk: () => qAltaOk(), qJef: () => { F = null; qJef(true); }, qJefF: () => qJef(), qJefEd: b => qJefEd(b.dataset.arg), qJefOk: () => qJefOk(), qJefIr: () => { F = null; qJef(); },
+  qMails: () => { F = null; QML = null; qMails(); }, qMlPrev: () => qMlPrev(), qMlOk: () => qMlOk() });
 
 // ------------------------------------------------------------------ Acciones y campos
 Object.assign(ACT, {
