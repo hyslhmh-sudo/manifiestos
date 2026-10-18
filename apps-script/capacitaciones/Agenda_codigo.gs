@@ -686,7 +686,7 @@ function agClase_(d) {
     const lugar = virtual ? 'Virtual' : (vacio_(d.lugar) ? (x ? x.o.LUGAR : '') : d.lugar); if (!virtual && vacio_(lugar)) return { ok: false, error: 'Elegí el lugar.' };
     const cupo = virtual ? '' : String(num_(d.cupo) || num_(capacidad_(lugar)) || '');
     const t = { ID_TURNO: x ? x.o.ID_TURNO : nuevoIdTurno_(A, fecha, hora), FECHA: dma_(fecha), HORA_INICIO: hora, HORA_FIN: horaFin, TIPO_TURNO: 'Clase abierta', CODIGO: cap.CODIGO,
-      MODALIDAD: d.modalidad || 'Presencial', LUGAR: lugar, CUPO: cupo, ESTADO: 'Clase abierta', PUBLICADO: d.publicar === false ? 'No' : 'Sí', CONFIRMADO_POR: 'HyS',
+      MODALIDAD: modalidadPorLugar_(d.modalidad || 'Presencial', lugar), LUGAR: lugar, CUPO: cupo, ESTADO: 'Clase abierta', PUBLICADO: d.publicar === false ? 'No' : 'Sí', CONFIRMADO_POR: 'HyS',
       OBSERVACIONES: (x || dentroDeFranja_(fecha, hora, horaFin)) ? sd_(d.observaciones) : 'Fuera de franja: cargada por HyS' + (vacio_(d.observaciones) ? '' : ' · ' + d.observaciones), CREADO: ahoraTxt_(), ORIGEN: 'Portal' };
     t.ID_DICTADO = crearDictadoTurno_(t, cap, true);
     if (x) setCampos_(A, x.k, t); else agregar_(A, [t]);

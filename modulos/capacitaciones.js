@@ -553,6 +553,8 @@ async function capDictadoNuevo(cod) {
   const alCambiarCap = () => { const c = capSel(); $('ndEncL').hidden = !c || c.encuentros < 2; if (c && c.encuentros > 1) $('ndEnc').innerHTML = Array.from({ length: c.encuentros }, (_, j) => '<option value="' + (j + 1) + '">' + (j + 1) + ' de ' + c.encuentros + '</option>').join(''); $('ndInsc').checked = !!(c && c.inscripcion); };
   $('ndCap').onchange = alCambiarCap; alCambiarCap();
   document.querySelectorAll('#ndMod [data-m]').forEach(b => b.onclick = () => { CAPD.modalidad = b.dataset.m; document.querySelectorAll('#ndMod [data-m]').forEach(x => x.classList.toggle('on', x === b)); $('ndLugBox').hidden = CAPD.modalidad === 'Virtual'; });
+  // En el HMH (Aula, 60 lugares) toda capacitación es híbrida: al elegir ese lugar se marca «Híbrida» sola
+  if ($('ndLug')) $('ndLug').addEventListener('change', () => { if (/^HMH/i.test($('ndLug').value)) { CAPD.modalidad = 'Híbrida'; document.querySelectorAll('#ndMod [data-m]').forEach(x => x.classList.toggle('on', x.dataset.m === 'Híbrida')); } });
   const servicios = () => { const q = capNorm(CAPD.q); $('ndSer').innerHTML = (L.servicios || []).slice().sort((a, b) => a.localeCompare(b)).filter(s => !q || capNorm(s).indexOf(q) >= 0).map(s => '<button type="button" class="fchip' + (CAPD.servicios.indexOf(s) >= 0 ? ' on' : '') + '" data-s="' + esc(s) + '">' + esc(s) + '</button>').join('');
     $('ndSerN').textContent = CAPD.servicios.length ? CAPD.servicios.length + ' elegido(s): ' + CAPD.servicios.join(', ') : 'Todos';
     $('ndSer').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const s = b.dataset.s, k = CAPD.servicios.indexOf(s); if (k >= 0) CAPD.servicios.splice(k, 1); else CAPD.servicios.push(s); servicios(); }); };

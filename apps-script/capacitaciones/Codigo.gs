@@ -839,6 +839,8 @@ function idDoc_(d) { return (d.pais || 'Argentina') === 'Argentina' ? soloDni_(d
 function mezclar_(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 function conLock_(fn) { const l = LockService.getScriptLock(); l.waitLock(25000); try { return fn(); } finally { l.releaseLock(); } }
 function columnaLista_(nombre) { return listaCol_(tabla_('_LISTAS'), nombre); }
+// Regla de Belén (18/10/2026): toda capacitación en el HMH (Aula, 60 lugares) es híbrida; cambia solo en la sala del HZT u otros lugares
+function modalidadPorLugar_(modalidad, lugar) { return /^virtual/i.test(modalidad || '') ? modalidad : /^HMH/i.test(String(lugar || '').trim()) ? 'Híbrida' : (modalidad || 'Presencial'); }
 function capacidad_(lugar) {
   const L = tabla_('_LISTAS'), a = L.i('LUGARES'), b = L.i('CAPACIDAD'); if (a < 0) return 's/d';
   const r = L.filas.find(x => String(x[a]).trim() === String(lugar || '').trim());
@@ -1161,7 +1163,7 @@ function dictadoGuardar_(d) {
     if (num_(cap.ENCUENTROS) > 1 && enc > num_(cap.ENCUENTROS)) return { ok: false, error: 'El programa tiene ' + cap.ENCUENTROS + ' encuentros.' };
     const D = tabla_('DICTADOS');
     const o = completarDictado_(D, {
-      CODIGO: cap.CODIGO, VERSION: cap.VERSION, ENCUENTRO_N: enc, FECHA: dma_(d.fecha), HORA_INICIO: d.hora, HORA_FIN: d.horaFin || '', MODALIDAD: d.modalidad,
+      CODIGO: cap.CODIGO, VERSION: cap.VERSION, ENCUENTRO_N: enc, FECHA: dma_(d.fecha), HORA_INICIO: d.hora, HORA_FIN: d.horaFin || '', MODALIDAD: modalidadPorLugar_(d.modalidad, d.lugar),
       LUGAR: /^virtual/i.test(d.modalidad) ? 'Virtual' : d.lugar, ESTABLECIMIENTO: sd_(d.establecimiento), SERVICIO_DESTINO: (d.servicios || []).join(' · ') || 'Todos',
       ORGANIZADOR: sd_(d.organizador || 'Higiene y Seguridad'), INSTITUCION: sd_(d.institucion), DISERTANTES: dis.map(x => x.nombre + (vacio_(x.detalle) ? '' : ' (' + x.detalle + ')')).join(' · ') || 'Belén Pellegrini',
       FIRMANTES: firmantesOrden_(d.firmantes).join(', '), LINK_INSCRIPCION: (d.inscripcion === undefined ? siNo_(cap.INSCRIPCION_PREVIA) : d.inscripcion) ? 'Sí' : '',
