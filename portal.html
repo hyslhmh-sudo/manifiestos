@@ -878,7 +878,9 @@ async function guardarFicha(tipo, fila, datos) {
 function modal(titulo, campos, valores, guardar, extra) {
   const v = valores || {};
   const campo = c => { const [k, l, op, an] = c, val = v[k] == null ? '' : v[k];
-    const ctl = Array.isArray(op) ? '<select class="c" data-k="' + k + '"><option value=""></option>' + op.map(o => '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+    // 18/10/2026: { lista: [...] } = se escribe libre con sugerencias (para valores nuevos, p. ej. una empresa privada que no está en la lista)
+    const ctl = op && op.lista ? '<input class="c" data-k="' + k + '" value="' + esc(val) + '" list="mdl_' + k + '" autocomplete="off"><datalist id="mdl_' + k + '">' + op.lista.filter(Boolean).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist>'
+      : Array.isArray(op) ? '<select class="c" data-k="' + k + '"><option value=""></option>' + op.map(o => '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
       : op === 'date' ? '<input class="c" type="date" data-k="' + k + '" value="' + esc(String(val).slice(0, 10)) + '">'
       : an ? '<textarea class="c" data-k="' + k + '">' + esc(val) + '</textarea>' : '<input class="c" data-k="' + k + '" value="' + esc(val) + '">';
     return '<label class="f' + (an ? ' ancho' : '') + '">' + esc(l) + ctl + '</label>'; };
@@ -1000,7 +1002,7 @@ function fichaPunto(cod, R, p) {
 <script src="modulos/trabajadores.js?v=14.4"></script>
 <script src="modulos/siniestros.js?v=14.13"></script>
 <script src="modulos/agua-plagas.js?v=14.49"></script>
-<script src="modulos/capacitaciones.js?v=14.72l"></script>
+<script src="modulos/capacitaciones.js?v=14.72m"></script>
 <script src="modulos/residuos.js?v=14.4"></script>
 <script src="modulos/diagnostico.js?v=14.7"></script>
 <script src="modulos/diag-modulos.js?v=14.8"></script>

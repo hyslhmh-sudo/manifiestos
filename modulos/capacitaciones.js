@@ -1022,7 +1022,7 @@ function capCvPintar(caja, recargar) {
       '<tr style="background:' + fondo + '"><td class="peq" style="padding:6px 8px;font-weight:800;color:var(--az)">DESPUÉS</td>' + despues + '</tr>' +
       '<tr style="background:' + fondo + '"><td colspan="' + (C.length + 1) + '" class="mu peq" style="padding:2px 8px 8px">' + det + '</td></tr>';
   };
-  caja.innerHTML = dl('cvF', L.funciones) + dl('cvS', L.servicios) + dl('cvI', L.instituciones) + dl('cvE', L.establecimientos) + dl('cvP', L.publicos) + dl('cvEm', L.empresas) + dl('cvV', L.vinculos) +
+  caja.innerHTML = dl('cvF', L.funciones) + dl('cvS', L.servicios) + dl('cvI', L.instituciones) + dl('cvE', L.establecimientos) + dl('cvP', L.publicos) + dl('cvEm', ['MAREM', 'SOMI', 'Star Union', 'SI-AL'].concat(L.empresas || [])) + dl('cvV', ['Planta', 'Contrato', 'Residente', 'Tercerizado', 'Empresa privada', 'Cooperativa', 'Otro'].concat(L.vinculos || [])) +
     '<section class="card tabla" style="margin-top:0">' +
     '<div style="padding:12px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border-bottom:1px solid var(--ln)">' +
       '<label class="f" style="flex:1;min-width:200px">Buscar<input class="c" id="cvQ" value="' + esc(CVF.q) + '" placeholder="Apellido, DNI o tipo de aviso" autocomplete="off"></label>' +
@@ -1146,8 +1146,10 @@ async function capPersona(dni, fresco) {
   $('pfEd').onclick = () => {
     const L = r.listas, op = (arr, v) => (v && arr.indexOf(v) < 0 ? [v] : []).concat(arr);
     const NOM = { APELLIDOS: 'Apellidos', NOMBRES: 'Nombres', CORREO: 'Correo', TELEFONO: 'Teléfono', PUBLICO: ['Público', L.publicos], CIUDAD: 'Ciudad', PROVINCIA: 'Provincia', PAIS: 'País', PROFESION: 'Función y detalle (como se ve en la ficha)',
-      INSTITUCION: ['Institución', L.instituciones], ESTABLECIMIENTO: ['Establecimiento (sigla)', L.establecimientos], SERVICIO: ['Servicio', L.servicios], FUNCION: ['Función', L.funciones], VINCULO: ['Vínculo', L.vinculos], EMPRESA: ['Empresa (si es tercerizado)', [''].concat(L.empresas)], CARRERA: 'Carrera (estudiantes)', REVISAR: ['Revisar', ['No', 'Sí']] };
-    const campos = r.editables.map(k => { const n = NOM[k] || k; return Array.isArray(n) ? [k, n[0], op(n[1], D[k])] : [k, n]; }).concat([['motivo', 'Motivo del cambio (queda en el historial)', '', 1]]);
+      INSTITUCION: ['Institución (dónde trabaja: hospital, empresa privada, universidad…)', L.instituciones, 1], ESTABLECIMIENTO: ['Establecimiento (sigla)', L.establecimientos], SERVICIO: ['Servicio', L.servicios, 1], FUNCION: ['Función', L.funciones, 1],
+      VINCULO: ['Vínculo', ['Planta', 'Contrato', 'Residente', 'Tercerizado', 'Empresa privada', 'Cooperativa', 'Otro'].concat(L.vinculos || []).filter((x, i, a) => a.indexOf(x) === i), 1], EMPRESA: ['Empresa (si es tercerizado o de una empresa privada: escribila si no está)', ['MAREM', 'SOMI', 'Star Union', 'SI-AL'].concat(L.empresas || []).filter((x, i, a) => a.findIndex(y => String(y).toLowerCase() === String(x).toLowerCase()) === i), 1], CARRERA: 'Carrera (estudiantes)', REVISAR: ['Revisar', ['No', 'Sí']] };
+    // 18/10/2026: institución, servicio, función, vínculo y empresa se escriben libres con sugerencias (antes eran listas cerradas y no se podía poner una empresa nueva)
+    const campos = r.editables.map(k => { const n = NOM[k] || k; return Array.isArray(n) ? [k, n[0], n[2] ? { lista: op(n[1], D[k]) } : op(n[1], D[k])] : [k, n]; }).concat([['motivo', 'Motivo del cambio (queda en el historial)', '', 1]]);
     modal('Corregir datos · ' + nom, campos, D, async o => {
       const motivo = o.motivo; delete o.motivo;
       const res = await api('p_cg_persona_guardar', { dni: D.DNI, datos: o, motivo: motivo }, 90000); if (!res.ok) return res.mensaje || 'No se pudo guardar.';
