@@ -1076,7 +1076,12 @@ async function capAvisoValidar(activo) {
     let V; try { V = await (capAvisoValidar.p = capAvisoValidar.p || capCvLeer(false).finally(() => { capAvisoValidar.p = null; })); } catch (e) { return; }
     for (let i = 0; i < 40 && ($('main').querySelector('.cargando') || !$('main').querySelector('.cab')) && location.hash === h0; i++) await new Promise(ok => setTimeout(ok, 1000));
     const m = $('main');
-    if (!V || !V.ok || !(V.grupos || []).length || location.hash !== h0 || !m || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+    if (!V || !V.ok || location.hash !== h0 || !m || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+    if (!(V.grupos || []).length) {   // 18/10/2026: aunque no haya nada, se ve dónde está
+      const d0 = document.createElement('a'); d0.id = 'cvBanda'; d0.href = '#capval'; d0.className = 'card'; d0.style.cssText = 'display:flex;gap:10px;align-items:center;margin:0 0 14px;text-decoration:none;color:inherit;border-left:4px solid #1E6B42';
+      d0.innerHTML = '<span class="ms" aria-hidden="true" style="color:#1E6B42">fact_check</span><span><b>Para validar</b> · no hay nada pendiente de la secretaría. <span class="mu peq">Cuando Melani cargue altas o cambios, aparecen acá para aceptarlos de a varios.</span></span>';
+      const c0 = m.querySelector('.cab'); if (c0) c0.after(d0); else m.prepend(d0); return;
+    }
     const d = document.createElement('section'); d.id = 'cvBanda'; d.style.cssText = 'margin:0 0 14px';
     const n = V.cuenta || {};
     d.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin:0 0 8px"><h2 style="margin:0;font-size:17px">Para validar · ' + (n.personas || V.grupos.length) + ' persona(s)' + (n.revision ? ' <span class="mu peq" style="font-weight:400">(' + n.revision + ' con «Requiere revisión»)</span>' : '') + '</h2>' +
