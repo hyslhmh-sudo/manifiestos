@@ -188,10 +188,13 @@ function cgMailsAplicar_(x) {
   });
 }
 
+// Inicio del ciclo: hasta 2026, 1/2 · el ciclo 2026 se extiende al 31/03/2027 · desde 2027, 1/4
+function cgCicloIni_(ref) { const y = ref.getFullYear(), m = ref.getMonth(); if (y <= 2026) return new Date(m === 0 ? y - 1 : y, 1, 1); if (m >= 3) return new Date(y, 3, 1); return y - 1 <= 2026 ? new Date(y - 1, 1, 1) : new Date(y - 1, 3, 1); }
+
 // ================================================================== INFORME POR JEFATURA
 function cgMeta_() {
   try { const t = String(cgLibro_().getSheetByName('CUMPLIMIENTO').getRange('A3').getDisplayValue()); const m = /meta (\d{2}\/\d{2}\/\d{4})/.exec(t), c = /calculado (\d{2}\/\d{2}\/\d{4}(?: \d{2}:\d{2})?)/.exec(t);
-    return { meta: m ? m[1] : '31/01/' + (new Date().getFullYear() + 1), calculado: c ? c[1] : '', resumen: t }; } catch (e) { return { meta: '', calculado: '', resumen: '' }; }
+    return { meta: m ? m[1] : '31/03/' + (cgCicloIni_(new Date()).getFullYear() + 1), calculado: c ? c[1] : '', resumen: t }; } catch (e) { return { meta: '', calculado: '', resumen: '' }; }
 }
 function cgPersonalJefatura_(jef) {
   const k = cgNorm_(jef);
@@ -339,7 +342,7 @@ function cgDatosInforme_(x) {
   const regs = cgHoja_('REGISTROS').filas.filter(r => !/anulad/i.test(cgTxt_(r.o.ESTADO))).map(r => ({ dni: cgDni_(r.o.DNI), cod: cgTxt_(r.o.CODIGO), f: cgFecha_(r.o.FECHA),
     tipo: cgTxt_(r.o.TIPO), aprob: /^s/i.test(cgTxt_(r.o.APROBADO)) })).filter(r => r.f);
   const mes = x.mes ? new Date(Number(x.mes.slice(0, 4)), Number(x.mes.slice(5, 7)) - 1, 1) : null;
-  const ref = mes || hoy, cicloIni = new Date(ref.getMonth() === 0 ? ref.getFullYear() - 1 : ref.getFullYear(), 1, 1);
+  const ref = mes || hoy, cicloIni = cgCicloIni_(ref);
   const finMes = m => new Date(m.getFullYear(), m.getMonth() + 1, 1);
   const resumen = (ini, fin) => {
     const f = regs.filter(r => r.f >= ini && r.f < fin), porCap = {}, porPub = {};
@@ -382,7 +385,7 @@ function cgInformeOpciones_() {
 function cgInforme_(x) {
   x = x || {};
   const D = cgDatosInforme_(x), mes = D.mes, M = cgMil_, MZ = D.matriz, hoyTxt = cgDma_(D.hoy);
-  const periodoTxt = mes ? CG_MES[mes.getMonth()] + ' de ' + mes.getFullYear() : 'ciclo ' + D.cicloIni.getFullYear() + ' (desde el 1 de febrero) hasta el ' + hoyTxt;
+  const periodoTxt = mes ? CG_MES[mes.getMonth()] + ' de ' + mes.getFullYear() : 'ciclo ' + D.cicloIni.getFullYear() + ' (desde el ' + cgDma_(D.cicloIni) + ') hasta el ' + hoyTxt;
   const tipo = mes ? 'mensual' : 'a pedido';
   const asunto = 'Capacitación del personal en Higiene y Seguridad · informe ' + tipo + ' · ' + periodoTxt;
   const n = x.prueba ? { ok: true, codigo: 'PRUEBA-' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmm') } : docNumero_({ est: 'RED', bloque: 'CAP', tipo: 'IT', asunto: asunto, origen: 'Sistema', idOrigen: mes ? 'mes ' + Utilities.formatDate(mes, TZ, 'yyyy-MM') : 'a pedido ' + hoyTxt, pedidoPor: Session.getActiveUser().getEmail() });
@@ -443,7 +446,7 @@ function cgInforme_(x) {
     // ---------------- 2. MÉTODO
     H1('2. Método de trabajo');
     P_('Los datos se tomaron del libro de capacitaciones del Sistema HyS: los registros de asistencia y de evaluaciones aprobadas (hoja REGISTROS), las personas (hoja PERSONAS) y el cálculo de cumplimiento por servicio y por persona' + (D.meta.calculado ? ', actualizado el ' + D.meta.calculado : '') + ', que cruza la base de trabajadores de HZT y HMH con la matriz de capacitación por función y servicio.');
-    P_('Cada persona se cuenta una sola vez por DNI. El ciclo de capacitación va del 1 de febrero al 31 de enero. Se cuentan los registros válidos (no anulados); en los programas de varios encuentros, para el cumplimiento cuenta la aprobación del programa. La cobertura es la proporción de personas con al menos una capacitación; el cumplimiento de la matriz es la proporción de capacitaciones obligatorias realizadas sobre las que corresponden a cada persona.');
+    P_('Cada persona se cuenta una sola vez por DNI. El ciclo de capacitación 2026 va del 1 de febrero de 2026 al 31 de marzo de 2027 (meta de cumplimiento); desde 2027, cada ciclo va del 1 de abril al 31 de marzo. Se cuentan los registros válidos (no anulados); en los programas de varios encuentros, para el cumplimiento cuenta la aprobación del programa. La cobertura es la proporción de personas con al menos una capacitación; el cumplimiento de la matriz es la proporción de capacitaciones obligatorias realizadas sobre las que corresponden a cada persona.');
     P_('Limitaciones: el informe refleja lo registrado en el sistema. Una asistencia que no se registró no aparece, y los datos laborales (servicio y función) dependen de la base de trabajadores.');
 
     // ---------------- 3. HECHOS

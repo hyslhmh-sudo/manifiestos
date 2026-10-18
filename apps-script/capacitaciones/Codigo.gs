@@ -227,8 +227,8 @@ function abiertasNuevas_(participacion) {
 function calcular_() {
   const ahora = new Date(), hoy = iso_(ahora);
   const anio = Number(hoy.slice(0, 4)), mes = Number(hoy.slice(5, 7));
-  const c0 = mes >= 2 ? anio : anio - 1;
-  const ciclo = { nombre: String(c0), desde: c0 + '-02-01', hasta: (c0 + 1) + '-01-31', meta: (c0 + 1) + '-01-31' };
+  const c0 = Number(cicloDe_(hoy));   // ciclo 2026: 01/02/2026–31/03/2027 · desde 2027: 01/04–31/03 (el 01/04 empiezan los vencimientos)
+  const ciclo = { nombre: String(c0), desde: cicloDesde_(c0), hasta: (c0 + 1) + '-03-31', meta: (c0 + 1) + '-03-31' };
 
   const libP = SpreadsheetApp.openById(ID.personas), libC = SpreadsheetApp.openById(ID.catalogo);
   const tb = hojaDe_(libP, 'TABLERO').getDataRange().getDisplayValues();
@@ -478,7 +478,8 @@ function ahoraTxt_() { return Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy
 function sd_(v) { v = String(v == null ? '' : v).trim(); return v ? v : 's/d'; }
 function vacio_(v) { v = String(v == null ? '' : v).trim(); return !v || v === 's/d'; }
 function soloDni_(v) { let d = String(v || '').replace(/\D/g, ''); if (d.length === 11) d = d.slice(2, 10); return d.replace(/^0+/, ''); }
-function cicloDe_(iso_) { const y = Number(iso_.slice(0, 4)), m = Number(iso_.slice(5, 7)); return String(m >= 2 ? y : y - 1); }
+function cicloDe_(iso_) { const y = Number(iso_.slice(0, 4)), m = Number(iso_.slice(5, 7)); if (y <= 2026) return String(m >= 2 ? y : y - 1); return String(m >= 4 ? y : y - 1); }   // hasta 2026: feb–ene · ciclo 2026 extendido al 31/03/2027 · desde 2027: abr–mar
+function cicloDesde_(c0) { return Number(c0) <= 2026 ? c0 + '-02-01' : c0 + '-04-01'; }
 function masDoce_(iso_) { const d = new Date(Number(iso_.slice(0, 4)), Number(iso_.slice(5, 7)) - 1 + 12, Number(iso_.slice(8, 10))); return iso2_(d); }
 function iso2_(d) { return Utilities.formatDate(d, ZONA, 'yyyy-MM-dd'); }
 function aviso_(tipo, hoja_, ref, detalle) {
@@ -2155,8 +2156,8 @@ function venceDe_(cap, fIso) { return cap && /no vence/i.test(cap.VENCE) ? 'No v
 function probarRegistroGet() { const o = doGet({ parameter: { d: 'DIC-20261015-01' } }); const t = o.getContent ? o.getContent() : String(o); Logger.log(t.length + ' caracteres · ' + t.replace(/\s+/g, ' ').slice(0, 300)); }
 
 // Personas capacitadas de un establecimiento (tablero › semáforo por hospital), con lo que hicieron en el ciclo
-ACCIONES.c_est_personas = d => { const hoy = iso_(new Date()), anio = Number(hoy.slice(0, 4)), mes = Number(hoy.slice(5, 7)), c0 = mes >= 2 ? anio : anio - 1;
-  const N = libroNuevoTablero_({ desde: c0 + '-02-01', hasta: (c0 + 1) + '-01-31' }, hoy), e = N.porEst.find(x => x.nombre === d.est);
+ACCIONES.c_est_personas = d => { const hoy = iso_(new Date()), anio = Number(hoy.slice(0, 4)), mes = Number(hoy.slice(5, 7)), c0 = Number(cicloDe_(hoy));
+  const N = libroNuevoTablero_({ desde: cicloDesde_(c0), hasta: (c0 + 1) + '-03-31' }, hoy), e = N.porEst.find(x => x.nombre === d.est);
   return e ? { ok: true, est: e.nombre, nombre: e.nombreLargo, red: e.red, lista: e.lista, capacitaciones: e.capacitaciones } : { ok: false, error: 'No hay registros de ' + d.est + '.' }; };
 // Diagnóstico (18/10/2026): arma la página de registro de un dictado y devuelve su tamaño y comienzo (pide la clave del portal)
 ACCIONES.c_prueba_registro = d => { try { const o = doGet({ parameter: d.p || { d: 'DIC-20261015-01' } }); const t = o.getContent ? o.getContent() : String(o); return { ok: true, largo: t.length, inicio: t.replace(/\s+/g, ' ').slice(0, 400) }; } catch (e) { return { ok: false, error: String(e && e.stack || e) }; } };

@@ -87,7 +87,7 @@ function prepararF7_() {
   try {
     const T = tabla_('ALCANCE_CUMPLIMIENTO');
     if (!T.filas.some(r => String(r[0]).trim())) agregar_(T, [
-      { ESTABLECIMIENTO: 'HZT', NOMBRE: 'Hospital Zonal Trelew', GRUPO: 'Red Trelew', INCLUIR: 'Sí', META: '', DIRECCION_DESTINO: 'Dirección HZT / HMH', OBSERVACIONES: 'META vacía: 31/01 de cada ciclo' },
+      { ESTABLECIMIENTO: 'HZT', NOMBRE: 'Hospital Zonal Trelew', GRUPO: 'Red Trelew', INCLUIR: 'Sí', META: '', DIRECCION_DESTINO: 'Dirección HZT / HMH', OBSERVACIONES: 'META vacía: 31/03 de cada ciclo' },
       { ESTABLECIMIENTO: 'HMH', NOMBRE: 'Hospital María Humphreys', GRUPO: 'Red Trelew', INCLUIR: 'Sí', META: '', DIRECCION_DESTINO: 'Dirección HZT / HMH', OBSERVACIONES: '' },
       { ESTABLECIMIENTO: 'HSST', NOMBRE: 'Hospital Subzonal Santa Teresita', GRUPO: 'HSST', INCLUIR: 'No', META: '', DIRECCION_DESTINO: 's/d', OBSERVACIONES: 'Para sumarlo: INCLUIR = Sí y cargar sus jefaturas con ESTABLECIMIENTO = HSST' }]);
   } catch (e) { out.push('ALCANCE_CUMPLIMIENTO: ' + e.message); }
@@ -230,7 +230,7 @@ function cumplimiento_(fresco, grupo) {
   try { cache.put(clave, JSON.stringify(t), MIN_CACHE * 60); } catch (e) { /* demasiado grande: se recalcula la próxima vez */ }
   return t;
 }
-function metaCiclo_(hoy) { const y = Number(hoy.slice(0, 4)), m = Number(hoy.slice(5, 7)); return (m >= 2 ? y + 1 : y) + '-01-31'; }
+function metaCiclo_(hoy) { return (Number(cicloDe_(hoy)) + 1) + '-03-31'; }   // meta: 31/03 del año siguiente al ciclo
 function cumplimientoCalc_(soloJefatura, grupo) {
   const hoy = iso_(new Date()), caps = capsMapa_(), G = grupoDe_(grupo);
   const reglas = reglas_(true).filter(r => caps[r.codigo] && /^activ/i.test(caps[r.codigo].estado));
