@@ -1072,8 +1072,11 @@ async function capAvisoValidar(activo) {
   if (activo !== '#cap' && activo !== '#inicio') return; const h0 = location.hash;
   const m = $('main'); if (!m) return;
   if (activo === '#inicio') {
-    let V; try { V = await capCvLeer(false); } catch (e) { return; }
-    if (!V || !V.ok || !(V.grupos || []).length || location.hash !== h0 || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+    // una sola lectura aunque el tablero se pinte varias veces; se espera a que termine de cargar la pantalla
+    let V; try { V = await (capAvisoValidar.p = capAvisoValidar.p || capCvLeer(false).finally(() => { capAvisoValidar.p = null; })); } catch (e) { return; }
+    for (let i = 0; i < 40 && ($('main').querySelector('.cargando') || !$('main').querySelector('.cab')) && location.hash === h0; i++) await new Promise(ok => setTimeout(ok, 1000));
+    const m = $('main');
+    if (!V || !V.ok || !(V.grupos || []).length || location.hash !== h0 || !m || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
     const d = document.createElement('section'); d.id = 'cvBanda'; d.style.cssText = 'margin:0 0 14px';
     const n = V.cuenta || {};
     d.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin:0 0 8px"><h2 style="margin:0;font-size:17px">Para validar · ' + (n.personas || V.grupos.length) + ' persona(s)' + (n.revision ? ' <span class="mu peq" style="font-weight:400">(' + n.revision + ' con «Requiere revisión»)</span>' : '') + '</h2>' +
