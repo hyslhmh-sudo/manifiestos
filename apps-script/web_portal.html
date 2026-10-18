@@ -2054,6 +2054,10 @@ function capError(e) {
 }
 async function capTablero(fresco) {
   if (!CAPT) CAPT = LS.get('capt', null);
+  // 18/10/2026: lo guardado en el navegador se muestra enseguida, pero si tiene más de 10 minutos (o es de antes del libro nuevo) se actualiza solo
+  if (CAPT && !fresco && !capTablero.pidiendo && (!CAPT.calculado || Date.now() - Date.parse(CAPT.calculado) > 600000 || !/libro CAPACITACIONES/.test(CAPT.actualizadoOrigen || ''))) {
+    capTablero.pidiendo = true; setTimeout(async () => { try { if (location.hash.split('/')[0] === '#cap') await capTablero(true); } finally { capTablero.pidiendo = false; } }, 200);
+  }
   if (!CAPT || fresco) {
     if (!CAPT) cargando('#cap', 'Armando el tablero de capacitaciones…'); else toast('Actualizando el tablero de capacitaciones…');
     try { CAPT = await capApi('c_tablero', { fresco: !!fresco }, 180000); LS.set('capt', CAPT); }
