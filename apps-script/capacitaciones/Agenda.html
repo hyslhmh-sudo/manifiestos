@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0" rel="stylesheet">
+<style>
+  :root { --az:#0D313F; --pa:#5894A7; --pa2:#E7F0F3; --tx:#1B2A31; --mu:#4F616B; --ln:#D5DEE2; --bg:#F4F7F8; --ok:#1E6B42; --okbg:#E2F2E8; --er:#B4361F; --erbg:#FBE6E1; --am:#8A5A00; --ambg:#FFF3D6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; color: var(--tx); background: var(--bg); font-size: 16px; line-height: 1.45; }
+  .tel { max-width: 560px; margin: 0 auto; background: #fff; min-height: 100vh; display: flex; flex-direction: column; }
+  .cab { background: var(--az); color: #fff; padding: 20px 20px 16px; }
+  .cab small { color: #C9DCE3; font-size: 12px; font-weight: 700; letter-spacing: .6px; display: block; }
+  .cab b { display: block; font-size: 20px; line-height: 1.3; margin-top: 4px; }
+  .cab span { font-size: 13px; color: #DCE8EC; }
+  .cuerpo { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  h3 { margin: 0; font-size: 19px; color: var(--az); }
+  .mu { color: var(--mu); } .peq { font-size: 13.5px; }
+  .pasos { display: flex; gap: 6px; } .pasos i { flex: 1; height: 5px; border-radius: 99px; background: var(--ln); } .pasos i.on { background: var(--pa); }
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; font-weight: 700; }
+  label.f em { font-style: normal; font-weight: 500; color: var(--mu); }
+  label.f b { color: var(--er); }
+  input.c, select.c, textarea.c { border: 1px solid var(--ln); border-radius: 10px; padding: 11px 12px; font: inherit; font-size: 16px; background: #fff; color: var(--tx); min-height: 48px; width: 100%; }
+  textarea.c { min-height: 80px; resize: vertical; }
+  .btn { border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; min-height: 50px; width: 100%; background: var(--az); color: #fff; }
+  .btn.sec { background: #fff; color: var(--az); border: 1px solid var(--az); }
+  .btn.link { background: none; color: var(--az); min-height: 40px; text-decoration: underline; font-weight: 700; font-size: 15px; padding: 6px; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn:focus-visible, input.c:focus-visible, select.c:focus-visible, textarea.c:focus-visible, .opc:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
+  .opc { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; width: 100%; border: 1px solid var(--ln); border-radius: 12px; background: #fff; padding: 12px; font: inherit; color: var(--tx); cursor: pointer; }
+  .opc:hover { border-color: var(--pa); }
+  .opc.on { border: 2px solid var(--az); background: var(--pa2); }
+  .opc:disabled { opacity: .55; cursor: default; }
+  .opc .ic { width: 46px; height: 46px; border-radius: 12px; background: var(--az); color: #fff; display: grid; place-items: center; }
+  .opc b { display: block; color: var(--az); line-height: 1.3; }
+  .opc small { display: block; color: var(--mu); font-size: 13.5px; margin-top: 2px; }
+  .ms { font-family: 'Material Symbols Rounded'; font-size: 26px; line-height: 1; font-weight: normal; font-style: normal; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr; -webkit-font-feature-settings: 'liga'; font-feature-settings: 'liga'; }
+  .error { background: var(--erbg); color: var(--er); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
+  .aviso { background: var(--pa2); color: var(--az); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .listo { background: var(--okbg); color: var(--ok); border-radius: 12px; padding: 14px; }
+  .listo b { color: var(--ok); font-size: 18px; display: block; margin-bottom: 4px; }
+  .ficha { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 14.5px; margin: 0; }
+  .ficha dt { color: var(--mu); font-weight: 600; } .ficha dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+  .quien { border: 1px solid var(--ln); border-radius: 12px; padding: 12px; }
+  .quien b { color: var(--az); }
+  .sug { border: 2px solid var(--pa); border-radius: 12px; padding: 12px; background: #F7FBFC; }
+  .sug b { color: var(--az); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; background: var(--bg); color: var(--mu); border: 1px solid var(--ln); }
+  .chip.ok { background: var(--okbg); color: var(--ok); border-color: transparent; } .chip.er { background: var(--erbg); color: var(--er); border-color: transparent; } .chip.am { background: var(--ambg); color: var(--am); border-color: transparent; }
+  .dia { font-size: 13px; font-weight: 800; color: var(--mu); letter-spacing: .4px; text-transform: uppercase; margin-top: 4px; }
+  .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .hora { border: 1px solid var(--ln); border-radius: 10px; background: #fff; padding: 10px; font: inherit; text-align: left; cursor: pointer; color: var(--tx); }
+  .hora b { display: block; color: var(--az); } .hora small { color: var(--mu); font-size: 12.5px; }
+  .hora.on { border: 2px solid var(--az); background: var(--pa2); }
+  .hora:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
+  .fila { display: flex; gap: 8px; } .fila > * { flex: 1; }
+  .norma { font-size: 12.5px; color: var(--mu); border-top: 1px solid var(--ln); padding-top: 10px; }
+  .pie { border-top: 1px solid var(--ln); padding: 12px 16px 16px; text-align: center; }
+  .pie img { width: 240px; max-width: 100%; height: auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="tel">
+  <div class="cab"><small>CAPACITACIONES · HIGIENE Y SEGURIDAD LABORAL</small><b>Agenda de capacitaciones</b><span>Hospital Zonal Trelew · Hospital María Humphreys</span></div>
+  <div class="cuerpo">
+    <div class="pasos" id="pasos" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div id="err" class="error" role="alert" hidden></div>
+    <div id="vista" class="col" aria-live="polite"><span class="mu">Cargando la agenda…</span></div>
+    <div class="norma">La capacitación en prevención de riesgos laborales es un derecho de quienes trabajan y una obligación del establecimiento (Ley N.º 19.587, art. 9, inc. k; Decreto N.º 351/79, arts. 208 a 214; Res. SRT N.º 905/2015).</div>
+  </div>
+  <div class="pie"><img alt="HySL · Hospitales más seguros para las personas" src="data:image/png;base64,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"></div>
+</div>
+<script>
+  const TOKEN = <?!= JSON.stringify(c) ?>, TURNO = <?!= JSON.stringify(t) ?>;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const okCorreo = m => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(m || '').trim());
+  const ICONOS = { 'CAP-HYS-007': 'fire_extinguisher', 'CAP-HYS-012': 'local_fire_department', 'CAP-HYS-004': 'emergency', 'CAP-HYS-019': 'call', 'CAP-HYS-001': 'badge' };
+  let INI = null, modo = '', clase = null, jef = null, srv = null, cap = null, turno = null, dni = '';
+
+  function error(t) { $('err').textContent = t || ''; $('err').hidden = !t; if (t) $('err').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  function pasos(n) { [...$('pasos').children].forEach((x, i) => x.classList.toggle('on', i < n)); $('pasos').hidden = !n; }
+  function vista(html, n) { error(''); pasos(n || 0); $('vista').innerHTML = html; window.scrollTo(0, 0); }
+  function llamar(fn, arg, ok, btn, txt) {
+    error(''); const t0 = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = txt || 'Un momento…'; }
+    google.script.run.withSuccessHandler(r => { if (btn) { btn.disabled = false; btn.textContent = t0; } if (!r || r.ok === false) return error((r && r.error) || 'No se pudo completar. Probá de nuevo.'); ok(r); })
+      .withFailureHandler(() => { if (btn) { btn.disabled = false; btn.textContent = t0; } error('No hay conexión con el sistema. Probá de nuevo en un rato.'); })[fn](arg);
+  }
+  const opc = (attrs, icono, titulo, sub) => '<button type="button" class="opc" ' + attrs + '><span class="ic"><span class="ms">' + icono + '</span></span><span><b>' + titulo + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></button>';
+
+  // ---------------------------------------------------------------- Inicio
+  function inicio() {
+    vista('<h3>¿Cómo vas a participar?</h3>' +
+      opc('id="oYo"', 'person', 'Me anoto yo', 'Elijo una clase abierta y voy por mi cuenta') +
+      opc('id="oSrv"', 'groups', 'Anoto a mi servicio', 'Soy jefe/a, coordinador/a o a cargo (A/C) y reservo un horario para el equipo') +
+      '<span class="mu peq">Para cancelar, usá el link que te llega por correo.</span>', 1);
+    $('oYo').onclick = () => { modo = 'yo'; clases(); };
+    $('oSrv').onclick = () => { modo = 'srv'; jefDni(); };
+  }
+
+  // ---------------------------------------------------------------- Me anoto yo
+  function clases() {
+    const l = INI.clases;
+    vista('<h3>Clases abiertas</h3>' + (l.length ? '<span class="mu peq">Elegí la clase a la que querés ir.</span>' + l.map((x, i) =>
+      opc('data-i="' + i + '"' + (x.lleno ? ' disabled' : ''), ICONOS[x.codigo] || 'school', esc(x.nombre), esc(x.fecha + ' · ' + x.hora + (x.horaFin ? ' a ' + x.horaFin : '') + ' h · ' + x.lugar) + (x.lleno ? ' · <b style="display:inline;color:var(--er)">cupo completo</b>' : x.quedan != null ? ' · quedan ' + x.quedan + ' lugares' : ''))).join('')
+      : '<div class="aviso">Por ahora no hay clases abiertas. Volvé a mirar en unos días: se publican también en el portal de Higiene y Seguridad y en el de residuos.</div>') +
+      '<button class="btn link" id="bVol">Volver</button>', 1);
+    $('vista').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { clase = l[Number(b.dataset.i)]; datosYo(); });
+    $('bVol').onclick = inicio;
+  }
+  function datosYo() {
+    vista('<div class="quien"><span class="mu peq">Clase elegida</span><br><b>' + esc(clase.nombre) + '</b><br><span class="peq">' + esc(clase.fecha + ' · ' + clase.hora + ' h · ' + clase.lugar) + '</span></div>' +
+      '<label class="f" for="dni"><span>Tu DNI <b>*</b> <em>sin puntos</em></span><input class="c" id="dni" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30123456"></label>' +
+      '<button class="btn sec" id="bBus">Continuar</button><div id="yoMas" class="col" hidden></div><button class="btn link" id="bVol">Elegir otra clase</button>', 2);
+    $('bBus').onclick = buscarYo; $('dni').addEventListener('keydown', e => { if (e.key === 'Enter') buscarYo(); });
+    $('bVol').onclick = clases; $('dni').focus();
+  }
+  function buscarYo() {
+    dni = $('dni').value.replace(/\D/g, '');
+    if (dni.length < 6) return error('Escribí tu DNI, sin puntos.');
+    llamar('agPersona', dni, r => {
+      $('bBus').hidden = true; $('dni').disabled = true;
+      const m = $('yoMas'); m.hidden = false;
+      m.innerHTML = (r.encontrado ? '<div class="quien"><b>' + esc(r.nombre) + '</b><br><span class="peq mu">' + esc(r.detalle) + '</span><br><span class="peq">¿No sos vos? <button class="btn link" id="bOtroDni" style="display:inline;width:auto;min-height:0;padding:0">Corregí el DNI</button></span></div>'
+        : '<div class="aviso">No encontramos ese DNI en la base del hospital. Completá tus datos (quedan para la próxima).</div>' +
+          '<div class="fila"><label class="f" for="ape"><span>Apellido <b>*</b></span><input class="c" id="ape" autocomplete="family-name"></label><label class="f" for="nom"><span>Nombre <b>*</b></span><input class="c" id="nom" autocomplete="given-name"></label></div>' +
+          '<label class="f" for="lug"><span>Dónde trabajás <b>*</b></span><select class="c" id="lug"><option value="">Elegí…</option><option>HZT</option><option>HMH</option><option value="Otro">Otro lugar (escribilo abajo)</option></select></label>' +
+          '<input class="c" id="lugOtro" placeholder="Hospital, CAPS, institución…" hidden>' +
+          '<label class="f" for="srvY"><span>Servicio o sector <b>*</b></span><input class="c" id="srvY"></label>') +
+        '<label class="f" for="mail"><span>Tu correo <b>*</b> <em>' + (r.correo ? 'revisá que esté bien' : 'ahí te llegan la confirmación y los recordatorios') + '</em></span><input class="c" id="mail" type="email" autocomplete="email" value="' + esc(r.correo) + '" placeholder="nombre@correo.com"></label>' +
+        '<span class="mu peq">El DNI y el correo son obligatorios: al correo llegan la confirmación, los recordatorios 7, 2 y 1 día antes y el link para cancelar.</span>' +
+        '<button class="btn" id="bAnot">Anotarme</button>';
+      if ($('bOtroDni')) $('bOtroDni').onclick = datosYo;
+      if ($('lug')) $('lug').onchange = e => { $('lugOtro').hidden = e.target.value !== 'Otro'; };
+      $('bAnot').onclick = anotarme;
+    }, $('bBus'), 'Buscando…');
+  }
+  function anotarme() {
+    const correo = $('mail').value.trim();
+    if (!okCorreo(correo)) return error('Escribí tu correo completo: es obligatorio.');
+    const d = { dni: dni, id: clase.id, correo: correo };
+    if ($('ape')) {
+      Object.assign(d, { apellidos: $('ape').value.trim(), nombres: $('nom').value.trim(), servicio: $('srvY').value.trim(), lugar: $('lug').value === 'Otro' ? $('lugOtro').value.trim() : $('lug').value });
+      if (!d.apellidos || !d.nombres || !d.servicio || !d.lugar) return error('Completá apellido, nombre, dónde trabajás y servicio.');
+    }
+    llamar('agAnotarme', d, r => {
+      vista('<div class="listo"><b>' + (r.ya ? 'Ya estabas anotada/o' : '¡Listo, quedaste anotada/o!') + '</b>' + esc(clase.nombre) + '<br>' + esc(clase.fecha + ' · ' + clase.hora + ' h · ' + clase.lugar) + '</div>' +
+        '<span class="peq">Te mandamos la confirmación a <b>' + esc(correo) + '</b>. Te vamos a recordar por correo 7, 2 y 1 día antes. El día de la clase registrás tu asistencia con el QR del aula.</span>' +
+        '<span class="peq mu">Si no podés ir, cancelá desde el link del correo así el lugar queda para otra persona.</span><button class="btn sec" id="bIni">Volver al inicio</button>', 3);
+      $('bIni').onclick = recargar;
+    }, $('bAnot'), 'Anotando…');
+  }
+
+  // ---------------------------------------------------------------- Anoto a mi servicio
+  function jefDni() {
+    vista('<h3>Reservar un horario para el servicio</h3><span class="mu peq">Para jefaturas, coordinaciones y personas a cargo (A/C).</span>' +
+      '<label class="f" for="dni"><span>Tu DNI <b>*</b> <em>sin puntos</em></span><input class="c" id="dni" inputmode="numeric" autocomplete="off" placeholder="Ej.: 25710767"></label>' +
+      '<button class="btn" id="bBus">Continuar</button><button class="btn link" id="bVol">Volver</button>', 1);
+    $('bBus').onclick = () => {
+      dni = $('dni').value.replace(/\D/g, ''); if (dni.length < 6) return error('Escribí tu DNI, sin puntos.');
+      llamar('agJefatura', dni, r => r.conocido ? elegirServicio(r) : desconocido(r), $('bBus'), 'Buscando…');
+    };
+    $('dni').addEventListener('keydown', e => { if (e.key === 'Enter') $('bBus').click(); });
+    $('bVol').onclick = inicio; $('dni').focus();
+  }
+  function elegirServicio(r) {
+    jef = { conocido: true, nombre: r.nombre };
+    if (r.servicios.length === 1) { srv = r.servicios[0]; return servicio(); }
+    vista('<h3>Hola, ' + esc(r.nombre) + '</h3><span class="mu peq">Estás a cargo de más de un servicio. ¿Para cuál reservás?</span>' +
+      r.servicios.map((s, i) => opc('data-i="' + i + '"', 'groups', esc(s.jefatura), s.personal + ' personas')).join('') + '<button class="btn link" id="bVol">Volver</button>', 2);
+    $('vista').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { srv = r.servicios[Number(b.dataset.i)]; servicio(); });
+    $('bVol').onclick = jefDni;
+  }
+  function desconocido(r) {
+    jef = { conocido: false };
+    vista('<div class="aviso">Tu DNI no figura todavía como jefatura, coordinación o A/C de un servicio. Podés pedir el horario igual: <b>Higiene y Seguridad lo confirma</b> y te avisa por correo.</div>' +
+      '<label class="f" for="nom"><span>Nombre y apellido <b>*</b></span><input class="c" id="nom" value="' + esc(r.nombre || '') + '" autocomplete="name"></label>' +
+      '<label class="f" for="cargo"><span>Tu cargo <b>*</b></span><select class="c" id="cargo"><option value="">Elegí…</option>' + INI.cargos.map(c => '<option>' + esc(c) + '</option>').join('') + '</select></label>' +
+      '<label class="f" for="srvSel"><span>Servicio <b>*</b></span><select class="c" id="srvSel"><option value="">Elegí…</option>' + INI.jefaturas.map(j => '<option>' + esc(j) + '</option>').join('') + '</select></label>' +
+      '<label class="f" for="mail"><span>Correo para los avisos <b>*</b></span><input class="c" id="mail" type="email" autocomplete="email" placeholder="nombre@correo.com"></label>' +
+      '<button class="btn" id="bSig">Continuar</button><button class="btn link" id="bVol">Volver</button>', 2);
+    $('bSig').onclick = () => {
+      Object.assign(jef, { nombre: $('nom').value.trim(), cargo: $('cargo').value, correo: $('mail').value.trim() });
+      if (!jef.nombre || !jef.cargo || !$('srvSel').value) return error('Completá tu nombre, tu cargo y el servicio.');
+      if (!okCorreo(jef.correo)) return error('Escribí un correo completo: ahí te llega la confirmación.');
+      llamar('agSugerencias', $('srvSel').value, x => { srv = x.servicio; servicio(); }, $('bSig'), 'Buscando…');
+    };
+    $('bVol').onclick = jefDni;
+  }
+  function chipsIncendio(f) {
+    if (!f || !f.req) return '';
+    const c = (n, t) => '<span class="chip ' + (n >= f.req ? 'ok' : n ? 'am' : 'er') + '">' + t + ' ' + n + '/' + f.req + '</span>';
+    return '<div class="chips">' + c(f.ext, 'Extintores') + c(f.seg, 'Seg. humana') + c(f.eva, 'Evacuación') + '</div>';
+  }
+  function servicio() {
+    const s = srv, prim = s.sugeridas[0];
+    const otras = s.sugeridas.slice(1).concat(s.otras || []);
+    vista('<div class="quien"><b>' + esc(s.jefatura) + '</b>' + (s.personal ? '<br><span class="peq mu">' + s.personal + ' personas · ' + s.pct + ' % de las capacitaciones obligatorias al día</span>' : '') + chipsIncendio(s.incendio) + '</div>' +
+      (s.proxima ? '<div class="aviso">El servicio ya tiene un horario: <b>' + esc(s.proxima.fecha + ' ' + s.proxima.hora) + '</b> (' + esc(s.proxima.estado.toLowerCase()) + ').</div>' : '') +
+      (prim ? '<div class="sug"><span class="peq mu">Te sugerimos</span><br><b>' + esc(prim.nombre) + '</b><br><span class="peq">' + esc(motivo(prim, s)) + '</span></div>' +
+        '<button class="btn" id="bPrim">Elegir horario para esta</button>'
+        : '<div class="aviso">El servicio tiene al día las capacitaciones obligatorias. Si querés reforzar alguna, elegila abajo.</div>') +
+      (otras.length ? '<details' + (prim ? '' : ' open') + '><summary class="peq" style="cursor:pointer;font-weight:700;color:var(--az);padding:6px 0">Prefiero otra capacitación</summary><div class="col" style="margin-top:8px">' +
+        otras.map((x, i) => opc('data-o="' + i + '"', ICONOS[x.codigo] || 'school', esc(x.nombre), x.faltan ? x.faltan + ' persona(s) sin hacerla' + (x.reservada ? ' · ya reservada el ' + esc(x.reservada) : '') : '')).join('') + '</div></details>' : '') +
+      '<span class="peq mu">La secuencia de incendio se ofrece siempre en orden y en días distintos: 1.° extintores, 2.° seguridad humana, 3.° evacuación.</span>' +
+      '<button class="btn link" id="bVol">Volver</button>', 2);
+    if ($('bPrim')) $('bPrim').onclick = () => { cap = prim; horarios(); };
+    $('vista').querySelectorAll('[data-o]').forEach(b => b.onclick = () => { cap = otras[Number(b.dataset.o)]; horarios(); });
+    $('bVol').onclick = jefDni;
+  }
+  function motivo(x, s) {
+    if (x.fuego === 0) return 'Es la 1.ª de la secuencia de incendio y ' + x.faltan + ' de ' + s.personal + ' personas no la tienen.';
+    if (x.fuego > 0) return 'Sigue en la secuencia de incendio para ' + x.elegibles + ' persona(s) que ya hicieron la anterior.';
+    return x.faltan + ' persona(s) del servicio no la tienen vigente.';
+  }
+  function horarios() {
+    const l = INI.libres;
+    const porDia = {}; l.forEach(h => (porDia[h.fecha] = porDia[h.fecha] || []).push(h));
+    vista('<div class="quien"><span class="mu peq">' + esc(srv.jefatura) + '</span><br><b>' + esc(cap.nombre) + '</b></div><h3>Elegí el horario</h3>' +
+      (l.length ? '<span class="mu peq">Horarios ofrecidos por Higiene y Seguridad (' + esc(INI.franjas) + '). La clase se da en el servicio salvo que se indique otro lugar.</span>' +
+        Object.keys(porDia).map(d => '<div class="dia">' + esc(d) + '</div><div class="grilla">' + porDia[d].map(h => '<button type="button" class="hora" data-id="' + esc(h.id) + '"><b>' + esc(h.hora + ' a ' + h.horaFin) + '</b><small>' + esc(h.lugar) + (h.confirmaHyS ? ' · lo confirma HyS' : '') + '</small></button>').join('') + '</div>').join('')
+        : '<div class="aviso">No hay horarios libres en las próximas semanas. Escribí a Higiene y Seguridad para coordinar otro.</div>') +
+      '<button class="btn link" id="bVol">Elegir otra capacitación</button>', 3);
+    $('vista').querySelectorAll('.hora').forEach(b => b.onclick = () => { turno = l.find(h => h.id === b.dataset.id); confirmar(); });
+    $('bVol').onclick = servicio;
+  }
+  function confirmar() {
+    const pideCorreo = jef.conocido && !srv.tieneCorreo;
+    const pend = !jef.conocido || turno.confirmaHyS;
+    vista('<h3>Revisá y confirmá</h3><dl class="ficha"><dt>Servicio</dt><dd>' + esc(srv.jefatura) + '</dd><dt>Capacitación</dt><dd>' + esc(cap.nombre) + '</dd><dt>Cuándo</dt><dd>' + esc(turno.fecha + ' · ' + turno.hora + ' a ' + turno.horaFin + ' h') + '</dd><dt>Dónde</dt><dd>' + esc(turno.lugar) + '</dd>' +
+      (jef.conocido && srv.correo ? '<dt>Avisos a</dt><dd>' + esc(srv.correo) + '</dd>' : '') + '</dl>' +
+      (pideCorreo ? '<label class="f" for="mailJ"><span>Correo para los avisos <b>*</b> <em>no tenemos uno cargado para el servicio</em></span><input class="c" id="mailJ" type="email" autocomplete="email" placeholder="nombre@correo.com"></label>' : '') +
+      (pend ? '<div class="aviso">' + (turno.confirmaHyS && jef.conocido ? 'Faltan menos de 48 h: ' : '') + 'el pedido queda <b>pendiente</b> hasta que Higiene y Seguridad lo confirme. Te avisamos por correo.</div>' : '') +
+      '<span class="peq mu">No hace falta enviar la lista de asistentes: el día de la clase cada persona registra su asistencia con el QR.</span>' +
+      '<button class="btn" id="bRes">' + (pend ? 'Pedir este horario' : 'Reservar') + '</button><button class="btn link" id="bCambiar">Cambiar el horario</button>', 3);
+    $('bCambiar').onclick = horarios;
+    $('bRes').onclick = () => {
+      const d = { dni: dni, jefatura: srv.jefatura, id: turno.id, codigo: cap.codigo };
+      if (!jef.conocido) Object.assign(d, { nombre: jef.nombre, cargo: jef.cargo, correo: jef.correo });
+      if (pideCorreo) { d.correo = $('mailJ').value.trim(); if (!okCorreo(d.correo)) return error('Escribí un correo completo para los avisos.'); }
+      llamar('agReservar', d, r => {
+        vista('<div class="listo"><b>' + (r.estado === 'Reservado' ? '¡Reserva confirmada!' : 'Pedido recibido') + '</b>' + esc(r.reserva.nombre) + '<br>' + esc(r.reserva.jefatura) + '<br>' + esc(r.reserva.fecha + ' · ' + r.reserva.hora + ' a ' + r.reserva.horaFin + ' h · ' + r.reserva.lugar) + '</div>' +
+          '<span class="peq">' + (r.estado === 'Reservado' ? 'Te llega la confirmación por correo' : 'Higiene y Seguridad lo confirma y te avisa por correo') + (r.reserva.avisos ? ' a <b>' + esc(r.reserva.avisos) + '</b>' : '') + '. Después llegan los recordatorios 7, 2 y 1 día antes.</span>' +
+          '<span class="peq mu">Conviene que participe todo el personal del turno que pueda. Si necesitás cancelar, usá el link del correo.</span><button class="btn sec" id="bIni">Volver al inicio</button>', 3);
+        $('bIni').onclick = recargar;
+      }, $('bRes'), 'Reservando…');
+    };
+  }
+
+  // ---------------------------------------------------------------- Cancelar con el link del correo
+  function cancelar() {
+    llamar('agCancelarInfo', TOKEN, r => {
+      if (!r.activo) return vista('<h3>Cancelar</h3><div class="aviso">' + esc(r.detalle) + '<br>Ya no se puede cancelar (estado: ' + esc(r.estado) + ').</div><button class="btn sec" id="bIni">Ir a la agenda</button>'), $('bIni').onclick = irAgenda;
+      vista('<h3>' + (r.tipo === 'reserva' ? 'Cancelar la reserva del servicio' : 'Cancelar mi inscripción') + '</h3><div class="quien"><b>' + esc(r.detalle) + '</b></div>' +
+        '<label class="f" for="mot"><span>Motivo <b>*</b> <em>queda registrado</em></span><textarea class="c" id="mot" maxlength="300"></textarea></label>' +
+        '<button class="btn" id="bCan">Cancelar</button><button class="btn link" id="bNo">No, la mantengo</button>');
+      $('bNo').onclick = irAgenda;
+      $('bCan').onclick = () => { const m = $('mot').value.trim(); if (!m) return error('Contanos el motivo.');
+        llamar('agCancelar', { t: TOKEN, motivo: m }, x => { vista('<div class="listo"><b>Listo</b>' + esc(x.mensaje) + '</div><button class="btn sec" id="bIni">Ir a la agenda</button>'); $('bIni').onclick = irAgenda; }, $('bCan'), 'Cancelando…'); };
+    });
+  }
+  function irAgenda() { cargar(() => inicio()); }
+  function recargar() { cargar(() => inicio()); }
+  function cargar(sig) { llamar('agInicio', null, r => { INI = r; sig(); }); }
+
+  if (TOKEN) cancelar();
+  else cargar(() => {
+    if (TURNO) { const x = INI.clases.find(c => c.id === TURNO); if (x && !x.lleno) { modo = 'yo'; clase = x; return datosYo(); } }
+    inicio();
+  });
+</script>
+</body>
+</html>
