@@ -299,7 +299,7 @@
     llamar('evalInicio', Object.assign({}, buscado, { k: K, c: C, d: D }), r => {
       if (r.yaAprobada) { $('fin').textContent = r.mensaje; $('bEval').hidden = true; $('cerrar').hidden = false; ver('s3'); if (encuestaPend) mostrarEncuesta(); return; }
       EV = r; resp = {}; actual = 0;
-      $('evInt').textContent = 'Intento ' + r.intento + ' de ' + r.maximo + ' · aprobás con ' + r.nota + ' %';
+      $('evInt').textContent = 'Intento ' + r.intento + (r.maximo ? ' de ' + r.maximo : '') + ' · aprobás con ' + r.nota + ' %';
       pregunta(); ver('sEv');
     }, btn);
   }
@@ -336,7 +336,7 @@
     } else {
       h = '<div class="error" style="font-size:15px">Esta vez no alcanzó para aprobar.</div>' +
         (r.temas && r.temas.length ? '<span style="font-weight:700">Te sugerimos repasar:</span>' + r.temas.map(t => '<div class="tema">' + esc(t) + '</div>').join('') : '') +
-        (r.restantes ? '<span class="mu peq">Te ' + (r.restantes === 1 ? 'queda 1 intento' : 'quedan ' + r.restantes + ' intentos') + '. Las preguntas pueden cambiar.</span><button class="btn" type="button" id="otraVez">Volver a intentar</button>'
+        (r.restantes ? '<span class="mu peq">' + (r.restantes < 0 ? 'Podés volver a intentarlo las veces que necesites' : 'Te ' + (r.restantes === 1 ? 'queda 1 intento' : 'quedan ' + r.restantes + ' intentos')) + '. Las preguntas pueden cambiar.</span><button class="btn" type="button" id="otraVez">Volver a intentar</button>'
           : '<div class="aviso">Usaste todos los intentos. Comunicate con Higiene y Seguridad para volver a rendir.</div>');
     }
     h += '<button class="btn sec" type="button" id="seguir">' + (encuestaPend ? 'Continuar' : 'Terminar') + '</button>';

@@ -802,7 +802,8 @@ function menuLinks() {
 // Nunca se borra una fila: se cambia el ESTADO y queda el motivo en _HISTORIAL.
 // =====================================================================
 const HS_VENTANA = 48;                 // horas que queda abierto el registro de un dictado
-const INTENTOS_DEFECTO = 3;            // intentos de evaluación si la evaluación no dice otra cosa
+const INTENTOS_DEFECTO = 0;            // 0 = intentos ilimitados (decisión de Belén, 18/10/2026); un número en EVALUACIONES › INTENTOS_MAXIMOS pone tope
+function maxIntentos_(ev) { const n = num_(ev && ev.INTENTOS_MAXIMOS); return n > 0 ? n : INTENTOS_DEFECTO; }   // 0 = sin tope
 const NOTA_DEFECTO = 70;               // nota mínima si la evaluación no dice otra cosa
 const FIRMA_HYS = 'FIR-001';           // la firma de Belén: va siempre, a la derecha
 const MAX_FIRMAS = 4, MAX_DISERTANTES = 3;
@@ -908,7 +909,7 @@ function capCatalogo_() {
       codigo: o.CODIGO, version: o.VERSION, nombre: o.NOMBRE, tipo: o.TIPO_ACTIVIDAD, categoria: o.CATEGORIA, estado: o.ESTADO, registro: o.REGISTRO,
       encuentros: num_(o.ENCUENTROS) || 1, carga: o.CARGA_HORARIA, siempre: siNo_(o.SIEMPRE_ABIERTA), inscripcion: siNo_(o.INSCRIPCION_PREVIA), icono: o.ICONO,
       link: vacio_(o.TOKEN) ? '' : linkReg_('k=' + o.TOKEN), qr: vacio_(o.TOKEN) ? '' : qrDe_(linkReg_('k=' + o.TOKEN)),
-      evaluacion: !/evaluaci/i.test(o.REGISTRO) ? null : ev ? { id: ev.ID_EVALUACION, preguntas: nPreg[ev.ID_EVALUACION] || 0, porIntento: num_(ev.PREGUNTAS_POR_INTENTO), nota: num_(ev['NOTA_MINIMA_%']) || NOTA_DEFECTO, intentos: num_(ev.INTENTOS_MAXIMOS) || INTENTOS_DEFECTO, sorteo: siNo_(ev.SORTEO), estado: ev.ESTADO } : 'falta',
+      evaluacion: !/evaluaci/i.test(o.REGISTRO) ? null : ev ? { id: ev.ID_EVALUACION, preguntas: nPreg[ev.ID_EVALUACION] || 0, porIntento: num_(ev.PREGUNTAS_POR_INTENTO), nota: num_(ev['NOTA_MINIMA_%']) || NOTA_DEFECTO, intentos: maxIntentos_(ev), sorteo: siNo_(ev.SORTEO), estado: ev.ESTADO } : 'falta',
       dictado: abierto ? { estado: 'abierto', id: abierto.x.ID_DICTADO, cierra: fmt_(abierto.v.cierra) } : proximo ? { estado: 'próximo', id: proximo.x.ID_DICTADO, abre: fmt_(proximo.v.abre) } : null,
       registros: regs[o.CODIGO] || 0, faltan: faltantes_(o, ev, nPreg)
     };
@@ -1068,14 +1069,14 @@ function evalGuardar_(d) {
       const id = 'EVA-' + d.codigo.replace(/^CAP-/, '') + '-' + ('0' + n).slice(-2);
       const enUso = /final/i.test(tipo) && (d.reemplazar || !evalDe_(d.codigo));
       if (enUso) E.filas.forEach((r, k) => { if (r[E.i('CODIGO')] === d.codigo && siNo_(r[E.i('EN_USO')])) setCampos_(E, k, { EN_USO: 'No' }); });
-      ev = { ID_EVALUACION: id, CODIGO: d.codigo, VERSION: cap.VERSION || '1', TIPO: tipo, PUBLICO: sd_(d.publico || 'Todos'), PREGUNTAS_POR_INTENTO: porIntento, 'NOTA_MINIMA_%': (num_(d.nota) || NOTA_DEFECTO) + '%', INTENTOS_MAXIMOS: num_(d.intentos) || INTENTOS_DEFECTO, SORTEO: d.sorteo === false ? 'No' : 'Sí', ESTADO: 'Activa', NOMBRE: cap.NOMBRE + ' · ' + tipo.toLowerCase(), EN_USO: enUso ? 'Sí' : 'No', TOKEN: token12_(), CODIGO_ANTERIOR: '', OBSERVACIONES: sd_(d.observaciones) };
+      ev = { ID_EVALUACION: id, CODIGO: d.codigo, VERSION: cap.VERSION || '1', TIPO: tipo, PUBLICO: sd_(d.publico || 'Todos'), PREGUNTAS_POR_INTENTO: porIntento, 'NOTA_MINIMA_%': (num_(d.nota) || NOTA_DEFECTO) + '%', INTENTOS_MAXIMOS: num_(d.intentos) || 'Ilimitados', SORTEO: d.sorteo === false ? 'No' : 'Sí', ESTADO: 'Activa', NOMBRE: cap.NOMBRE + ' · ' + tipo.toLowerCase(), EN_USO: enUso ? 'Sí' : 'No', TOKEN: token12_(), CODIGO_ANTERIOR: '', OBSERVACIONES: sd_(d.observaciones) };
       agregar_(E, [ev]);
       historial_('HyS (portal)', 'EVALUACIONES', id, 'Alta', '', ev.NOMBRE, enUso ? 'Evaluación nueva (en uso)' : 'Evaluación nueva');
     } else {
       const k = E.filas.findIndex(r => r[E.i('ID_EVALUACION')] === ev.ID_EVALUACION), cambios = {};
       if (d.porIntento) cambios.PREGUNTAS_POR_INTENTO = num_(d.porIntento);
       if (d.nota) cambios['NOTA_MINIMA_%'] = num_(d.nota) + '%';
-      if (d.intentos) cambios.INTENTOS_MAXIMOS = num_(d.intentos);
+      if (d.intentos !== undefined) cambios.INTENTOS_MAXIMOS = num_(d.intentos) || 'Ilimitados';   // vacío = ilimitados
       if (d.sorteo !== undefined) cambios.SORTEO = d.sorteo ? 'Sí' : 'No';
       setCampos_(E, k, cambios);
     }
@@ -1323,11 +1324,11 @@ function evalInicio(d) {
   if (!P.filas.some(r => r[P.i('DNI')] === doc)) return { ok: false, error: 'Primero completá el registro con tus datos.' };
   const ev = evalDe_(ini.cap.codigo, ini.evaluacion), idDic = ini.abierta.idDictado;
   return conLock_(() => {
-    const prev = intentosDe_(doc, ev.ID_EVALUACION, idDic), max = num_(ev.INTENTOS_MAXIMOS) || INTENTOS_DEFECTO;
+    const prev = intentosDe_(doc, ev.ID_EVALUACION, idDic), max = maxIntentos_(ev);   // 0 = ilimitados
     if (prev.some(x => siNo_(x.o.APROBADO))) return { ok: true, yaAprobada: true, mensaje: 'Ya aprobaste esta evaluación. ¡Bien!' };
     const enCurso = prev.find(x => /curso/i.test(x.o.APROBADO));
     const usados = prev.filter(x => !/curso/i.test(x.o.APROBADO)).length;
-    if (!enCurso && usados >= max) return { ok: false, agotado: true, error: 'Ya usaste los ' + max + ' intentos de esta evaluación. Comunicate con Higiene y Seguridad para volver a rendirla.' };
+    if (!enCurso && max && usados >= max) return { ok: false, agotado: true, error: 'Ya usaste los ' + max + ' intentos de esta evaluación. Comunicate con Higiene y Seguridad para volver a rendirla.' };
     const pool = preguntasDe_(ev.ID_EVALUACION), sortear = !/^no/i.test(ev.SORTEO);
     if (!pool.length) return { ok: false, error: 'La evaluación no tiene preguntas activas. Avisale a Higiene y Seguridad.' };
     const cuantas = Math.min(num_(ev.PREGUNTAS_POR_INTENTO) || pool.length, pool.length);
@@ -1362,7 +1363,7 @@ function evalEntregar(d) {
       detalle.push({ texto: p.PREGUNTA, elegida: elegida ? p['OPCION_' + elegida] : '(sin responder)', correcta: p['OPCION_' + p.CORRECTA], bien: !!ok, fundamento: vacio_(p.FUNDAMENTO) ? '' : p.FUNDAMENTO });
     });
     const total = orden.length, nota = total ? Math.round(100 * bien / total) : 0, min = num_(ev['NOTA_MINIMA_%']) || NOTA_DEFECTO, aprobado = nota >= min;
-    const max = num_(ev.INTENTOS_MAXIMOS) || INTENTOS_DEFECTO, restantes = Math.max(0, max - num_(it.INTENTO_N));
+    const max = maxIntentos_(ev), restantes = max ? Math.max(0, max - num_(it.INTENTO_N)) : -1;   // -1 = ilimitados (nunca se agotan)
     setCampos_(T, k, { RESPUESTAS: JSON.stringify(resp), CORRECTAS: bien + ' de ' + total, NOTA: nota, APROBADO: aprobado ? 'Sí' : 'No' });
     // Registro: si aprueba, o si no aprueba en el último intento (queda para tu seguimiento)
     const cap = capDe_(ev.CODIGO) || {}, hoyIso = iso_(new Date());
@@ -1448,7 +1449,7 @@ function menuMigrarEvaluaciones() {
   if (tabla_('EVALUACIONES').filas.some(r => /^EVA-HYS-/.test(r[0]))) { ui.alert('Las evaluaciones ya se migraron. No se repite para no duplicar.'); return; }
   if (ui.alert('Migrar evaluaciones', 'Se copian las evaluaciones y las preguntas del catálogo actual, con su TOKEN (los links siguen sirviendo). El libro actual no se modifica. ¿Seguimos?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
   const r = migrarEvaluaciones_();
-  ui.alert('Migración terminada', 'Evaluaciones: ' + r.evaluaciones + '\nPreguntas: ' + r.preguntas + '\nEn uso por capacitación: ' + r.enUso + '\nFilas originales en _ARCHIVO: ' + r.archivo + '\n\nIntentos permitidos: ' + INTENTOS_DEFECTO + ' (se cambia en EVALUACIONES › INTENTOS_MAXIMOS).', ui.ButtonSet.OK);
+  ui.alert('Migración terminada', 'Evaluaciones: ' + r.evaluaciones + '\nPreguntas: ' + r.preguntas + '\nEn uso por capacitación: ' + r.enUso + '\nFilas originales en _ARCHIVO: ' + r.archivo + '\n\nIntentos permitidos: ' + (INTENTOS_DEFECTO || 'ilimitados') + ' (se cambia en EVALUACIONES › INTENTOS_MAXIMOS).', ui.ButtonSet.OK);
 }
 function migrarEvaluaciones_() {
   preparar_();
@@ -1462,7 +1463,7 @@ function migrarEvaluaciones_() {
     guardar('EVALUACIONES', k + 2, r[e('ID_EVALUACION')], EH, r);
     const nom = r[e('NOMBRE')], id = r[e('ID_EVALUACION')];
     return { ID_EVALUACION: id, CODIGO: r[e('ID_CAPACITACION')], VERSION: '1', TIPO: /diagn/i.test(nom) ? 'Diagnóstica' : 'Final', PUBLICO: sd_(r[e('PUBLICO')]),
-      PREGUNTAS_POR_INTENTO: sd_(r[e('PREGUNTAS_POR_INTENTO')]), 'NOTA_MINIMA_%': sd_(r[e('NOTA_MINIMA_%')]), INTENTOS_MAXIMOS: INTENTOS_DEFECTO, SORTEO: siNo_(r[e('SORTEO')]) ? 'Sí' : 'No',
+      PREGUNTAS_POR_INTENTO: sd_(r[e('PREGUNTAS_POR_INTENTO')]), 'NOTA_MINIMA_%': sd_(r[e('NOTA_MINIMA_%')]), INTENTOS_MAXIMOS: INTENTOS_DEFECTO || 'Ilimitados', SORTEO: siNo_(r[e('SORTEO')]) ? 'Sí' : 'No',
       ESTADO: sd_(r[e('ESTADO')]), NOMBRE: sd_(nom), EN_USO: enUso[id] ? 'Sí' : 'No', TOKEN: sd_(r[e('TOKEN')]), CODIGO_ANTERIOR: sd_(r[e('CODIGO_ANTERIOR')]), OBSERVACIONES: sd_(r[e('ENFOQUE')]) };
   });
   const preg = pv.slice(1).filter(r => r[p('ID_PREGUNTA')]).map((r, k) => {
