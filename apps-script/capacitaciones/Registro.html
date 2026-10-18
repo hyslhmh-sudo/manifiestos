@@ -180,8 +180,8 @@
     google.script.run.withSuccessHandler(r => {
       if (!r || !r.ok) { $('cNom').textContent = 'Inscripción no disponible'; return error(r && r.error); }
       INS = r; const x = r.dictado;
-      $('cCod').textContent = 'INSCRIPCIÓN · CAPACITACIÓN HyS'; $('cNom').textContent = x.nombre + (x.encuentro ? ' · encuentro ' + x.encuentro : '');
-      $('cSub').textContent = [x.fecha + (x.hora ? ' · ' + x.hora + ' h' : ''), x.modalidad, x.lugar && !/virtual/i.test(x.lugar) && x.lugar !== 's/d' ? x.lugar : ''].filter(Boolean).join(' · ');
+      $('cCod').textContent = 'INSCRIPCIÓN · CAPACITACIÓN HyS'; $('cNom').textContent = x.nombre + (x.programa ? ' · programa completo (' + x.programa + ' encuentros)' : x.encuentro ? ' · encuentro ' + x.encuentro : '');
+      $('cSub').textContent = [(x.programa ? 'Empieza el ' : '') + x.fecha + (x.hora ? ' · ' + x.hora + ' h' : ''), x.modalidad, x.lugar && !/virtual/i.test(x.lugar) && x.lugar !== 's/d' ? x.lugar : ''].filter(Boolean).join(' · ');
       if (!r.abierta) error(r.texto + ' Si ya estabas inscripta/o y no vas a poder asistir, poné tu documento para avisarnos.');
       listo(r.listas);
     }).withFailureHandler(() => { $('cNom').textContent = 'Sin conexión'; error('No se pudo cargar la inscripción. Revisá tu conexión.'); }).inscInicio(I);

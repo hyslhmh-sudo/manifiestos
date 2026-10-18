@@ -604,6 +604,23 @@ function agRecordatorios() {
         if (n) setCampos_(A, t._k, { RECORDATORIOS: [t.RECORDATORIOS, marca + ' ' + n + ' persona(s) ' + Utilities.formatDate(ahora, ZONA, 'dd/MM')].filter(x => !vacio_(x)).join(' · ') });
       }
     });
+    // Programas con inscripción: recordatorio a los inscriptos antes de CADA encuentro (encuentro 1: 7, 2 y 1 días antes; los demás: 1 día antes)
+    programasConInscripcion_().forEach(p => {
+      const ins = I.filas.map((r, k) => Object.assign(obj_(I, r), { _k: k })).filter(x => x.ID_DICTADO === p.o1.ID_DICTADO && !/anulad/i.test(x.ESTADO));
+      if (!ins.length) return;
+      p.encuentros.forEach(o => {
+        const n = num_(o.ENCUENTRO_N), f = isoDe_(o.FECHA), dias = Math.round((fechaHora_(dma_(f)) - fechaHora_(dma_(hoy))) / 864e5);
+        if (dias < 1 || (n === 1 ? RECORDAR_DIAS.indexOf(dias) < 0 : dias !== 1)) return;
+        const marca = 'E' + n + '-' + dias + 'd';
+        ins.forEach(x => {
+          if (String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0)) return;
+          const para = correoOk_(x.CORREO) ? x.CORREO : correoDe[x.DNI]; if (!correoOk_(para)) return;
+          enviar_(para, 'Recordatorio: ' + p.cap.NOMBRE + ' · encuentro ' + n + ' de ' + p.total + ' · ' + diaCorto_(f), mailPrograma_(p.cap, o, n, p.total, dias), 'Recordatorio programa · encuentro ' + n + ' · ' + dias + ' día(s)', '', o.ID_DICTADO, o.CODIGO);
+          x.RECORDATORIOS = [x.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(y => !vacio_(y)).join(' · ');
+          setCampos_(I, x._k, { RECORDATORIOS: x.RECORDATORIOS });
+        });
+      });
+    });
   } finally { lock.releaseLock(); }
 }
 // Libre que pasó: «Sin uso». Reservado o clase abierta que pasó y tuvo asistentes: «Realizado».
@@ -705,6 +722,30 @@ function claseAbiertaDeDictado_(o) {
   agregar_(A, [t]);
   historial_('HyS (portal)', 'AGENDA', t.ID_TURNO, 'ESTADO', '', 'Clase abierta', o.CODIGO + ' · desde ' + o.ID_DICTADO + ' (publicación automática)');
   return publicarClases_();
+}
+// ------------------------------------------------------------------ Programas con inscripción
+// REGLA (Belén, 18/10/2026): el programa se publica una sola vez (programa completo), con UNA inscripción (el formulario del encuentro 1)
+// y recordatorios por correo antes de cada encuentro. La cohorte son los encuentros 2..N posteriores al encuentro 1 con inscripción.
+function programasConInscripcion_() {
+  const D = tabla_('DICTADOS'), capsP = {}, todos = D.filas.map(r => obj_(D, r)).filter(o => !/cancel|suspend|anulad/i.test(o.ESTADO) && isoDe_(o.FECHA)), out = [];
+  todos.filter(o => num_(o.ENCUENTRO_N) === 1 && /^http/.test(String(o.LINK_INSCRIPCION || ''))).forEach(o1 => {
+    const cap = capsP[o1.CODIGO] || (capsP[o1.CODIGO] = capDe_(o1.CODIGO)); if (!cap || num_(cap.ENCUENTROS) <= 1) return;
+    const f1 = isoDe_(o1.FECHA), N = num_(cap.ENCUENTROS), enc = [o1];
+    for (let n = 2; n <= N; n++) {
+      const x = todos.filter(o => o.CODIGO === o1.CODIGO && num_(o.ENCUENTRO_N) === n && isoDe_(o.FECHA) > f1).sort((a, b) => isoDe_(a.FECHA) < isoDe_(b.FECHA) ? -1 : 1)[0];
+      if (x) enc.push(x);
+    }
+    out.push({ o1: o1, cap: cap, encuentros: enc, total: N, cierre: !vacio_(o1.CIERRE_INSCRIPCION) ? fechaHora_(o1.CIERRE_INSCRIPCION) : ventana_(o1).abre });
+  });
+  return out;
+}
+function mailPrograma_(cap, o, n, total, dias) {
+  const f = isoDe_(o.FECHA), cuando = DIAS_SEMANA[diaSemana_(f)] + ' ' + dma_(f) + ' · ' + hhmm_(o.HORA_INICIO) + (o.HORA_FIN ? ' a ' + hhmm_(o.HORA_FIN) : '') + ' h';
+  const intro = n === 1 && dias > 1 ? 'Te recordamos que en <b>' + dias + ' días</b> empieza el programa en el que te inscribiste.' :
+    'Te recordamos que <b>mañana</b> tenés el <b>encuentro ' + n + ' de ' + total + '</b> del programa.';
+  const zoom = (String(o.OBSERVACIONES || '').match(/https?:\/\/[^\s·]*zoom[^\s·]*/i) || [''])[0];
+  return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Dónde', /virtual/i.test(o.LUGAR + ' ' + o.MODALIDAD) && !/h[ií]brida/i.test(o.MODALIDAD) ? 'Virtual' : sd_(o.LUGAR) + (/h[ií]brida/i.test(o.MODALIDAD) ? ' · Híbrida' : '')], ['Encuentro', n + ' de ' + total]]) +
+    (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con este link (se abre a la hora de la clase):</p>' + boton_('Registrar asistencia', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)));
 }
 // Cambiar el estado de un horario (siempre con motivo; nunca se borra)
 function agEstado_(d) {
@@ -867,7 +908,7 @@ function publicarClases_() {
   let H = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getDisplayValues()[0].map(x => String(x).trim());
   if (H.indexOf('ORIGEN') < 0) { const c = H.filter(Boolean).length + 1; sh.getRange(1, c).setValue('ORIGEN'); H = sh.getRange(1, 1, 1, c).getDisplayValues()[0].map(x => String(x).trim()); }
   const ult = sh.getLastRow(), v = ult > 1 ? sh.getRange(2, 1, ult - 1, H.length).getDisplayValues() : [], io = H.indexOf('ORIGEN');
-  const manuales = v.filter(r => !/^AGENDA:/.test(r[io]) && r.some(x => String(x).trim()));
+  const manuales = v.filter(r => !/^(AGENDA|PROGRAMA):/.test(r[io]) && r.some(x => String(x).trim()));
   const caps = capsMapa_(), ahora = new Date();
   const D = tabla_('DICTADOS'), inscDic = {};   // clases híbridas con inscripción previa: se anotan en el formulario del dictado (eligen presencial o virtual y dejan su consulta)
   D.filas.forEach(r => { const l = String(r[D.i('LINK_INSCRIPCION')] || ''); if (/^http/.test(l)) inscDic[r[D.i('ID_DICTADO')]] = 'https://hyslhmh-sudo.github.io/capacitaciones/?i=' + encodeURIComponent(r[D.i('ID_DICTADO')]); });   // página de GitHub (no la dirección de Apps Script)
@@ -879,11 +920,22 @@ function publicarClases_() {
       DETALLE: t.CODIGO + ' · clase abierta · anotate con tu DNI' + (num_(t.CUPO) ? ' · cupo ' + num_(t.CUPO) : ''), ORDEN: String(i + 1), ORIGEN: 'AGENDA:' + t.ID_TURNO };
     return H.map(h => o[h] === undefined ? '' : o[h]);
   });
-  const filas = clases.concat(manuales);
+  // Programas con inscripción: UNA publicación por programa (programa completo, una sola inscripción), visible hasta que cierra la inscripción
+  const plural = d => /s$/.test(d) ? d : d + 's';
+  const progs = programasConInscripcion_().filter(p => p.cierre > ahora).sort((a, b) => a.cierre - b.cierre).map(p => {
+    const o1 = p.o1, c = caps[o1.CODIGO] || { nombre: p.cap.NOMBRE, destinatarios: '' }, f = isoDe_(o1.FECHA), o = {
+      VISIBLE: 'Sí', CAPACITACION: c.nombre || p.cap.NOMBRE, INICIO: dma_(f), CIERRE_INSCRIPCION: Utilities.formatDate(p.cierre, ZONA, 'dd/MM/yyyy'),
+      DIAS_Y_HORARIO: plural(DIAS_SEMANA[diaSemana_(f)]) + ' · ' + hhmm_(o1.HORA_INICIO) + (o1.HORA_FIN ? ' a ' + hhmm_(o1.HORA_FIN) : '') + ' h · ' + p.total + ' encuentros',
+      MODALIDAD: o1.MODALIDAD + (vacio_(o1.LUGAR) || /virtual/i.test(o1.LUGAR) ? '' : ' · ' + o1.LUGAR),
+      DESTINATARIOS: vacio_(c.destinatarios) ? 'Todo el personal' : c.destinatarios, ENLACE_INSCRIPCION: 'https://hyslhmh-sudo.github.io/capacitaciones/?i=' + encodeURIComponent(o1.ID_DICTADO),
+      DETALLE: o1.CODIGO + ' · programa de ' + p.total + ' encuentros · una sola inscripción para todo el programa', ORDEN: String(clases.length + 1), ORIGEN: 'PROGRAMA:' + o1.ID_DICTADO };
+    return H.map(h => o[h] === undefined ? '' : o[h]);
+  });
+  const filas = clases.concat(progs, manuales);
   if (ult > 1) sh.getRange(2, 1, ult - 1, H.length).clearContent();
   if (filas.length) sh.getRange(2, 1, filas.length, H.length).setValues(filas);
   const A = tabla_('AGENDA'); turnos_().filter(t => t.ESTADO === 'Clase abierta').forEach(t => { const pub = t.inicio > ahora && !/^no/i.test(t.PUBLICADO) ? 'Sí' : t.PUBLICADO; if (pub !== t.PUBLICADO) setCampos_(A, t._k, { PUBLICADO: pub }); });
-  return clases.length + ' clase(s) abierta(s) publicada(s) en el portal público.';
+  return clases.length + ' clase(s) abierta(s)' + (progs.length ? ' y ' + progs.length + ' programa(s)' : '') + ' publicada(s) en el portal público.';
 }
 function textoSemana_(desde) {
   const ahora = new Date(), hasta = new Date(ahora.getTime() + 8 * 864e5), caps = capsMapa_(), I = tabla_('INSCRIPCIONES');

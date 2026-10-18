@@ -1176,6 +1176,7 @@ function dictadoGuardar_(d) {
     historial_('HyS (portal)', 'DICTADOS', o.ID_DICTADO, 'Alta', '', cap.CODIGO + ' · ' + o.FECHA + ' ' + o.HORA_INICIO, 'Dictado nuevo');
     let publicado = '';
     if (abierta) { try { publicado = claseAbiertaDeDictado_(o); } catch (e) { publicado = 'No se pudo publicar la clase abierta: ' + e.message; } }
+    else if (num_(cap.ENCUENTROS) > 1 && enc === 1 && /^http/.test(String(o.LINK_INSCRIPCION || ''))) { try { publicado = publicarClases_(); } catch (e) { publicado = 'No se pudo publicar el programa: ' + e.message; } }   // programa con inscripción: se publica solo
     const r = resumenDictado_(o); r.publicado = publicado; r.ok = true; r.whatsapp = textoWhatsapp_(cap, o); r.qrInscripcion = r.linkInscripcion ? qrDe_(r.linkInscripcion) : '';
     r.aviso = /^activ/i.test(cap.ESTADO) ? '' : 'La capacitación está en «' + cap.ESTADO + '»: el registro no abre hasta que la actives.';
     return r;
@@ -1223,8 +1224,9 @@ function inscInicio(i) {
   else if (new Date() > cierre) { abierta = false; texto = 'La inscripción cerró el ' + fmt_(cierre) + '.'; }
   else if (lleno && !hib && !virt) { abierta = false; texto = 'Se completó el cupo de ' + cupo + ' lugares.'; }
   const opciones = hib ? (lleno ? ['Virtual'] : ['Presencial', 'Virtual']) : [virt ? 'Virtual' : 'Presencial'];
-  return { ok: true, abierta: abierta, texto: texto, opciones: opciones, cupoLleno: lleno,
-    dictado: { id: o.ID_DICTADO, nombre: cap.NOMBRE || o.CODIGO, encuentro: num_(cap.ENCUENTROS) > 1 ? o.ENCUENTRO_N + ' de ' + cap.ENCUENTROS : '', fecha: dma_(isoDe_(o.FECHA)), hora: hhmm_(o.HORA_INICIO), modalidad: o.MODALIDAD, lugar: o.LUGAR, cierre: fmt_(cierre) },
+  const programa = num_(cap.ENCUENTROS) > 1 && num_(o.ENCUENTRO_N) === 1 ? num_(cap.ENCUENTROS) : 0;   // inscripción al encuentro 1 = inscripción a todo el programa
+  return { ok: true, abierta: abierta, texto: texto, opciones: opciones, cupoLleno: lleno, programa: programa,
+    dictado: { id: o.ID_DICTADO, nombre: cap.NOMBRE || o.CODIGO, programa: programa, encuentro: num_(cap.ENCUENTROS) > 1 ? o.ENCUENTRO_N + ' de ' + cap.ENCUENTROS : '', fecha: dma_(isoDe_(o.FECHA)), hora: hhmm_(o.HORA_INICIO), modalidad: o.MODALIDAD, lugar: o.LUGAR, cierre: fmt_(cierre) },
     listas: listasRegistro_() };
 }
 function inscBuscar(q) {
@@ -1244,7 +1246,9 @@ function inscGuardar(d) {
     if (mod === 'Presencial' && ini.cupoLleno) return { ok: false, error: 'Se completó el cupo presencial.' };
     const consulta = String(d.consulta || '').trim().slice(0, 1500);
     agregar_(I, [{ ID_INSCRIPCION: uid_('INS', per.doc), FECHA: ahoraTxt_(), ID_DICTADO: d.i, DNI: per.doc, MODALIDAD_ELEGIDA: mod, CONSULTA_PREVIA: consulta || 's/d',
-      ESTADO_CONSULTA: consulta ? 'Pendiente' : 'No aplica', ESTADO: 'Inscripta', ASISTIO: '', CANAL: d.origen === 'qr' ? 'QR' : 'Link', FECHA_ANULACION: '', ANULADA_POR: '', MOTIVO: '' }]);
+      ESTADO_CONSULTA: consulta ? 'Pendiente' : 'No aplica', ESTADO: 'Inscripta', ASISTIO: '', CANAL: d.origen === 'qr' ? 'QR' : 'Link', FECHA_ANULACION: '', ANULADA_POR: '', MOTIVO: '',
+      CORREO: String(d.correo || '').trim(), TOKEN_CANCELAR: tokenAg_(), RECORDATORIOS: '' }]);   // correo y token: para los recordatorios y para cancelar
+    if (ini.programa) return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') en el programa completo: ' + ini.programa + ' encuentros, desde el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. Antes de cada encuentro te llega un recordatorio por correo; el día de cada clase registrás tu asistencia con el link o el QR.' };
     return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') para el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. El día de la clase registrás tu asistencia con el link o el QR.' };
   });
 }
