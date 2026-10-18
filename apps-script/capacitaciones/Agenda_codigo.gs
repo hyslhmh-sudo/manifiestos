@@ -695,6 +695,17 @@ function agClase_(d) {
     return { ok: true, id: t.ID_TURNO, idDictado: t.ID_DICTADO, mensaje: 'Clase abierta creada. ' + pub, whatsapp: textoSemana_() };
   });
 }
+// Clase abierta a partir de un dictado ya creado (regla: las abiertas híbridas se publican solas): fila en AGENDA vinculada al mismo dictado + publicación
+function claseAbiertaDeDictado_(o) {
+  const A = tabla_('AGENDA'), fecha = isoDe_(o.FECHA), hora = hhmm_(o.HORA_INICIO);
+  if (turnos_().some(t => t.ID_DICTADO === o.ID_DICTADO)) return publicarClases_();
+  const t = { ID_TURNO: nuevoIdTurno_(A, fecha, hora), FECHA: dma_(fecha), HORA_INICIO: hora, HORA_FIN: hhmm_(o.HORA_FIN) || '', TIPO_TURNO: 'Clase abierta', CODIGO: o.CODIGO,
+    MODALIDAD: o.MODALIDAD, LUGAR: o.LUGAR, CUPO: /^\d+$/.test(String(o.CUPO_PRESENCIAL)) ? String(o.CUPO_PRESENCIAL) : '', ESTADO: 'Clase abierta', ID_DICTADO: o.ID_DICTADO, PUBLICADO: 'Sí', CONFIRMADO_POR: 'HyS',
+    OBSERVACIONES: dentroDeFranja_(fecha, hora, hhmm_(o.HORA_FIN)) ? 'Desde el dictado ' + o.ID_DICTADO : 'Fuera de franja: cargada por HyS · desde el dictado ' + o.ID_DICTADO, CREADO: ahoraTxt_(), ORIGEN: 'Portal (dictado)' };
+  agregar_(A, [t]);
+  historial_('HyS (portal)', 'AGENDA', t.ID_TURNO, 'ESTADO', '', 'Clase abierta', o.CODIGO + ' · desde ' + o.ID_DICTADO + ' (publicación automática)');
+  return publicarClases_();
+}
 // Cambiar el estado de un horario (siempre con motivo; nunca se borra)
 function agEstado_(d) {
   return conLock_(() => {

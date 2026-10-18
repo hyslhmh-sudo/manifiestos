@@ -1162,17 +1162,21 @@ function dictadoGuardar_(d) {
     const enc = num_(cap.ENCUENTROS) > 1 ? (num_(d.encuentro) || 1) : 1;
     if (num_(cap.ENCUENTROS) > 1 && enc > num_(cap.ENCUENTROS)) return { ok: false, error: 'El programa tiene ' + cap.ENCUENTROS + ' encuentros.' };
     const D = tabla_('DICTADOS');
+    // REGLA (Belén, 18/10/2026): una clase abierta híbrida (no programa) lleva inscripción previa y se publica sola en la agenda y en los sitios
+    const abierta = /^h[ií]brida/i.test(modalidadPorLugar_(d.modalidad, d.lugar)) && num_(cap.ENCUENTROS) <= 1;
     const o = completarDictado_(D, {
       CODIGO: cap.CODIGO, VERSION: cap.VERSION, ENCUENTRO_N: enc, FECHA: dma_(d.fecha), HORA_INICIO: d.hora, HORA_FIN: d.horaFin || '', MODALIDAD: modalidadPorLugar_(d.modalidad, d.lugar),
       LUGAR: /^virtual/i.test(d.modalidad) ? 'Virtual' : d.lugar, ESTABLECIMIENTO: sd_(d.establecimiento), SERVICIO_DESTINO: (d.servicios || []).join(' · ') || 'Todos',
       ORGANIZADOR: sd_(d.organizador || 'Higiene y Seguridad'), INSTITUCION: sd_(d.institucion), DISERTANTES: dis.map(x => x.nombre + (vacio_(x.detalle) ? '' : ' (' + x.detalle + ')')).join(' · ') || 'Belén Pellegrini',
-      FIRMANTES: firmantesOrden_(d.firmantes).join(', '), LINK_INSCRIPCION: (d.inscripcion === undefined ? siNo_(cap.INSCRIPCION_PREVIA) : d.inscripcion) ? 'Sí' : '',
+      FIRMANTES: firmantesOrden_(d.firmantes).join(', '), LINK_INSCRIPCION: (abierta || (d.inscripcion === undefined ? siNo_(cap.INSCRIPCION_PREVIA) : d.inscripcion)) ? 'Sí' : '',
       CUPO_PRESENCIAL: d.cupo ? String(d.cupo) : '', OBSERVACIONES: sd_(d.observaciones),
       DISERTANTES_DATOS: dis.length ? JSON.stringify(dis.map(x => ({ nombre: String(x.nombre).trim(), detalle: vacio_(x.detalle) ? '' : String(x.detalle).trim(), dni: soloDni_(x.dni) || String(x.dni || '').trim(), correo: String(x.correo || '').trim(), trato: x.trato || '' }))) : ''
     }, cap);
     agregar_(D, [o]);
     historial_('HyS (portal)', 'DICTADOS', o.ID_DICTADO, 'Alta', '', cap.CODIGO + ' · ' + o.FECHA + ' ' + o.HORA_INICIO, 'Dictado nuevo');
-    const r = resumenDictado_(o); r.ok = true; r.whatsapp = textoWhatsapp_(cap, o); r.qrInscripcion = r.linkInscripcion ? qrDe_(r.linkInscripcion) : '';
+    let publicado = '';
+    if (abierta) { try { publicado = claseAbiertaDeDictado_(o); } catch (e) { publicado = 'No se pudo publicar la clase abierta: ' + e.message; } }
+    const r = resumenDictado_(o); r.publicado = publicado; r.ok = true; r.whatsapp = textoWhatsapp_(cap, o); r.qrInscripcion = r.linkInscripcion ? qrDe_(r.linkInscripcion) : '';
     r.aviso = /^activ/i.test(cap.ESTADO) ? '' : 'La capacitación está en «' + cap.ESTADO + '»: el registro no abre hasta que la actives.';
     return r;
   });
