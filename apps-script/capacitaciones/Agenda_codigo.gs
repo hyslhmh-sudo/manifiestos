@@ -858,11 +858,13 @@ function publicarClases_() {
   const ult = sh.getLastRow(), v = ult > 1 ? sh.getRange(2, 1, ult - 1, H.length).getDisplayValues() : [], io = H.indexOf('ORIGEN');
   const manuales = v.filter(r => !/^AGENDA:/.test(r[io]) && r.some(x => String(x).trim()));
   const caps = capsMapa_(), ahora = new Date();
+  const D = tabla_('DICTADOS'), inscDic = {};   // clases híbridas con inscripción previa: se anotan en el formulario del dictado (eligen presencial o virtual y dejan su consulta)
+  D.filas.forEach(r => { const l = String(r[D.i('LINK_INSCRIPCION')] || ''); if (/^http/.test(l)) inscDic[r[D.i('ID_DICTADO')]] = 'https://hyslhmh-sudo.github.io/capacitaciones/?i=' + encodeURIComponent(r[D.i('ID_DICTADO')]); });   // página de GitHub (no la dirección de Apps Script)
   const clases = turnos_().filter(t => t.ESTADO === 'Clase abierta' && t.inicio > ahora && !/^no/i.test(t.PUBLICADO)).sort((a, b) => a.inicio - b.inicio).map((t, i) => {
     const c = caps[t.CODIGO] || { nombre: t.CODIGO, destinatarios: '' }, o = {
       VISIBLE: 'Sí', CAPACITACION: c.nombre, INICIO: dma_(isoDe_(t.FECHA)), CIERRE_INSCRIPCION: dma_(isoDe_(t.FECHA)),
       DIAS_Y_HORARIO: diaCorto_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h', MODALIDAD: t.MODALIDAD + (vacio_(t.LUGAR) || /virtual/i.test(t.LUGAR) ? '' : ' · ' + t.LUGAR),
-      DESTINATARIOS: vacio_(c.destinatarios) ? 'Todo el personal' : c.destinatarios, ENLACE_INSCRIPCION: AGENDA_WEB + '?t=' + encodeURIComponent(t.ID_TURNO),
+      DESTINATARIOS: vacio_(c.destinatarios) ? 'Todo el personal' : c.destinatarios, ENLACE_INSCRIPCION: /^h[ií]brida/i.test(t.MODALIDAD || '') && inscDic[t.ID_DICTADO] ? inscDic[t.ID_DICTADO] : AGENDA_WEB + '?t=' + encodeURIComponent(t.ID_TURNO),
       DETALLE: t.CODIGO + ' · clase abierta · anotate con tu DNI' + (num_(t.CUPO) ? ' · cupo ' + num_(t.CUPO) : ''), ORDEN: String(i + 1), ORIGEN: 'AGENDA:' + t.ID_TURNO };
     return H.map(h => o[h] === undefined ? '' : o[h]);
   });
