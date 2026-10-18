@@ -320,7 +320,11 @@ function calcular_() {
         organizador: r[d('ORGANIZADOR')], externa: /^s[ií]/i.test(r[d('EXTERNA')]), cupo: r[d('CUPO_PRESENCIAL')], inscripcion: !!r[d('LINK_INSCRIPCION')], observaciones: r[d('OBSERVACIONES')], origen: 'Libro nuevo' });
     });
   }
-  dictados.forEach(x => { const c = cat.find(k => k.codigo && x.codigo && k.codigo === x.codigo); if (c) { x.nombre = c.codigo + ' · ' + c.nombre; x.abierta = c.abierta; } });
+  // 18/10/2026: el nombre sale del CATALOGO de este libro (las capacitaciones nuevas, como CAP-HYS-020, no están en el catálogo anterior).
+  // El aviso «falta abrirla» queda solo para las del catálogo anterior: en el libro nuevo cada dictado se abre solo (ABRE / CIERRA).
+  const catN = {}; try { const CN = tabla_('CATALOGO'); CN.filas.forEach(r => { const o = obj_(CN, r); if (o.CODIGO && !catN[o.CODIGO]) catN[o.CODIGO] = o; }); } catch (e) { /* sin catálogo nuevo */ }
+  dictados.forEach(x => { const n = catN[x.codigo]; if (n) { x.nombre = x.codigo + ' · ' + n.NOMBRE; return; }
+    const c = cat.find(k => k.codigo && x.codigo && k.codigo === x.codigo); if (c) { x.nombre = c.codigo + ' · ' + c.nombre; x.abierta = c.abierta; } });
   dictados.sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
 
   // --- Requiere atención: solo lo que se carga o se dicta desde AVISOS_DESDE
