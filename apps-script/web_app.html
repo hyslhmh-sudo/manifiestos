@@ -1434,7 +1434,7 @@ async function regFoto(input) {
 }
 // ------------------------------------------------------------------ Cocina (módulo 4 · Modulo6.gs): personas que manipulan alimentos y relevamiento BPM / HACCP
 let KP = null;   // { personas, resumen, sugeridas, funciones } del establecimiento
-const K_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'wa'] };
+const K_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'wa'], opcional: ['Opcional', 'ok'] };
 function irCocina() {
   try { localStorage.setItem('diag_ses', JSON.stringify({ est: SES.est, clave: SES.clave, dni: SES.dni || '', nombre: SES.nombre })); } catch (e) {}
   if (/googleusercontent\.com$/.test(location.hostname)) return window.open(API_URL + '?p=diagnostico#cocina', '_blank');
@@ -1450,8 +1450,8 @@ async function cocPers(fresco) {
   }
   const L = KP.personas.filter(p => p.ACTIVO !== 'No'), S = KP.resumen, tag = e => '<span class="tag ' + (K_EST[e] || K_EST.sd)[1] + '">' + (K_EST[e] || K_EST.sd)[0] + '</span>';
   $('app').innerHTML = miTit('Personas de cocina', 'Quienes manipulan alimentos, de planta o de empresa: carnet de manipulador (vale 3 años) y libreta sanitaria (1 año).') +
-    '<div class="notice' + (S.vencidos ? '' : ' ok') + '"' + (S.vencidos ? ' style="background:var(--erbg);color:var(--er)"' : '') + '><b>' + S.total + ' persona(s)</b> · carnet vigente: ' + S.carnetVigente + ' · libreta vigente: ' + S.libretaVigente + (S.vencidos ? ' · <b>' + S.vencidos + ' vencida(s) o sin documento</b>' : '') + (S.porVencer ? ' · ' + S.porVencer + ' vencen en 60 días' : '') + '</div>' +
-    (L.length ? '<div class="lista">' + L.map(p => '<div class="item"><div><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><small>' + esc([p.FUNCION_COCINA, p.ORIGEN === 'Empresa' ? 'Empresa ' + (p.EMPRESA || '') : 'Planta'].filter(Boolean).join(' · ')) + '<br>Carnet: ' + (K_EST[p.carnet] || K_EST.sd)[0].toLowerCase() + (p.carnetVence ? ' (' + fechaTxt(p.carnetVence) + ')' : '') + ' · Libreta: ' + (K_EST[p.libreta] || K_EST.sd)[0].toLowerCase() + (p.libretaVence ? ' (' + fechaTxt(p.libretaVence) + ')' : '') + '</small>' +
+    '<div class="notice' + (S.vencidos ? '' : ' ok') + '"' + (S.vencidos ? ' style="background:var(--erbg);color:var(--er)"' : '') + '><b>' + S.total + ' persona(s)</b>' + (S.profesionales ? ' (' + S.profesionales + ' nutricionista/s)' : '') + ' · carnet vigente: ' + S.carnetVigente + (S.manipuladores != null && S.manipuladores !== S.total ? ' de ' + S.manipuladores : '') + ' · libreta vigente: ' + S.libretaVigente + (S.vencidos ? ' · <b>' + S.vencidos + ' vencida(s) o sin documento</b>' : '') + (S.porVencer ? ' · ' + S.porVencer + ' vencen en 60 días' : '') + '</div>' +
+    (L.length ? '<div class="lista">' + L.map(p => '<div class="item"><div><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><small>' + esc([p.FUNCION_COCINA, p.ORIGEN === 'Empresa' ? 'Empresa ' + (p.EMPRESA || '') : 'Planta'].filter(Boolean).join(' · ')) + (p.profesional ? '<br>Matrícula provincial: ' + (p.MATRICULA_NUMERO ? esc(p.MATRICULA_NUMERO) : p.MATRICULA_FOTO ? 'cargada' : 'sin cargar') : '') + '<br>Carnet: ' + (K_EST[p.carnet] || K_EST.sd)[0].toLowerCase() + (p.carnetVence ? ' (' + fechaTxt(p.carnetVence) + ')' : '') + ' · Libreta: ' + (K_EST[p.libreta] || K_EST.sd)[0].toLowerCase() + (p.libretaVence ? ' (' + fechaTxt(p.libretaVence) + ')' : '') + '</small>' +
       '<button class="link" data-act="kEditar" data-arg="' + esc(p.ID) + '">Actualizar datos</button></div>' + tag(p.estado) + '</div>').join('') + '</div>' : '<p class="mu">Todavía no hay personas cargadas.</p>') +
     '<div class="menu"><button class="big main" data-act="kEditar" data-arg=""><b>+ Agregar persona</b><span>Con la foto del carnet y de la libreta</span></button></div>' +
     ((KP.sugeridas || []).length ? '<h2>En la base de personal</h2><p class="mu" style="margin-top:-6px">Personas de cocina, alimentación o nutrición que todavía no están en la lista. Tocá una para agregarla.</p><div class="lista">' + KP.sugeridas.slice(0, 30).map((s, i) => '<button class="item" data-act="kSug" data-arg="' + i + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(s.nombre) + '</b><small>' + esc([s.funcion, s.servicio].filter(Boolean).join(' · ')) + '</small></div><span class="tag ok">Agregar</span></button>').join('') + '</div>' : '') +
@@ -1461,7 +1461,7 @@ async function cocPers(fresco) {
 function kEditar(id, base) {
   const p = id ? KP.personas.find(x => x.ID === id) : null;
   F = p ? { _f: 'kp', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, ORIGEN: p.ORIGEN || 'Planta', EMPRESA: p.EMPRESA, FUNCION_COCINA: p.FUNCION_COCINA, CARNET_TIENE: p.CARNET_TIENE || 's/d', CARNET_EMISOR: p.CARNET_EMISOR, CARNET_EMISION: p.CARNET_EMISION, CARNET_VENCE: p.CARNET_VENCE,
-      LIBRETA_TIENE: p.LIBRETA_TIENE || 's/d', LIBRETA_EMISOR: p.LIBRETA_EMISOR, LIBRETA_EMISION: p.LIBRETA_EMISION, LIBRETA_VENCE: p.LIBRETA_VENCE, ACTIVO: 'Sí', OBSERVACIONES: p.OBSERVACIONES, carnetUrl: p.CARNET_FOTO, libretaUrl: p.LIBRETA_FOTO }
+      LIBRETA_TIENE: p.LIBRETA_TIENE || 's/d', LIBRETA_EMISOR: p.LIBRETA_EMISOR, LIBRETA_EMISION: p.LIBRETA_EMISION, LIBRETA_VENCE: p.LIBRETA_VENCE, ACTIVO: 'Sí', OBSERVACIONES: p.OBSERVACIONES, carnetUrl: p.CARNET_FOTO, libretaUrl: p.LIBRETA_FOTO, MATRICULA_NUMERO: p.MATRICULA_NUMERO, MATRICULA_VENCE: p.MATRICULA_VENCE, matriculaUrl: p.MATRICULA_FOTO }
     : Object.assign({ _f: 'kp', ORIGEN: 'Planta', CARNET_TIENE: 'Sí', LIBRETA_TIENE: 'Sí', ACTIVO: 'Sí' }, base || {});
   MIV = { f: formKP }; formKP();
 }
@@ -1470,9 +1470,11 @@ function formKP() {
   $('app').innerHTML = miTit(F.ID ? 'Actualizar datos de ' + F.APELLIDO_Y_NOMBRE : 'Agregar persona de cocina') + fErr +
     fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre', 'text', 'Ej.: Pérez, Ana') + fInp('DNI', 'DNI', 'number', 'Solo números') + fSeg('ORIGEN', 'Es personal de…', ['Planta', 'Empresa']) + (F.ORIGEN === 'Empresa' ? fInp('EMPRESA', 'Empresa', 'text', 'Nombre de la empresa') : '') +
     fSel('FUNCION_COCINA', 'Función en la cocina', [['', 'Elegí…']].concat(fun)) +
-    '<h2>Carnet de manipulador de alimentos</h2>' + fSeg('CARNET_TIENE', '¿Tiene carnet?', ['Sí', 'No', 's/d']) +
+    (/nutricion/i.test(F.FUNCION_COCINA || '') ? '<h2>Matrícula provincial (Chubut)</h2><p class="mu" style="font-size:13px;margin-top:-6px">Para nutricionistas: se carga la matrícula de la provincia del Chubut. El carnet de manipulador y la libreta sanitaria son opcionales.</p>' +
+      '<div class="grid2">' + fInp('MATRICULA_NUMERO', 'Número de matrícula', 'text', 'Ej.: MP 1234') + fInp('MATRICULA_VENCE', 'Vencimiento (si figura)', 'date') + '</div>' + fFoto('matricula', 'Foto o PDF de la matrícula', 'Opcional') : '') +
+    '<h2>Carnet de manipulador de alimentos' + (/nutricion/i.test(F.FUNCION_COCINA || '') ? ' (opcional)' : '') + '</h2>' + fSeg('CARNET_TIENE', '¿Tiene carnet?', ['Sí', 'No', 's/d']) +
     (F.CARNET_TIENE === 'Sí' ? fInp('CARNET_EMISOR', 'Quién lo emitió', 'text', 'Ej.: Municipalidad de Trelew') + '<div class="grid2">' + fInp('CARNET_EMISION', 'Fecha de emisión', 'date') + fInp('CARNET_VENCE', 'Vencimiento (si figura)', 'date') + '</div>' + fFoto('carnet', 'Foto del carnet', 'Opcional') : '') +
-    '<h2>Libreta sanitaria</h2>' + fSeg('LIBRETA_TIENE', '¿Tiene libreta?', ['Sí', 'No', 's/d']) +
+    '<h2>Libreta sanitaria' + (/nutricion/i.test(F.FUNCION_COCINA || '') ? ' (opcional)' : '') + '</h2>' + fSeg('LIBRETA_TIENE', '¿Tiene libreta?', ['Sí', 'No', 's/d']) +
     (F.LIBRETA_TIENE === 'Sí' ? fInp('LIBRETA_EMISOR', 'Quién la emitió', 'text', 'Ej.: Municipalidad de Trelew') + '<div class="grid2">' + fInp('LIBRETA_EMISION', 'Fecha de emisión', 'date') + fInp('LIBRETA_VENCE', 'Vencimiento (si figura)', 'date') + '</div>' + fFoto('libreta', 'Foto de la libreta', 'Opcional') : '') +
     '<p class="mu" style="font-size:13px">Si no figura el vencimiento, el sistema lo calcula: carnet 3 años y libreta 1 año desde la emisión.</p>' +
     (F.ID ? fSeg('ACTIVO', '¿Sigue trabajando en la cocina?', ['Sí', 'No']) : '') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
@@ -1482,8 +1484,8 @@ async function kGuardar() {
   if (!F.APELLIDO_Y_NOMBRE) return miErr('Falta el apellido y nombre.');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   const b = document.querySelector('[data-act="kGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
-  const d = Object.assign({ quien: SES.persona.nombre }, F); ['carnet', 'carnetNombre', 'carnetUrl', 'libreta', 'libretaNombre', 'libretaUrl', '_f'].forEach(k => delete d[k]);
-  if (F.carnet) d.carnetArchivo = miArch(F, 'carnet'); if (F.libreta) d.libretaArchivo = miArch(F, 'libreta');
+  const d = Object.assign({ quien: SES.persona.nombre }, F); ['carnet', 'carnetNombre', 'carnetUrl', 'libreta', 'libretaNombre', 'libretaUrl', 'matricula', 'matriculaNombre', 'matriculaUrl', '_f'].forEach(k => delete d[k]);
+  if (F.carnet) d.carnetArchivo = miArch(F, 'carnet'); if (F.libreta) d.libretaArchivo = miArch(F, 'libreta'); if (F.matricula) d.matriculaArchivo = miArch(F, 'matricula');
   try { const r = await api('k_persona_guardar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); F = null; KP = null; cocPers(true); }
   catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); }
 }
@@ -2116,7 +2118,7 @@ Object.assign(ACT, {
 document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO|CASO/.test(t.dataset.f)) MIV.f(); }
+  if (t.dataset.f && F) { F[t.dataset.f] = t.value; if (t.tagName === 'SELECT' && MIV && /CODIGO_|TIPO|PROCEDIMIENTO|CASO|FUNCION_COCINA/.test(t.dataset.f)) MIV.f(); }
   else if (t.dataset.fchk && F) { F[t.dataset.fchk] = Array.from(document.querySelectorAll('[data-fchk="' + t.dataset.fchk + '"]:checked')).map(x => x.value).join(' · '); }
   else if (t.dataset.mfoto) mFoto(t, t.dataset.mfoto);
   else if (t.dataset.mfotos) mFotos(t, t.dataset.mfotos);

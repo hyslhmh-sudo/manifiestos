@@ -13,7 +13,9 @@
 const COC_H_ITEMS = ['ID', 'SECCION', 'ITEM', 'AYUDA', 'NIVEL', 'TIPO', 'OPCIONES', 'PESO', 'CRITICO', 'REFERENCIA', 'ACTIVO', 'FOTO', 'CONDICION', 'PREVIO', 'PUNTAJES', 'ALCANCE', 'URGENCIA', 'IMPORTANCIA', 'PROPUESTA'];   // PROPUESTA: mejora que el informe recomienda y que pasa al plan de acción (12/10/2026)
 const COC_H_LUG = ['LUGAR', 'CUANDO', 'QUE_SE_OBSERVA', 'ACTIVO'];
 const COC_H_PER = ['ID', 'ESTABLECIMIENTO', 'ORIGEN', 'DNI', 'APELLIDO_Y_NOMBRE', 'EMPRESA', 'FUNCION_COCINA', 'CARNET_TIENE', 'CARNET_EMISOR', 'CARNET_EMISION', 'CARNET_VENCE', 'CARNET_FOTO',
-  'LIBRETA_TIENE', 'LIBRETA_EMISOR', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'LIBRETA_FOTO', 'CAPACITACION_BPM', 'ACTIVO', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'];
+  'LIBRETA_TIENE', 'LIBRETA_EMISOR', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'LIBRETA_FOTO', 'CAPACITACION_BPM', 'ACTIVO', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO',
+  'MATRICULA_NUMERO', 'MATRICULA_VENCE', 'MATRICULA_FOTO'];   // 18/10/2026: nutricionistas: matrícula provincial (Chubut); carnet y libreta opcionales
+const cocEsProf_ = o => /nutricion/i.test(String(o.FUNCION_COCINA || ''));   // nutricionistas: profesionales, no manipuladores
 const COC_FUNCIONES = ['Cocinero/a', 'Ayudante de cocina', 'Ecónomo o depósito', 'Distribución a pisos', 'Lactario', 'Lavado (bacha)', 'Nutricionista', 'Encargado/a', 'Otro'];
 const COC_VIG = { carnet: 3, libreta: 1 };   // años de vigencia cuando solo se carga la fecha de emisión (confirmado por Belén, oct 2026)
 const COC_AVISO_DIAS = 60;
@@ -68,7 +70,13 @@ function construirModuloCocinas() {
 }
 // BASE COMÚN › COCINA_PERSONAS (se crea si falta)
 function cocHojaPersonas_() {
-  const bc = pBC_(); let sh = bc.getSheetByName('COCINA_PERSONAS'); if (sh) return sh;
+  const bc = pBC_(); let sh = bc.getSheetByName('COCINA_PERSONAS');
+  if (sh) { const H = sh.getRange(5, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(h => limpio_(h));
+    if (H.length < COC_H_PER.length || H[COC_H_PER.length - 1] !== COC_H_PER[COC_H_PER.length - 1]) {   // columnas nuevas al final (matrícula de nutricionistas)
+      COC_H_PER.forEach((h, i) => { if (!H[i]) sh.getRange(5, i + 1).setValue(h); });
+      sh.getRange(6, COC_H_PER.indexOf('MATRICULA_VENCE') + 1, 1000, 1).setNumberFormat('dd/mm/yyyy');
+    }
+    return sh; }
   sh = bc.insertSheet('COCINA_PERSONAS');
   encabezar_(sh, 'Personas de cocina (manipuladores de alimentos)', 'Una fila por persona, propia o de empresa. Fechas dd/mm/aaaa. Si falta el vencimiento, el sistema lo calcula: carnet 3 años y libreta 1 año desde la emisión. Para dar de baja: ACTIVO = No.', COC_H_PER,
     ['Lo pone el sistema.', 'Código del establecimiento.', 'Planta o Empresa.', 'Sin puntos.', '', 'Solo si es de empresa.', '', 'Sí · No · s/d', 'Quién lo emitió (municipio).', '', 'Si está vacío, emisión + 3 años.', 'Enlace a la foto.', 'Sí · No · s/d', '', '', 'Si está vacío, emisión + 1 año.', 'Enlace a la foto.', 'Última capacitación interna en BPM.', 'Sí · No', '', 'Quién cargó.', 'Cuándo.']);
@@ -117,9 +125,9 @@ function cocAbrir_(cod, id) {
 }
 // Respuestas sugeridas a partir de lo que ya está cargado (se pueden cambiar)
 function cocSugerencias_(cod, P) {
-  const s = {}; if (!P || !P.total) return s;
+  const s = {}; if (!P || !P.manipuladores) return s;
   const prop = (n, t) => n === t ? 'Todos' : n === 0 ? 'Ninguno' : n * 2 > t ? 'Más de la mitad' : 'Menos de la mitad';
-  s.MAN01 = prop(P.carnetVigente, P.total); s.MAN02 = prop(P.libretaVigente, P.total);
+  s.MAN01 = prop(P.carnetVigente, P.manipuladores); s.MAN02 = prop(P.libretaVigente, P.manipuladores);
   return s;
 }
 function cocGuardar_(x, red) {
@@ -165,23 +173,31 @@ function cocEstadoDoc_(tiene, vence, hoyISO) {
   const lim = new Date(hoyISO + 'T12:00:00'); lim.setDate(lim.getDate() + COC_AVISO_DIAS);
   return vence <= Utilities.formatDate(lim, TZ, 'yyyy-MM-dd') ? 'porvencer' : 'vigente';
 }
-const COC_ORDEN = { no: 0, vencido: 1, sd: 2, porvencer: 3, vigente: 4 };
+const COC_ORDEN = { no: 0, vencido: 1, sd: 2, porvencer: 3, vigente: 4, opcional: 5 };
 function cocPersonas_(cod) {   // cod vacío o «*»: toda la red
   const sh = cocHojaPersonas_(), hoy = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
   return pTabla_(sh, COC_H_PER.length).map(r => {
     const o = { fila: r.fila }; COC_H_PER.forEach((h, i) => o[h] = r.v[i]);
-    ['CARNET_EMISION', 'CARNET_VENCE', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'CAPACITACION_BPM', 'ACTUALIZADO'].forEach(k => o[k] = cocFechaISO_(o[k]));
+    ['CARNET_EMISION', 'CARNET_VENCE', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'CAPACITACION_BPM', 'ACTUALIZADO', 'MATRICULA_VENCE'].forEach(k => o[k] = cocFechaISO_(o[k]));
+    ['MATRICULA_NUMERO', 'MATRICULA_FOTO'].forEach(k => o[k] = limpio_(o[k]));
     o.DNI = String(o.DNI || '').replace(/\D/g, ''); o.ESTABLECIMIENTO = limpio_(o.ESTABLECIMIENTO);
     o.carnetVence = o.CARNET_VENCE || cocMasAnios_(o.CARNET_EMISION, COC_VIG.carnet);
     o.libretaVence = o.LIBRETA_VENCE || cocMasAnios_(o.LIBRETA_EMISION, COC_VIG.libreta);
     o.carnet = cocEstadoDoc_(o.CARNET_TIENE, o.carnetVence, hoy); o.libreta = cocEstadoDoc_(o.LIBRETA_TIENE, o.libretaVence, hoy);
-    o.estado = COC_ORDEN[o.carnet] <= COC_ORDEN[o.libreta] ? o.carnet : o.libreta;
+    o.profesional = cocEsProf_(o);
+    if (o.profesional) {   // nutricionistas: cuenta la matrícula provincial; carnet y libreta son opcionales (sin dato o «no» no es falta)
+      const tieneM = !!(o.MATRICULA_NUMERO || o.MATRICULA_FOTO);
+      o.matricula = !tieneM ? 'sd' : o.MATRICULA_VENCE ? cocEstadoDoc_('Sí', o.MATRICULA_VENCE, hoy) : 'vigente';
+      if (o.carnet === 'sd' || o.carnet === 'no') o.carnet = 'opcional'; if (o.libreta === 'sd' || o.libreta === 'no') o.libreta = 'opcional';
+      o.estado = o.matricula;
+    } else o.estado = COC_ORDEN[o.carnet] <= COC_ORDEN[o.libreta] ? o.carnet : o.libreta;
     return o;
   }).filter(o => (o.APELLIDO_Y_NOMBRE || o.DNI) && (!cod || cod === '*' || o.ESTABLECIMIENTO === cod));
 }
 function cocResumenPersonas_(cod, lista) {
-  const L = (lista || cocPersonas_(cod)).filter(p => p.ACTIVO !== 'No'), c = k => L.filter(p => p[k] === 'vigente' || p[k] === 'porvencer').length;
-  return { total: L.length, carnetVigente: c('carnet'), libretaVigente: c('libreta'), vencidos: L.filter(p => p.estado === 'vencido' || p.estado === 'no').length,
+  const L = (lista || cocPersonas_(cod)).filter(p => p.ACTIVO !== 'No'), M = L.filter(p => !p.profesional), c = k => M.filter(p => p[k] === 'vigente' || p[k] === 'porvencer').length;
+  const PR = L.filter(p => p.profesional);
+  return { total: L.length, manipuladores: M.length, profesionales: PR.length, matriculaCargada: PR.filter(p => p.matricula === 'vigente' || p.matricula === 'porvencer').length, carnetVigente: c('carnet'), libretaVigente: c('libreta'), vencidos: L.filter(p => p.estado === 'vencido' || p.estado === 'no').length,
     porVencer: L.filter(p => p.estado === 'porvencer').length, sinDato: L.filter(p => p.estado === 'sd').length, empresa: L.filter(p => p.ORIGEN === 'Empresa').length };
 }
 // Personas de la base de trabajadores que parecen de cocina (para sumarlas rápido)
@@ -219,17 +235,19 @@ function cocPersonaGuardar_(x, quien, codFijo) {
   else if (dni && L.some(r => String(r.v[3]).replace(/\D/g, '') === dni && limpio_(r.v[1]) === cod && r.v[18] !== 'No')) return { ok: false, mensaje: 'Esa persona ya está cargada en este establecimiento.' };
   const id = x.ID || ('PC-' + cod.replace(/\s+/g, '').toUpperCase().slice(0, 6) + '-' + Utilities.formatDate(hoy, TZ, 'yyMMddHHmmss'));
   const fecha = v => { const s = cocFechaISO_(v); return s ? new Date(s + 'T12:00:00') : ''; };
-  let cFoto = antes ? antes[11] : '', lFoto = antes ? antes[16] : '';
+  let cFoto = antes ? antes[11] : '', lFoto = antes ? antes[16] : '', mFoto = antes ? limpio_(antes[24]) : '';
   if (x.carnetArchivo) cFoto = cocArchivo_(cod, x.carnetArchivo, 'Carnet ' + nom);
   if (x.libretaArchivo) lFoto = cocArchivo_(cod, x.libretaArchivo, 'Libreta ' + nom);
+  if (x.matriculaArchivo) mFoto = cocArchivo_(cod, x.matriculaArchivo, 'Matricula ' + nom);
   const v = [id, cod, x.ORIGEN === 'Empresa' ? 'Empresa' : 'Planta', dni, nom, x.ORIGEN === 'Empresa' ? limpio_(x.EMPRESA) : '', limpio_(x.FUNCION_COCINA),
     /^(Sí|No)$/.test(x.CARNET_TIENE) ? x.CARNET_TIENE : 's/d', limpio_(x.CARNET_EMISOR), fecha(x.CARNET_EMISION), fecha(x.CARNET_VENCE), cFoto,
     /^(Sí|No)$/.test(x.LIBRETA_TIENE) ? x.LIBRETA_TIENE : 's/d', limpio_(x.LIBRETA_EMISOR), fecha(x.LIBRETA_EMISION), fecha(x.LIBRETA_VENCE), lFoto,
-    fecha(x.CAPACITACION_BPM), x.ACTIVO === 'No' ? 'No' : 'Sí', limpio_(x.OBSERVACIONES), limpio_(quien) || 'Portal', hoy];
+    fecha(x.CAPACITACION_BPM), x.ACTIVO === 'No' ? 'No' : 'Sí', limpio_(x.OBSERVACIONES), limpio_(quien) || 'Portal', hoy,
+    limpio_(x.MATRICULA_NUMERO != null ? x.MATRICULA_NUMERO : (antes ? antes[22] : '')), x.MATRICULA_VENCE != null ? fecha(x.MATRICULA_VENCE) : (antes ? antes[23] : ''), mFoto];
   if (fila) sh.getRange(fila, 1, 1, v.length).setValues([v]); else sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, 1, v.length).setValues([v]);
   // Historial de la BASE COMÚN: qué cambió
   const log = [];
-  if (antes) COC_H_PER.forEach((h, i) => { if (i >= 20) return; const a = antes[i] instanceof Date ? pFecha_(antes[i]) : String(antes[i]), b = v[i] instanceof Date ? pFecha_(v[i]) : String(v[i]); if (a !== b) log.push([hoy, 'COCINA_PERSONAS', cod + ' · ' + nom, h, a, b, limpio_(quien) || 'Portal']); });
+  if (antes) COC_H_PER.forEach((h, i) => { if (i === 20 || i === 21) return; const a = antes[i] instanceof Date ? pFecha_(antes[i]) : String(antes[i]), b = v[i] instanceof Date ? pFecha_(v[i]) : String(v[i]); if (a !== b) log.push([hoy, 'COCINA_PERSONAS', cod + ' · ' + nom, h, a, b, limpio_(quien) || 'Portal']); });
   else log.push([hoy, 'COCINA_PERSONAS', cod + ' · ' + nom, 'ALTA', '', id, limpio_(quien) || 'Portal']);
   try { pHistorial_(pBC_(), log); } catch (e) {}
   CacheService.getScriptCache().remove('coc_tablero');
@@ -252,7 +270,8 @@ function cocTablero_(fresco) {
   const out = { ok: true, hoy: hoy, establecimientos: est, avisos: avisos.slice(0, 200),
     totales: { establecimientos: est.length, relevados: con.length, enviados: est.filter(e => e.diag && e.diag.estado === 'Enviado').length,
       promedio: con.length ? Math.round(10 * con.reduce((a, e) => a + Number(e.diag.pct), 0) / con.length) / 10 : null, criticos: con.filter(e => Number(e.diag.criticos) > 0).length,
-      personas: activos.length, carnetVigente: activos.filter(p => p.carnet === 'vigente' || p.carnet === 'porvencer').length, libretaVigente: activos.filter(p => p.libreta === 'vigente' || p.libreta === 'porvencer').length,
+      personas: activos.length, manipuladores: activos.filter(p => !p.profesional).length, profesionales: activos.filter(p => p.profesional).length,
+      carnetVigente: activos.filter(p => !p.profesional && (p.carnet === 'vigente' || p.carnet === 'porvencer')).length, libretaVigente: activos.filter(p => !p.profesional && (p.libreta === 'vigente' || p.libreta === 'porvencer')).length,
       vencidos: activos.filter(p => p.estado === 'vencido' || p.estado === 'no').length, porVencer: activos.filter(p => p.estado === 'porvencer').length, sinDato: activos.filter(p => p.estado === 'sd').length } };
   try { c.put('coc_tablero', JSON.stringify(out), 600); } catch (e) {}
   return out;
@@ -343,7 +362,7 @@ function cocInforme_(x) {
   const PL = cocPersonas_(X.cod).filter(p => p.ACTIVO !== 'No'), P = cocResumenPersonas_('', PL);
   const hace12 = Utilities.formatDate(new Date(Date.now() - 365 * 864e5), TZ, 'yyyy-MM-dd'), capBPM = PL.filter(p => p.CAPACITACION_BPM && p.CAPACITACION_BPM >= hace12).length;
   const pcp = (n, t) => t ? n + ' de ' + t + ' (' + pc(Math.round(1000 * n / t) / 10) + ' %)' : 's/d';
-  const ESTX = { vigente: 'Vigente', porvencer: 'Por vencer', vencido: 'Vencido', no: 'No tiene', sd: 's/d' };
+  const ESTX = { vigente: 'Vigente', porvencer: 'Por vencer', vencido: 'Vencido', no: 'No tiene', sd: 's/d', opcional: 'Opcional (nutricionista)' };
   const aRegularizar = PL.filter(p => p.estado !== 'vigente').sort((a, b) => COC_ORDEN[a.estado] - COC_ORDEN[b.estado] || String(a.APELLIDO_Y_NOMBRE).localeCompare(String(b.APELLIDO_Y_NOMBRE)));
   const fFmt = s => s ? String(s).split('-').reverse().join('/') : 's/d';
 
@@ -411,7 +430,7 @@ function cocInforme_(x) {
       P_('El relevamiento del ' + fRel + (lugares.length > 2 ? ', que abarcó ' + (lugares.length - 1) + ' lugares,' : '') + ' muestra un cumplimiento general del ' + (calc.pct === '' ? 's/d' : pc(calc.pct) + ' %') + '. ' +
         (mejores.length ? 'Los mejores resultados están en ' + lista(mejores) + '. ' : '') + (peores.length ? 'Las brechas mayores se concentran en ' + lista(peores) + '. ' : '') +
         (criticos.length ? 'Se registraron ' + criticos.length + ' hallazgo' + (criticos.length > 1 ? 's' : '') + ' crítico' + (criticos.length > 1 ? 's' : '') + ', que comprometen la inocuidad de los alimentos o la seguridad del personal y conviene atender dentro de los ' + cfg.plazo.Q1 + ' días: ' + critTxt.join('; ') + '.' : 'No se registraron hallazgos críticos.'));
-      P_((P.total ? 'En el registro del sistema hay ' + P.total + ' persona' + (P.total > 1 ? 's' : '') + ' que trabaja' + (P.total > 1 ? 'n' : '') + ' en la cocina; ' + P.carnetVigente + ' con carnet de manipulador de alimentos vigente y ' + P.libretaVigente + ' con libreta sanitaria vigente' + (P.vencidos ? ', y ' + P.vencidos + ' con algún documento vencido o faltante' : '') + '. ' : 'Todavía no hay personas de cocina cargadas en el sistema, por lo que la situación de carnets y libretas es la declarada en el relevamiento. ') +
+      P_((P.total ? 'En el registro del sistema hay ' + P.total + ' persona' + (P.total > 1 ? 's' : '') + ' que trabaja' + (P.total > 1 ? 'n' : '') + ' en la cocina' + (P.profesionales ? ' (' + P.profesionales + ' nutricionista' + (P.profesionales > 1 ? 's' : '') + ', con matrícula provincial)' : '') + '; de ' + (P.profesionales ? 'los ' + P.manipuladores + ' manipuladores, ' : 'ellas, ') + P.carnetVigente + ' con carnet de manipulador de alimentos vigente y ' + P.libretaVigente + ' con libreta sanitaria vigente' + (P.vencidos ? ', y ' + P.vencidos + ' con algún documento vencido o faltante' : '') + '. ' : 'Todavía no hay personas de cocina cargadas en el sistema, por lo que la situación de carnets y libretas es la declarada en el relevamiento. ') +
         (nose.length ? (nose.length > 1 ? 'Quedaron ' + nose.length + ' datos sin conocer, que se relevarán más adelante y no restan puntaje. ' : 'Quedó 1 dato sin conocer, que se relevará más adelante y no resta puntaje. ') : '') +
         (HL.length ? 'El informe propone ' + HL.length + (HL.length > 1 ? ' mejoras, ordenadas' : ' mejora, ordenada') + ' por prioridad y plazo, que se registran en el plan de acción para su seguimiento' + (conEmpresa ? '; las que dependen de la empresa concesionaria se ponen también en su conocimiento.' : '.') : 'No surgen mejoras a proponer en esta instancia.'));
     }
@@ -479,8 +498,8 @@ function cocInforme_(x) {
       TAB([['Indicador', 'Valor', 'Fuente o criterio'],
         ['Personas de cocina registradas', P.total ? P.total + (P.empresa ? ' (' + (P.total - P.empresa) + ' de planta y ' + P.empresa + ' de la empresa)' : '') : 's/d', 'Registro del sistema'],
         ['Personas declaradas en el relevamiento', [v('COC08') ? v('COC08') + ' de planta' : '', v('COC09') ? v('COC09') + ' de la empresa' : ''].filter(Boolean).join(' y ') || 's/d', 'Declarado'],
-        ['Con carnet de manipulador vigente', pcp(P.carnetVigente, P.total), 'Registro del sistema · declarado: ' + (minus(v('MAN01')) || 's/d')],
-        ['Con libreta sanitaria vigente', pcp(P.libretaVigente, P.total), 'Registro del sistema · declarado: ' + (minus(v('MAN02')) || 's/d')],
+        ['Con carnet de manipulador vigente', pcp(P.carnetVigente, P.manipuladores), 'Registro del sistema · declarado: ' + (minus(v('MAN01')) || 's/d')],
+        ['Con libreta sanitaria vigente', pcp(P.libretaVigente, P.manipuladores), 'Registro del sistema · declarado: ' + (minus(v('MAN02')) || 's/d')],
         ['Con algún documento vencido o faltante', P.total ? String(P.vencidos) : 's/d', 'Registro del sistema'],
         ['Por vencer (' + COC_AVISO_DIAS + ' días)', P.total ? String(P.porVencer) : 's/d', 'Registro del sistema'],
         ['Sin dato de vencimiento', P.total ? String(P.sinDato) : 's/d', 'Registro del sistema'],
@@ -521,7 +540,7 @@ function cocInforme_(x) {
     // ---------------- ANEXOS
     if (!sinServicio && P.total && aRegularizar.length) {
       b.appendPageBreak(); H2('Anexo I · Personas con documentación a regularizar');
-      TAB([['Apellido y nombre', 'Origen', 'Carnet de manipulador', 'Libreta sanitaria']].concat(aRegularizar.map(p => [p.APELLIDO_Y_NOMBRE || 's/d', p.ORIGEN === 'Empresa' ? 'Empresa' + (p.EMPRESA ? ' (' + p.EMPRESA + ')' : '') : 'Planta',
+      TAB([['Apellido y nombre', 'Origen', 'Carnet de manipulador', 'Libreta sanitaria']].concat(aRegularizar.map(p => [(p.APELLIDO_Y_NOMBRE || 's/d') + (p.profesional ? ' · nutricionista: matrícula provincial ' + String(ESTX[p.matricula] || 's/d').toLowerCase() : ''), p.ORIGEN === 'Empresa' ? 'Empresa' + (p.EMPRESA ? ' (' + p.EMPRESA + ')' : '') : 'Planta',
         ESTX[p.carnet] + (p.carnetVence && p.carnet !== 'no' ? ' · vence ' + fFmt(p.carnetVence) : ''), ESTX[p.libreta] + (p.libretaVence && p.libreta !== 'no' ? ' · vence ' + fFmt(p.libretaVence) : '')])), [150, 90, 115, 115]);
     }
     const fotos = []; R.forEach(r => (r.fotos || []).forEach(u => fotos.push({ u: u, h: { r: r, it: porId[r.item] || { ITEM: r.item } } })));

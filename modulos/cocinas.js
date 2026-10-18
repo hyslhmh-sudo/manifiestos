@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------ Módulo 4 · Cocinas hospitalarias (Modulo6.gs)
 // Tablero, personas de cocina (carnet de manipulador y libreta sanitaria) y relevamiento BPM / HACCP con el mismo formulario del diagnóstico.
 let COCT = null, COCP = { cod: '*', filtro: '', L: null, cargado: '' };
-const COC_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'gr'] };
+const COC_EST = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], no: ['No tiene', 'er'], sd: ['Sin dato', 'gr'], opcional: ['Opcional', 'gr'] };
 const cocChip = (e, vence) => { const x = COC_EST[e] || COC_EST.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (vence && e !== 'no' ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(vence) + '</div>' : ''); };
 const cocFrac = (a, b) => b ? a + ' de ' + b : '—';
 async function cocDatos(fresco) {
@@ -24,8 +24,8 @@ async function cocTablero(fresco) {
     '<div class="filtros"><label class="f">Área<select class="c" id="ccA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><button class="btn sec" id="ccAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('#cocdiag', 'Relevados', cocFrac(T.relevados, T.establecimientos), 'establecimientos con relevamiento cerrado') + kpi('#cocdiag', 'Cumplimiento promedio', T.promedio == null ? '—' : T.promedio + ' %', 'de los relevados') +
     kpi('#cocdiag', 'Con puntos críticos', T.criticos, T.enviados ? T.enviados + ' enviado(s) por referentes para revisar' : 'algún punto crítico en 0', T.criticos ? 'var(--er)' : '') +
-    kpi('#cocper', 'Carnet vigente', cocFrac(T.carnetVigente, T.personas), T.personas ? 'carnet de manipulador · personas de cocina cargadas' : 'todavía no hay personas de cocina cargadas') +
-    kpi('#cocper', 'Libreta vigente', cocFrac(T.libretaVigente, T.personas), 'libreta sanitaria') + kpi('#cocper', 'Vencidos o sin documento', T.vencidos, (T.porVencer ? T.porVencer + ' vencen en 60 días · ' : '') + (T.sinDato ? T.sinDato + ' sin dato' : 'carnet o libreta'), T.vencidos ? 'var(--er)' : '') + '</div>' +
+    kpi('#cocper', 'Carnet vigente', cocFrac(T.carnetVigente, T.manipuladores != null ? T.manipuladores : T.personas), T.personas ? 'carnet de manipulador · personas de cocina cargadas' : 'todavía no hay personas de cocina cargadas') +
+    kpi('#cocper', 'Libreta vigente', cocFrac(T.libretaVigente, T.manipuladores != null ? T.manipuladores : T.personas), 'libreta sanitaria') + kpi('#cocper', 'Vencidos o sin documento', T.vencidos, (T.porVencer ? T.porVencer + ' vencen en 60 días · ' : '') + (T.sinDato ? T.sinDato + ' sin dato' : 'carnet o libreta'), T.vencidos ? 'var(--er)' : '') + '</div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Por establecimiento</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Alcance</th><th>Relevamiento</th><th>Personas</th><th>Carnet</th><th>Libreta</th></tr></thead><tbody>' +
     E.map(e => { const p = e.personas; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + ' · ' + esc(e.tipo) + '</div></td><td class="peq">' + esc(e.alcance) + '</td><td>' + chipDiag(e.diag) + '</td>' +
       '<td>' + (p.total ? p.total + (p.empresa ? ' <span class="mu peq">(' + p.empresa + ' de empresa)</span>' : '') : '<span class="mu">—</span>') + '</td><td>' + (p.total ? chipCap(p.carnetVigente, p.total) : '<span class="chip gr">—</span>') + '</td><td>' + (p.total ? chipCap(p.libretaVigente, p.total) : '<span class="chip gr">—</span>') + '</td></tr>'; }).join('') +
@@ -86,14 +86,14 @@ async function cocPersonas(cod) {
   const S = R.resumen, chipF = (v, t) => '<button class="fchip' + (f === v ? ' on' : '') + '" data-cf="' + v + '">' + t + '</button>';
   marco('#cocper', '<div class="cab"><div><span class="mu peq">4 · Cocinas</span><h1>Personas de cocina</h1><span class="mu peq">Carnet de manipulador de alimentos (vigencia 3 años) y libreta sanitaria (1 año). Si solo se carga la fecha de emisión, el vencimiento se calcula solo.</span></div>' +
     '<div class="filtros"><label class="f">Establecimiento<select class="c" id="cpE">' + selectorEst(cod, false, true) + '</select></label>' + (cod !== '*' ? '<button class="btn pri" id="cpNuevo">+ Agregar persona</button>' : '') + '</div></div>' +
-    '<div class="tb5">' + [['Personas', S.total, S.empresa ? S.empresa + ' de empresa' : 'activas'], ['Carnet vigente', cocFrac(S.carnetVigente, S.total), 'manipulador de alimentos'], ['Libreta vigente', cocFrac(S.libretaVigente, S.total), 'libreta sanitaria'], ['Vencidos o sin documento', S.vencidos, S.porVencer ? S.porVencer + ' vencen en 60 días' : 'carnet o libreta'], ['Sin dato', S.sinDato, 'falta la fecha o el documento']]
+    '<div class="tb5">' + [['Personas', S.total, S.empresa ? S.empresa + ' de empresa' : 'activas'], ['Carnet vigente', cocFrac(S.carnetVigente, S.manipuladores != null ? S.manipuladores : S.total), 'manipulador de alimentos' + (S.profesionales ? ' (sin nutricionistas)' : '')], ['Libreta vigente', cocFrac(S.libretaVigente, S.manipuladores != null ? S.manipuladores : S.total), 'libreta sanitaria'], ['Vencidos o sin documento', S.vencidos, S.porVencer ? S.porVencer + ' vencen en 60 días' : 'carnet o libreta'], ['Sin dato', S.sinDato, 'falta la fecha o el documento']]
       .map(k => '<div class="kpi2"><span>' + k[0] + '</span><b>' + k[1] + '</b><small>' + k[2] + '</small></div>').join('') + '</div>' +
     ((R.sugeridas || []).length ? '<section class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>En la base de trabajadores</h2><span class="mu peq">' + R.sugeridas.length + ' persona(s) de ' + esc(nom(cod)) + ' con función o servicio de cocina, alimentación o nutrición que todavía no están en esta lista.</span></div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">' + R.sugeridas.slice(0, 40).map((s, i) => '<button class="btn sec" data-sug="' + i + '" title="' + esc(s.funcion + ' · ' + s.servicio) + '">+ ' + esc(s.nombre) + '</button>').join('') + '</div></section>' : '') +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' + chipF('', 'Todas') + chipF('atencion', 'Requieren atención') + chipF('empresa', 'De empresa') + chipF('baja', 'Dadas de baja') + '</div>' +
     '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Persona</th>' + (cod === '*' ? '<th>Establecimiento</th>' : '') + '<th>Función</th><th>Carnet de manipulador</th><th>Libreta sanitaria</th><th></th></tr></thead><tbody>' +
     L.map(p => '<tr><td><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">' + (p.DNI ? 'DNI ' + esc(p.DNI) : 'DNI s/d') + ' · ' + esc(p.ORIGEN === 'Empresa' ? 'Empresa' + (p.EMPRESA ? ' ' + p.EMPRESA : '') : 'Planta') + (p.ACTIVO === 'No' ? ' · <b>de baja</b>' : '') + '</div></td>' +
-      (cod === '*' ? '<td class="peq">' + esc(nom(p.ESTABLECIMIENTO)) + '</td>' : '') + '<td class="peq">' + esc(p.FUNCION_COCINA || 's/d') + '</td>' +
+      (cod === '*' ? '<td class="peq">' + esc(nom(p.ESTABLECIMIENTO)) + '</td>' : '') + '<td class="peq">' + esc(p.FUNCION_COCINA || 's/d') + (p.profesional ? '<div>Matrícula: ' + cocChip(p.matricula, p.MATRICULA_VENCE) + (p.MATRICULA_NUMERO ? ' <span class="mu">' + esc(p.MATRICULA_NUMERO) + '</span>' : '') + (p.MATRICULA_FOTO ? ' <a class="link" href="' + esc(p.MATRICULA_FOTO) + '" target="_blank" rel="noopener">Ver</a>' : '') + '</div>' : '') + '</td>' +
       '<td>' + cocChip(p.carnet, p.carnetVence) + (p.CARNET_FOTO ? '<a class="link peq" href="' + esc(p.CARNET_FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + '</td>' +
       '<td>' + cocChip(p.libreta, p.libretaVence) + (p.LIBRETA_FOTO ? '<a class="link peq" href="' + esc(p.LIBRETA_FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + '</td>' +
       '<td><button class="link" data-cp="' + esc(p.ID) + '">Editar</button></td></tr>').join('') + '</tbody></table></div>' +
@@ -109,21 +109,22 @@ async function cocPersonas(cod) {
 // Alta o cambio: el modal genérico más la carga de fotos del carnet y la libreta
 function cocPersonaForm(p, base) {
   const v = Object.assign({}, base || p || {}), F = COCP.L.funciones || [];
-  ['CARNET_EMISION', 'CARNET_VENCE', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'CAPACITACION_BPM'].forEach(k => v[k] = v[k] || '');
+  ['CARNET_EMISION', 'CARNET_VENCE', 'LIBRETA_EMISION', 'LIBRETA_VENCE', 'CAPACITACION_BPM', 'MATRICULA_VENCE', 'MATRICULA_NUMERO'].forEach(k => v[k] = v[k] || '');
   const arch = {};
-  const subir = k => '<label class="f ancho">' + (k === 'carnet' ? 'Foto del carnet' : 'Foto de la libreta') + ' (opcional)<input class="c" type="file" accept="image/*,application/pdf" data-arch="' + k + '"><span class="mu peq" id="ar_' + k + '">' + (p && p[k === 'carnet' ? 'CARNET_FOTO' : 'LIBRETA_FOTO'] ? 'Ya hay una cargada; si elegís otra, se reemplaza.' : '') + '</span></label>';
+  const subir = k => '<label class="f ancho">' + ({ carnet: 'Foto del carnet', libreta: 'Foto de la libreta', matricula: 'Matrícula provincial (solo nutricionistas): foto o PDF' }[k]) + ' (opcional)<input class="c" type="file" accept="image/*,application/pdf" data-arch="' + k + '"><span class="mu peq" id="ar_' + k + '">' + (p && p[{ carnet: 'CARNET_FOTO', libreta: 'LIBRETA_FOTO', matricula: 'MATRICULA_FOTO' }[k]] ? 'Ya hay una cargada; si elegís otra, se reemplaza.' : '') + '</span></label>';
   const m = modal(p ? 'Persona de cocina · ' + p.APELLIDO_Y_NOMBRE : 'Agregar persona de cocina', [
     ['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['DNI', 'DNI (sin puntos)'], ['ORIGEN', 'Personal', ['Planta', 'Empresa']], ['EMPRESA', 'Empresa (si es de empresa)'], ['FUNCION_COCINA', 'Función en la cocina', F],
-    ['CARNET_TIENE', '¿Tiene carnet de manipulador?', ['Sí', 'No', 's/d']], ['CARNET_EMISOR', 'Carnet: quién lo emitió (municipio)'], ['CARNET_EMISION', 'Carnet: fecha de emisión', 'date'], ['CARNET_VENCE', 'Carnet: vencimiento (si figura)', 'date'],
-    ['LIBRETA_TIENE', '¿Tiene libreta sanitaria?', ['Sí', 'No', 's/d']], ['LIBRETA_EMISOR', 'Libreta: quién la emitió'], ['LIBRETA_EMISION', 'Libreta: fecha de emisión', 'date'], ['LIBRETA_VENCE', 'Libreta: vencimiento (si figura)', 'date'],
+    ['MATRICULA_NUMERO', 'Nutricionistas: matrícula provincial (Chubut)'], ['MATRICULA_VENCE', 'Matrícula: vencimiento (si figura)', 'date'],
+    ['CARNET_TIENE', '¿Tiene carnet de manipulador? (opcional para nutricionistas)', ['Sí', 'No', 's/d']], ['CARNET_EMISOR', 'Carnet: quién lo emitió (municipio)'], ['CARNET_EMISION', 'Carnet: fecha de emisión', 'date'], ['CARNET_VENCE', 'Carnet: vencimiento (si figura)', 'date'],
+    ['LIBRETA_TIENE', '¿Tiene libreta sanitaria? (opcional para nutricionistas)', ['Sí', 'No', 's/d']], ['LIBRETA_EMISOR', 'Libreta: quién la emitió'], ['LIBRETA_EMISION', 'Libreta: fecha de emisión', 'date'], ['LIBRETA_VENCE', 'Libreta: vencimiento (si figura)', 'date'],
     ['CAPACITACION_BPM', 'Última capacitación interna en BPM', 'date'], ['ACTIVO', 'Activo', ['Sí', 'No']], ['OBSERVACIONES', 'Observaciones', null, 1]], v,
     async out => {
       const datos = Object.assign({ ID: p ? p.ID : '', ESTABLECIMIENTO: v.ESTABLECIMIENTO || COCP.cod }, out);
-      if (arch.carnet) datos.carnetArchivo = arch.carnet; if (arch.libreta) datos.libretaArchivo = arch.libreta;
+      if (arch.carnet) datos.carnetArchivo = arch.carnet; if (arch.libreta) datos.libretaArchivo = arch.libreta; if (arch.matricula) datos.matriculaArchivo = arch.matricula;
       const r = await api('p_coc_persona_guardar', datos, 120000);
       if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       toast(p ? 'Cambios guardados.' : 'Persona agregada.'); COCP.cargado = ''; COCT = null; cocPersonas(COCP.cod); return '';
-    }, subir('carnet') + subir('libreta') + '<p class="mu peq" style="margin:0">Si no figura el vencimiento, se calcula: carnet 3 años y libreta 1 año desde la emisión.</p>');
+    }, subir('matricula') + subir('carnet') + subir('libreta') + '<p class="mu peq" style="margin:0">Si no figura el vencimiento, se calcula: carnet 3 años y libreta 1 año desde la emisión. Nutricionistas: cuenta la matrícula provincial; el carnet y la libreta son opcionales.</p>');
   document.querySelectorAll('#ov [data-arch]').forEach(inp => inp.onchange = async () => { const f = inp.files[0], k = inp.dataset.arch, msg = $('ar_' + k); if (!f) return;
     try {
       if (f.type === 'application/pdf') { if (f.size > 6 * 1024 * 1024) { msg.textContent = 'El PDF pesa más de 6 MB.'; return; } arch[k] = await new Promise((ok, mal) => { const rd = new FileReader(); rd.onload = () => ok(rd.result); rd.onerror = mal; rd.readAsDataURL(f); }); }
