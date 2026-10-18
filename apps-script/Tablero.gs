@@ -158,13 +158,20 @@ function tbModulos_() {
   try { const s = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_TRABAJADORES_ID')).getSheetByName('SIN_ASIGNAR'); if (s) sinAsignar = Math.max(s.getLastRow() - 5, 0); } catch (e) {}
   M.personal = { cruce: cp ? String(cp.getRange(2, 1).getValue()) : '', diferencias: cp ? Math.max(cp.getLastRow() - 5, 0) : 0, bandeja: pend.length,
     bandejaCruce: pend.filter(r => r[6] === 'Cruce nocturno con capacitaciones').length, sinAsignar: sinAsignar };
-  // Capacitaciones: próximos turnos con una capacitación asignada (hoja AGENDA)
+  // Capacitaciones: próximos dictados (18/10/2026: lee DICTADOS y AGENDA del libro «CAPACITACIONES · Sistema HyS»;
+  // antes leía la AGENDA del libro viejo, que dejó de usarse el 15/10). Un dictado y sus turnos de agenda cuentan una sola vez.
   try {
-    const ag = SpreadsheetApp.openById(BASES.CAPACITACIONES).getSheetByName('AGENDA'), v = ag.getDataRange().getValues(), H = v[0].map(String), j = k => H.indexOf(k);
-    const fecha = x => { if (x instanceof Date) return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); const m = String(x || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : ''; };
-    const hora = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'HH:mm') : limpio_(x);
-    const prox = v.slice(1).map(r => ({ fecha: fecha(r[j('FECHA')]), hora: hora(r[j('HORA_INICIO')]), cap: limpio_(r[j('CAPACITACION')]), lugar: limpio_(r[j('LUGAR')]), estado: limpio_(r[j('ESTADO')]) }))
-      .filter(t => t.fecha >= hoyS && t.cap && !/cancel/i.test(t.estado)).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+    const fecha = x => { const d = cgFecha_(x); return d ? Utilities.formatDate(d, TZ, 'yyyy-MM-dd') : ''; };
+    const hora = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'HH:mm') : cgTxt_(x);
+    const cat = {}; cgHoja_('CATALOGO').filas.forEach(c => { const k = cgTxt_(c.o.CODIGO); if (k && !cat[k]) cat[k] = cgTxt_(c.o.NOMBRE); });
+    const fuera = /anul|cancel|suspend|no se present|sin uso|libre/i, vistos = {}, prox = [];
+    cgHoja_('DICTADOS').filas.forEach(d => { const o = d.o, f = fecha(o.FECHA), cod = cgTxt_(o.CODIGO);
+      if (f < hoyS || !cod || fuera.test(cgTxt_(o.ESTADO))) return; vistos[cgTxt_(o.ID_DICTADO)] = 1;
+      prox.push({ fecha: f, hora: hora(o.HORA_INICIO), cap: cat[cod] || cod, lugar: cgVacio_(o.LUGAR) ? cgTxt_(o.MODALIDAD) : cgTxt_(o.LUGAR), estado: cgTxt_(o.MODALIDAD) }); });
+    cgHoja_('AGENDA').filas.forEach(t => { const o = t.o, f = fecha(o.FECHA), cod = cgTxt_(o.CODIGO);
+      if (f < hoyS || cgVacio_(o.CODIGO) || fuera.test(cgTxt_(o.ESTADO)) || vistos[cgTxt_(o.ID_DICTADO)]) return;
+      prox.push({ fecha: f, hora: hora(o.HORA_INICIO), cap: cat[cod] || cod, lugar: cgTxt_(o.LUGAR), estado: cgTxt_(o.ESTADO) }); });
+    prox.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
     M.capacitaciones = { proximas: prox.length, lista: prox.slice(0, 5) };
   } catch (e) { M.capacitaciones = { error: 'No se pudo leer la agenda de capacitaciones.' }; }
   // Documentos: informes que el sistema emitió este año (registro HYSL; el pedido manual de números se quitó el 12/10/2026)

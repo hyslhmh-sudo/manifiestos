@@ -560,19 +560,20 @@ function pImportar_(x, aplicar) {
   return Object.assign(resumen, { aplicado: true });
 }
 
-// ------------------------------------------------------------------ CAPACITACIONES (solo lectura de BASE_PERSONAS_CAPACITACIONES_2026)
-// Fuentes: REGISTROS (evaluaciones en línea) e HISTORICO_2026_LIBRO (registros cargados, presenciales).
+// ------------------------------------------------------------------ CAPACITACIONES (solo lectura del libro «CAPACITACIONES · Sistema HyS»)
+// 18/10/2026: antes leía BASE_PERSONAS_CAPACITACIONES_2026 (REGISTROS + HISTORICO_2026_LIBRO), que dejó de recibir datos el 15/10.
+// Ahora lee el libro único (CG.LIBRO): REGISTROS (en línea, presenciales y lo migrado de 2026), con el nombre de CATALOGO
+// y el PDF de CERTIFICADOS. Los registros anulados no cuentan.
 function pCapsLeer_() {
-  const ss = SpreadsheetApp.openById(BASES.CAPACITACIONES), out = [];
-  const R = ss.getSheetByName('REGISTROS');
-  if (R && R.getLastRow() > 1) R.getRange(2, 1, R.getLastRow() - 1, 25).getValues().forEach(r => {
-    if (!r[2] || String(r[24]).toLowerCase() === 'sí' || String(r[24]).toLowerCase() === 'si') return;
-    out.push({ dni: pDni_(r[2]), fecha: r[1] instanceof Date ? pFecha_(r[1]) : String(r[1]).split(' ')[0], tema: limpio_(r[6]), tipo: limpio_(r[8]), aprobo: limpio_(r[13]), nota: String(r[12] || ''), cert: limpio_(r[14]), link: limpio_(r[15]), vence: r[17] instanceof Date ? pFecha_(r[17]) : String(r[17] || '').split(' ')[0], fuente: 'En línea' });
-  });
-  const H = ss.getSheetByName('HISTORICO_2026_LIBRO');
-  if (H && H.getLastRow() > 5) H.getRange(6, 1, H.getLastRow() - 5, 15).getValues().forEach(r => {
-    if (!r[3] || !r[2]) return;
-    out.push({ dni: pDni_(r[3]), fecha: r[1] instanceof Date ? pFecha_(r[1]) : String(r[1]), tema: limpio_(r[2]), tipo: limpio_(r[10]), aprobo: limpio_(r[11]), nota: '', cert: '', link: limpio_(r[12]).indexOf('http') === 0 ? limpio_(r[12]) : '', vence: r[13] instanceof Date ? pFecha_(r[13]) : String(r[13] || ''), estado: limpio_(r[14]), fuente: 'Registro' });
+  const out = [], cat = {}, pdf = {};
+  cgHoja_('CATALOGO').filas.forEach(c => { const k = cgTxt_(c.o.CODIGO); if (k && !cat[k]) cat[k] = cgTxt_(c.o.NOMBRE); });
+  cgHoja_('CERTIFICADOS').filas.forEach(c => { const l = cgTxt_(c.o.LINK_PDF); if (l.indexOf('http') === 0) pdf[cgTxt_(c.o.ID_CERTIFICADO)] = l; });
+  cgHoja_('REGISTROS').filas.forEach(r => {
+    const o = r.o, dni = pDni_(o.DNI); if (!dni || /anulad/i.test(cgTxt_(o.ESTADO))) return;
+    const f = cgFecha_(o.FECHA), v = cgFecha_(o.VENCE), cod = cgTxt_(o.CODIGO), idc = cgVacio_(o.ID_CERTIFICADO) ? '' : cgTxt_(o.ID_CERTIFICADO);
+    out.push({ dni: dni, fecha: f ? pFecha_(f) : cgTxt_(o.FECHA).split(' ')[0], tema: cat[cod] || cod, codigo: cod, tipo: cgVacio_(o.TIPO) ? '' : cgTxt_(o.TIPO),
+      aprobo: cgVacio_(o.APROBADO) ? '' : cgTxt_(o.APROBADO), nota: cgVacio_(o.NOTA) ? '' : cgTxt_(o.NOTA), cert: idc, link: pdf[idc] || '',
+      vence: v ? pFecha_(v) : '', estado: cgTxt_(o.ESTADO), fuente: cgVacio_(o.ORIGEN) ? 's/d' : cgTxt_(o.ORIGEN) });
   });
   return out;
 }
