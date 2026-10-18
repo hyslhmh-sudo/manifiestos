@@ -109,10 +109,16 @@ async function capTablero(fresco) {
     sv += '<text x="' + (x + bw / 2) + '" y="' + (b + 18) + '" font-size="11" fill="#5B6B73" text-anchor="middle">' + nomM[Number(m.mes.slice(5, 7)) - 1] + '</text>'; });
   const meses = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" width="100%" role="img" aria-label="Registros por mes del ciclo">' + sv + '</svg>' +
     leyenda([['Hasta septiembre: histórico, tal como se cargó', '#0D313F'], ['Mes en curso', '#5894A7']]);
+  // Por establecimiento (18/10/2026): personas y registros de cada hospital, con sus capacitaciones (del libro nuevo)
+  const PE = (T.semaforo && T.semaforo.porEstablecimiento) || [];
+  const porEst = PE.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">ESTABLECIMIENTO</th><th style="padding:6px 8px;text-align:right">PERSONAS</th><th style="padding:6px 8px;text-align:right">REGISTROS</th><th style="padding:6px 8px">CAPACITACIONES (REGISTROS)</th></tr></thead><tbody>' +
+    PE.map(e => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><b>' + esc(e.nombre) + '</b></td><td style="padding:8px;text-align:right">' + e.personas + '</td><td style="padding:8px;text-align:right">' + e.registros + '</td><td style="padding:8px">' +
+      (e.capacitaciones || []).slice(0, 5).map(c => esc(c.nombre) + ' <span class="mu">(' + c.n + ')</span>').join(' · ') + ((e.capacitaciones || []).length > 5 ? ' <span class="mu">y ' + (e.capacitaciones.length - 5) + ' más</span>' : '') + '</td></tr>').join('') +
+    '</tbody></table></div><span class="mu peq">Sale del establecimiento de cada persona (libro CAPACITACIONES, hoja PERSONAS). «Sin establecimiento»: personas con el dato en s/d; se corrige en Personas y certificados.</span>' : '';
   // Participación
   const part = '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px;letter-spacing:.5px"><th style="padding:6px 8px">CAPACITACIÓN</th><th style="padding:6px 8px;text-align:right">REGISTROS</th><th style="padding:6px 8px;text-align:right">PERSONAS</th><th style="padding:6px 8px;text-align:right">APROBADOS</th></tr></thead><tbody>' +
     T.participacion.map(p => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px">' + esc(p.nombre) + '</td><td style="padding:8px;text-align:right">' + p.registros + '</td><td style="padding:8px;text-align:right">' + p.personas + '</td><td style="padding:8px;text-align:right">' + (p.aprobados ? p.aprobados : '—') + '</td></tr>').join('') +
-    '</tbody></table></div><span class="mu peq">«—»: sin evaluación o cargada sin nota antes de octubre (queda como registro histórico).</span>';
+    '</tbody></table></div><span class="mu peq">Registros: asistencias y evaluaciones (en los programas, cada encuentro cuenta). «—»: sin evaluación.</span>';
 
   marco('#cap', '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
     '<div class="filtros"><a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a><button class="btn sec" id="capAct">Actualizar</button></div></div>' +
@@ -125,7 +131,8 @@ async function capTablero(fresco) {
       kpi('Requiere atención', nAt, 'desde el ' + fechaTxt(T.avisosDesde), nAt ? '#B4361F' : '') + '</div>' +
     '<div class="tb2">' + card('Semáforo por servicio', null, '<div class="cpn" id="capRed" style="gap:6px">' + chips + '</div>' + sem) + card('Requiere atención', null, at) + '</div>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))">' + card('Capacitaciones abiertas', ['#capcat', 'Catálogo'], abiertas) + card('Próximos dictados', [CAP_LIBRO, 'Agregar en DICTADOS ↗'], dict) + card('Alcance por público', null, pub) + '</div>' +
-    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">' + card('Registros por mes', null, meses) + card('Participación por capacitación', null, part) + '</div>');
+    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))">' + card('Registros por mes', null, meses) + card('Participación por capacitación', null, part) + '</div>' +
+    (porEst ? card('Por establecimiento', null, porEst) : ''));
   $('capAct').onclick = () => capTablero(true);
   $('capRed').querySelectorAll('button').forEach(x => x.onclick = () => { CAPRED = x.dataset.red; capTablero(); });
   document.querySelectorAll('.capBanda').forEach(x => x.onclick = () => { CAPBANDA = CAPBANDA === x.dataset.b ? '' : x.dataset.b; CAPTODOS = false; capTablero(); });
