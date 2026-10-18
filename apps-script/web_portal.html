@@ -319,7 +319,7 @@ const SWR_LEER = {   // acción de lectura → cómo olvidar la copia en memoria
   p_docest_lista: () => { DE.L = null; }, p_notas: () => { NT.R = null; }, p_sin_lista: () => { SINP = null; }, p_dgm_tablero: d => { delete DGMT[d.m]; },
   p_bib_listar: () => { BIB = null; }, p_registro: () => {}, p_bj_listar: () => {}, p_sin_est: () => {}, p_diag_tablero: () => { TAB = null; }, p_trab: () => {}, p_nte_revisar: () => {}
 };
-const SWR_SIN_BORRAR = /^p_(ping|resumen|tablero|buscar|plan_listar|aud_listar|aud_opciones|res_|informe_trim_op|rgrl_lugares|rgrl_detalle|plan_abrir|aud_abrir|aud_resultado|inv_abrir|caps|sin_persona|sin_expo|cv_(datos|cuenta)|cg_(buscar|persona$|participantes|contactos|mails_previa|informe_op|correos$|correo_ver)|.*_dni)/;
+const SWR_SIN_BORRAR = /^p_(ping|resumen|tablero|buscar|plan_listar|aud_listar|aud_opciones|res_|informe_trim_op|rgrl_lugares|rgrl_detalle|plan_abrir|aud_abrir|aud_resultado|inv_abrir|caps|sin_persona|sin_expo|cv_(datos|cuenta|comparar)|cg_(buscar|persona$|participantes|contactos|mails_previa|informe_op|correos$|correo_ver)|.*_dni)/;
 const swrK = (a, d) => 'swr_' + a + '|' + JSON.stringify(d || {});
 function swrBorrar() { try { Object.keys(localStorage).filter(k => k.indexOf('portal_swr_') === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {} }
 function swrGuardar(k, v) { try { localStorage.setItem('portal_' + k, JSON.stringify({ t: Date.now(), v: v })); } catch (e) { swrBorrar(); } }
@@ -2060,8 +2060,8 @@ async function capTablero(fresco) {
   }
   if (!CAPT || fresco) {
     if (!CAPT) cargando('#cap', 'Armando el tablero de capacitaciones…'); else toast('Actualizando el tablero de capacitaciones…');
-    try { CAPT = await capApi('c_tablero', { fresco: !!fresco }, 180000); LS.set('capt', CAPT); }
-    catch (e) { if (!CAPT) return marco('#cap', capError(e)); toast('No se pudo actualizar: se muestran los últimos datos guardados.'); }
+    try { CAPT = await capApi('c_tablero', { fresco: !!fresco }, 180000); LS.set('capt', CAPT); capTablero.error = ''; }
+    catch (e) { if (!CAPT) return marco('#cap', capError(e)); capTablero.error = capMsg(e); toast('No se pudo actualizar: se muestran los últimos datos guardados.'); }
     if (location.hash.split('/')[0] !== '#cap') return;
   }
   const T = CAPT, K = T.kpi, hoyM = new Date().toISOString().slice(0, 7);
@@ -2133,6 +2133,8 @@ async function capTablero(fresco) {
 
   marco('#cap', '<div class="cab"><div><span class="mu peq">9 · Capacitaciones</span><h1>Tablero de capacitaciones</h1><span class="mu peq">Ciclo ' + esc(T.ciclo.nombre) + ' (' + fechaTxt(T.ciclo.desde) + ' al ' + fechaTxt(T.ciclo.hasta) + ') · datos al ' + new Date(T.calculado).toLocaleString('es-AR') + '</span></div>' +
     '<div class="filtros"><a class="btn sec" href="' + CAP_LIBRO + '" target="_blank" rel="noopener">Libro ↗</a><button class="btn sec" id="capAct">Actualizar</button></div></div>' +
+    // 18/10/2026: si lo que se ve es una copia vieja guardada en el navegador, se dice claro (y por qué no se pudo actualizar)
+    (Date.now() - Date.parse(T.calculado) > 600000 ? '<div class="aviso' + (capTablero.error ? ' error' : '') + '" style="margin:0 0 12px">Estos datos son del ' + esc(new Date(T.calculado).toLocaleString('es-AR')) + ' (copia guardada en este navegador). ' + (capTablero.error ? 'No se pudo actualizar: ' + esc(capTablero.error) + ' Tocá «Actualizar» para probar de nuevo.' : 'Actualizando…') + '</div>' : '') +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">' +
       kpi('Personas capacitadas', K.personas, 'personas distintas') +
       kpi('Registros', K.registros, 'asistencias y evaluaciones') +
@@ -2964,110 +2966,127 @@ function capReglaModal(x) {
   };
 }
 
-// ------------------------------------------------------------------ Para validar (14.67 · de a varios desde el 15/10/2026)
-// Lo que carga la secretaría y espera a HyS: altas nuevas, cambios propuestos, cambios directos (correo, teléfono, jefaturas,
-// listas de mails) y avisos. Todo se puede elegir de a varios, corregir en la misma tabla y resolver de una vez (p_cv_lote).
-// Lo lee y lo escribe el Sistema HyS (CapValidar.gs, acciones p_cv_…).
-let CAPV = null;
-const CVSEL = { al: {}, pr: {}, ca: {}, av: {} }, CVED = { al: {}, pr: {} };
-async function capValidar(fresco) {
-  if (!CAPV || fresco) { cargando('#capval', 'Leyendo lo que espera validación…'); try { CAPV = await api('p_cv_datos', {}, 120000); } catch (e) { return; }
-    Object.keys(CVSEL).forEach(k => CVSEL[k] = {}); CVED.al = {}; CVED.pr = {}; }
-  if (!CAPV.ok) return marco('#capval', capTit('Para validar') + '<div class="aviso error">' + esc(CAPV.mensaje || CAPV.error || 'No se pudo leer.') + (/desconocida/i.test(CAPV.mensaje || CAPV.error || '') ? ' Falta instalar CapValidar.gs en el Sistema HyS.' : '') + '</div>');
-  const V = CAPV, L = V.listas || {}, C = V.cambios || [];
-  const dl = (id, arr) => '<datalist id="' + id + '">' + (arr || []).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist>';
-  const chk = (g, k) => '<input type="checkbox" data-sel="' + g + '" value="' + esc(k) + '"' + (CVSEL[g][k] ? ' checked' : '') + ' style="width:18px;height:18px">';
-  const todos = (g, n) => n ? '<input type="checkbox" data-todos="' + g + '" title="Elegir todos" style="width:18px;height:18px">' : '';
-  const nSel = g => Object.keys(CVSEL[g]).filter(k => CVSEL[g][k]).length;
-  const btn = (id, cls, txt) => '<button class="btn ' + cls + '" id="' + id + '" style="min-height:32px;padding:4px 12px;font-size:12.5px">' + txt + '</button>';
-  const barra = (g, botones) => '<div class="cpn" style="padding:8px 14px;border-bottom:1px solid var(--ln);align-items:center"><span class="mu peq" id="cvN_' + g + '">' + nSel(g) + ' elegido(s)</span>' + botones + '</div>';
-  const inp = (g, k, campo, v, lista, w) => '<input class="c" data-ed="' + g + '" data-k="' + esc(k) + '" data-c="' + campo + '" value="' + esc(v == null ? '' : v) + '"' + (lista ? ' list="' + lista + '"' : '') + ' style="min-width:' + (w || 130) + 'px;padding:5px 8px;font-size:13px">';
-  const ed = (g, k, c, v) => { const o = CVED[g][k]; return o && o[c] != null ? o[c] : v; };
-  const kp = (t, n, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (n && col ? ' style="color:' + col + '"' : '') + '>' + n + '</b><small>' + s + '</small></div>';
-  const total = V.altas.length + V.propuestas.length + C.length;
-  marco('#capval', capTit('Para validar', 'Lo que cargó la secretaría desde Mi establecimiento. Elegí de a varios, corregí en la misma tabla y resolvé de una vez. Todo queda en la hoja _HISTORIAL del libro.', '<button class="btn sec" id="cvAct">Actualizar</button><a class="btn sec" href="' + esc(V.libro) + '" target="_blank" rel="noopener">Abrir el libro ↗</a>') +
-    dl('cvF', L.funciones) + dl('cvS', L.servicios) + dl('cvI', L.instituciones) + dl('cvE', L.establecimientos) + dl('cvP', L.publicos) + dl('cvEm', L.empresas) +
-    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + kp('Altas nuevas', V.altas.length, 'personas para revisar', '#B4361F') + kp('Cambios propuestos', V.propuestas.length, 'aprobar o rechazar', '#B4361F') +
-      kp('Cambios directos', C.length, 'ya aplicados: revisar o deshacer', '#8A5200') + kp('Otros avisos', V.avisos.length, 'sin marcar como revisados') + '</div>' +
-    (!total && !V.avisos.length ? '<div class="card vacio" style="margin-top:12px">No hay nada pendiente de la secretaría.</div>' : '') +
-    // Altas
-    (V.altas.length ? '<section class="card tabla" style="margin-top:12px"><div style="padding:12px 14px 4px"><h2 style="margin:0;font-size:16px">Altas nuevas</h2><span class="mu peq">Corregí en la tabla lo que haga falta; «Validar» guarda lo que se ve. «Ficha» abre todos los campos.</span></div>' +
-      barra('al', btn('cvValA', 'pri', 'Validar las elegidas')) + '<div style="overflow-x:auto"><table><thead><tr><th>' + todos('al', V.altas.length) + '</th><th>Persona</th><th>Función</th><th>Servicio</th><th>Establecimiento o institución</th><th>Empresa</th><th>Correo</th><th>Público</th><th></th></tr></thead><tbody>' +
-      V.altas.map(a => { const k = a.DNI, est = a.ESTABLECIMIENTO && a.ESTABLECIMIENTO !== 's/d' ? 'ESTABLECIMIENTO' : 'INSTITUCION';
-        return '<tr><td>' + chk('al', k) + '</td><td><b>' + esc(a.APELLIDOS + ', ' + a.NOMBRES) + '</b><div class="mu peq">DNI ' + esc(a.DNI) + ' · ' + esc(a.ORIGEN_DE_DATOS || '') + '</div>' + (a.FUNCION === 'Otra' ? '<div class="peq" style="color:#8A5200;font-weight:700">función «Otra»: corregila</div>' : '') + '</td>' +
-          '<td>' + inp('al', k, 'FUNCION', ed('al', k, 'FUNCION', a.FUNCION), 'cvF') + '</td><td>' + inp('al', k, 'SERVICIO', ed('al', k, 'SERVICIO', a.SERVICIO), 'cvS') + '</td>' +
-          '<td>' + inp('al', k, est, ed('al', k, est, a[est]), est === 'ESTABLECIMIENTO' ? 'cvE' : 'cvI', 170) + '</td><td>' + inp('al', k, 'EMPRESA', ed('al', k, 'EMPRESA', a.EMPRESA), 'cvEm', 100) + '</td>' +
-          '<td>' + inp('al', k, 'CORREO', ed('al', k, 'CORREO', a.CORREO), '', 180) + '</td><td>' + inp('al', k, 'PUBLICO', ed('al', k, 'PUBLICO', a.PUBLICO), 'cvP', 110) + '</td>' +
-          '<td><button class="btn sec" data-va="' + esc(k) + '" style="min-height:30px;padding:3px 10px;font-size:12px">Ficha</button></td></tr>'; }).join('') + '</tbody></table></div></section>' : '') +
-    // Propuestas
-    (V.propuestas.length ? '<section class="card tabla" style="margin-top:12px"><div style="padding:12px 14px 4px"><h2 style="margin:0;font-size:16px">Cambios propuestos</h2><span class="mu peq">Podés corregir el valor propuesto antes de aprobar.</span></div>' +
-      barra('pr', btn('cvApr', 'pri', 'Aprobar los elegidos') + btn('cvRec', 'sec', 'Rechazar los elegidos')) + '<div style="overflow-x:auto"><table><thead><tr><th>' + todos('pr', V.propuestas.length) + '</th><th>Persona</th><th>Campo</th><th>Hoy</th><th>Propuesto</th><th>Quién y cuándo</th></tr></thead><tbody>' +
-      V.propuestas.map(p => '<tr><td>' + chk('pr', p.id) + '</td><td><b>' + esc(p.persona) + '</b><div class="mu peq">DNI ' + esc(p.dni) + (p.enBase ? '' : ' · <b style="color:#B4361F">no está en la base</b>') + '</div></td><td>' + esc(p.campo) + '</td><td class="peq">' + esc(p.actual || 'vacío') + '</td>' +
-        '<td>' + inp('pr', p.id, 'valor', ed('pr', p.id, 'valor', p.propuesto), /FUNCION/.test(p.campo) ? 'cvF' : /SERVICIO/.test(p.campo) ? 'cvS' : /ESTABLEC/.test(p.campo) ? 'cvE' : /INSTITU/.test(p.campo) ? 'cvI' : '', 170) + (p.motivo ? '<div class="mu peq">' + esc(p.motivo) + '</div>' : '') + '</td>' +
-        '<td class="peq">' + esc(p.quien || '') + '<div class="mu">' + esc(p.fecha) + '</div></td></tr>').join('') + '</tbody></table></div></section>' : '') +
-    // Cambios directos
-    (C.length ? '<section class="card tabla" style="margin-top:12px"><div style="padding:12px 14px 4px"><h2 style="margin:0;font-size:16px">Cambios directos de la secretaría</h2><span class="mu peq">Ya están aplicados (correo, teléfono, contactos de jefaturas, listas de mails). Marcalos como revisados o deshacelos: vuelve el valor anterior.</span></div>' +
-      barra('ca', btn('cvRev', 'pri', 'Marcar revisados') + btn('cvDes', 'sec', 'Deshacer los elegidos')) + '<div style="overflow-x:auto"><table><thead><tr><th>' + todos('ca', C.length) + '</th><th>Persona o jefatura</th><th>Campo</th><th>Antes</th><th>Ahora</th><th>Quién y cuándo</th></tr></thead><tbody>' +
-      C.map(c => '<tr><td>' + chk('ca', c.fila) + '</td><td><b>' + esc(c.persona) + '</b><div class="mu peq">' + esc(c.hoja === 'PERSONAS' ? 'DNI ' + c.id : 'Jefatura') + '</div></td><td>' + esc(c.campo) + '</td><td class="peq">' + esc(c.antes || 'vacío') + '</td><td class="peq"><b>' + esc(c.despues || 'vacío') + '</b></td><td class="peq">' + esc(c.quien) + '<div class="mu">' + esc(c.fecha) + '</div></td></tr>').join('') +
-      '</tbody></table></div></section>' : '') +
-    // Avisos
-    (V.avisos.length ? '<section class="card tabla" style="margin-top:12px"><div style="padding:12px 14px 4px"><h2 style="margin:0;font-size:16px">Otros avisos</h2><span class="mu peq">Funciones «Otra», servicios o establecimientos fuera del catálogo, altas desde la web.</span></div>' +
-      barra('av', btn('cvAvR', 'pri', 'Marcar revisados')) + '<details class="peq"' + (V.avisos.length <= 15 ? ' open' : '') + '><summary style="cursor:pointer;font-weight:700;color:var(--az);padding:8px 14px">Ver los ' + V.avisos.length + ' avisos</summary><div style="overflow-x:auto"><table><thead><tr><th>' + todos('av', V.avisos.length) + '</th><th>Aviso</th><th>Persona</th><th>Detalle</th><th>Fecha</th></tr></thead><tbody>' +
-      V.avisos.map(v => '<tr><td>' + chk('av', v.fila) + '</td><td>' + esc(v.tipo) + '</td><td><b>' + esc(v.persona) + '</b></td><td class="peq">' + esc(v.detalle || '') + '</td><td class="peq">' + esc(v.fecha) + '</td></tr>').join('') + '</tbody></table></div></details></section>' : '') +
-    '<p class="mu peq">Si el portal no anda: en el libro CAPACITACIONES, CAMBIOS_PROPUESTOS › ESTADO (Aprobada o Rechazada), PERSONAS › REVISAR = No, _AVISOS › ESTADO = Resuelto y _HISTORIAL › REVISADO_HYS.</p>');
-  // selección y ediciones (se recuerdan mientras no se actualice)
-  const contar = g => { const e = $('cvN_' + g); if (e) e.textContent = nSel(g) + ' elegido(s)'; };
-  document.querySelectorAll('[data-sel]').forEach(x => x.onchange = () => { CVSEL[x.dataset.sel][x.value] = x.checked; contar(x.dataset.sel); });
-  document.querySelectorAll('[data-todos]').forEach(x => x.onchange = () => { const g = x.dataset.todos; document.querySelectorAll('[data-sel="' + g + '"]').forEach(c => { c.checked = x.checked; CVSEL[g][c.value] = x.checked; }); contar(g); });
-  document.querySelectorAll('[data-ed]').forEach(x => x.oninput = () => { const g = x.dataset.ed, k = x.dataset.k; (CVED[g][k] = CVED[g][k] || {})[x.dataset.c] = x.value;
-    const c = document.querySelector('[data-sel="' + g + '"][value="' + CSS.escape(k) + '"]'); if (c && !c.checked) { c.checked = true; CVSEL[g][k] = true; contar(g); } });
-  const elegidos = g => Object.keys(CVSEL[g]).filter(k => CVSEL[g][k]);
-  const lote = async (btnId, datos, txt) => {
-    const b0 = $(btnId); if (b0) { b0.disabled = true; b0.textContent = 'Guardando…'; }
-    const r = await api('p_cv_lote', datos, 300000).catch(() => null);
-    if (!r || !r.ok) { if (b0) { b0.disabled = false; b0.textContent = txt; } return toast((r && r.mensaje) || 'No se pudo. Probá de nuevo.'); }
-    const partes = [[r.altas, 'alta(s) validada(s)'], [r.aprobadas, 'aprobada(s)'], [r.rechazadas, 'rechazada(s)'], [r.revisados, 'cambio(s) revisado(s)'], [r.deshechos, 'cambio(s) deshecho(s)'], [r.avisos, 'aviso(s) revisado(s)']].filter(p => p[0]).map(p => p[0] + ' ' + p[1]);
-    toast((partes.join(' · ') || 'Sin cambios') + (r.errores && r.errores.length ? ' · ' + r.errores.length + ' con problema: ' + r.errores[0] : '') + '.');
-    CAPV_N = null; capValidar(true);
-  };
-  if ($('cvAct')) $('cvAct').onclick = () => capValidar(true);
-  if ($('cvValA')) $('cvValA').onclick = () => { const ks = elegidos('al'); if (!ks.length) return toast('Elegí al menos una alta.');
-    const altas = ks.map(k => { const a = V.altas.find(z => z.DNI === k); const o = {}; ['APELLIDOS', 'NOMBRES', 'FUNCION', 'PROFESION', 'SERVICIO', 'INSTITUCION', 'ESTABLECIMIENTO', 'VINCULO', 'EMPRESA', 'CORREO', 'TELEFONO', 'PUBLICO'].forEach(c => o[c] = ed('al', k, c, a[c])); return { dni: k, datos: o }; });
-    const malas = altas.filter(a => !a.datos.FUNCION || a.datos.FUNCION === 's/d'); if (malas.length && !confirm(malas.length + ' alta(s) quedan sin función. ¿Validar igual?')) return;
-    lote('cvValA', { altas: altas }, 'Validar las elegidas'); };
-  if ($('cvApr')) $('cvApr').onclick = () => { const ks = elegidos('pr'); if (!ks.length) return toast('Elegí al menos un cambio.'); lote('cvApr', { propuestas: ks.map(k => ({ id: k, decision: 'aprobar', valor: ed('pr', k, 'valor', null) })) }, 'Aprobar los elegidos'); };
-  if ($('cvRec')) $('cvRec').onclick = () => { const ks = elegidos('pr'); if (!ks.length) return toast('Elegí al menos un cambio.');
-    modal('Rechazar ' + ks.length + ' cambio(s)', [['motivo', 'Motivo (va para todos los elegidos)', null, 1]], {}, async o => { if (!o.motivo) return 'Escribí el motivo.'; lote('cvRec', { propuestas: ks.map(k => ({ id: k, decision: 'rechazar', motivo: o.motivo })) }, 'Rechazar los elegidos'); return ''; }); };
-  if ($('cvRev')) $('cvRev').onclick = () => { const ks = elegidos('ca'); if (!ks.length) return toast('Elegí al menos un cambio.'); lote('cvRev', { revisados: ks.map(Number) }, 'Marcar revisados'); };
-  if ($('cvDes')) $('cvDes').onclick = () => { const ks = elegidos('ca'); if (!ks.length) return toast('Elegí al menos un cambio.'); if (!confirm('Se vuelve al valor anterior en ' + ks.length + ' cambio(s). ¿Seguís?')) return; lote('cvDes', { deshacer: ks.map(Number) }, 'Deshacer los elegidos'); };
-  if ($('cvAvR')) $('cvAvR').onclick = () => { const ks = elegidos('av'); if (!ks.length) return toast('Elegí al menos un aviso.'); lote('cvAvR', { avisos: ks.map(Number) }, 'Marcar revisados'); };
-  // Ficha completa de una alta (como antes)
-  const op = (arr, v) => (v && arr.indexOf(v) < 0 ? [v] : []).concat(arr || []);
-  document.querySelectorAll('[data-va]').forEach(x => x.onclick = () => { const a0 = V.altas.find(z => z.DNI === x.dataset.va), a = Object.assign({}, a0, CVED.al[a0.DNI] || {});
-    modal('Validar alta · ' + a.APELLIDOS + ', ' + a.NOMBRES, [['APELLIDOS', 'Apellidos'], ['NOMBRES', 'Nombres'], ['FUNCION', 'Función', op(L.funciones, a.FUNCION)], ['PROFESION', 'Función y detalle (como se ve en la ficha)'], ['SERVICIO', 'Servicio', op(L.servicios, a.SERVICIO)],
-      ['INSTITUCION', 'Institución', op(L.instituciones, a.INSTITUCION)], ['ESTABLECIMIENTO', 'Establecimiento (sigla)', op(L.establecimientos, a.ESTABLECIMIENTO)], ['VINCULO', 'Vínculo', op(L.vinculos, a.VINCULO)], ['EMPRESA', 'Empresa (si es tercerizado)', op([''].concat(L.empresas || []), a.EMPRESA)], ['CORREO', 'Correo'], ['TELEFONO', 'Teléfono'], ['PUBLICO', 'Público', op(L.publicos, a.PUBLICO)]], a, async o => {
-      if (!o.APELLIDOS || !o.NOMBRES || !o.FUNCION || (!o.ESTABLECIMIENTO && !o.INSTITUCION)) return 'Completá apellidos, nombres, función e institución o establecimiento.';
-      const r = await api('p_cv_alta', { dni: a.DNI, datos: o }, 90000); if (!r.ok) return r.mensaje || 'No se pudo validar.';
-      toast('Validada' + (r.cambios ? ' con ' + r.cambios + ' corrección(es)' : '') + '.'); CAPV_N = null; capValidar(true); return ''; },
-      '<p class="mu peq" style="margin:8px 0 0">DNI ' + esc(a.DNI) + ' · ' + esc(a.ORIGEN_DE_DATOS || '') + '. Corregí lo que haga falta y tocá Guardar: queda validada (REVISAR = No) y sus avisos, resueltos.</p>'); });
+// ------------------------------------------------------------------ Para validar (14.67 · de a varios desde el 15/10/2026 · comparativa desde el 18/10/2026)
+// Pedido de Belén (18/10/2026): todo en una sola lista, en el tablero principal, una persona por fila con ANTES y DESPUÉS de cada dato,
+// un cuadrito para elegir de a varios y dos decisiones: «Aceptar» o «Requiere revisión» (más «Volver a lo anterior» para cambios directos).
+//   · Antes: el valor anterior del cambio, o lo que dice la base de trabajadores (o el libro, si la persona no está en la base).
+//   · Después: lo que quedó en el libro con lo propuesto encima. Se corrige ahí mismo; «Aceptar» guarda lo que se ve.
+// Lo lee y lo escribe el Sistema HyS (CapValidar.gs › p_cv_comparar y p_cv_decidir). Respaldo: libro CAPACITACIONES (ver el pie).
+let CAPV = null, CAPV_T2 = 0;
+const CVS = {}, CVE = {}, CVF = { q: '', tipo: '' };
+const CV_ETQ = { ESTABLECIMIENTO: 'Establecimiento', SERVICIO: 'Servicio', FUNCION: 'Función', PROFESION: 'Puesto (detalle)', VINCULO: 'Vínculo', EMPRESA: 'Empresa', INSTITUCION: 'Institución', PUBLICO: 'Público', CORREO: 'Correo', TELEFONO: 'Teléfono' };
+const CV_LST = { ESTABLECIMIENTO: 'cvE', SERVICIO: 'cvS', FUNCION: 'cvF', VINCULO: 'cvV', EMPRESA: 'cvEm', INSTITUCION: 'cvI', PUBLICO: 'cvP' };
+const cvNorm = v => String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^s\/?d$/, '').replace(/\s+/g, ' ').trim();
+async function capCvLeer(fresco) {
+  if (!CAPV || fresco || Date.now() - CAPV_T2 > 300000) { CAPV = await api('p_cv_comparar', {}, 180000); CAPV_T2 = Date.now(); Object.keys(CVS).forEach(k => delete CVS[k]); Object.keys(CVE).forEach(k => delete CVE[k]); }
+  return CAPV;
 }
-// Aviso de lo que espera validación: en el tablero general (tarjeta con lo último) y en el de capacitaciones (banda). Cada 5 minutos como máximo.
+async function capValidar(fresco) {
+  if (!CAPV || fresco) cargando('#capval', 'Leyendo lo que espera validación…');
+  let V; try { V = await capCvLeer(fresco); } catch (e) { return marco('#capval', capTit('Para validar') + '<div class="aviso error">' + esc(capMsg(e)) + '</div>'); }
+  if (!V || !V.ok) return marco('#capval', capTit('Para validar') + '<div class="aviso error">' + esc((V && (V.mensaje || V.error)) || 'No se pudo leer.') + (/desconocida/i.test((V && (V.mensaje || V.error)) || '') ? ' Falta actualizar CapValidar.gs en el Sistema HyS.' : '') + '</div>');
+  marco('#capval', capTit('Para validar', 'Lo que cargó la secretaría (altas, cambios y avisos), una persona por fila con el antes y el después de cada dato. Elegí de a varios y resolvé de una vez. También está en el Tablero principal.', '<button class="btn sec" id="cvAct">Actualizar</button><a class="btn sec" href="' + esc(V.libro) + '" target="_blank" rel="noopener">Abrir el libro ↗</a>') +
+    '<div id="cvCaja"></div>');
+  $('cvAct').onclick = () => capValidar(true);
+  capCvPintar($('cvCaja'), () => capValidar(true));
+}
+// La lista comparativa (la usan #capval y el Tablero principal)
+function capCvPintar(caja, recargar) {
+  const V = CAPV; if (!caja || !V) return;
+  const C = V.campos || Object.keys(CV_ETQ), L = V.listas || {}, G = V.grupos || [];
+  const tipos = [['', 'Todo'], ['Alta nueva', 'Altas nuevas'], ['Cambio propuesto', 'Cambios propuestos'], ['Cambio directo', 'Cambios directos'], ['aviso', 'Avisos'], ['revision', 'Requiere revisión']];
+  const pasa = g => (!CVF.tipo || (CVF.tipo === 'revision' ? !!g.revision : CVF.tipo === 'aviso' ? g.items.some(i => !/^(Alta nueva|Cambio propuesto|Cambio directo)$/.test(i.tipo)) : g.items.some(i => i.tipo === CVF.tipo))) &&
+    (!CVF.q || cvNorm(g.persona + ' ' + g.dni + ' ' + g.items.map(i => i.tipo + ' ' + i.detalle).join(' ')).indexOf(cvNorm(CVF.q)) >= 0);
+  const F = G.filter(pasa), nSel = () => Object.keys(CVS).filter(k => CVS[k]).length;
+  const val = (g, c) => CVE[g.clave] && CVE[g.clave][c] != null ? CVE[g.clave][c] : (g.despues[c] == null ? '' : g.despues[c]);
+  const dl = (id, arr) => '<datalist id="' + id + '">' + (arr || []).map(o => '<option value="' + esc(o) + '">').join('') + '</datalist>';
+  const chip = i => { const c = i.tipo === 'Alta nueva' || i.tipo === 'Cambio propuesto' ? 'er' : i.tipo === 'Cambio directo' ? 'wa' : 'gr'; return '<span class="chip mini ' + c + '" title="' + esc(i.detalle || '') + '">' + esc(i.tipo) + '</span>'; };
+  const btn = (id, cls, txt, tit) => '<button class="btn ' + cls + '" id="' + id + '" title="' + esc(tit || '') + '" style="min-height:32px;padding:4px 12px;font-size:12.5px">' + txt + '</button>';
+  const th = 'style="padding:6px 8px;text-align:left;font-size:11.5px;letter-spacing:.4px;color:var(--mu);white-space:nowrap"';
+  const fila = g => {
+    const k = g.clave, sel = !!CVS[k], rs = g.jefatura ? 1 : 3;
+    const persona = '<td rowspan="' + rs + '" style="padding:8px;vertical-align:top;min-width:190px;background:#fff"><b>' + esc(g.persona || 's/d') + '</b>' + (g.dni ? '<div class="mu peq">DNI ' + esc(g.dni) + '</div>' : g.jefatura ? '<div class="mu peq">Jefatura</div>' : '') +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">' + g.items.map(chip).join('') + '</div>' +
+      (g.revision ? '<div class="peq" style="margin-top:6px;color:#8A5200;font-weight:700">Requiere revisión' + (g.revision.nota ? ': <span style="font-weight:400">' + esc(g.revision.nota) + '</span>' : '') + '</div>' : '') +
+      (g.dni && !g.enBase && !g.jefatura ? '<div class="mu peq" style="margin-top:4px">No está en la base de trabajadores</div>' : '') + '</td>';
+    const cajita = '<td rowspan="' + rs + '" style="padding:8px;vertical-align:top;background:#fff"><input type="checkbox" data-cv="' + esc(k) + '"' + (sel ? ' checked' : '') + ' style="width:20px;height:20px"></td>';
+    const fondo = sel ? '#F4F8FA' : '#fff';
+    if (g.jefatura) return '<tr data-g="' + esc(k) + '" style="border-top:2px solid #E3E9EC;background:' + fondo + '">' + cajita + persona + '<td colspan="' + (C.length + 1) + '" class="peq" style="padding:8px">' + g.items.map(i => '<div><b>' + esc(i.campo || i.tipo) + ':</b> ' + esc(i.antes || 'vacío') + ' → <b>' + esc(i.despues || 'vacío') + '</b> <span class="mu">· ' + esc([i.quien, i.fecha].filter(Boolean).join(' · ')) + '</span></div>').join('') + '</td></tr>';
+    const antes = C.map(c => '<td class="peq" title="Sale de: ' + esc(g.fuente[c] || '') + '" style="padding:6px 8px;color:var(--mu);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + esc(g.antes[c] || 's/d') + '</td>').join('');
+    const despues = C.map(c => { const v = val(g, c), dif = cvNorm(v) !== cvNorm(g.antes[c]), editable = g.enLibro;
+      return '<td style="padding:4px 6px;background:' + (dif ? '#FFF4D6' : 'transparent') + '">' + (editable ? '<input class="c" data-ce="' + esc(k) + '" data-c="' + c + '" value="' + esc(v) + '"' + (CV_LST[c] ? ' list="' + CV_LST[c] + '"' : '') + ' style="min-width:' + (c === 'CORREO' ? 190 : 120) + 'px;padding:5px 8px;font-size:13px' + (dif ? ';font-weight:700' : '') + '">' : '<span class="peq">' + esc(v || 's/d') + '</span>') + '</td>'; }).join('');
+    const det = g.items.map(i => esc(i.tipo) + (i.detalle ? ': ' + esc(i.detalle) : '') + (i.quien || i.fecha ? ' <span class="mu">(' + esc([i.quien, i.fecha].filter(Boolean).join(' · ')) + ')</span>' : '')).join(' · ');
+    return '<tr data-g="' + esc(k) + '" style="border-top:2px solid #E3E9EC;background:' + fondo + '">' + cajita + persona + '<td class="peq" style="padding:6px 8px;color:var(--mu);font-weight:700">ANTES</td>' + antes + '</tr>' +
+      '<tr style="background:' + fondo + '"><td class="peq" style="padding:6px 8px;font-weight:800;color:var(--az)">DESPUÉS</td>' + despues + '</tr>' +
+      '<tr style="background:' + fondo + '"><td colspan="' + (C.length + 1) + '" class="mu peq" style="padding:2px 8px 8px">' + det + '</td></tr>';
+  };
+  caja.innerHTML = dl('cvF', L.funciones) + dl('cvS', L.servicios) + dl('cvI', L.instituciones) + dl('cvE', L.establecimientos) + dl('cvP', L.publicos) + dl('cvEm', L.empresas) + dl('cvV', L.vinculos) +
+    '<section class="card tabla" style="margin-top:0">' +
+    '<div style="padding:12px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;border-bottom:1px solid var(--ln)">' +
+      '<label class="f" style="flex:1;min-width:200px">Buscar<input class="c" id="cvQ" value="' + esc(CVF.q) + '" placeholder="Apellido, DNI o tipo de aviso" autocomplete="off"></label>' +
+      '<label class="f">Mostrar<select class="c" id="cvT">' + tipos.map(t => '<option value="' + t[0] + '"' + (CVF.tipo === t[0] ? ' selected' : '') + '>' + t[1] + ' (' + G.filter(g => { const o = CVF.tipo; CVF.tipo = t[0]; const r = pasa(g); CVF.tipo = o; return r; }).length + ')</option>').join('') + '</select></label></div>' +
+    '<div class="cpn" style="padding:10px 14px;align-items:center;border-bottom:1px solid var(--ln);position:sticky;top:0;background:#fff;z-index:2">' +
+      '<label class="peq" style="display:flex;gap:6px;align-items:center;font-weight:700"><input type="checkbox" id="cvTodos" style="width:20px;height:20px"> Elegir todos los que se ven (' + F.length + ')</label>' +
+      '<span class="mu peq" id="cvN">' + nSel() + ' elegido(s)</span>' +
+      btn('cvOk', 'pri', 'Aceptar los elegidos', 'Guarda lo que se ve en DESPUÉS y cierra todo lo pendiente de esas personas') +
+      btn('cvRv', 'sec', 'Requiere revisión', 'Quedan en la lista con una marca y una nota, para volver a mirarlos') +
+      btn('cvDs', 'sec', 'Volver a lo anterior', 'Solo cambios directos: vuelve el valor de ANTES') + '</div>' +
+    (F.length ? '<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr><th ' + th + '></th><th ' + th + '>PERSONA Y QUÉ PASÓ</th><th ' + th + '></th>' + C.map(c => '<th ' + th + '>' + esc(CV_ETQ[c] || c).toUpperCase() + '</th>').join('') + '</tr></thead><tbody>' + F.map(fila).join('') + '</tbody></table></div>'
+      : '<div class="vacio" style="padding:18px">' + (G.length ? 'Nada con ese filtro.' : 'No hay nada pendiente de la secretaría.') + '</div>') +
+    '<div class="mu peq" style="padding:10px 14px">En amarillo, lo que cambia. ANTES sale del valor anterior del cambio o de la base de trabajadores (pasá el mouse por encima para ver de dónde). DESPUÉS es lo que quedó en el libro: corregilo ahí mismo y tocá «Aceptar». ' +
+      'Si el portal no anda: libro CAPACITACIONES, hojas PERSONAS (REVISAR = No), CAMBIOS_PROPUESTOS (ESTADO), _AVISOS (ESTADO = Resuelto), _HISTORIAL (REVISADO_HYS) y _REVISION_HYS.</div></section>';
+  // eventos
+  const contar = () => { const e = caja.querySelector('#cvN'); if (e) e.textContent = nSel() + ' elegido(s)'; };
+  const marcar = (k, on) => { CVS[k] = on; const c = caja.querySelector('[data-cv="' + CSS.escape(k) + '"]'); if (c) c.checked = on; caja.querySelectorAll('tr[data-g="' + CSS.escape(k) + '"]').forEach(t => t.style.background = on ? '#F4F8FA' : '#fff'); };
+  caja.querySelectorAll('[data-cv]').forEach(x => x.onchange = () => { marcar(x.dataset.cv, x.checked); contar(); });
+  caja.querySelector('#cvTodos').onchange = e => { F.forEach(g => marcar(g.clave, e.target.checked)); contar(); };
+  caja.querySelectorAll('[data-ce]').forEach(x => x.oninput = () => { const k = x.dataset.ce; (CVE[k] = CVE[k] || {})[x.dataset.c] = x.value; if (!CVS[k]) { marcar(k, true); contar(); } });
+  const q = caja.querySelector('#cvQ'); q.oninput = () => { CVF.q = q.value; clearTimeout(capCvPintar.t); capCvPintar.t = setTimeout(() => { capCvPintar(caja, recargar); const i = caja.querySelector('#cvQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300); };
+  caja.querySelector('#cvT').onchange = e => { CVF.tipo = e.target.value; capCvPintar(caja, recargar); };
+  const elegidos = () => G.filter(g => CVS[g.clave]);
+  const datosDe = g => { if (!g.dni || !g.enLibro) return null; const o = {}, pr = g.items.filter(i => i.tipo === 'Cambio propuesto').map(i => i.campo);
+    C.forEach(c => { if (CVE[g.clave] && CVE[g.clave][c] != null) o[c] = CVE[g.clave][c]; else if (pr.indexOf(c) >= 0) o[c] = g.despues[c]; }); return Object.keys(o).length ? o : null; };
+  const enviar = async (b, grupos, txt) => {
+    b.disabled = true; b.textContent = 'Guardando…';
+    const r = await api('p_cv_decidir', { grupos: grupos }, 300000).catch(e => ({ ok: false, mensaje: capMsg(e) }));
+    if (!r || !r.ok) { b.disabled = false; b.textContent = txt; return toast((r && r.mensaje) || 'No se pudo. Probá de nuevo.'); }
+    const partes = [[r.aceptadas, 'persona(s) aceptada(s)'], [r.correcciones, 'dato(s) corregido(s)'], [r.revision, 'marcada(s) «Requiere revisión»'], [r.deshechos, 'cambio(s) deshecho(s)']].filter(p => p[0]).map(p => p[0] + ' ' + p[1]);
+    toast((partes.join(' · ') || 'Sin cambios') + (r.errores && r.errores.length ? ' · ' + r.errores.length + ' con problema: ' + r.errores[0] : '') + '.');
+    CAPV_N = null; CAPV = null; recargar();
+  };
+  caja.querySelector('#cvOk').onclick = e => { const l = elegidos(); if (!l.length) return toast('Elegí al menos una persona.');
+    enviar(e.target, l.map(g => ({ dni: g.dni, claves: g.items.map(i => i.clave), datos: datosDe(g), decision: 'aceptar' })), 'Aceptar los elegidos'); };
+  caja.querySelector('#cvRv').onclick = e => { const l = elegidos(); if (!l.length) return toast('Elegí al menos una persona.'); const b = e.target;
+    modal('Requiere revisión · ' + l.length + ' persona(s)', [['nota', 'Qué hay que revisar (opcional, va para todas las elegidas)', null, 1]], {}, async o => {
+      enviar(b, l.map(g => ({ dni: g.dni, claves: g.items.map(i => i.clave), decision: 'revisar', nota: o.nota || '' })), 'Requiere revisión'); return ''; },
+      '<p class="mu peq" style="margin:8px 0 0">No se cambia ningún dato: quedan en la lista con la marca y la nota, al final.</p>'); };
+  caja.querySelector('#cvDs').onclick = e => { const l = elegidos().filter(g => g.items.some(i => i.tipo === 'Cambio directo')); if (!l.length) return toast('Entre los elegidos no hay cambios directos.');
+    if (!confirm('Vuelve el valor de ANTES en los cambios directos de ' + l.length + ' persona(s) o jefatura(s). ¿Seguís?')) return;
+    enviar(e.target, l.map(g => ({ dni: g.dni, claves: g.items.filter(i => i.tipo === 'Cambio directo').map(i => i.clave), decision: 'deshacer' })), 'Volver a lo anterior'); };
+}
+// En el Tablero principal: la lista completa (si hay algo). En el tablero de capacitaciones: una banda que lleva a la lista.
 let CAPV_N = null, CAPV_T = 0;
 async function capAvisoValidar(activo) {
   if (activo !== '#cap' && activo !== '#inicio') return; const h0 = location.hash;
-  if (CAPV_N == null || Date.now() - CAPV_T > 300000) { try { const r = await api('p_cv_cuenta', {}, 90000); if (!r || !r.ok) return; CAPV_N = r; CAPV_T = Date.now(); } catch (e) { return; } }
-  const m = $('main'), N = CAPV_N, n = (N.altas || 0) + (N.propuestas || 0) + (N.cambios || 0);
-  if (!m || !n || location.hash !== h0 || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
-  const partes = [[N.altas, 'alta(s) nueva(s)'], [N.propuestas, 'cambio(s) propuesto(s)'], [N.cambios, 'cambio(s) directo(s)']].filter(p => p[0]).map(p => p[0] + ' ' + p[1]).join(' · ');
-  let d;
+  const m = $('main'); if (!m) return;
   if (activo === '#inicio') {
-    d = document.createElement('section'); d.id = 'cvBanda'; d.className = 'card'; d.style.cssText = 'margin:0 0 12px;display:flex;flex-direction:column;gap:8px;border-left:4px solid #B4361F';
-    d.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">Para revisar de la secretaría · ' + n + '</h2><a class="btn pri" href="#capval" style="min-height:32px;padding:4px 12px;font-size:12.5px">Revisar todo →</a></div>' +
-      '<span class="mu peq">' + esc(partes) + '</span><div style="display:flex;flex-direction:column;gap:4px">' + (N.ultimos || []).map(u => '<a class="at" href="#capval" style="text-decoration:none"><span class="tag ' + (u.tipo === 'Cambio directo' ? 'wa' : 'er') + '">' + esc(u.tipo) + '</span><span><b>' + esc(u.t) + '</b><small>' + esc(u.s) + (u.f ? ' · ' + esc(u.f) : '') + '</small></span></a>').join('') + '</div>';
-  } else {
-    d = document.createElement('a'); d.id = 'cvBanda'; d.href = '#capval'; d.className = 'aviso'; d.style.cssText = 'display:block;margin:0 0 12px;font-weight:700;text-decoration:none';
-    d.textContent = 'Para revisar de la secretaría: ' + partes + '. Tocá para revisar →';
+    let V; try { V = await capCvLeer(false); } catch (e) { return; }
+    if (!V || !V.ok || !(V.grupos || []).length || location.hash !== h0 || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+    const d = document.createElement('section'); d.id = 'cvBanda'; d.style.cssText = 'margin:0 0 14px';
+    const n = V.cuenta || {};
+    d.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin:0 0 8px"><h2 style="margin:0;font-size:17px">Para validar · ' + (n.personas || V.grupos.length) + ' persona(s)' + (n.revision ? ' <span class="mu peq" style="font-weight:400">(' + n.revision + ' con «Requiere revisión»)</span>' : '') + '</h2>' +
+      '<div class="cpn"><button class="btn sec" id="cvActI" style="min-height:32px;padding:4px 12px;font-size:12.5px">Actualizar</button><a class="btn sec" href="' + esc(V.libro) + '" target="_blank" rel="noopener" style="min-height:32px;padding:4px 12px;font-size:12.5px">Libro ↗</a></div></div><div id="cvCajaI"></div>';
+    const cab = m.querySelector('.cab'); if (cab) cab.after(d); else m.prepend(d);
+    const pintar = () => capCvPintar($('cvCajaI'), async () => { try { await capCvLeer(true); } catch (e) {} if ($('cvCajaI') && CAPV && (CAPV.grupos || []).length) pintar(); else if ($('cvBanda')) $('cvBanda').remove(); });
+    $('cvActI').onclick = async () => { try { await capCvLeer(true); } catch (e) { return toast(capMsg(e)); } pintar(); };
+    pintar(); return;
   }
+  if (CAPV_N == null || Date.now() - CAPV_T > 300000) { try { const r = await api('p_cv_cuenta', {}, 90000); if (!r || !r.ok) return; CAPV_N = r; CAPV_T = Date.now(); } catch (e) { return; } }
+  const N = CAPV_N, n = (N.altas || 0) + (N.propuestas || 0) + (N.cambios || 0) + (N.avisos || 0);
+  if (!n || location.hash !== h0 || m.querySelector('#cvBanda') || m.querySelector('.cargando')) return;
+  const partes = [[N.altas, 'alta(s) nueva(s)'], [N.propuestas, 'cambio(s) propuesto(s)'], [N.cambios, 'cambio(s) directo(s)'], [N.avisos, 'aviso(s)']].filter(p => p[0]).map(p => p[0] + ' ' + p[1]).join(' · ');
+  const d = document.createElement('a'); d.id = 'cvBanda'; d.href = '#inicio'; d.className = 'aviso'; d.style.cssText = 'display:block;margin:0 0 12px;font-weight:700;text-decoration:none';
+  d.textContent = 'Para validar de la secretaría: ' + partes + '. Está en el Tablero principal →';
   const cab = m.querySelector('.cab'); if (cab) cab.after(d); else m.prepend(d);
 }
 

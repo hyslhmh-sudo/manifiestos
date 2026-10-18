@@ -153,8 +153,103 @@ function cvLote_(x) {
   });
 }
 
+// ------------------------------------------------------------------ Vista comparativa (18/10/2026, pedido de Belén)
+// Una fila por persona con todo lo que tiene pendiente (alta, cambios propuestos, cambios directos, avisos):
+//   · Antes: el valor anterior del cambio, o lo que dice la base de trabajadores (o el libro, si no está en la base).
+//   · Después: lo que quedó en el libro (con lo propuesto encima). Se corrige en la misma tabla.
+// Se eligen de a varios y se resuelven juntos: «Aceptar» (guarda lo que se ve y cierra todo lo pendiente de esa persona),
+// «Requiere revisión» (queda en la lista con una marca y una nota, hoja _REVISION_HYS) o «Volver a lo anterior» (cambios directos).
+const CV_CAMPOS = ['ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'PROFESION', 'VINCULO', 'EMPRESA', 'INSTITUCION', 'PUBLICO', 'CORREO', 'TELEFONO'];
+function cvRevHoja_() {
+  const lb = cgLibro_(); let sh = lb.getSheetByName('_REVISION_HYS');
+  if (!sh) {
+    sh = lb.insertSheet('_REVISION_HYS');
+    sh.getRange(1, 1).setValue('Para validar · lo que HyS marcó «Requiere revisión». Lo escribe el portal. ESTADO «Resuelto» o fila borrada: deja de tener la marca.');
+    sh.getRange(5, 1, 1, 5).setValues([['CLAVE', 'ESTADO', 'NOTA', 'FECHA', 'QUIEN']]).setFontWeight('bold');
+  }
+  return cgHoja_('_REVISION_HYS');
+}
+// Base de trabajadores (hoja TODOS, columnas TRAB_COLS de Bases.gs), leída una sola vez para todos los DNI pedidos
+function cvBaseMapa_(dnis) {
+  const m = {}, quiero = {}; dnis.forEach(d => { if (d) quiero[d] = 1; }); if (!Object.keys(quiero).length) return m;
+  try {
+    const T = pBT_().getSheetByName('TODOS'), n = T.getLastRow() - 5; if (n < 1) return m;
+    const ix = k => TRAB_COLS.indexOf(k);
+    T.getRange(6, 1, n, TRAB_COLS.length).getValues().forEach(r => { const d = cvDni_(r[ix('DNI')]); if (!quiero[d]) return; const g = k => cvTxt_(r[ix(k)]);
+      m[d] = { ESTABLECIMIENTO: g('ESTABLECIMIENTO'), SERVICIO: g('SERVICIO'), FUNCION: g('FUNCION'), PROFESION: g('FUNCION_DETALLE'), VINCULO: g('VINCULO'), EMPRESA: g('EMPRESA'), CORREO: g('EMAIL'), TELEFONO: g('TELEFONO') }; });
+  } catch (e) { /* sin base: se compara con el libro */ }
+  return m;
+}
+function cvComparar_() {
+  const d = cvDatos_(), rev = {};
+  cvRevHoja_().filas.forEach(x => { if (/^requiere/i.test(cvTxt_(x.o.ESTADO))) rev[cvTxt_(x.o.CLAVE)] = { nota: cvTxt_(x.o.NOTA), fecha: cvTxt_(x.o.FECHA), quien: cvTxt_(x.o.QUIEN) }; });
+  const P = cgHoja_('PERSONAS'), porDni = {}; P.filas.forEach(x => { porDni[cvDni_(x.o.DNI)] = x; });
+  const G = {}, orden = [];
+  const grupo = (k, dni, nombre) => { if (!G[k]) { G[k] = { clave: k, dni: dni, persona: nombre, items: [], antes: {}, fuente: {}, propuesto: {} }; orden.push(k); } return G[k]; };
+  const item = (g, o) => { o.revision = rev[o.clave] || null; g.items.push(o); };
+  d.altas.forEach(a => { const g = grupo(a.DNI, a.DNI, a.APELLIDOS + ', ' + a.NOMBRES); item(g, { tipo: 'Alta nueva', clave: 'AL:' + a.DNI, detalle: a.ORIGEN_DE_DATOS });
+    (a.avisos || []).forEach(v => item(g, { tipo: v.tipo, clave: 'AV:' + v.fila, detalle: v.detalle, fecha: v.fecha })); });
+  d.propuestas.forEach(p => { const g = grupo(p.dni, p.dni, p.persona);
+    item(g, { tipo: 'Cambio propuesto', clave: 'PR:' + p.id, campo: p.campo, detalle: p.campo + ': ' + (p.actual || 'vacío') + ' → ' + p.propuesto + (p.motivo ? ' · ' + p.motivo : ''), fecha: p.fecha, quien: p.quien });
+    if (!(p.campo in g.antes)) { g.antes[p.campo] = p.actual; g.fuente[p.campo] = 'valor anterior'; } g.propuesto[p.campo] = p.propuesto; });
+  d.cambios.slice().reverse().forEach(c => { const per = c.hoja === 'PERSONAS', k = per ? cvDni_(c.id) : 'J:' + c.id, g = grupo(k, per ? cvDni_(c.id) : '', c.persona); if (!per) g.jefatura = true;
+    item(g, { tipo: 'Cambio directo', clave: 'CA:' + c.fila, campo: c.campo, detalle: c.campo + ': ' + (c.antes || 'vacío') + ' → ' + (c.despues || 'vacío'), fecha: c.fecha, quien: c.quien, antes: c.antes, despues: c.despues });
+    if (!(c.campo in g.antes)) { g.antes[c.campo] = c.antes; g.fuente[c.campo] = 'valor anterior'; } });
+  d.avisos.forEach(v => { const g = grupo(v.dni || 'A:' + v.fila, v.dni, v.persona); item(g, { tipo: v.tipo, clave: 'AV:' + v.fila, detalle: v.detalle, fecha: v.fecha }); });
+  const base = cvBaseMapa_(orden.map(k => G[k].dni));
+  const grupos = orden.map(k => { const g = G[k], p = g.dni && porDni[g.dni], b = g.dni && base[g.dni];
+    g.enLibro = !!p; g.enBase = !!b; g.despues = {};
+    CV_CAMPOS.forEach(f => { const lib = p ? cvTxt_(p.o[f]) : '';
+      g.despues[f] = f in g.propuesto ? g.propuesto[f] : lib;
+      if (!(f in g.antes)) { if (b && f in b) { g.antes[f] = b[f]; g.fuente[f] = 'base de trabajadores'; } else { g.antes[f] = lib; g.fuente[f] = 'libro'; } } });
+    if (p) g.persona = cvTxt_(p.o.APELLIDOS) + ', ' + cvTxt_(p.o.NOMBRES);
+    g.revision = g.items.filter(i => i.revision).map(i => i.revision)[0] || null;
+    delete g.propuesto; return g; });
+  grupos.sort((a, b) => (!!a.revision - !!b.revision) || String(a.persona).localeCompare(String(b.persona)));
+  return { ok: true, grupos: grupos, campos: CV_CAMPOS, listas: d.listas, libro: d.libro,
+    cuenta: { personas: grupos.length, items: grupos.reduce((s, g) => s + g.items.length, 0), revision: grupos.filter(g => g.revision).length } };
+}
+// Guarda en PERSONAS lo que se corrigió en la tabla (solo lo que cambió; cada campo queda en _HISTORIAL)
+function cvEditar_(dni, datos, motivo) {
+  const P = cgHoja_('PERSONAS'), p = P.filas.find(z => cvDni_(z.o.DNI) === dni); if (!p || !datos) return 0;
+  const ahora = new Date(), hist = [];
+  CV.EDITABLES.forEach(k => { if (datos[k] == null || P.H.indexOf(k) < 0) return; let nuevo = String(datos[k]).trim(); if (!nuevo && k !== 'EMPRESA') nuevo = 's/d'; const antes = cvTxt_(p.o[k]);
+    if (nuevo !== antes) { cgSet_(P, p.fila, k, nuevo); hist.push({ FECHA: ahora, QUIEN: CV.QUIEN, HOJA: 'PERSONAS', ID: dni, CAMPO: k, ANTES: antes, DESPUES: nuevo, MOTIVO: motivo }); } });
+  if (hist.length) { cgSet_(P, p.fila, 'ULTIMA_ACTUALIZACION', Utilities.formatDate(ahora, TZ, 'dd/MM/yyyy')); cgHistorial_(hist); }
+  return hist.length;
+}
+function cvMarcarRev_(claves, estado, nota) {
+  const R = cvRevHoja_(), ahora = new Date(), nuevas = [];
+  claves.forEach(k => { const f = R.filas.find(z => cvTxt_(z.o.CLAVE) === k);
+    if (f) { cgSet_(R, f.fila, 'ESTADO', estado); if (nota != null) cgSet_(R, f.fila, 'NOTA', nota); cgSet_(R, f.fila, 'FECHA', ahora); cgSet_(R, f.fila, 'QUIEN', CV.QUIEN); }
+    else if (estado !== 'Resuelto') nuevas.push([k, estado, nota || '', ahora, CV.QUIEN]); });
+  if (nuevas.length) R.sh.getRange(Math.max(R.sh.getLastRow(), 5) + 1, 1, nuevas.length, 5).setValues(nuevas);
+}
+// x.grupos: [{ dni, claves: ['AL:…','PR:…','CA:…','AV:…'], datos?, decision: 'aceptar' | 'revisar' | 'deshacer', nota? }]
+function cvDecidir_(x) {
+  return cvLock_(() => {
+    const res = { ok: true, aceptadas: 0, revision: 0, deshechos: 0, correcciones: 0, errores: [] };
+    (x.grupos || []).forEach(g => { try {
+      const cl = g.claves || [], de = p => cl.filter(k => k.indexOf(p) === 0).map(k => k.slice(3)), dni = cvDni_(g.dni), datos = g.datos || null;
+      if (g.decision === 'revisar') { cvMarcarRev_(cl, 'Requiere revisión', String(g.nota || '').trim()); res.revision++; return; }
+      if (g.decision === 'deshacer') { const r = cvCambiosResolver_(de('CA:'), true); res.deshechos += r.n || 0; (r.avisos || []).forEach(a => res.errores.push(a)); cvMarcarRev_(cl.filter(k => /^CA:/.test(k)), 'Resuelto'); return; }
+      // aceptar: primero los cambios propuestos (con el valor que se ve), después el resto de las correcciones
+      de('PR:').forEach(id => { const PR = cvPropHoja_(), q = PR.filas.find(z => cvTxt_(z.o.ID) === id), campo = q ? cvTxt_(q.o.CAMPO) : '';
+        const r = cvPropuesta_({ id: id, decision: 'aprobar', valor: datos && campo && datos[campo] != null ? datos[campo] : null }); if (!r.ok) res.errores.push('Propuesta ' + id + ': ' + r.mensaje); });
+      if (de('AL:').length) { const r = cvAlta_({ dni: dni, datos: datos || {} }); if (!r.ok) res.errores.push('Alta ' + dni + ': ' + r.mensaje); else res.correcciones += r.cambios || 0; }
+      else if (dni && datos) res.correcciones += cvEditar_(dni, datos, 'Corrección de HyS al validar');
+      if (de('CA:').length) cvCambiosResolver_(de('CA:'), false);
+      if (de('AV:').length) cvResolverAvisos_(cgHoja_('_AVISOS'), '', de('AV:').map(Number), new Date());
+      cvMarcarRev_(cl, 'Resuelto'); res.aceptadas++;
+    } catch (e) { res.errores.push((g.dni || 'fila') + ': ' + e.message); } });
+    return res;
+  });
+}
+
 function cvPortal_(accion, x) {
   switch (accion) {
+    case 'p_cv_comparar': return cvComparar_();
+    case 'p_cv_decidir': return cvDecidir_(x);
     case 'p_cv_datos': return cvDatos_();
     case 'p_cv_cuenta': return cvCuenta_();
     case 'p_cv_alta': return cvAlta_(x);
