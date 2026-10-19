@@ -485,7 +485,12 @@ function agCancelarInfo(token) {
   if (x) return { ok: true, tipo: 'reserva', activo: ACTIVOS_TURNO.indexOf(x.ESTADO) >= 0 && x.inicio > new Date(), estado: x.ESTADO, detalle: nombreCap_(x.CODIGO) + ' · ' + x.JEFATURA + ' · ' + diaCorto_(isoDe_(x.FECHA)) + ' ' + hhmm_(x.HORA_INICIO) };
   const I = tabla_('INSCRIPCIONES'), r = I.filas.find(f => f[I.i('TOKEN_CANCELAR')] === tk);
   if (!r) return { ok: false, error: 'No encontramos esa inscripción.' };
-  const o = obj_(I, r), t = turnos_().find(y => y.ID_TURNO === o.ID_TURNO) || {};
+  const o = obj_(I, r);
+  let t = turnos_().find(y => y.ID_TURNO === o.ID_TURNO || (o.ID_DICTADO && y.ID_DICTADO === o.ID_DICTADO));
+  if (!t) {   // inscripción hecha por el formulario del dictado (?i=), sin horario de agenda: se toma el dictado
+    const D = tabla_('DICTADOS'), x = D.filas.find(f => f[D.i('ID_DICTADO')] === o.ID_DICTADO), od = x ? obj_(D, x) : {};
+    t = { CODIGO: od.CODIGO || '', FECHA: od.FECHA || '', HORA_INICIO: od.HORA_INICIO || '', inicio: od.FECHA ? inicioDe_(od.FECHA, hhmm_(od.HORA_INICIO)) : null };
+  }
   return { ok: true, tipo: 'inscripcion', activo: !/anulad/i.test(o.ESTADO) && t.inicio > new Date(), estado: o.ESTADO, detalle: nombreCap_(t.CODIGO || '') + ' · ' + (t.FECHA ? diaCorto_(isoDe_(t.FECHA)) + ' ' + hhmm_(t.HORA_INICIO) : '') };
 }
 function agCancelar(d) {
