@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-18 · 5.2';
+const VERSION_CAP = '2026-10-19 · 5.3';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -82,6 +82,7 @@ function menuAyuda() {
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.a) return agendaPagina_(p);
+  if (p.av) return registroPagina_(p);   // capacitación autoadministrada con video (?av=CODIGO)
   if (p.v || p.m) return certPagina_(p);
   if (p.k || p.c || p.d || p.i) return registroPagina_(p);
   return salida_({ ok: true, sistema: 'Capacitaciones HyS', version: VERSION_CAP });
@@ -452,6 +453,7 @@ function registroPagina_(p) {
   t.c = String(p.c || '').replace(/[^A-Za-z0-9_-]/g, '');
   t.d = String(p.d || '').replace(/[^A-Za-z0-9_-]/g, '');
   t.i = String(p.i || '').replace(/[^A-Za-z0-9_-]/g, '');
+  t.av = String(p.av || '').replace(/[^A-Za-z0-9_-]/g, '');
   return t.evaluate().setTitle('Capacitaciones HyS · Registro')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -498,8 +500,9 @@ function listaCol_(T, nombre) { const c = T.i(nombre); return c < 0 ? [] : T.fil
 
 // ------------------------------------------------------------------ Datos para la página: capacitación + listas
 // k: TOKEN de la capacitación (o de una evaluación, links viejos) · c: CODIGO · d: ID_DICTADO (link del dictado)
-function regInicio(k, c, d) {
+function regInicio(k, c, d, av) {
   preparar_();
+  if (av) { c = av; k = ''; d = ''; }
   const cat = tabla_('CATALOGO'), i = cat.i;
   let r = null, evTok = '', dic = null;
   if (d) { const D = tabla_('DICTADOS'), x = D.filas.find(f => f[D.i('ID_DICTADO')] === d); if (!x) return { ok: false, error: 'No encontramos este dictado. Revisá el link o el QR.' }; dic = obj_(D, x); c = dic.CODIGO; }
@@ -510,9 +513,14 @@ function regInicio(k, c, d) {
   if (!r && c) r = cat.filas.find(x => x[i('CODIGO')] === c);
   if (!r) return { ok: false, error: 'No encontramos esta capacitación. Revisá el link o el QR.' };
   const cap = { codigo: r[i('CODIGO')], nombre: r[i('NOMBRE')], registro: r[i('REGISTRO')], encuentros: num_(r[i('ENCUENTROS')]) || 1, carga: r[i('CARGA_HORARIA')], estado: r[i('ESTADO')], version: r[i('VERSION')], vence: r[i('VENCE')] };
-  const ab = dic ? aperturaDictado_(dic, cap.estado) : estadoApertura_(cap.codigo, r[i('SIEMPRE_ABIERTA')], cap.estado);
+  let ab, videos = null;
+  if (av) {   // autoadministrada: abierta siempre que la capacitación esté activa y tenga videos en la hoja VIDEOS del sitio
+    videos = videosDe_(cap.codigo);
+    if (!videos.length) return { ok: false, error: 'Esta capacitación no tiene videos cargados. Avisale a Higiene y Seguridad.' };
+    ab = /^activ/i.test(cap.estado || '') ? { abierta: true, idDictado: VIDEO_DIC, encuentro: 1, texto: 'Autoadministrada', video: true } : { abierta: false, texto: 'Esta capacitación no está activa.' };
+  } else ab = dic ? aperturaDictado_(dic, cap.estado) : estadoApertura_(cap.codigo, r[i('SIEMPRE_ABIERTA')], cap.estado);
   const ev = /evaluaci/i.test(cap.registro) ? evalDe_(cap.codigo, evTok) : null;
-  return { ok: true, cap: cap, abierta: ab, evaluacion: ev ? ev.ID_EVALUACION : '', listas: listasRegistro_() };
+  return { ok: true, cap: cap, abierta: ab, evaluacion: ev ? ev.ID_EVALUACION : '', listas: listasRegistro_(), videos: videos ? videos.map(v => ({ id: v.id, titulo: v.titulo })) : null };
 }
 function estadoApertura_(codigo, siempre, estado) {
   if (!/^activ/i.test(estado || '')) return { abierta: false, texto: 'Esta capacitación no está activa.' };
@@ -629,12 +637,13 @@ function guardarPersona_(d) {
 function regGuardar(d) {
   const lock = LockService.getScriptLock(); lock.waitLock(25000);
   try {
-    const ini = regInicio(d.k, d.c, d.d); if (!ini.ok) return ini;
+    const ini = regInicio(d.k, d.c, d.d, d.av); if (!ini.ok) return ini;
     const cap = ini.cap, ab = ini.abierta;
     const per = guardarPersona_(d); if (per.error) return { ok: false, error: per.error };
     const doc = per.doc, encuesta = !!ab.inscripcion;
     const soloEval = /evaluaci/i.test(cap.registro) && !/encuentro/i.test(cap.registro);
     if (!ab.abierta) return { ok: true, siguiente: 'cerrada', mensaje: 'Tus datos quedaron guardados. ' + ab.texto };
+    if (ab.video) return { ok: true, siguiente: 'video', mensaje: 'Tus datos quedaron guardados. Seguí con ' + (ini.videos.length > 1 ? 'los videos' : 'el video') + '.' };
     if (soloEval) return { ok: true, siguiente: ini.evaluacion ? 'evaluacion' : 'listo', encuesta: encuesta, mensaje: ini.evaluacion ? 'Tus datos quedaron guardados. Seguí con la evaluación.' : 'Tus datos quedaron guardados. La evaluación todavía no está cargada: avisale a Higiene y Seguridad.' };
     const programa = /encuentro/i.test(cap.registro), ultimo = programa && ab.encuentro >= cap.encuentros && !!ini.evaluacion;
     const R = tabla_('REGISTROS'), j = R.i, hoyIso = iso_(new Date());
@@ -1323,15 +1332,16 @@ function marcarAsistio_(idDic, doc) {
 function intentosDe_(doc, idEval, idDic) {
   const T = tabla_('_INTENTOS'), hoy = iso_(new Date());
   return T.filas.map((r, k) => ({ o: obj_(T, r), k: k })).filter(x => x.o.DNI === doc && x.o.ID_EVALUACION === idEval &&
-    (idDic === 'PERMANENTE' ? (x.o.ID_DICTADO === 'PERMANENTE' && isoDe_(x.o.FECHA) === hoy) : x.o.ID_DICTADO === idDic));
+    (idDic === 'PERMANENTE' ? (x.o.ID_DICTADO === 'PERMANENTE' && isoDe_(x.o.FECHA) === hoy) : idDic === VIDEO_DIC ? (x.o.ID_DICTADO === VIDEO_DIC && cicloDe_(isoDe_(x.o.FECHA) || hoy) === cicloDe_(hoy)) : x.o.ID_DICTADO === idDic));
 }
 function evalInicio(d) {
   preparar_();
-  const ini = regInicio(d.k, d.c, d.d); if (!ini.ok) return ini;
+  const ini = regInicio(d.k, d.c, d.d, d.av); if (!ini.ok) return ini;
   if (!ini.evaluacion) return { ok: false, error: 'Esta capacitación todavía no tiene la evaluación cargada. Avisale a Higiene y Seguridad.' };
   if (!ini.abierta.abierta) return { ok: false, error: ini.abierta.texto };
   const doc = idDoc_(d), P = tabla_('PERSONAS');
   if (!P.filas.some(r => r[P.i('DNI')] === doc)) return { ok: false, error: 'Primero completá el registro con tus datos.' };
+  if (ini.abierta.video && !estadoVideos_(doc, ini.cap.codigo, videosDe_(ini.cap.codigo)).completos) return { ok: false, error: 'Para rendir la evaluación primero mirá al menos el ' + Math.round(VIDEO_MIN * 100) + ' % de ' + (ini.videos.length > 1 ? 'cada video' : 'el video') + '.' };
   const ev = evalDe_(ini.cap.codigo, ini.evaluacion), idDic = ini.abierta.idDictado;
   return conLock_(() => {
     const prev = intentosDe_(doc, ev.ID_EVALUACION, idDic), max = maxIntentos_(ev);   // 0 = ilimitados
@@ -1383,7 +1393,7 @@ function evalEntregar(d) {
       encuesta = !!(dic && !vacio_(dic.LINK_INSCRIPCION));
       const reg = { ID_REGISTRO: uid_('REG', it.DNI), FECHA: Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy HH:mm'), DNI: it.DNI, CODIGO: ev.CODIGO, VERSION: cap.VERSION || '1', ID_DICTADO: it.ID_DICTADO,
         ENCUENTRO_N: dic && num_(cap.ENCUENTROS) > 1 ? dic.ENCUENTRO_N : '', TIPO: 'Evaluación', ID_EVALUACION: ev.ID_EVALUACION, NOTA: nota, APROBADO: aprobado ? 'Sí' : 'No', CICLO: cicloDe_(hoyIso),
-        VENCE: /no vence/i.test(cap.VENCE) ? 'No vence' : dma_(masDoce_(hoyIso)), ORIGEN: 'Evaluación en línea', CARGADO_POR: 'Registro', ESTADO: 'Válido', MOTIVO_ANULACION: '' };
+        VENCE: /no vence/i.test(cap.VENCE) ? 'No vence' : dma_(masDoce_(hoyIso)), ORIGEN: it.ID_DICTADO === VIDEO_DIC ? 'Video autoadministrado' : 'Evaluación en línea', CARGADO_POR: 'Registro', ESTADO: 'Válido', MOTIVO_ANULACION: '' };
       agregar_(tabla_('REGISTROS'), [reg]);
       if (aprobado) certificado = certAlRegistrar_(reg);
       if (it.ID_DICTADO !== 'PERMANENTE') marcarAsistio_(it.ID_DICTADO, it.DNI);
@@ -1630,6 +1640,8 @@ function horasEncuentro_(cap) { const h = num_(cap.HORAS_POR_ENCUENTRO); if (h) 
 // sin evaluación → constancia de asistencia. La aprobación de un programa sale al cerrar (o al aprobar la final con la asistencia mínima).
 function tipoCertDe_(cap, reg) {
   const programa = num_(cap.ENCUENTROS) > 1;
+  // Autoadministrada con video (19/10/2026): aprobación si tiene evaluación y es de un encuentro; asistencia si no tiene evaluación o es un programa
+  if (reg.ID_DICTADO === VIDEO_DIC) return reg.TIPO === 'Evaluación' ? (siNo_(reg.APROBADO) ? (programa ? 'asi' : 'apr') : '') : 'asi';
   if (reg.TIPO === 'Evaluación') return siNo_(reg.APROBADO) && !programa ? 'apr' : '';
   if (programa) return 'asi';
   return /evaluaci/i.test(cap.REGISTRO) ? '' : 'asi';
@@ -1778,10 +1790,16 @@ function datosCert_(c) {
   let det = {}; try { det = JSON.parse(c.DETALLE || '{}'); } catch (e) { det = {}; }
   const nom = '«' + String(cap.NOMBRE).trim() + '»', h = horasTxt_(c.HORAS), inst = dic && !vacio_(dic.INSTITUCION) ? dic.INSTITUCION : '';
   const junto = inst ? ', organizada junto con ' + (/^(el|la|los|las)\s/i.test(inst) ? '' : (/^(universidad|escuela|facultad|tecnicatura)/i.test(inst) ? 'la ' : 'el ')) + inst + ' para sus estudiantes' : '';
-  const mod = dic ? dic.MODALIDAD : det.modalidad, modal = !vacio_(mod) ? ', dictada en modalidad ' + String(mod).toLowerCase() : c.ID_DICTADO === 'PERMANENTE' ? ', realizada en línea' : '';
+  const video = c.ID_DICTADO === VIDEO_DIC;
+  const mod = dic ? dic.MODALIDAD : det.modalidad, modal = video ? ', realizada en modalidad autoadministrada' : !vacio_(mod) ? ', dictada en modalidad ' + String(mod).toLowerCase() : c.ID_DICTADO === 'PERMANENTE' ? ', realizada en línea' : '';
   const bold = [nom]; let titulo, texto;
   const enc = num_(c.ENCUENTRO_N), tot = num_(cap.ENCUENTROS);
-  if (c.TIPO === TIPO_CERT.apr) {
+  if (video) bold.push('modalidad autoadministrada');
+  if (video && c.TIPO === TIPO_CERT.asi) {
+    titulo = 'Certificado de asistencia';
+    texto = 'Completó en modalidad autoadministrada ' + (tot > 1 ? 'el programa ' : 'la capacitación ') + nom + (h ? ', con una carga horaria de ' + h : '') + '.';
+    if (h) bold.push(h);
+  } else if (c.TIPO === TIPO_CERT.apr) {
     titulo = 'Certificado de aprobación';
     texto = 'Aprobó la capacitación ' + nom + junto + modal + (h ? ', con una carga horaria de ' + h : '') + (c.NOTA !== '' ? (h ? ' y una calificación de ' : ', con una calificación de ') + num_(c.NOTA) + ' %' : '') + '.';
     if (h) bold.push(h); if (c.NOTA !== '') bold.push(num_(c.NOTA) + ' %');
@@ -2172,3 +2190,92 @@ ACCIONES.c_est_personas = d => { const hoy = iso_(new Date()), anio = Number(hoy
   return e ? { ok: true, est: e.nombre, nombre: e.nombreLargo, red: e.red, lista: e.lista, capacitaciones: e.capacitaciones } : { ok: false, error: 'No hay registros de ' + d.est + '.' }; };
 // Diagnóstico (18/10/2026): arma la página de registro de un dictado y devuelve su tamaño y comienzo (pide la clave del portal)
 ACCIONES.c_prueba_registro = d => { try { const o = doGet({ parameter: d.p || { d: 'DIC-20261015-01' } }); const t = o.getContent ? o.getContent() : String(o); return { ok: true, largo: t.length, inicio: t.replace(/\s+/g, ' ').slice(0, 400) }; } catch (e) { return { ok: false, error: String(e && e.stack || e) }; } };
+
+// =====================================================================
+// Capacitaciones autoadministradas con video (decisión de Belén, 19/10/2026)
+// Los videos salen de la hoja VIDEOS del sitio público (columna CODIGO = la capacitación). Link: …/capacitaciones/?av=CODIGO
+// La página cuenta los tramos de 5 segundos que se reprodujeron (adelantar no suma) y los guarda en _VIDEOS_VISTOS
+// por persona, video y ciclo. Con el 80 % de cada video: si la capacitación tiene evaluación, se habilita; si no, se registra
+// la asistencia y sale el certificado. Certificado: aprobación (evaluación, un encuentro) o asistencia (sin evaluación o programa).
+// =====================================================================
+const VIDEO_DIC = 'VIDEO';         // ID_DICTADO de lo hecho con video (en REGISTROS, _INTENTOS y CERTIFICADOS)
+const VIDEO_MIN = 0.8;             // parte de cada video que hay que mirar
+const VIDEO_TRAMO = 5;             // segundos por tramo
+const VISTOS_H = ['FECHA', 'ACTUALIZADO', 'DNI', 'CODIGO', 'VIDEO_ID', 'TITULO', 'CICLO', 'DURACION_SEG', 'TRAMOS', 'PORCENTAJE', 'COMPLETO'];
+function idYT_(u) { const m = String(u || '').match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/|live\/)([\w-]{11})/); return m ? m[1] : ''; }
+function videosDe_(codigo) {
+  const ck = 'videos|' + codigo, cache = CacheService.getScriptCache(), guardado = cache.get(ck);
+  if (guardado) return JSON.parse(guardado);
+  const sh = SpreadsheetApp.openById(ID_PORTAL_PUBLICO).getSheetByName('VIDEOS'); if (!sh) return [];
+  const v = sh.getDataRange().getDisplayValues(), H = v[0].map(x => String(x).trim()), c = n => H.indexOf(n);
+  if (c('CODIGO') < 0) return [];
+  const out = v.slice(1).filter(r => String(r[c('CODIGO')]).trim().toUpperCase() === String(codigo).toUpperCase() && !/^no/i.test(String(r[c('VISIBLE')]).trim()))
+    .map(r => ({ id: idYT_(r[c('ENLACE')]), titulo: String(r[c('TITULO')]).trim(), orden: num_(r[c('ORDEN')]) })).filter(x => x.id).sort((a, b) => a.orden - b.orden);
+  cache.put(ck, JSON.stringify(out), 600);
+  return out;
+}
+function vistos_() {
+  const lib = SpreadsheetApp.getActive();
+  if (!lib.getSheetByName('_VIDEOS_VISTOS')) {
+    const sh = lib.insertSheet('_VIDEOS_VISTOS');
+    sh.getRange(1, 1).setValue('VIDEOS VISTOS · Capacitaciones autoadministradas').setFontWeight('bold').setFontSize(13);
+    sh.getRange(2, 1).setValue('Una fila por persona, video y ciclo. La llena sola la página de registro (?av=CODIGO): cuenta los tramos de ' + VIDEO_TRAMO + ' segundos que se reprodujeron (adelantar no suma). Con el ' + Math.round(VIDEO_MIN * 100) + ' % de cada video se habilita la evaluación o sale la constancia. TRAMOS: x = visto, . = no visto. No se borra.');
+    sh.getRange(5, 1, 1, VISTOS_H.length).setValues([VISTOS_H]).setFontWeight('bold').setBackground('#E7F0F3');
+    sh.setFrozenRows(5);
+  }
+  return tabla_('_VIDEOS_VISTOS');
+}
+const tramosDe_ = t => String(t || '').split('').map(x => x === 'x' || x === '1');
+const porcDe_ = (b, n) => n ? b.slice(0, n).filter(Boolean).length / n : 0;
+// Estado de los videos de una persona en el ciclo actual
+function estadoVideos_(doc, codigo, videos, T) {
+  T = T || vistos_(); const ciclo = cicloDe_(iso_(new Date())), i = T.i;
+  const lista = videos.map(v => {
+    const r = T.filas.find(x => x[i('DNI')] === doc && x[i('CODIGO')] === codigo && x[i('VIDEO_ID')] === v.id && x[i('CICLO')] === ciclo);
+    const n = r ? Math.ceil(num_(r[i('DURACION_SEG')]) / VIDEO_TRAMO) : 0, b = r ? tramosDe_(r[i('TRAMOS')]) : [];
+    return { id: v.id, titulo: v.titulo, tramos: b.slice(0, n).map(x => x ? '1' : '0').join(''), porc: Math.floor(100 * porcDe_(b, n)) };
+  });
+  return { videos: lista, completos: lista.every(x => x.porc >= VIDEO_MIN * 100) };
+}
+function datosVideo_(d) {
+  const ini = regInicio('', '', '', d.av); if (!ini.ok) return ini;
+  if (!ini.abierta.abierta) return { ok: false, error: ini.abierta.texto };
+  const doc = idDoc_(d); if (!doc) return { ok: false, error: 'Falta tu documento.' };
+  return { ok: true, ini: ini, doc: doc, videos: videosDe_(ini.cap.codigo) };
+}
+// Lo llama la página al terminar los datos, y cada vez que vuelve
+function videoEstado(d) {
+  const x = datosVideo_(d); if (!x.ok) return x;
+  return conLock_(() => respuestaVideos_(x, estadoVideos_(x.doc, x.ini.cap.codigo, x.videos)));
+}
+// Guarda lo visto (se suma a lo anterior: nunca se pierde un tramo)
+function videoAvance(d) {
+  const x = datosVideo_(d); if (!x.ok) return x;
+  const v = x.videos.find(o => o.id === d.vid); if (!v) return { ok: false, error: 'Video desconocido.' };
+  const dur = Math.max(0, Math.round(Number(d.dur) || 0)); if (!dur) return { ok: false, error: 'Sin duración.' };
+  const n = Math.ceil(dur / VIDEO_TRAMO), nuevo = String(d.tramos || '').replace(/[^01]/g, '').split('').map(c => c === '1');
+  return conLock_(() => {
+    const T = vistos_(), i = T.i, ciclo = cicloDe_(iso_(new Date())), cod = x.ini.cap.codigo;
+    const k = T.filas.findIndex(r => r[i('DNI')] === x.doc && r[i('CODIGO')] === cod && r[i('VIDEO_ID')] === v.id && r[i('CICLO')] === ciclo);
+    const antes = k >= 0 ? tramosDe_(T.filas[k][i('TRAMOS')]) : [];
+    const b = []; for (let j = 0; j < n; j++) b.push(!!(antes[j] || nuevo[j]));
+    const porc = Math.floor(100 * porcDe_(b, n)), txt = b.map(y => y ? 'x' : '.').join(''), completo = porc >= VIDEO_MIN * 100;
+    if (k < 0) agregar_(T, [{ FECHA: ahoraTxt_(), ACTUALIZADO: ahoraTxt_(), DNI: x.doc, CODIGO: cod, VIDEO_ID: v.id, TITULO: v.titulo, CICLO: ciclo, DURACION_SEG: dur, TRAMOS: txt, PORCENTAJE: porc, COMPLETO: completo ? ahoraTxt_() : '' }]);
+    else { const ya = T.filas[k][i('COMPLETO')]; setCampos_(T, k, { ACTUALIZADO: ahoraTxt_(), DURACION_SEG: dur, TRAMOS: txt, PORCENTAJE: porc, COMPLETO: ya || (completo ? ahoraTxt_() : '') }); }
+    return respuestaVideos_(x, estadoVideos_(x.doc, cod, x.videos, vistos_()));
+  });
+}
+// Con todo visto: si no hay evaluación, registra la asistencia (una vez por ciclo) y emite el certificado
+function respuestaVideos_(x, est) {
+  const cap = x.ini.cap, r = { ok: true, videos: est.videos, completos: est.completos, minimo: Math.round(VIDEO_MIN * 100), evaluacion: !!x.ini.evaluacion, certificado: '' };
+  if (!est.completos || x.ini.evaluacion) return r;
+  const R = tabla_('REGISTROS'), j = R.i, hoyIso = iso_(new Date()), ciclo = cicloDe_(hoyIso);
+  const ya = R.filas.find(f => f[j('DNI')] === x.doc && f[j('CODIGO')] === cap.codigo && f[j('ID_DICTADO')] === VIDEO_DIC && f[j('CICLO')] === ciclo && !/anulad/i.test(f[j('ESTADO')]));
+  if (ya) { r.certificado = vacio_(ya[j('ID_CERTIFICADO')]) ? '' : ya[j('ID_CERTIFICADO')]; r.yaEstaba = true; return r; }
+  const reg = { ID_REGISTRO: uid_('REG', x.doc), FECHA: Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy HH:mm'), DNI: x.doc, CODIGO: cap.codigo, VERSION: cap.version || '1', ID_DICTADO: VIDEO_DIC, ENCUENTRO_N: '', TIPO: 'Asistencia', ID_EVALUACION: '', NOTA: '', APROBADO: '', CICLO: ciclo,
+    VENCE: /no vence/i.test(cap.vence) ? 'No vence' : dma_(masDoce_(hoyIso)), ORIGEN: 'Video autoadministrado', CARGADO_POR: 'Registro', ESTADO: 'Válido' };
+  agregar_(R, [reg]);
+  r.certificado = certAlRegistrar_(reg);
+  CacheService.getScriptCache().remove('tablero');
+  return r;
+}
