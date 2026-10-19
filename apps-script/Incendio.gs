@@ -494,10 +494,15 @@ function incVerificar_(ids, quien) {
 function incControlGuardar_(x, quien, codPermitido) {
   const L = incLeer_('EXTINTORES', INC.H_EXT), e = L.find(o => o.ID === x.ID_EXTINTOR); if (!e) return { ok: false, mensaje: 'Elegí un extintor de la lista.' };
   if (codPermitido && limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, mensaje: 'Ese extintor no es de este establecimiento.' };
+  // «Todo OK» (19/10/2026): control rápido de un solo toque, sin fotos. Las 5 verificaciones son «Sí», sin problemas, y se conservan los vencimientos cargados.
+  // No se acepta si la carga está vencida: ese caso va por el control completo (vencimiento, problemas y fotos).
+  const todoOk = x.todoOk === true || x.todoOk === 'true';
+  if (todoOk) { INC.CHEQUEOS.forEach(c => x[c[0]] = 'Sí'); x.PROBLEMAS = []; x.VTO_CARGA = incISO_(e.VTO_CARGA) || ''; x.PRUEBA_HIDRAULICA_VENCE = incISO_(e.PRUEBA_HIDRAULICA_VENCE) || 's/d (revisar)';
+    const f0 = incISO_(x.FECHA) || incHoy_(); if (!x.VTO_CARGA || x.VTO_CARGA < f0) return { ok: false, mensaje: 'La carga está vencida o sin fecha: hacé el control completo (con vencimiento, problemas y fotos).' }; }
   const faltan = INC.CHEQUEOS.filter(c => !/^(Sí|No)$/.test(x[c[0]] || '')).map(c => c[1]); if (faltan.length) return { ok: false, mensaje: 'Falta responder: ' + faltan.join(', ') + '.' };
-  const sinFoto = INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
+  const sinFoto = todoOk ? [] : INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
   const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' n.º ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
-  const fotos = {}; INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));
+  const fotos = {}; if (!todoOk) INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));   // «Todo OK»: sin fotos, quedan las del último control
   // Vencimientos leídos en el control (pedido de Belén 14/10/2026): carga obligatoria (de la tarjeta), prueba hidráulica si figura
   const vto = /^s\/d/i.test(x.VTO_CARGA || '') ? '' : incISO_(x.VTO_CARGA) || '', ph = /^s\/d/i.test(x.PRUEBA_HIDRAULICA_VENCE || '') ? 's/d (revisar)' : incISO_(x.PRUEBA_HIDRAULICA_VENCE) || '';
   if (!vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
@@ -506,7 +511,7 @@ function incControlGuardar_(x, quien, codPermitido) {
   if (!vto && probs.indexOf('Sin tarjeta (marbete) o ilegible') < 0) probs.push('Sin tarjeta (marbete) o ilegible');
   const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
   const c = { ID: 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
-    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · '),
+    ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES) || (todoOk ? 'Todo OK (control rápido, sin fotos)' : ''), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · '),
     VTO_CARGA: vto ? incFecha_(vto) : 's/d (no se lee)', PRUEBA_HIDRAULICA_VENCE: ph && ph !== 's/d (revisar)' ? incFecha_(ph) : ph };
   INC.CHEQUEOS.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
   // Aviso por correo si el extintor quedó con algo que dificulta o impide su uso (por ahora, HMH: SOMI y Mantenimiento)
