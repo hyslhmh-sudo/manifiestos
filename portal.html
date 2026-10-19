@@ -728,7 +728,8 @@ function modulosHtml(M, card, DEs) {
   if (!M || M.error) return '';
   const P = M.personal || {}, C = M.capacitaciones || {}, D = M.documentos || {}, X = DEs || { total: 0, establecimientos: 0, avisos: [] };
   const fila = (t, v, col) => '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span class="mu peq">' + esc(t) + '</span><b style="font-size:18px' + (col ? ';color:' + col : '') + '">' + esc(String(v == null ? '—' : v)) + '</b></div>';
-  const pers = fila('Propuestas para revisar en la Bandeja', P.bandeja || 0, P.bandeja ? '#8A5200' : '') + fila('Diferencias entre la base de personal y capacitaciones', P.diferencias || 0) +
+  const altas = P.altasPersonas != null ? P.altasPersonas : (P.bandeja || 0), otras = Math.max((P.bandeja || 0) - (P.bandejaCruce || 0), 0);
+  const pers = '<a href="#bandeja" style="text-decoration:none;color:inherit">' + fila('Altas propuestas para la base de trabajadores (personas)', altas, altas ? '#8A5200' : '') + '</a>' + (otras ? fila('Otras planillas para revisar en la Bandeja', otras, '#8A5200') : '') + fila('Diferencias entre la base de personal y capacitaciones', P.diferencias || 0) +
     (P.sinAsignar != null ? fila('Personas sin establecimiento asignado', P.sinAsignar, P.sinAsignar ? '#8A5200' : '') : '') +
     (P.cruce ? '<span class="mu peq">' + esc(P.cruce.replace(/^Último cruce: /, 'Cruce: ').split(' · ')[0]) + ' · detalle en el libro general › CRUCE_PERSONAL</span>' : '<span class="mu peq">El cruce con capacitaciones todavía no corrió.</span>');
   const caps = C.error ? '<div class="mu">' + esc(C.error) + '</div>' : fila('Próximos turnos con capacitación', C.proximas || 0) +
@@ -737,7 +738,7 @@ function modulosHtml(M, card, DEs) {
     fila('Documentos de los establecimientos', X.total + (X.total ? ' · ' + X.establecimientos + ' est.' : '')) + fila('Vencidos o por vencer', (X.avisos || []).length, (X.avisos || []).some(a => a.estado === 'vencido') ? '#B4361F' : (X.avisos || []).length ? '#8A5200' : '') +
     '<a class="peq" href="#notas" style="font-weight:700">Ver las notas enviadas y recibidas</a> · ' + '<a class="peq" href="#docest" style="font-weight:700">Ver los documentos de los establecimientos</a>';
   return '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
-    card('Personal', ['#bandeja', 'Bandeja'], pers) + card('Capacitaciones', ['#cap', 'Tablero'], caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
+    card('Personal', ['#bandeja', 'Ver las altas propuestas'], pers) + card('Capacitaciones', ['#cap', 'Tablero'], caps) + card('Documentos', ['#docs', 'Registro'], docs) + '</div>';
 }
 
 // ------------------------------------------------------------------ Buscador general (personas y siniestros)

@@ -153,11 +153,12 @@ function tbModulos_() {
   const g = SpreadsheetApp.openById(CFG.GENERAL), hoyS = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), M = {};
   // Personal: cruce nocturno con capacitaciones y propuestas de la Bandeja
   const cp = g.getSheetByName('CRUCE_PERSONAL'), bj = g.getSheetByName('BANDEJA'), nb = bj ? bj.getLastRow() - 5 : 0;
-  const pend = nb > 0 ? bj.getRange(6, 1, nb, 8).getValues().filter(r => r[7] === 'Para revisar') : [];
+  const pend = nb > 0 ? bj.getRange(6, 1, nb, 12).getValues().filter(r => r[7] === 'Para revisar') : [];
   let sinAsignar = null;
   try { const s = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('BASE_TRABAJADORES_ID')).getSheetByName('SIN_ASIGNAR'); if (s) sinAsignar = Math.max(s.getLastRow() - 5, 0); } catch (e) {}
   M.personal = { cruce: cp ? String(cp.getRange(2, 1).getValue()) : '', diferencias: cp ? Math.max(cp.getLastRow() - 5, 0) : 0, bandeja: pend.length,
-    bandejaCruce: pend.filter(r => r[6] === 'Cruce nocturno con capacitaciones').length, sinAsignar: sinAsignar };
+    bandejaCruce: pend.filter(r => r[6] === 'Cruce nocturno con capacitaciones').length, sinAsignar: sinAsignar,
+    altasPersonas: pend.filter(r => r[6] === 'Cruce nocturno con capacitaciones').reduce((s, r) => s + bjCambios_(r[11]).filter(c => c.nueva).length, 0) };   // personas propuestas como alta
   // Capacitaciones: próximos dictados (18/10/2026: lee DICTADOS y AGENDA del libro «CAPACITACIONES · Sistema HyS»;
   // antes leía la AGENDA del libro viejo, que dejó de usarse el 15/10). Un dictado y sus turnos de agenda cuentan una sola vez.
   try {

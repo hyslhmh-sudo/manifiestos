@@ -73,6 +73,7 @@ function cruceNocturnoPersonal() {
       if (vals) { listas[k] = {}; vals.forEach(x => { if (limpio_(x)) listas[k][sinTildes_(x)] = limpio_(x); }); }
     } catch (e) {} });
   let nBajas = 0;
+  let descartados = {}; try { descartados = bjDescartados_(); } catch (e) { Logger.log('BANDEJA_DESCARTADOS: ' + e.message); }
   const proponer = (hoja, c) => (propuestas[hoja] = propuestas[hoja] || []).push(Object.assign({ hoja: hoja }, c));
   const val = (r, k) => ic(k) >= 0 ? r[ic(k)] : '';
 
@@ -134,6 +135,7 @@ function cruceNocturnoPersonal() {
     const est = limpio_(val(r, 'ESTABLECIMIENTO'));
     const m = (hojasBT[est] ? { cod: est, sitio: '' } : null) || eqv[sinTildes_(est)] || eqv[sinTildes_(val(r, 'INSTITUCION'))];
     const hoja = m && hojasBT[m.cod] ? m.cod : (hojasBT.SIN_ASIGNAR ? 'SIN_ASIGNAR' : ''); if (!hoja) continue;
+    if (descartados[d]) continue;   // HyS ya rechazó esta alta en la Bandeja (hoja BANDEJA_DESCARTADOS): no se vuelve a proponer
     const mailN = limpio_(val(r, 'CORREO')).toLowerCase(), telN = tel10(val(r, 'TELEFONO'));
     const nueva = { DNI: d, APELLIDOS: txt(val(r, 'APELLIDOS')), NOMBRES: txt(val(r, 'NOMBRES')), SITIO: m ? m.sitio : '', FUNCION: txt(val(r, 'FUNCION')),
       SERVICIO: txt(val(r, 'SERVICIO')), VINCULO: vin, EMPRESA: txt(val(r, 'EMPRESA')), EMAIL: vacio(mailN) ? '' : mailN,

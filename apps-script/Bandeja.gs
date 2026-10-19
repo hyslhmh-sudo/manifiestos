@@ -218,12 +218,38 @@ function bjListar_() {
   const sh = bjHoja_(), n = sh.getLastRow() - 5; if (n < 1) return { ok: true, filas: [] };
   return { ok: true, filas: sh.getRange(6, 1, n, BJ_H.length).getValues().map(r => { const o = {}; BJ_H.forEach((h, j) => o[h] = h === 'CAMBIOS' ? bjCambios_(r[j]) : bjVal_(r[j])); o.TITULO = (BJ_TIPOS[o.TIPO] || {}).titulo || o.TIPO; return o; }).reverse() };
 }
+// Personas que HyS rechazó en las altas que propone el cruce nocturno (no se vuelven a proponer).
+// Hoja BANDEJA_DESCARTADOS del libro general: para volver a proponer a alguien, ESTADO = «Volver a proponer» (o borrar la fila).
+const BJ_DESC_H = ['DNI', 'PERSONA', 'ESTABLECIMIENTO', 'FECHA', 'PROPUESTA', 'ESTADO', 'MOTIVO'];
+function bjDescHoja_() {
+  const g = SpreadsheetApp.openById(CFG.GENERAL); let sh = g.getSheetByName('BANDEJA_DESCARTADOS');
+  if (!sh) {
+    sh = g.insertSheet('BANDEJA_DESCARTADOS');
+    sh.getRange(1, 1).setValue('Altas rechazadas en la Bandeja').setFontSize(16).setFontWeight('bold').setFontColor('#0D313F');
+    sh.getRange(2, 1).setValue('Personas que el cruce nocturno propuso dar de alta en la base de trabajadores y que HyS rechazó: no se vuelven a proponer. Para que se vuelva a proponer a alguien, poné ESTADO = «Volver a proponer».').setFontStyle('italic');
+    sh.getRange(5, 1, 1, BJ_DESC_H.length).setValues([BJ_DESC_H]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#0D313F'); sh.setFrozenRows(5);
+  }
+  return sh;
+}
+function bjDescartados_() {
+  const sh = bjDescHoja_(), n = sh.getLastRow() - 5, m = {}; if (n < 1) return m;
+  sh.getRange(6, 1, n, BJ_DESC_H.length).getValues().forEach(r => { const d = String(r[0]).replace(/\D/g, '').replace(/^0+/, ''); if (d && /^descartad/i.test(String(r[5]).trim())) m[d] = 1; });
+  return m;
+}
+function bjDescartar_(cambios, cod, idProp, motivo) {
+  const ya = bjDescartados_(), filas = [];
+  cambios.forEach(c => { const d = c.nueva && String(c.nueva.DNI || '').replace(/\D/g, '').replace(/^0+/, ''); if (!d || ya[d]) return; ya[d] = 1;
+    filas.push([d, [c.nueva.APELLIDOS, c.nueva.NOMBRES].filter(Boolean).join(', ') || c.clave, cod, Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm'), idProp, 'Descartado', motivo]); });
+  if (filas.length) { const sh = bjDescHoja_(); sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, filas.length, BJ_DESC_H.length).setNumberFormat('@').setValues(filas); }
+  return filas.length;
+}
 function bjAplicar_(x) {
   return conLock_(() => {
     const sh = bjHoja_(), n = sh.getLastRow() - 5, ids = sh.getRange(6, 1, n, 1).getValues().map(r => String(r[0])), i = ids.indexOf(String(x.id));
     if (i < 0) return { ok: false, mensaje: 'No se encontró la propuesta.' };
     const f = 6 + i, row = sh.getRange(f, 1, 1, BJ_H.length).getValues()[0]; if (row[7] === 'Aplicado') return { ok: false, mensaje: 'Esa propuesta ya se aplicó.' };
-    if (x.rechazar) { sh.getRange(f, 8).setValue('Rechazado'); return { ok: true }; }
+    const delCruce = tipo0 => tipo0 === 'NOMINA_PERSONAL' && String(row[6]) === 'Cruce nocturno con capacitaciones';
+    if (x.rechazar) { sh.getRange(f, 8).setValue('Rechazado'); if (delCruce(row[2])) bjDescartar_(bjCambios_(row[11]), limpio_(row[3]), row[0], 'Rechazada la propuesta completa'); return { ok: true }; }
     const tipo = row[2], cod = limpio_(row[3]), ref = row[4], todos = bjCambios_(row[11]), sel = Array.isArray(x.indices) ? x.indices : todos.map((_, j) => j), C = todos.filter((_, j) => sel.indexOf(j) >= 0);
     const hist = (hoja, clave, campo, a, d) => pBC_().getSheetByName('HISTORIAL').appendRow([Utilities.formatDate(new Date(), TZ, 'd/M/yyyy'), hoja, cod + ' · ' + clave, campo, a, d, 'Bandeja ' + row[0]]);
     if (tipo === 'RESPUESTA_INFORME') {
@@ -243,6 +269,7 @@ function bjAplicar_(x) {
         if (H.indexOf('ACTUALIZADO') >= 0) shB.getRange(c.fila, H.indexOf('ACTUALIZADO') + 1).setValue(bjHoy_());
       });
     }
+    if (delCruce(tipo) && C.length < todos.length) bjDescartar_(todos.filter((_, j) => sel.indexOf(j) < 0), cod, row[0], 'No marcada al aplicar la propuesta');   // las no marcadas no vuelven a proponerse
     sh.getRange(f, 8).setValue(C.length === todos.length ? 'Aplicado' : 'Aplicado en parte'); sh.getRange(f, 13).setValue(bjHoy_() + ' · ' + C.length + ' de ' + todos.length);
     CacheService.getScriptCache().removeAll(['libros', 'p_resumen']);
     return { ok: true, aplicados: C.length };
