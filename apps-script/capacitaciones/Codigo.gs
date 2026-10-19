@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-19 · 5.3';
+const VERSION_CAP = '2026-10-19 · 5.4';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -517,6 +517,7 @@ function regInicio(k, c, d, av) {
   if (av) {   // autoadministrada: abierta siempre que la capacitación esté activa y tenga videos en la hoja VIDEOS del sitio
     videos = videosDe_(cap.codigo);
     if (!videos.length) return { ok: false, error: 'Esta capacitación no tiene videos cargados. Avisale a Higiene y Seguridad.' };
+    const hv = horasVideo_(cap.codigo); if (hv) cap.carga = hv;
     ab = /^activ/i.test(cap.estado || '') ? { abierta: true, idDictado: VIDEO_DIC, encuentro: 1, texto: 'Autoadministrada', video: true } : { abierta: false, texto: 'Esta capacitación no está activa.' };
   } else ab = dic ? aperturaDictado_(dic, cap.estado) : estadoApertura_(cap.codigo, r[i('SIEMPRE_ABIERTA')], cap.estado);
   const ev = /evaluaci/i.test(cap.registro) ? evalDe_(cap.codigo, evTok) : null;
@@ -1395,6 +1396,7 @@ function evalEntregar(d) {
         ENCUENTRO_N: dic && num_(cap.ENCUENTROS) > 1 ? dic.ENCUENTRO_N : '', TIPO: 'Evaluación', ID_EVALUACION: ev.ID_EVALUACION, NOTA: nota, APROBADO: aprobado ? 'Sí' : 'No', CICLO: cicloDe_(hoyIso),
         VENCE: /no vence/i.test(cap.VENCE) ? 'No vence' : dma_(masDoce_(hoyIso)), ORIGEN: it.ID_DICTADO === VIDEO_DIC ? 'Video autoadministrado' : 'Evaluación en línea', CARGADO_POR: 'Registro', ESTADO: 'Válido', MOTIVO_ANULACION: '' };
       agregar_(tabla_('REGISTROS'), [reg]);
+      if (it.ID_DICTADO === VIDEO_DIC) { const hv = horasVideo_(ev.CODIGO); if (hv) reg.HORAS = hv; }
       if (aprobado) certificado = certAlRegistrar_(reg);
       if (it.ID_DICTADO !== 'PERMANENTE') marcarAsistio_(it.ID_DICTADO, it.DNI);
       CacheService.getScriptCache().remove('tablero');
@@ -1797,7 +1799,7 @@ function datosCert_(c) {
   if (video) bold.push('modalidad autoadministrada');
   if (video && c.TIPO === TIPO_CERT.asi) {
     titulo = 'Certificado de asistencia';
-    texto = 'Completó en modalidad autoadministrada ' + (tot > 1 ? 'el programa ' : 'la capacitación ') + nom + (h ? ', con una carga horaria de ' + h : '') + '.';
+    texto = 'Completó en modalidad autoadministrada la capacitación ' + nom + (h ? ', con una carga horaria de ' + h : '') + '.';
     if (h) bold.push(h);
   } else if (c.TIPO === TIPO_CERT.apr) {
     titulo = 'Certificado de aprobación';
@@ -2210,10 +2212,12 @@ function videosDe_(codigo) {
   const v = sh.getDataRange().getDisplayValues(), H = v[0].map(x => String(x).trim()), c = n => H.indexOf(n);
   if (c('CODIGO') < 0) return [];
   const out = v.slice(1).filter(r => String(r[c('CODIGO')]).trim().toUpperCase() === String(codigo).toUpperCase() && !/^no/i.test(String(r[c('VISIBLE')]).trim()))
-    .map(r => ({ id: idYT_(r[c('ENLACE')]), titulo: String(r[c('TITULO')]).trim(), orden: num_(r[c('ORDEN')]) })).filter(x => x.id).sort((a, b) => a.orden - b.orden);
+    .map(r => ({ id: idYT_(r[c('ENLACE')]), titulo: String(r[c('TITULO')]).trim(), orden: num_(r[c('ORDEN')]), horas: c('HORAS') < 0 ? 0 : Number(String(r[c('HORAS')]).replace(',', '.')) || 0 })).filter(x => x.id).sort((a, b) => a.orden - b.orden);
   cache.put(ck, JSON.stringify(out), 600);
   return out;
 }
+// Carga horaria del certificado hecho con video: suma de la columna HORAS de la hoja VIDEOS; vacía = la del catálogo
+function horasVideo_(codigo) { const h = videosDe_(codigo).reduce((t, v) => t + (v.horas || 0), 0); return h ? String(Math.round(h * 10) / 10).replace('.', ',') : undefined; }
 function vistos_() {
   const lib = SpreadsheetApp.getActive();
   if (!lib.getSheetByName('_VIDEOS_VISTOS')) {
@@ -2275,6 +2279,7 @@ function respuestaVideos_(x, est) {
   const reg = { ID_REGISTRO: uid_('REG', x.doc), FECHA: Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy HH:mm'), DNI: x.doc, CODIGO: cap.codigo, VERSION: cap.version || '1', ID_DICTADO: VIDEO_DIC, ENCUENTRO_N: '', TIPO: 'Asistencia', ID_EVALUACION: '', NOTA: '', APROBADO: '', CICLO: ciclo,
     VENCE: /no vence/i.test(cap.vence) ? 'No vence' : dma_(masDoce_(hoyIso)), ORIGEN: 'Video autoadministrado', CARGADO_POR: 'Registro', ESTADO: 'Válido' };
   agregar_(R, [reg]);
+  const hv = horasVideo_(cap.codigo); if (hv) reg.HORAS = hv;
   r.certificado = certAlRegistrar_(reg);
   CacheService.getScriptCache().remove('tablero');
   return r;
