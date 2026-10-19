@@ -247,7 +247,9 @@ function pFichaCalc_(cod) {
   const man = nm > 0 ? gm.getRange(6, 1, nm, 12).getValues().filter(r => limpio_(r[0]) === nombre && r[3]).map(r => ({ fecha: pFecha_(new Date(r[3])), sitio: r[1], nro: String(r[6]), corriente: r[7], cantidad: r[9], unidad: r[10], origen: r[11] })) : [];
   man.sort((a, b) => b.fecha.localeCompare(a.fecha));
   const gc = g.getSheetByName('CERTIFICADOS'), nc = gc.getLastRow() - 5;
-  const cert = nc > 0 ? gc.getRange(6, 1, nc, 7).getValues().filter(r => limpio_(r[0]) === nombre && r[4]).map(r => ({ empresa: r[1], mes: r[2] + '-' + String(r[3]).padStart(2, '0'), nro: String(r[4]), origen: r[6] })) : [];
+  // 19/10/2026: si el certificado de otro establecimiento lo cubre (RES_CERT_DE, ResiduosTablero.gs; p. ej. HMH ← HZT), se muestran también los de ese
+  const certDe = typeof RES_CERT_DE !== 'undefined' && RES_CERT_DE[cod] ? E.filas.find(f => limpio_(f.v[0]) === RES_CERT_DE[cod]) : null, nomCert = certDe ? limpio_(certDe.v[1]) : '';
+  const cert = nc > 0 ? gc.getRange(6, 1, nc, 7).getValues().filter(r => (limpio_(r[0]) === nombre || (nomCert && limpio_(r[0]) === nomCert)) && r[4]).map(r => ({ empresa: r[1], mes: r[2] + '-' + String(r[3]).padStart(2, '0'), nro: String(r[4]) + (nomCert && limpio_(r[0]) === nomCert ? ' (' + RES_CERT_DE[cod] + ')' : ''), origen: r[6] })) : [];
   // Trabajadores
   const sh = pBT_().getSheetByName(cod);
   let tot = 0, act = 0;

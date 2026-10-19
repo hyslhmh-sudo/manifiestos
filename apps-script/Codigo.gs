@@ -130,6 +130,8 @@ function config_(est) {
   const avance = {};   // 'aaaa-mm' -> {retiros, cert}
   man.forEach(m => { if (m.corriente !== 'Y1') return; const k = m.fecha.slice(0, 7); (avance[k] = avance[k] || { retiros: 0, cert: 0 }).retiros++; });
   cert.forEach(c => { const k = c.mes; (avance[k] = avance[k] || { retiros: 0, cert: 0 }).cert++; });
+  // 19/10/2026: si el certificado de otro establecimiento de la red lo cubre (RES_CERT_DE, ResiduosTablero.gs; HMH ← HZT), sus meses cuentan como certificados
+  try { const pc = typeof RES_CERT_DE !== 'undefined' && RES_CERT_DE[est]; if (pc) leerCertificados_(SpreadsheetApp.openById(est_(pc).libro)).forEach(c => { const a = avance[c.mes] = avance[c.mes] || { retiros: 0, cert: 0 }; if (!a.cert) a.cert = 1; }); } catch (e) { /* sin el libro del otro: solo los propios */ }
   const ultimas = agruparManifiestos_(man.slice(-400)).slice(-60);
   return { ok: true, est: est, nombre: E.nombre, sitios: sitios, empresas: CFG.EMPRESAS, corrientes: CFG.CORRIENTES,
     referente: { nombre: dato('Referente de residuos'), mail: dato('Correo de la referente') },

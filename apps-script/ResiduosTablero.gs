@@ -8,6 +8,10 @@
  * Normativa: Ley 24.051 y Dto. 831/93 (manifiesto y certificado de tratamiento); Ley XI N.º 35 (Código Ambiental del Chubut).
  * Entrada: Portal.gs › case 'p_res_tablero'.
  */
+// 19/10/2026 (Belén): el certificado de tratamiento y disposición final que se carga en el HZT abarca los residuos de toda la red Trelew
+// (HZT y sus sitios: CAPS, sede ex ADOS, Salud Mental… y también el HMH, que es el mismo hospital en lo administrativo).
+// Establecimiento → establecimiento cuyo certificado lo cubre. Para sumar otro caso, agregarlo acá.
+const RES_CERT_DE = { HMH: 'HZT' };
 const RES_TAB_DIAS = { diaria: 3, '3 días': 5, '2 días': 6, semanal: 10, quincenal: 20, mensual: 40, sd: 30 };
 function resLimiteDias_(frec) {
   const f = sinTildes_(frec);
@@ -58,6 +62,9 @@ function resTablero_(fresco) {
     const mes = y + '-' + ('0' + m).slice(-2); if (mes < desde) return;
     nuevo(cod).certs[mes] = limpio_(r[4]) || 's/d';
   });
+  // Certificados que cubren a otro establecimiento de la misma red (RES_CERT_DE): el mes queda con el certificado del otro, aclarado
+  Object.keys(RES_CERT_DE).forEach(hijo => { const padre = est[RES_CERT_DE[hijo]]; if (!padre || !est[hijo]) return;
+    Object.keys(padre.certs).forEach(m => { if (!est[hijo].certs[m]) est[hijo].certs[m] = padre.certs[m] + ' (' + RES_CERT_DE[hijo] + ')'; }); });
   // Frecuencia pactada por sitio (BASE COMÚN › SITIOS: CODIGO · SITIO · NOMBRE_OFICIAL · SISA · TIPO · EMPRESA · FRECUENCIA)
   const frec = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 7).forEach(r => frec[limpio_(r.v[0]) + '|' + sinTildes_(r.v[1])] = limpio_(r.v[6])); } catch (e) {}
   let diag = {}; try { if (PropertiesService.getScriptProperties().getProperty('DIAG_RES_ID')) diag = pDiagLista_(); } catch (e) {}
