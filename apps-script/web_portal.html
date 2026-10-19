@@ -4543,7 +4543,9 @@ function radMksParse(items) {
   const num = t => { const m = /^\s*(\d+(?:[.,]\d+)?)\s*$/.exec(t || ''); return m ? m[1].replace(',', '.') : ''; };
   return { cab: cab, filas: filas.map(f => { const u = f.U || '', dni = (/DNI-?\s*(\d{6,9})/i.exec(u) || [])[1] || '', iv = String(f.INT || '').split('-').map(s => s.trim()).filter(Boolean);
     return { APELLIDO_Y_NOMBRE: u.replace(/DNI-?\s*\d+/i, '').replace(/\s+/g, ' ').trim(), DNI: dni, DOSIMETRO: (f.DOSIMETRO || '').replace(/\s+/g, ''), TIPO: (f.TIPO || '').trim(),
-      PERIODO_DESDE: mes(iv[0]), PERIODO_HASTA: mes(iv[iv.length - 1]), DOSIS_MSV: num(f.DOSIS_MSV), OBSERVACION: (f.OBSERVACION || '').trim(), ANUAL_C: num(f.ANUAL_C), ANUAL_12: num(f.ANUAL_12),
+      PERIODO_DESDE: mes(iv[0]), PERIODO_HASTA: mes(iv[iv.length - 1]), DOSIS_MSV: num(f.DOSIS_MSV),
+      // «<NR*» en la columna de dosis (menor al nivel de registro) pasa a la observación
+      OBSERVACION: [(f.OBSERVACION || '').trim(), !num(f.DOSIS_MSV) && !/^\s*-*\s*$/.test(f.DOSIS_MSV || '') ? String(f.DOSIS_MSV).replace(/\*/g, '').trim() : ''].filter(Boolean).join(' '), ANUAL_C: num(f.ANUAL_C), ANUAL_12: num(f.ANUAL_12),
       SEGUIMIENTO: (f.SEGUIMIENTO || '').replace(/\s*-\s*$/, '').replace(/\s+/g, ' ').trim() }; }) };
 }
 
