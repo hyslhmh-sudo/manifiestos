@@ -78,6 +78,7 @@ function cruceNocturnoPersonal() {
 
   for (let i = 0; i < v.length; i++) {
     const r = v[i], d = dniN(val(r, 'DNI')); if (!/^\d{7,8}$/.test(d)) continue;
+    if (/^descartad/i.test(limpio_(val(r, 'REVISAR')))) continue;   // persona descartada por HyS (p. ej. duplicado con DNI mal escrito): el cruce no la toca
     const pub = limpio_(val(r, 'PUBLICO')), vin = limpio_(val(r, 'VINCULO'));
     if (CRUCE.PUBLICOS.indexOf(pub) < 0 || /estudiante|extern/i.test(vin)) continue;   // estudiantes y externos no cruzan
     const quien = (limpio_(val(r, 'APELLIDOS')) + ' ' + limpio_(val(r, 'NOMBRES'))).trim() + ' (DNI ' + d + ')', p = activo[d];
@@ -121,7 +122,8 @@ function cruceNocturnoPersonal() {
     if (baja[d]) {
       // Baja en la base: se avisa en capacitaciones (no se borra a nadie)
       const jR = ic('REVISAR');
-      if (jR >= 0 && limpio_(r[jR]) !== 'Sí') {
+      // Si HyS ya la validó (Para validar › Aceptar), no se vuelve a marcar cada noche
+      if (jR >= 0 && limpio_(r[jR]) !== 'Sí' && !/validada por HyS/i.test(txt(val(r, 'ORIGEN_DE_DATOS')))) {
         const antes = txt(r[jR]); r[jR] = 'Sí'; cambiadas[jR] = true; nBajas++;
         histCap.push({ j: jR, o: { FECHA: ahora, QUIEN: CRUCE.ORIGEN, HOJA: 'PERSONAS', ID: d, CAMPO: 'REVISAR', ANTES: antes, DESPUES: 'Sí', MOTIVO: 'Baja en la base de personal (' + baja[d].hoja + ')' } });
       }
