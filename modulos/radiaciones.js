@@ -1,10 +1,10 @@
-// Portal HyS · 5 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026)
+// Portal HyS · 5 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026) · 0.4 (19/10/2026): pestaña Investigaciones
 // Rayos X: radiología, tomografía, arco en C y odontológicos, para toda la red. Personal expuesto y dosímetros (altas, bajas a pedido,
 // reactivaciones, extravíos), controles dosimétricos mensuales (PDF), eventos (registros anormales, extravíos, exposición accidental),
 // salas y equipos (habilitación, plano de plomado, blindaje, levantamiento radiométrico, control de calidad), documentos y requisitos legales.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let RADT = null, RADD = {}, RADF = { cod: '', tab: 'sit', ver: 'act', q: '', sitio: '' };
-const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
+const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['inv', 'Investigaciones'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
 const RAD_FECHA = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], sd: ['Sin dato', 'gr'] };
 const radChipF = (e, f) => { const x = RAD_FECHA[e] || RAD_FECHA.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (f ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(f) + '</div>' : ''); };
 const radChipD = e => { const c = e === 'Activo' ? 'ok' : e === 'Extraviado' ? 'er' : /^Baja/.test(e) ? 'gr' : 'wa'; return '<span class="chip ' + c + '">' + esc(e || 's/d (revisar)') + '</span>'; };
@@ -40,14 +40,14 @@ async function radTablero(fresco) {
     '<label class="f">Abrir un establecimiento<select class="c" id="rdE">' + selectorEst('', false) + '</select></label>' +
     radLink(RADT.libro, 'Planilla del módulo') + ' ' + radLink(RADT.carpeta, 'Carpeta del módulo') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
     '<div class="tb5">' + kpi('Sitios con rayos X', T.sitiosRx || 0, (T.sitiosConfirmar || 0) + ' sitios de la provincia a confirmar') + kpi('Establecimientos', T.establecimientos, 'con sitios, personal o equipos cargados') + kpi('Dosímetros activos', T.activos, 'personas con dosímetro en uso') +
-    kpi('Extraviados', T.extraviados, 'dosímetros a reponer', T.extraviados ? 'var(--er)' : '') + kpi('Eventos abiertos', T.eventosAbiertos, 'anormales, extravíos y otros', T.eventosAbiertos ? 'var(--er)' : '') +
+    kpi('Extraviados', T.extraviados, 'dosímetros a reponer', T.extraviados ? 'var(--er)' : '') + kpi('Eventos abiertos', T.eventosAbiertos, T.invAbiertas ? T.invAbiertas + ' investigación(es) de dosis abierta(s)' : 'anormales, extravíos y otros', T.eventosAbiertos || T.invAbiertas ? 'var(--er)' : '') +
     kpi('Equipos', T.equipos, T.habVencidas ? T.habVencidas + ' con habilitación vencida' : 'en uso o fuera de servicio', T.habVencidas ? 'var(--er)' : '') + kpi('Sin controles al día', T.faltanControles, 'establecimientos con meses sin PDF (últimos 3)', T.faltanControles ? 'var(--wa)' : '') + '</div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Por establecimiento</h2><label class="peq"><input type="checkbox" id="rdTodos"' + (RADF.todos ? ' checked' : '') + '> Mostrar también los que no tienen datos</label></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Sitios con rayos X</th><th>Dosímetros</th><th>Último control</th><th>Eventos</th><th>Equipos</th><th>Requisitos con documento</th></tr></thead><tbody>' +
     (E.length ? E.map(e => { const r = e.r; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td>' +
       '<td>' + (r.sitiosRx ? r.sitiosRx : '<span class="mu">—</span>') + (r.sitiosConfirmar ? ' <span class="chip wa mini">' + r.sitiosConfirmar + ' a confirmar</span>' : '') + '</td>' +
       '<td>' + (r.personas ? r.activos + ' activos' + (r.bajas ? ' <span class="mu peq">· ' + r.bajas + ' de baja</span>' : '') + (r.extraviados ? ' <span class="chip er mini">' + r.extraviados + ' extraviado(s)</span>' : '') : '<span class="mu">—</span>') + '</td>' +
       '<td>' + (r.ultimoControl ? radMes(r.ultimoControl) : '<span class="mu">—</span>') + (r.faltanMeses.length ? '<div class="chip wa mini">faltan ' + r.faltanMeses.length + '</div>' : '') + '</td>' +
-      '<td>' + (r.eventosAbiertos ? '<span class="chip er">' + r.eventosAbiertos + ' abierto(s)</span>' : '<span class="mu">—</span>') + '</td>' +
+      '<td>' + (r.eventosAbiertos ? '<span class="chip er">' + r.eventosAbiertos + ' abierto(s)</span>' : '') + (r.invAbiertas ? ' <span class="chip wa">' + r.invAbiertas + ' a investigar</span>' : '') + (!r.eventosAbiertos && !r.invAbiertas ? '<span class="mu">—</span>' : '') + '</td>' +
       '<td>' + (r.equipos ? r.equipos + (r.habVencidas ? ' <span class="chip er mini">' + r.habVencidas + ' hab. vencida</span>' : r.habSinDato ? ' <span class="chip gr mini">' + r.habSinDato + ' sin dato</span>' : '') : '<span class="mu">—</span>') + '</td>' +
       '<td>' + (r.requisitos ? r.requisitosConDoc + ' de ' + r.requisitos : '—') + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="mu">Todavía no hay datos cargados. Elegí un establecimiento arriba para empezar.</td></tr>') +
     '</tbody></table></div></section>' +
@@ -68,16 +68,16 @@ async function radEst(a, fresco) {
   if (!RADD[cod] || fresco) { cargando('#radest', 'Abriendo radiaciones de ' + radNom(cod) + '…'); try { RADD[cod] = await api('p_rad_detalle', { cod: cod }, 180000); } catch (e) { return; } }
   const D = RADD[cod]; if (!D.ok) { delete RADD[cod]; return radNoInstalado('#radest', D); }
   const R = D.resumen, sf = RADF.sitio, de = (l, todos) => !sf ? l : l.filter(x => (x.SITIO || '') === sf || (todos && !x.SITIO));
-  const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), dosis: de(D.dosis || [], true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
-  const cuerpo = { sit: radSit, per: radPer, con: radCon, dos: radDos, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
+  const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), dosis: de(D.dosis || [], true), investigaciones: de(D.investigaciones || [], true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
+  const cuerpo = { sit: radSit, per: radPer, con: radCon, dos: radDos, inv: radInv, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
   marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">5 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
-    R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
+    R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + (R.invAbiertas ? R.invAbiertas + ' investigación(es) de dosis abierta(s) · ' : '') + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
     '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
     '<div class="tabs" style="margin-bottom:14px">' + RAD_TABS.map(t => '<a class="btn ' + (t[0] === RADF.tab ? 'pri' : 'sec') + '" href="#radest/' + encodeURIComponent(cod) + '/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>' + cuerpo);
   $('rdOtro').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value) + '/' + RADF.tab; };
   $('rdAct').onclick = () => radEst(encodeURIComponent(cod) + '/' + RADF.tab, true);
   $('rdSit').onchange = e => { RADF.sitio = e.target.value; radEst(encodeURIComponent(cod) + '/' + RADF.tab); };
-  ({ sit: radSitEv, per: radPerEv, con: radConEv, dos: radDosEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
+  ({ sit: radSitEv, per: radPerEv, con: radConEv, dos: radDosEv, inv: radInvEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
 }
 function radRecargar(D, msg) { if (msg) toast(msg); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/' + RADF.tab); }
 // Lee un archivo (PDF ≤ 6 MB o imagen achicada) para mandarlo como dataUrl
@@ -331,18 +331,58 @@ function radDosisForm(D) {
 function radDos(D) {
   const L = D.dosis || [], q = (RADF.q || '').toLowerCase(), F = q ? L.filter(d => (d.APELLIDO_Y_NOMBRE + ' ' + d.DNI).toLowerCase().indexOf(q) >= 0) : L, lim = D.limites || { anual: 50, periodo: 30 };
   const n = v => v === '' || v == null ? '' : String(v), alto = d => (Number(d.DOSIS_MSV) > lim.periodo) || (Number(d.ANUAL_C) > lim.anual) || (Number(d.ANUAL_12) > lim.anual);
-  const obs = o => /LIM/i.test(o) ? '<span title="Debajo del límite de medición: se asigna 0,05 mSv">&lt;LIMx</span>' : o === '2' ? '<span title="Dosímetro recibido tarde: se informa en el próximo informe" class="chip wa mini">llegó tarde</span>' : /NR/i.test(o) ? '<span title="Menor al nivel de registro">&lt;NR</span>' : esc(o || '');
+  const obs = o => /LIM/i.test(o) ? '<span title="Debajo del límite de medición: se asigna 0,05 mSv">&lt;LIMx</span>' : o === '2' ? '<span title="Dosímetro recibido tarde: se informa en el próximo informe" class="chip wa mini">llegó tarde</span>' : /NR/i.test(o) ? '<span title="Menor al nivel de registro">&lt;NR</span>' : /^[BC\s]+$/i.test(o || '') ? '<a class="chip wa mini" href="#radest/' + encodeURIComponent(D.cod) + '/inv" title="B: dosímetro irradiado en condición estática o por radiación primaria. C: posibilidad de superar 6 mSv/año (ICRP). Se abrió un caso en Investigaciones.">' + esc(o) + ' · a investigar</a>' : esc(o || '');
   return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><div><h2>Dosis por persona</h2><span class="mu peq">Del informe periódico del servicio de dosimetría. Límites: ' + lim.periodo + ' mSv por período (trimestre) y ' + lim.anual + ' mSv por año (Res. SS 273/86).</span></div><div class="cpn"><input class="c" id="dsQ" placeholder="Buscar persona o DNI" value="' + esc(RADF.q || '') + '" style="min-width:200px"><button class="btn pri" id="dsNuevo">Cargar informe de dosis (PDF)</button>' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + '</div></div>' +
     '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Dosímetro</th><th>Período</th><th>Dosis (mSv)</th><th>Obs.</th><th>Anual calendario</th><th>Últimos 12 meses</th><th>Informe</th></tr></thead><tbody>' +
     (F.length ? F.map(d => '<tr' + (alto(d) ? ' style="background:#FDECEA"' : '') + '><td><b>' + esc(d.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">DNI ' + esc(d.DNI || 's/d') + (d.ID_PERSONA ? '' : ' · <span style="color:var(--wa)">no está en Personal</span>') + '</div>' + radSitTxt(d) + '</td><td class="peq">' + esc(d.DOSIMETRO || '') + '<div class="mu">' + esc(d.TIPO || '') + '</div></td>' +
       '<td>' + radMes(d.PERIODO_DESDE) + (d.PERIODO_HASTA && d.PERIODO_HASTA !== d.PERIODO_DESDE ? ' a ' + radMes(d.PERIODO_HASTA) : '') + '</td><td>' + (n(d.DOSIS_MSV) || '<span class="mu">—</span>') + '</td><td class="peq">' + obs(d.OBSERVACION) + '</td><td>' + n(d.ANUAL_C) + '</td><td>' + n(d.ANUAL_12) + '</td>' +
       '<td class="peq">' + radLink(d.ARCHIVO, (d.PROVEEDOR || 'PDF') + (d.REPORTE_NRO ? ' ' + d.REPORTE_NRO : '')) + (d.FECHA_EMISION ? '<div class="mu">' + fechaTxt(d.FECHA_EMISION) + '</div>' : '') + '</td></tr>').join('')
       : '<tr><td colspan="8" class="mu">Todavía no hay dosis cargadas. Tocá «Cargar informe de dosis (PDF)».</td></tr>') + '</tbody></table></div></section>' +
-    '<p class="mu peq">«&lt;LIMx»: exposición debajo del límite de medición (el servicio asigna 0,05 mSv al anual). «Llegó tarde»: el dosímetro llegó después de tiempo y su dosis viene en el próximo informe. En rojo, lo que supera los límites. Si el portal falla: planilla del módulo, hoja DOSIS.</p>';
+    '<p class="mu peq">«&lt;LIMx»: exposición debajo del límite de medición (el servicio asigna 0,05 mSv al anual). «Llegó tarde»: el dosímetro llegó después de tiempo y su dosis viene en el próximo informe. «B» o «C»: el servicio marca la dosis para investigar (se abre el caso en «Investigaciones»). En rojo, lo que supera los límites. Si el portal falla: planilla del módulo, hoja DOSIS.</p>';
 }
 function radDosEv(D) {
   $('dsNuevo').onclick = () => radDosisForm(D);
   const q = $('dsQ'); if (q) q.oninput = () => { RADF.q = q.value; clearTimeout(radDosEv.t); radDosEv.t = setTimeout(() => { radEst(encodeURIComponent(D.cod) + '/dos'); const i = $('dsQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300); };
+}
+
+// ---------- Investigaciones (0.4): dosis a investigar aunque no superen el límite legal
+const RAD_INV_CHIP = e => '<span class="chip ' + (e === 'Cerrado' ? 'ok' : e === 'Anulado' ? 'gr' : e === 'En análisis' ? 'wa' : 'er') + '">' + esc(e || 'Abierto') + '</span>';
+function radInv(D) {
+  const L = D.investigaciones || [], ab = L.filter(c => /Abierto|análisis/.test(c.ESTADO)).length;
+  return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><div><h2>Investigaciones de dosis' + (ab ? ' · ' + ab + ' abierta(s)' : '') + '</h2><span class="mu peq">Dosis que el servicio de dosimetría marca para investigar aunque no superen el límite legal (observación B o C). Se abren solas al cargar el informe de dosis.</span></div><div class="cpn"><button class="btn sec" id="riRev">Revisar dosis cargadas</button><button class="btn pri" id="riNuevo">Abrir caso a mano</button></div></div>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Período y dosis</th><th>Motivo</th><th>Causa probable</th><th>Estado</th><th></th></tr></thead><tbody>' +
+    (L.length ? L.map(c => '<tr><td><b>' + esc(c.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">DNI ' + esc(c.DNI || 's/d') + (c.DOSIMETRO ? ' · dosímetro ' + esc(c.DOSIMETRO) : '') + '</div>' + radSitTxt(c) + '</td>' +
+      '<td>' + esc(String(c.PERIODO || '').split(' a ').map(radMes).join(' a ')) + '<div class="peq">' + (c.DOSIS_MSV !== '' && c.DOSIS_MSV != null ? '<b>' + esc(c.DOSIS_MSV) + ' mSv</b>' : '—') + (c.OBSERVACION_PROVEEDOR ? ' · obs. ' + esc(c.OBSERVACION_PROVEEDOR) : '') + '</div><div class="mu peq">anual ' + esc(c.ANUAL_C || '—') + ' · 12 meses ' + esc(c.ANUAL_12 || '—') + '</div></td>' +
+      '<td class="peq" style="max-width:320px">' + esc(c.MOTIVO) + '</td><td class="peq">' + esc(c.CAUSA_PROBABLE || 's/d') + (c.CONCLUSION ? '<div class="mu">' + esc(String(c.CONCLUSION).slice(0, 120)) + '</div>' : '') + '</td>' +
+      '<td>' + RAD_INV_CHIP(c.ESTADO) + '<div class="mu peq">' + (c.FECHA_CIERRE ? 'cerrado ' + fechaTxt(c.FECHA_CIERRE) : 'desde ' + fechaTxt(c.FECHA_DETECCION)) + '</div></td>' +
+      '<td style="white-space:nowrap">' + (c.ARCHIVO ? radLink(c.ARCHIVO, 'Archivo') + ' ' : '') + '<button class="btn sec" data-inv="' + esc(c.ID) + '">Seguir caso</button></td></tr>').join('')
+      : '<tr><td colspan="6" class="mu">No hay casos. Se abren solos cuando el informe de dosis trae una observación B o C.</td></tr>') + '</tbody></table></div></section>' +
+    '<p class="mu peq">B: dosímetro irradiado en condición estática o expuesto a radiación primaria (uso o guardado inadecuado, modalidad de trabajo o radioprotección deficiente). C: la dosis del período indica la posibilidad de superar 6 mSv/año (recomendación ICRP). Pasos sugeridos: entrevistar a la persona (dónde guarda el dosímetro, si lo usó otra persona, tareas del período), revisar la sala, el blindaje y los elementos plomados, y dejar la conclusión y las medidas. Si la dosis supera la norma, además se carga el evento «Registro anormal» y se comunica a la autoridad sanitaria (Dto. 6320/68, art. 20). Si el portal falla: planilla del módulo, hoja INVESTIGACIONES.</p>';
+}
+function radInvEv(D) {
+  $('riNuevo').onclick = () => radInvForm(D, null);
+  $('riRev').onclick = async () => { const r = await api('p_rad_inv_revisar', {}, 180000); if (!r.ok) return toast(r.mensaje || 'No se pudo revisar.'); radRecargar(D, r.nuevas ? r.nuevas + ' caso(s) nuevo(s).' : 'No había dosis nuevas para investigar.'); };
+  document.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => radInvForm(D, (D.investigaciones || []).find(c => c.ID === b.dataset.inv)));
+}
+function radInvForm(D, c) {
+  const arch = {}, per = D.personal.map(p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d'));
+  const v = Object.assign({ ESTADO: 'Abierto', CAUSA_PROBABLE: 's/d (en análisis)', SITIO: RADF.sitio }, c || {});
+  const pe = c && D.personal.find(p => p.ID === c.ID_PERSONA); if (pe) v.PERSONA = pe.APELLIDO_Y_NOMBRE + ' · DNI ' + (pe.DNI || 's/d');
+  const L = D.listas || {}, campos = (c ? [] : [['PERSONA', 'Persona', per], radSitF(D), ['PERIODO', 'Período (aaaa-mm)', D.meses], ['DOSIS_MSV', 'Dosis del período (mSv)'], ['OBSERVACION_PROVEEDOR', 'Observación del servicio de dosimetría'], ['MOTIVO', 'Motivo de la investigación', null, 1]])
+    .concat([['ENTREVISTA', 'Entrevista con la persona (dónde guarda el dosímetro, si lo usó otra persona, tareas del período)', null, 1], ['CAUSA_PROBABLE', 'Causa probable', L.causasInv || []], ['MEDIDAS', 'Medidas tomadas o propuestas', null, 1],
+      ['COMUNICADO_A', 'Comunicado a (jefatura, Dirección, autoridad…)'], ['FECHA_COMUNICACION', 'Fecha de comunicación', 'date'], ['CONCLUSION', 'Conclusión (obligatoria para cerrar)', null, 1], ['ESTADO', 'Estado', L.estadosInv || ['Abierto', 'En análisis', 'Cerrado', 'Anulado']]]);
+  const cab = c ? '<div class="card" style="background:var(--bg2,#F4F7F8);margin-bottom:8px"><b>' + esc(c.APELLIDO_Y_NOMBRE) + '</b> · DNI ' + esc(c.DNI || 's/d') + '<div class="peq">' + esc(String(c.PERIODO || '').split(' a ').map(radMes).join(' a ')) + ' · ' + esc(c.DOSIS_MSV !== '' ? c.DOSIS_MSV + ' mSv' : 's/d') + (c.OBSERVACION_PROVEEDOR ? ' · obs. ' + esc(c.OBSERVACION_PROVEEDOR) : '') + '</div><div class="mu peq">' + esc(c.MOTIVO) + '</div></div>' : '';
+  modal(c ? 'Investigación · ' + c.APELLIDO_Y_NOMBRE : 'Abrir caso de investigación', campos, v,
+    async out => {
+      const datos = Object.assign({ ID: c ? c.ID : '', ESTABLECIMIENTO: D.cod }, out);
+      if (!c) { const i = per.indexOf(out.PERSONA), p = i >= 0 ? D.personal[i] : null; delete datos.PERSONA; if (!p) return 'Elegí la persona.'; datos.ID_PERSONA = p.ID; }
+      if (datos.ESTADO === 'Cerrado' && !String(datos.CONCLUSION || '').trim()) return 'Para cerrar el caso, escribí la conclusión.';
+      if (arch.doc) datos.archivo = arch.doc;
+      const r = await api('p_rad_inv_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      radRecargar(D, 'Caso guardado.'); return '';
+    }, radSubir('doc', 'Archivo (opcional): acta de entrevista, nota, fotos, informe', c && c.ARCHIVO));
+  if (cab) document.querySelector('#ov .campos').insertAdjacentHTML('beforebegin', cab);
+  radInputs(arch);
 }
 
 // ---------- Eventos
