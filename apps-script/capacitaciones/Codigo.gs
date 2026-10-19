@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-19 · 5.4';
+const VERSION_CAP = '2026-10-19 · 5.5';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -531,6 +531,7 @@ function estadoApertura_(codigo, siempre, estado) {
     const a = aperturaDictado_(o, estado); if (a.abierta) return a;
   }
   if (siNo_(siempre)) return { abierta: true, idDictado: 'PERMANENTE', encuentro: 1, texto: 'Siempre abierta' };
+  try { if (videosDe_(codigo).length) return { abierta: false, texto: 'Esta capacitación se hace en línea con el video. Entrá desde hyslhmh-sudo.github.io/capacitaciones/?av=' + codigo + ' o desde la sección Videos del sitio de HyS.' }; } catch (e) { /* sin videos: mensaje común */ }
   return { abierta: false, texto: 'Esta capacitación no está abierta en este momento.' };
 }
 function fechaHora_(s) {
