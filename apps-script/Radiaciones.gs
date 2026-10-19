@@ -22,6 +22,7 @@
  * Res. SRT 905/15. No envía correos. «Mi establecimiento» (módulo Radiaciones en ACCESOS): acciones r_… (radRed_). No borra filas: lo que se quita queda «Anulado» o «Baja».
  * 0.2 (14/10/2026): cruce del personal expuesto con la BASE DE TRABAJADORES (radCruce_: en la base, de baja, en otro establecimiento
  *   o con datos distintos) y carga de varios equipos iguales de una vez (CANTIDAD, p. ej. 2 arcos en C en quirófano).
+ * 0.3 (19/10/2026): hoja DOSIS (dosis por persona leídas del informe del servicio de dosimetría, p. ej. MKS) y carpeta Dosimetría en el panel.
  * Instalación: ejecutar una vez construirModuloRadiaciones().
  */
 const RAD = {
@@ -40,6 +41,10 @@ const RAD = {
     'CONTROL_CALIDAD_PROXIMO', 'SENALIZACION', 'LUZ_ADVERTENCIA', 'EPP_PLOMADO', 'EPP_CONTROL_FECHA', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
   H_DOC: ['ID', 'ESTABLECIMIENTO', 'ID_SALA', 'TIPO', 'TITULO', 'FECHA', 'VENCE', 'ARCHIVO', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'CARGADO', 'SITIO'],
   H_SIT: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'NOMBRE_OFICIAL', 'TIPO_SITIO', 'RAYOS_X', 'EQUIPOS', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
+  // 0.3 (19/10/2026): dosis por persona, leídas del informe del servicio de dosimetría (p. ej. MKS) o cargadas a mano
+  H_DOS: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'ID_CONTROL', 'PROVEEDOR', 'REPORTE_NRO', 'ID_ENVIO', 'SERVICIO_PROVEEDOR', 'FECHA_EMISION', 'DNI', 'APELLIDO_Y_NOMBRE', 'ID_PERSONA',
+    'DOSIMETRO', 'TIPO', 'PERIODO_DESDE', 'PERIODO_HASTA', 'DOSIS_MSV', 'OBSERVACION', 'ANUAL_C', 'ANUAL_12', 'SEGUIMIENTO', 'ARCHIVO', 'ESTADO', 'CARGADO_POR', 'CARGADO'],
+  LIM_ANUAL: 50, LIM_PERIODO: 30,   // Res. SS 273/86: 50 mSv por año y 30 mSv por trimestre (regla RAD-01)
   RX_SITIO: ['Sí', 'No', 'A confirmar'],
   H_REQ: ['ID', 'ALCANCE', 'REQUISITO', 'NORMA', 'COMO_SE_CUMPLE', 'DOC_TIPO', 'ACTIVO'],
   SECTORES: ['Radiología', 'Tomografía', 'Mamografía', 'Quirófano (arco en C)', 'Hemodinamia / intervencionismo', 'Odontología', 'Traumatología', 'Otro'],
@@ -290,6 +295,80 @@ function radControlGuardar_(x, quien) {
   return { ok: true, id: c.ID, archivo: url, aviso: c.CON_ANORMALES === 'Sí' ? 'Marcaste valores anormales: cargá el evento de cada persona en «Eventos».' : '' };
 }
 
+// ------------------------------------------------------------------ DOSIS POR PERSONA (0.3 · 19/10/2026)
+// Pedido de Belén: guardar el informe periódico de dosis (PDF) en la carpeta del establecimiento › Dosimetría › año y cargar
+// los valores de cada persona. El portal lee el PDF (formato MKS: Usuario, Dosímetro, Tipo, Intervalo, Dosis, Seguimiento, Obs,
+// Anual-C, Anual-12), muestra la tabla para revisar y corregir, y manda todo junto. Hoja DOSIS: una fila por persona y período.
+// El informe queda además como control en CONTROLES (mes = fin del último período medido). Se puede cargar a mano en la hoja.
+function radHojaDosis_() {
+  const ss = pRad_(); let sh = ss.getSheetByName('DOSIS');
+  if (!sh) {
+    sh = ss.insertSheet('DOSIS');
+    encabezar_(sh, 'Dosis por persona', 'Una fila por persona y período del informe del servicio de dosimetría. DOSIS_MSV vacío = sin dosis informada en ese período (ver OBSERVACION: <LIMx debajo del límite de medición, 2 dosímetro recibido tarde, <NR menor al nivel de registro). Períodos aaaa-mm. Nada se borra: ESTADO = Anulado.', RAD.H_DOS);
+    sh.getRange(6, 15, 3000, 2).setNumberFormat('@'); sh.getRange(6, 9, 3000, 1).setNumberFormat('dd/mm/yyyy'); lista_(sh, 23, 3000, ['Vigente', 'Anulado']); sh.setFrozenColumns(11); sh.setColumnWidth(11, 220);
+  }
+  return sh;
+}
+const radNum_ = v => { const t = String(v == null ? '' : v).replace(',', '.').trim(); return /^\d+(\.\d+)?$/.test(t) ? Number(t) : null; };
+function radDosisLeer_() { return pRad_().getSheetByName('DOSIS') ? radLeer_('DOSIS', RAD.H_DOS).map(d => Object.assign(d, { ESTABLECIMIENTO: limpio_(d.ESTABLECIMIENTO), DNI: String(d.DNI || '').replace(/\D/g, '') })) : []; }
+// ¿Supera los límites? (dosis del período o acumulados anuales)
+function radDosisAnormal_(f) { const d = radNum_(f.DOSIS_MSV), c = radNum_(f.ANUAL_C), a = radNum_(f.ANUAL_12);
+  return (d != null && d > RAD.LIM_PERIODO) || (c != null && c > RAD.LIM_ANUAL) || (a != null && a > RAD.LIM_ANUAL); }
+// x: { ESTABLECIMIENTO, SITIO, PROVEEDOR, REPORTE_NRO, ID_ENVIO, SERVICIO_PROVEEDOR, FECHA_EMISION, archivo | ARCHIVO, filas: [...], sumarPersonal }
+function radDosisGuardar_(x, quien) {
+  const cod = limpio_(x.ESTABLECIMIENTO), sit = limpio_(x.SITIO), filas = (x.filas || []).filter(f => limpio_(f.APELLIDO_Y_NOMBRE) || String(f.DNI || '').replace(/\D/g, ''));
+  if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
+  if (!filas.length) return { ok: false, mensaje: 'No hay personas para cargar.' };
+  if (!x.archivo && !limpio_(x.ARCHIVO)) return { ok: false, mensaje: 'Falta el PDF del informe.' };
+  const rep = limpio_(x.REPORTE_NRO); radHojaDosis_();
+  const prev = radDosisLeer_();
+  if (rep && prev.some(d => d.ESTABLECIMIENTO === cod && limpio_(d.REPORTE_NRO) === rep && d.ESTADO !== 'Anulado')) return { ok: false, mensaje: 'El informe ' + rep + ' ya está cargado en ' + cod + '. Si querés reemplazarlo, anulá sus filas en la hoja DOSIS.' };
+  const bien = filas.map(f => { const o = {}; RAD.H_DOS.forEach(h => o[h] = f[h] != null ? f[h] : ''); o.DNI = String(o.DNI || '').replace(/\D/g, ''); o.APELLIDO_Y_NOMBRE = limpio_(o.APELLIDO_Y_NOMBRE);
+    ['PERIODO_DESDE', 'PERIODO_HASTA'].forEach(k => o[k] = /^\d{4}-\d{2}$/.test(limpio_(o[k])) ? limpio_(o[k]) : ''); ['DOSIS_MSV', 'ANUAL_C', 'ANUAL_12'].forEach(k => { const n = radNum_(o[k]); o[k] = n == null ? '' : n; }); return o; });
+  const medidos = bien.filter(f => f.PERIODO_HASTA && (f.DOSIS_MSV !== '' || /LIM|NR/i.test(f.OBSERVACION)));
+  const per = (medidos.length ? medidos : bien).map(f => f.PERIODO_HASTA).filter(Boolean).sort().pop() || Utilities.formatDate(radFecha_(x.FECHA_EMISION) || new Date(), TZ, 'yyyy-MM');
+  const anormales = bien.filter(radDosisAnormal_);
+  // Archivo: carpeta del establecimiento › Dosimetría › año
+  const url = x.archivo ? radArchivo_(cod, x.archivo, ['Dosimetría', per.slice(0, 4)], 'Informe de dosis ' + (limpio_(x.PROVEEDOR) || '') + ' ' + (rep || '') + ' ' + cod + (sit ? ' ' + sit : '') + ' ' + per) : limpio_(x.ARCHIVO);
+  // Control del mes (si ya había uno para ese mes y sitio, se usa ese)
+  const C = radLeer_('CONTROLES', RAD.H_CON), ya = C.find(c => limpio_(c.ESTABLECIMIENTO) === cod && limpio_(c.PERIODO) === per && limpio_(c.SITIO) === sit && c.ESTADO !== 'Anulado');
+  const rango = (() => { const d = bien.map(f => f.PERIODO_DESDE).filter(Boolean).sort()[0], h = bien.map(f => f.PERIODO_HASTA).filter(Boolean).sort().pop(); return d && h ? d + ' a ' + h : ''; })();
+  const obs = ['Informe de dosis' + (rep ? ' ' + rep : '') + (x.ID_ENVIO ? ' · envío ' + x.ID_ENVIO : ''), rango ? 'períodos ' + rango : '', bien.length + ' fila(s) en DOSIS', limpio_(x.SERVICIO_PROVEEDOR)].filter(Boolean).join(' · ');
+  let idc;
+  if (ya) { idc = ya.ID; if (anormales.length && ya.CON_ANORMALES !== 'Sí') { const c = Object.assign({}, ya); c.CON_ANORMALES = 'Sí'; c.FECHA_RECEPCION = radFecha_(c.FECHA_RECEPCION); c.CARGADO = radFecha_(c.CARGADO); radActualizar_('CONTROLES', RAD.H_CON, ya.fila, c); } }
+  else { const c = { ID: radId_('DC', cod), ESTABLECIMIENTO: cod, PERIODO: per, PROVEEDOR: limpio_(x.PROVEEDOR), FECHA_RECEPCION: radFecha_(x.FECHA_EMISION) || new Date(), ARCHIVO: url,
+    CON_ANORMALES: anormales.length ? 'Sí' : 'No', OBSERVACIONES: obs, ESTADO: 'Vigente', CARGADO_POR: limpio_(quien) || 'Portal', CARGADO: new Date(), SITIO: sit }; radAgregar_('CONTROLES', RAD.H_CON, c); idc = c.ID; }
+  // Personas: se vinculan por DNI con PERSONAL_EXPUESTO; si no están y se pidió, se agregan (dosímetro activo)
+  let P = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER); const nuevas = [], ahora = new Date(), filasSh = [];
+  bien.forEach(f => {
+    let p = f.DNI ? P.find(z => String(z.DNI).replace(/\D/g, '') === f.DNI && limpio_(z.ESTABLECIMIENTO) === cod) : null;
+    if (!p && x.sumarPersonal && f.DNI && nuevas.indexOf(f.DNI) < 0) {
+      const b = radDniBase_(f.DNI), r = radPersonaGuardar_({ ESTABLECIMIENTO: cod, DNI: f.DNI, APELLIDO_Y_NOMBRE: b && b.nombre || f.APELLIDO_Y_NOMBRE, CUIL: b ? b.cuil : '', SERVICIO: b ? b.servicio : '', FUNCION: b ? b.funcion : '',
+        DOSIMETRO_NRO: f.DOSIMETRO, TIPO_DOSIMETRO: /^CE$/i.test(f.TIPO) ? 'Cuerpo entero' : '', PROVEEDOR: limpio_(x.PROVEEDOR), ESTADO_DOSIMETRO: 'Activo', SITIO: sit,
+        OBSERVACIONES: 'Alta desde el informe de dosis ' + (rep || '') }, quien);
+      if (r.ok) { nuevas.push(f.DNI); P = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER); p = P.find(z => z.ID === r.id); }
+    }
+    const base = { ID: radId_('DS', cod), ESTABLECIMIENTO: cod, SITIO: sit, ID_CONTROL: idc, PROVEEDOR: limpio_(x.PROVEEDOR), REPORTE_NRO: rep, ID_ENVIO: limpio_(x.ID_ENVIO),
+      SERVICIO_PROVEEDOR: limpio_(x.SERVICIO_PROVEEDOR), FECHA_EMISION: radFecha_(x.FECHA_EMISION), ID_PERSONA: p ? p.ID : '', ARCHIVO: url, ESTADO: 'Vigente', CARGADO_POR: limpio_(quien) || 'Portal', CARGADO: ahora };
+    filasSh.push(RAD.H_DOS.map(h => h in base ? base[h] : (f[h] == null ? '' : f[h])));
+  });
+  const sh = radHojaDosis_(); sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, filasSh.length, RAD.H_DOS.length).setValues(filasSh);
+  // Dosis por encima de los límites: evento «Registro anormal» por persona (Dto. 6320/68, art. 20)
+  anormales.forEach(f => { const p = P.find(z => String(z.DNI).replace(/\D/g, '') === f.DNI && limpio_(z.ESTABLECIMIENTO) === cod);
+    radEventoGuardar_({ ESTABLECIMIENTO: cod, ID_PERSONA: p ? p.ID : '', DNI: f.DNI, APELLIDO_Y_NOMBRE: f.APELLIDO_Y_NOMBRE, TIPO: 'Registro anormal', PERIODO: f.PERIODO_HASTA, DOSIS_MSV: f.DOSIS_MSV || f.ANUAL_12 || f.ANUAL_C,
+      DESCRIPCION: 'Informe ' + (rep || '') + ': dosis ' + (f.DOSIS_MSV === '' ? 's/d' : f.DOSIS_MSV) + ' mSv (' + f.PERIODO_DESDE + ' a ' + f.PERIODO_HASTA + '), anual calendario ' + f.ANUAL_C + ', últimos 12 meses ' + f.ANUAL_12 + '.', SITIO: sit, ARCHIVO: url }, quien); });
+  CacheService.getScriptCache().remove('rad_tablero');
+  return { ok: true, control: idc, periodo: per, filas: filasSh.length, nuevas: nuevas.length, anormales: anormales.length, archivo: url, carpeta: radCarpetaEst_(cod, ['Dosimetría', per.slice(0, 4)]).getUrl(),
+    aviso: anormales.length ? anormales.length + ' persona(s) con dosis por encima de los límites (Res. SS 273/86): se cargó el evento «Registro anormal»; se notifica de inmediato a la autoridad sanitaria (Dto. 6320/68, art. 20).' : '' };
+}
+// Meses cubiertos por los informes de dosis (desde–hasta de cada fila con dosis o resultado), por establecimiento
+function radMesesCubiertos_(dos, cod) {
+  const m = {}; dos.filter(d => d.ESTABLECIMIENTO === cod && d.ESTADO !== 'Anulado' && d.PERIODO_DESDE && d.PERIODO_HASTA && (d.DOSIS_MSV !== '' || /LIM|NR/i.test(d.OBSERVACION))).forEach(d => {
+    let [y, mm] = String(d.PERIODO_DESDE).split('-').map(Number); const fin = String(d.PERIODO_HASTA);
+    for (let i = 0; i < 24; i++) { const k = y + '-' + ('0' + mm).slice(-2); m[k] = true; if (k >= fin) break; mm++; if (mm > 12) { mm = 1; y++; } } });
+  return m;
+}
+
 // ------------------------------------------------------------------ EVENTOS
 function radEventoGuardar_(x, quien) {
   const cod = limpio_(x.ESTABLECIMIENTO); if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
@@ -363,7 +442,7 @@ function radMeses_(n) { const out = [], d = new Date(); d.setDate(1); for (let i
 function radResumenEst_(cod, D, hoy) {
   const per = D.per.filter(p => p.ESTABLECIMIENTO === cod), act = per.filter(p => p.ESTADO_DOSIMETRO === 'Activo');
   const con = D.con.filter(c => c.ESTABLECIMIENTO === cod && c.ESTADO !== 'Anulado'), meses = radMeses_(3);
-  const faltan = act.length ? meses.filter(m => !con.some(c => c.PERIODO === m)) : [];
+  const cub = radMesesCubiertos_(D.dos || [], cod), faltan = act.length ? meses.filter(m => !con.some(c => c.PERIODO === m) && !cub[m]) : [];
   const eve = D.eve.filter(e => e.ESTABLECIMIENTO === cod && !/Cerrado|Anulado/.test(e.ESTADO));
   const sal = D.sal.filter(s => s.ESTABLECIMIENTO === cod && s.ESTADO !== 'Baja');
   const hab = sal.map(s => radEstadoFecha_(s.HABILITACION_VENCE, hoy));
@@ -383,7 +462,8 @@ function radDatos_() {
     sal: radLeer_('SALAS_EQUIPOS', RAD.H_SAL).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })),
     doc: radLeer_('DOCUMENTOS', RAD.H_DOC).map(d => Object.assign(d, { ESTABLECIMIENTO: limpio_(d.ESTABLECIMIENTO) })),
     req: radLeer_('REQUISITOS', RAD.H_REQ),
-    sit: (pRad_().getSheetByName('SITIOS_RX') ? radLeer_('SITIOS_RX', RAD.H_SIT) : []).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })) };
+    sit: (pRad_().getSheetByName('SITIOS_RX') ? radLeer_('SITIOS_RX', RAD.H_SIT) : []).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })),
+    dos: radDosisLeer_() };
 }
 function radTablero_(fresco) {
   const c = CacheService.getScriptCache(); if (!fresco) { const k = c.get('rad_tablero'); if (k) return JSON.parse(k); }
@@ -410,7 +490,9 @@ function radDetalle_(cod) {
     eventos: de(D.eve).reverse(), salas: de(D.sal).map(s => Object.assign(s, { hab: radEstadoFecha_(s.HABILITACION_VENCE, hoy), lev: radEstadoFecha_(s.LEVANTAMIENTO_PROXIMO, hoy), cc: radEstadoFecha_(s.CONTROL_CALIDAD_PROXIMO, hoy) })),
     documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), cruce: radCruce_(cod, de(D.per)), sitios: radSitiosEst_(cod, D.sit),
     listas: { rxSitio: RAD.RX_SITIO, sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC },
-    carpeta: radCarpetaEst_(cod).getUrl(), libro: pRad_().getUrl() };
+    dosis: de(D.dos).filter(d => d.ESTADO !== 'Anulado').sort((a, b) => String(b.PERIODO_HASTA).localeCompare(String(a.PERIODO_HASTA)) || String(a.APELLIDO_Y_NOMBRE).localeCompare(String(b.APELLIDO_Y_NOMBRE))),
+    cubiertos: radMesesCubiertos_(D.dos, cod), limites: { anual: RAD.LIM_ANUAL, periodo: RAD.LIM_PERIODO },
+    carpeta: radCarpetaEst_(cod).getUrl(), carpetaDosimetria: radCarpetaEst_(cod, ['Dosimetría']).getUrl(), libro: pRad_().getUrl() };
 }
 
 // ------------------------------------------------------------------ «MI ESTABLECIMIENTO» (DNI y clave personal, módulo «Radiaciones» en ACCESOS): acciones «r_…»
@@ -449,6 +531,7 @@ function radPortal_(accion, x) {
     case 'p_rad_dni': return { ok: true, persona: radDniBase_(x.dni) };
     case 'p_rad_persona_guardar': return conLock_(() => radPersonaGuardar_(x, quien));
     case 'p_rad_control_guardar': return conLock_(() => radControlGuardar_(x, quien));
+    case 'p_rad_dosis_guardar': return conLock_(() => radDosisGuardar_(x, quien));
     case 'p_rad_evento_guardar': return conLock_(() => radEventoGuardar_(x, quien));
     case 'p_rad_sala_guardar': return conLock_(() => radSalaGuardar_(x, quien));
     case 'p_rad_doc_guardar': return conLock_(() => radDocGuardar_(x, quien));

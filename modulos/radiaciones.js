@@ -4,7 +4,7 @@
 // salas y equipos (habilitación, plano de plomado, blindaje, levantamiento radiométrico, control de calidad), documentos y requisitos legales.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let RADT = null, RADD = {}, RADF = { cod: '', tab: 'sit', ver: 'act', q: '', sitio: '' };
-const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
+const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
 const RAD_FECHA = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], sd: ['Sin dato', 'gr'] };
 const radChipF = (e, f) => { const x = RAD_FECHA[e] || RAD_FECHA.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (f ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(f) + '</div>' : ''); };
 const radChipD = e => { const c = e === 'Activo' ? 'ok' : e === 'Extraviado' ? 'er' : /^Baja/.test(e) ? 'gr' : 'wa'; return '<span class="chip ' + c + '">' + esc(e || 's/d (revisar)') + '</span>'; };
@@ -68,16 +68,16 @@ async function radEst(a, fresco) {
   if (!RADD[cod] || fresco) { cargando('#radest', 'Abriendo radiaciones de ' + radNom(cod) + '…'); try { RADD[cod] = await api('p_rad_detalle', { cod: cod }, 180000); } catch (e) { return; } }
   const D = RADD[cod]; if (!D.ok) { delete RADD[cod]; return radNoInstalado('#radest', D); }
   const R = D.resumen, sf = RADF.sitio, de = (l, todos) => !sf ? l : l.filter(x => (x.SITIO || '') === sf || (todos && !x.SITIO));
-  const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
-  const cuerpo = { sit: radSit, per: radPer, con: radCon, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
+  const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), dosis: de(D.dosis || [], true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
+  const cuerpo = { sit: radSit, per: radPer, con: radCon, dos: radDos, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
   marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">5 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
     R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
-    '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
+    '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
     '<div class="tabs" style="margin-bottom:14px">' + RAD_TABS.map(t => '<a class="btn ' + (t[0] === RADF.tab ? 'pri' : 'sec') + '" href="#radest/' + encodeURIComponent(cod) + '/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>' + cuerpo);
   $('rdOtro').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value) + '/' + RADF.tab; };
   $('rdAct').onclick = () => radEst(encodeURIComponent(cod) + '/' + RADF.tab, true);
   $('rdSit').onchange = e => { RADF.sitio = e.target.value; radEst(encodeURIComponent(cod) + '/' + RADF.tab); };
-  ({ sit: radSitEv, per: radPerEv, con: radConEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
+  ({ sit: radSitEv, per: radPerEv, con: radConEv, dos: radDosEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
 }
 function radRecargar(D, msg) { if (msg) toast(msg); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/' + RADF.tab); }
 // Lee un archivo (PDF ≤ 6 MB o imagen achicada) para mandarlo como dataUrl
@@ -212,11 +212,12 @@ function radReactivarForm(D, p) {
 
 // ---------- Controles mensuales
 function radCon(D) {
-  const por = {}; D.controles.filter(c => c.ESTADO !== 'Anulado').forEach(c => por[c.PERIODO] = c);
-  return '<section class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><h2>Últimos 12 meses</h2><button class="btn pri" id="rcNuevo">Subir control del mes</button></div>' +
-    '<p class="mu peq" style="margin-top:0">El PDF del servicio de dosimetría queda en la carpeta del establecimiento › Dosimetría › año. El sistema no lee el PDF: si trae valores anormales, marcalo y cargá el evento de cada persona.</p>' +
+  const por = {}, cub = D.cubiertos || {}; D.controles.filter(c => c.ESTADO !== 'Anulado').forEach(c => por[c.PERIODO] = c);
+  return '<section class="card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><h2>Últimos 12 meses</h2><div class="cpn"><button class="btn pri" id="rcInforme">Cargar informe de dosis (PDF)</button><button class="btn sec" id="rcNuevo">Subir solo el PDF del mes</button>' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + '</div></div>' +
+    '<p class="mu peq" style="margin-top:0">«Cargar informe de dosis»: elegís el PDF del servicio de dosimetría (MKS), el sistema lee la tabla y te la muestra para revisar; al guardar, el PDF queda en la carpeta del establecimiento › Dosimetría › año y los valores de cada persona en «Dosis por persona». Un mes figura cubierto si tiene control o dosis informadas.</p>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">' + D.meses.map(m => { const c = por[m];
-      return '<button class="btn ' + (c ? 'sec' : 'sec') + '" data-mes="' + m + '" style="flex-direction:column;align-items:flex-start;min-height:64px;' + (c ? (c.CON_ANORMALES === 'Sí' ? 'border-color:var(--er)' : 'border-color:var(--ok)') : 'border-style:dashed') + '"><b>' + radMes(m) + '</b><span class="peq ' + (c ? '' : 'mu') + '">' + (c ? (c.CON_ANORMALES === 'Sí' ? 'Con anormales' : 'Cargado') : 'Falta') + '</span></button>'; }).join('') + '</div></section>' +
+      const ok = c || cub[m];
+      return '<button class="btn sec" data-mes="' + m + '" style="flex-direction:column;align-items:flex-start;min-height:64px;' + (ok ? (c && c.CON_ANORMALES === 'Sí' ? 'border-color:var(--er)' : 'border-color:var(--ok)') : 'border-style:dashed') + '"><b>' + radMes(m) + '</b><span class="peq ' + (ok ? '' : 'mu') + '">' + (c ? (c.CON_ANORMALES === 'Sí' ? 'Con anormales' : 'Cargado') : cub[m] ? 'Cubierto por informe' : 'Falta') + '</span></button>'; }).join('') + '</div></section>' +
     '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th>Servicio de dosimetría</th><th>Recibido</th><th>PDF</th><th>Anormales</th><th>Observaciones</th><th></th></tr></thead><tbody>' +
     (D.controles.length ? D.controles.map(c => '<tr' + (c.ESTADO === 'Anulado' ? ' style="opacity:.5"' : '') + '><td><b>' + radMes(c.PERIODO) + '</b>' + radSitTxt(c) + (c.ESTADO === 'Anulado' ? ' <span class="chip gr mini">Anulado</span>' : '') + '</td><td>' + esc(c.PROVEEDOR || '—') + '</td><td>' + fechaTxt(c.FECHA_RECEPCION) + '</td><td>' + radLink(c.ARCHIVO, 'PDF') + '</td><td>' + (c.CON_ANORMALES === 'Sí' ? '<span class="chip er">Sí</span>' : esc(c.CON_ANORMALES || 's/d')) + '</td><td class="peq">' + esc(c.OBSERVACIONES || '') + '</td><td><button class="btn sec" data-con="' + esc(c.ID) + '">Editar</button></td></tr>').join('')
       : '<tr><td colspan="7" class="mu">Todavía no hay controles cargados.</td></tr>') + '</tbody></table></div></section>';
@@ -224,6 +225,7 @@ function radCon(D) {
 function radConEv(D) {
   const ult = (D.controles[0] || {}).PROVEEDOR || '';
   $('rcNuevo').onclick = () => radConForm(D, null, { PERIODO: D.meses[0], PROVEEDOR: ult });
+  $('rcInforme').onclick = () => radDosisForm(D);
   document.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => { const c = D.controles.find(x => x.PERIODO === b.dataset.mes && x.ESTADO !== 'Anulado'); radConForm(D, c || null, c ? null : { PERIODO: b.dataset.mes, PROVEEDOR: ult }); });
   document.querySelectorAll('[data-con]').forEach(b => b.onclick = () => radConForm(D, D.controles.find(c => c.ID === b.dataset.con)));
 }
@@ -238,6 +240,107 @@ function radConForm(D, c, base) {
       radRecargar(D, 'Control guardado.' + (r.aviso ? ' ' + r.aviso : '')); return '';
     }, radSubir('pdf', 'PDF del control (máx. 6 MB)', c && c.ARCHIVO));
   radInputs(arch);
+}
+
+// ---------- Dosis por persona (19/10/2026): informe del servicio de dosimetría leído del PDF (formato MKS) o cargado a mano
+// Lector de informes de dosis MKS (mismo código que va en modulos/radiaciones.js)
+function radMksParse(items) {
+  const txt = items.map(i => i.s).join(' ').replace(/\s+/g, ' ');
+  const g = re => { const m = re.exec(txt); return m ? m[1].trim() : ''; };
+  const cab = { PROVEEDOR: /MKS/i.test(txt) ? 'MKS' : '', REPORTE_NRO: g(/Reporte de Dosis\s+(\S+)/i), ID_ENVIO: g(/Id-Envio\s+(\d+)/i),
+    SERVICIO_PROVEEDOR: g(/Servicio:\s*(.+?)\s+-?\s*CTA/i), FECHA_EMISION: g(/Fecha de Emisi[oó]n:\s*(\d{4}-\d{2}-\d{2})/i), DEPENDENCIA: g(/Dependencia:\s*(.+?)\s+Direcci[oó]n/i) };
+  const COLS = [['U', /^Usuario$/i], ['DOSIMETRO', /^Dos[ií]metro$/i], ['TIPO', /^Tipo$/i], ['INT', /^Intervalo$/i], ['DOSIS_MSV', /^Dosis/i], ['SEGUIMIENTO', /^Seguimiento$/i], ['OBSERVACION', /^Obs/i], ['ANUAL_C', /^Anual-C/i], ['ANUAL_12', /^Anual-12/i]];
+  const MES = { ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, sep: 9, set: 9, oct: 10, nov: 11, dic: 12 };
+  const filas = [];
+  [...new Set(items.map(i => i.p))].forEach(pg => {
+    const P0 = items.filter(i => i.p === pg), U = P0.find(i => COLS[0][1].test(i.s.trim())); if (!U) return;
+    const P = P0.filter(i => Math.abs(i.y - U.y) <= 3 || i.y < U.y - 3), T = P0.filter(i => Math.abs(i.y - U.y) <= 3);   // T: la línea de títulos
+    const hd = COLS.map(c => T.find(i => c[1].test(i.s.trim())));
+    // títulos pegados en un solo texto (p. ej. «Anual-C* Anual-12*»): se reparten a lo ancho
+    COLS.forEach((c, k) => { if (hd[k]) return; const j = T.find(i => i.s.trim().split(/\s+/).some(w => c[1].test(w)) && i.s.trim().split(/\s+/).length > 1);
+      if (j) { const w = j.s.trim().split(/\s+/), pos = w.findIndex(x => c[1].test(x)); hd[k] = { x: j.x + j.w * pos / w.length, w: j.w / w.length, y: j.y }; } });
+    if (hd.some(h => !h)) return;
+    const yH = Math.min(...hd.map(h => h.y)), cen = hd.map(h => h.x + h.w / 2);
+    const fin = P.filter(i => i.y < yH - 2 && /^(•|Cálculos|REFERENCIAS)/.test(i.s.trim())).map(i => i.y);
+    const yFin = fin.length ? Math.max(...fin) : -1e9;
+    const cuerpo = P.filter(i => i.y < yH - 2 && i.y > yFin + 1).sort((a, b) => b.y - a.y || a.x - b.x);
+    let fila = null;
+    // líneas: ítems con la misma altura (±2)
+    const lineas = []; cuerpo.forEach(i => { const l = lineas.find(l => Math.abs(l.y - i.y) <= 2); if (l) l.it.push(i); else lineas.push({ y: i.y, it: [i] }); });
+    lineas.forEach(l => {
+      const col = i => { const c = i.x + i.w / 2; let k = 0; cen.forEach((x, j) => { if (Math.abs(c - x) < Math.abs(c - cen[k])) k = j; }); return COLS[k][0]; };
+      if (l.it.some(i => col(i) === 'DOSIMETRO' && /\d+\/\d+/.test(i.s))) { fila = {}; filas.push(fila); }
+      if (!fila) return;
+      l.it.sort((a, b) => a.x - b.x).forEach(i => { const k = col(i); fila[k] = ((fila[k] || '') + ' ' + i.s).trim(); });
+    });
+  });
+  const mes = t => { const m = /([a-z]{3})(\d{2})/i.exec(t || ''); return m && MES[m[1].toLowerCase()] ? '20' + m[2] + '-' + ('0' + MES[m[1].toLowerCase()]).slice(-2) : ''; };
+  const num = t => { const m = /^\s*(\d+(?:[.,]\d+)?)\s*$/.exec(t || ''); return m ? m[1].replace(',', '.') : ''; };
+  return { cab: cab, filas: filas.map(f => { const u = f.U || '', dni = (/DNI-?\s*(\d{6,9})/i.exec(u) || [])[1] || '', iv = String(f.INT || '').split('-').map(s => s.trim()).filter(Boolean);
+    return { APELLIDO_Y_NOMBRE: u.replace(/DNI-?\s*\d+/i, '').replace(/\s+/g, ' ').trim(), DNI: dni, DOSIMETRO: (f.DOSIMETRO || '').replace(/\s+/g, ''), TIPO: (f.TIPO || '').trim(),
+      PERIODO_DESDE: mes(iv[0]), PERIODO_HASTA: mes(iv[iv.length - 1]), DOSIS_MSV: num(f.DOSIS_MSV), OBSERVACION: (f.OBSERVACION || '').trim(), ANUAL_C: num(f.ANUAL_C), ANUAL_12: num(f.ANUAL_12),
+      SEGUIMIENTO: (f.SEGUIMIENTO || '').replace(/\s*-\s*$/, '').replace(/\s+/g, ' ').trim() }; }) };
+}
+
+// pdf.js (cdnjs) para leer el texto del PDF en el navegador; nada sale del portal hasta tocar «Guardar»
+async function radPdfJs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  await new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = ok; sc.onerror = () => mal(new Error('No se pudo cargar el lector de PDF.')); document.head.appendChild(sc); });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; return window.pdfjsLib;
+}
+async function radPdfItems(dataUrl) {
+  const lib = await radPdfJs(), bin = atob(dataUrl.split(',')[1]), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  const pdf = await lib.getDocument({ data: u }).promise, items = [];
+  for (let i = 1; i <= pdf.numPages; i++) { const tc = await (await pdf.getPage(i)).getTextContent(); tc.items.forEach(t => { if (t.str && t.str.trim()) items.push({ p: i, x: t.transform[4], y: t.transform[5], w: t.width, s: t.str }); }); }
+  return items;
+}
+const RAD_DOS_COL = [['APELLIDO_Y_NOMBRE', 'Apellido y nombre', 190], ['DNI', 'DNI', 95], ['DOSIMETRO', 'Dosímetro', 120], ['TIPO', 'Tipo', 50], ['PERIODO_DESDE', 'Desde (aaaa-mm)', 90], ['PERIODO_HASTA', 'Hasta (aaaa-mm)', 90],
+  ['DOSIS_MSV', 'Dosis (mSv)', 70], ['OBSERVACION', 'Obs.', 60], ['ANUAL_C', 'Anual calendario', 70], ['ANUAL_12', 'Últimos 12 meses', 70], ['SEGUIMIENTO', 'Seguimiento', 170]];
+function radDosisForm(D) {
+  const arch = {}, F = { filas: [] }, sitProsate = (D.sitios.find(s => /prosate/i.test(s.SITIO)) || {}).SITIO || '';
+  const tabla = () => '<div style="overflow-x:auto;margin-top:10px"><table class="peq"><thead><tr>' + RAD_DOS_COL.map(c => '<th>' + c[1] + '</th>').join('') + '<th></th></tr></thead><tbody>' +
+    F.filas.map((f, i) => '<tr>' + RAD_DOS_COL.map(c => '<td><input class="c" data-df="' + i + '|' + c[0] + '" value="' + esc(f[c[0]] || '') + '" style="min-width:' + c[2] + 'px;padding:4px 6px;font-size:12.5px"></td>').join('') + '<td><button class="btn sec" data-dq="' + i + '" style="min-height:28px;padding:2px 8px">Quitar</button></td></tr>').join('') +
+    '</tbody></table></div><button class="btn sec" id="dfMas" style="margin-top:6px">+ Agregar fila a mano</button>';
+  const pintar = () => { const c = $('dfTabla'); if (!c) return; c.innerHTML = tabla();
+    c.querySelectorAll('[data-df]').forEach(x => x.oninput = () => { const [i, k] = x.dataset.df.split('|'); F.filas[+i][k] = x.value; });
+    c.querySelectorAll('[data-dq]').forEach(x => x.onclick = () => { F.filas.splice(+x.dataset.dq, 1); pintar(); });
+    $('dfMas').onclick = () => { F.filas.push({ TIPO: 'CE' }); pintar(); }; };
+  modal('Cargar informe de dosis · ' + radNom(D.cod), [['SITIO', 'Sitio (vacío = todo el establecimiento)', D.sitios.map(s => s.SITIO)], ['PROVEEDOR', 'Servicio de dosimetría'], ['REPORTE_NRO', 'N.º de reporte'], ['ID_ENVIO', 'Id. de envío'],
+    ['SERVICIO_PROVEEDOR', 'Servicio según el informe'], ['FECHA_EMISION', 'Fecha de emisión', 'date'], ['sumarPersonal', 'Si alguien no está en «Personal y dosímetros», ¿lo agrego?', ['Sí', 'No']]],
+    { SITIO: RADF.sitio || '', PROVEEDOR: 'MKS', sumarPersonal: 'Sí' },
+    async out => {
+      if (!arch.pdf) return 'Elegí el PDF del informe.';
+      const filas = F.filas.filter(f => f.APELLIDO_Y_NOMBRE || f.DNI); if (!filas.length) return 'No hay filas: revisá el PDF o agregalas a mano.';
+      const malas = filas.filter(f => !/^\d{4}-\d{2}$/.test(f.PERIODO_DESDE || '') || !/^\d{4}-\d{2}$/.test(f.PERIODO_HASTA || '')); if (malas.length) return 'Revisá los períodos (aaaa-mm) de ' + malas.length + ' fila(s).';
+      const r = await api('p_rad_dosis_guardar', Object.assign({ ESTABLECIMIENTO: D.cod, archivo: arch.pdf, filas: filas }, out, { sumarPersonal: out.sumarPersonal === 'Sí' }), 180000);
+      if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+      radRecargar(D, r.filas + ' fila(s) de dosis cargadas' + (r.nuevas ? ', ' + r.nuevas + ' persona(s) nueva(s) en Personal' : '') + ' · control de ' + radMes(r.periodo) + '.' + (r.aviso ? ' ' + r.aviso : '')); return '';
+    }, '<label class="f ancho">PDF del informe (máx. 6 MB)<input class="c" type="file" accept="application/pdf" id="dfPdf"><span class="mu peq" id="dfMsg">Al elegirlo, el sistema lee la tabla del informe (formato MKS). Revisá y corregí antes de guardar.</span></label><div id="dfTabla"></div>');
+  pintar();
+  $('dfPdf').onchange = async e => { const f = e.target.files[0]; if (!f) return; const msg = $('dfMsg');
+    try { arch.pdf = await radLeerArchivo(f); msg.textContent = 'Leyendo el PDF…';
+      const r = radMksParse(await radPdfItems(arch.pdf)), set = (k, v) => { const el = document.querySelector('#ov [data-k="' + k + '"]'); if (el && v) el.value = v; };
+      set('PROVEEDOR', r.cab.PROVEEDOR); set('REPORTE_NRO', r.cab.REPORTE_NRO); set('ID_ENVIO', r.cab.ID_ENVIO); set('SERVICIO_PROVEEDOR', r.cab.SERVICIO_PROVEEDOR); set('FECHA_EMISION', r.cab.FECHA_EMISION);
+      if (/prosate/i.test(r.cab.SERVICIO_PROVEEDOR) && sitProsate) set('SITIO', sitProsate);
+      F.filas = r.filas; pintar();
+      msg.textContent = r.filas.length ? 'Leí ' + r.filas.length + ' fila(s)' + (r.cab.DEPENDENCIA ? ' de «' + r.cab.DEPENDENCIA + '»' : '') + '. Revisá y tocá Guardar.' : 'No pude leer la tabla (¿es de otro servicio de dosimetría?). Podés cargar las filas a mano con «+ Agregar fila».';
+    } catch (er) { msg.textContent = (er && er.message) || 'No se pudo leer el PDF.'; } };
+}
+function radDos(D) {
+  const L = D.dosis || [], q = (RADF.q || '').toLowerCase(), F = q ? L.filter(d => (d.APELLIDO_Y_NOMBRE + ' ' + d.DNI).toLowerCase().indexOf(q) >= 0) : L, lim = D.limites || { anual: 50, periodo: 30 };
+  const n = v => v === '' || v == null ? '' : String(v), alto = d => (Number(d.DOSIS_MSV) > lim.periodo) || (Number(d.ANUAL_C) > lim.anual) || (Number(d.ANUAL_12) > lim.anual);
+  const obs = o => /LIM/i.test(o) ? '<span title="Debajo del límite de medición: se asigna 0,05 mSv">&lt;LIMx</span>' : o === '2' ? '<span title="Dosímetro recibido tarde: se informa en el próximo informe" class="chip wa mini">llegó tarde</span>' : /NR/i.test(o) ? '<span title="Menor al nivel de registro">&lt;NR</span>' : esc(o || '');
+  return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center"><div><h2>Dosis por persona</h2><span class="mu peq">Del informe periódico del servicio de dosimetría. Límites: ' + lim.periodo + ' mSv por período (trimestre) y ' + lim.anual + ' mSv por año (Res. SS 273/86).</span></div><div class="cpn"><input class="c" id="dsQ" placeholder="Buscar persona o DNI" value="' + esc(RADF.q || '') + '" style="min-width:200px"><button class="btn pri" id="dsNuevo">Cargar informe de dosis (PDF)</button>' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + '</div></div>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Dosímetro</th><th>Período</th><th>Dosis (mSv)</th><th>Obs.</th><th>Anual calendario</th><th>Últimos 12 meses</th><th>Informe</th></tr></thead><tbody>' +
+    (F.length ? F.map(d => '<tr' + (alto(d) ? ' style="background:#FDECEA"' : '') + '><td><b>' + esc(d.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">DNI ' + esc(d.DNI || 's/d') + (d.ID_PERSONA ? '' : ' · <span style="color:var(--wa)">no está en Personal</span>') + '</div>' + radSitTxt(d) + '</td><td class="peq">' + esc(d.DOSIMETRO || '') + '<div class="mu">' + esc(d.TIPO || '') + '</div></td>' +
+      '<td>' + radMes(d.PERIODO_DESDE) + (d.PERIODO_HASTA && d.PERIODO_HASTA !== d.PERIODO_DESDE ? ' a ' + radMes(d.PERIODO_HASTA) : '') + '</td><td>' + (n(d.DOSIS_MSV) || '<span class="mu">—</span>') + '</td><td class="peq">' + obs(d.OBSERVACION) + '</td><td>' + n(d.ANUAL_C) + '</td><td>' + n(d.ANUAL_12) + '</td>' +
+      '<td class="peq">' + radLink(d.ARCHIVO, (d.PROVEEDOR || 'PDF') + (d.REPORTE_NRO ? ' ' + d.REPORTE_NRO : '')) + (d.FECHA_EMISION ? '<div class="mu">' + fechaTxt(d.FECHA_EMISION) + '</div>' : '') + '</td></tr>').join('')
+      : '<tr><td colspan="8" class="mu">Todavía no hay dosis cargadas. Tocá «Cargar informe de dosis (PDF)».</td></tr>') + '</tbody></table></div></section>' +
+    '<p class="mu peq">«&lt;LIMx»: exposición debajo del límite de medición (el servicio asigna 0,05 mSv al anual). «Llegó tarde»: el dosímetro llegó después de tiempo y su dosis viene en el próximo informe. En rojo, lo que supera los límites. Si el portal falla: planilla del módulo, hoja DOSIS.</p>';
+}
+function radDosEv(D) {
+  $('dsNuevo').onclick = () => radDosisForm(D);
+  const q = $('dsQ'); if (q) q.oninput = () => { RADF.q = q.value; clearTimeout(radDosEv.t); radDosEv.t = setTimeout(() => { radEst(encodeURIComponent(D.cod) + '/dos'); const i = $('dsQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 300); };
 }
 
 // ---------- Eventos
