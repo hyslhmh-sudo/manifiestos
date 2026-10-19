@@ -128,7 +128,10 @@ function config_(est) {
   // Últimas cargas y avance por mes
   const man = leerManifiestos_(ss), cert = leerCertificados_(ss);
   const avance = {};   // 'aaaa-mm' -> {retiros, cert}
-  man.forEach(m => { if (m.corriente !== 'Y1') return; const k = m.fecha.slice(0, 7); (avance[k] = avance[k] || { retiros: 0, cert: 0 }).retiros++; });
+  // 19/10/2026: un retiro = un manifiesto (sitio + número + fecha), sea de Y1, de Y3 o de ambas; y1 e y3 cuentan cuántos tuvieron cada corriente
+  const vistos = {};
+  man.forEach(m => { const k = m.fecha.slice(0, 7), a = avance[k] = avance[k] || { retiros: 0, cert: 0, y1: 0, y3: 0 }, id = m.sitio + '|' + m.nro + '|' + m.fecha;
+    if (!vistos[id]) { vistos[id] = 1; a.retiros++; } if (m.corriente === 'Y1') a.y1 = (a.y1 || 0) + 1; if (m.corriente === 'Y3') a.y3 = (a.y3 || 0) + 1; });
   cert.forEach(c => { const k = c.mes; (avance[k] = avance[k] || { retiros: 0, cert: 0 }).cert++; });
   // 19/10/2026: si el certificado de otro establecimiento de la red lo cubre (RES_CERT_DE, ResiduosTablero.gs; HMH ← HZT), sus meses cuentan como certificados
   try { const pc = typeof RES_CERT_DE !== 'undefined' && RES_CERT_DE[est]; if (pc) leerCertificados_(SpreadsheetApp.openById(est_(pc).libro)).forEach(c => { const a = avance[c.mes] = avance[c.mes] || { retiros: 0, cert: 0 }; if (!a.cert) a.cert = 1; }); } catch (e) { /* sin el libro del otro: solo los propios */ }

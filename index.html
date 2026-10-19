@@ -250,7 +250,9 @@ const campo = (k, inner, err) => '<div class="field"><div class="lab"><label for
 const API_URL = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';
 const VERSION = 'piloto-10';
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-const ANIOS = () => { const a = []; for (let y = 2025; y <= new Date().getFullYear(); y++) a.push(String(y)); return a; };
+// 19/10/2026: desde el primer año con cargas (o 2025) hasta 2030 como mínimo (o el año actual, si es posterior)
+const ANIOS = () => { const k = Object.keys((typeof CFG !== 'undefined' && CFG && CFG.avance) || {}).map(x => Number(x.slice(0, 4))).filter(Boolean), a = [];
+  for (let y = Math.min(2025, ...k); y <= Math.max(2030, new Date().getFullYear()); y++) a.push(String(y)); return a; };
 const FUNCIONES = ['Mucama', 'Personal de limpieza', 'Enfermería', 'Administrativo/a', 'Mantenimiento', 'Higiene y Seguridad', 'Jefatura o Dirección', 'Otra'];
 const CONTENEDORES = ['Bolsa', 'Caja', 'Bidón', 'Tambor', 'Descartador'];
 const LISTA_BASE = [{ id: 'HZT', nombre: 'Hospital Zonal Trelew «Dr. Adolfo Margara»' }, { id: 'HMH', nombre: 'Hospital María Humphreys' }, { id: 'HSST', nombre: 'Hospital Subzonal Santa Teresita (Rawson)' }];
@@ -753,10 +755,10 @@ function avance() {
     const m = ANIO_AV + '-' + String(i + 1).padStart(2, '0'), nombre = MESES[i], a = av[m] || { retiros: 0, cert: 0 };
     if (m > hoy) return '<div class="mes" style="opacity:.45"><b>' + nombre + '</b>Todavía no</div>';
     if (!a.retiros && !loc[m]) return '<div class="mes vacio"><b>' + nombre + '</b>Sin cargas</div>';
-    return '<div class="mes ' + (a.cert ? 'ok' : 'wa') + '"><b>' + nombre + '</b>' + a.retiros + ' retiro' + (a.retiros === 1 ? '' : 's') + (loc[m] ? ' + ' + loc[m] + ' por enviar' : '') + '<br>' + (a.cert ? 'Certificado cargado' : 'Falta certificado') + '</div>';
+    return '<div class="mes ' + (a.cert ? 'ok' : 'wa') + '"><b>' + nombre + '</b>' + a.retiros + ' retiro' + (a.retiros === 1 ? '' : 's') + (a.y1 != null ? ' <span class="mu" style="font-size:12px">(Y1: ' + (a.y1 || 0) + ' · Y3: ' + (a.y3 || 0) + ')</span>' : '') + (loc[m] ? ' + ' + loc[m] + ' por enviar' : '') + '<br>' + (a.cert ? 'Certificado cargado' : 'Falta certificado') + '</div>';
   }).join('');
   $('app').innerHTML = '<h1>Avance por mes</h1><div class="field"><div class="lab"><label for="f_anio">Año</label></div><select id="f_anio" data-chg="anio">' + ANIOS().map(y => '<option' + (y === ANIO_AV ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>' +
-    '<div class="anio">' + celdas + '</div><p class="mu">Cuenta los retiros con Y1 de todos los sitios. Un mes está completo cuando tiene retiros y certificado.</p>';
+    '<div class="anio">' + celdas + '</div><p class="mu">Cuenta los retiros (manifiestos) de todos los sitios, de Y1 y de Y3; entre paréntesis, cuántos tuvieron cada corriente. Un mes está completo cuando tiene retiros y certificado.</p>';
   bar('<button class="btn sec" data-act="inicio">Volver al inicio</button>'); window.scrollTo(0, 0);
 }
 
