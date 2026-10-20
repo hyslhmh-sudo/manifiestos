@@ -90,6 +90,28 @@ function accHabilitados_() {
 // Prueba: muestra qué módulos ve hoy la clave común (y qué dice la hoja)
 function probarHabilitacion() { CacheService.getScriptCache().remove('acc_hab'); Logger.log(JSON.stringify({ hoja: accHabilitacion_(), hoy: accHabilitados_() })); }
 
+// ------------------------------------------------------------------ Habilitación por establecimiento (20/10/2026)
+// BASE COMÚN › HABILITACION_EST (fila 5 = encabezados): CODIGO, NOMBRE_OFICIAL y una columna por módulo con Sí / No.
+// Un módulo en «No» no se ve en ese establecimiento (ni con clave personal ni con la común); la clave MAESTRA ve todo siempre.
+// Sin la hoja, sin la fila del establecimiento o con la celda vacía o «s/d»: no se restringe. Caché de 5 minutos.
+// El interruptor general del establecimiento sigue siendo ESTABLECIMIENTOS › ESTADO_EN_SISTEMA (lista desplegable).
+function accHabEst_() {
+  const c = CacheService.getScriptCache(), k = c.get('acc_hab_est'); if (k) return JSON.parse(k);
+  let H = null;
+  try {
+    const sh = pBC_().getSheetByName('HABILITACION_EST');
+    if (sh && sh.getLastRow() >= 6) {
+      const enc = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(accTxt_), v = sh.getRange(6, 1, sh.getLastRow() - 5, sh.getLastColumn()).getValues();
+      H = {};
+      v.forEach(r => { const cod = accTxt_(r[0]); if (!cod) return; H[cod] = {}; enc.forEach((m, j) => { if (j > 1 && ACC_MODULOS.indexOf(m) >= 0) H[cod][m] = !/^no/i.test(accTxt_(r[j])); }); });
+    }
+  } catch (e) { H = null; }
+  try { c.put('acc_hab_est', JSON.stringify(H), 300); } catch (e) {}
+  return H;
+}
+function accFiltrarEst_(est, mods) { const H = accHabEst_(); return H && H[est] ? mods.filter(m => H[est][m] !== false) : mods; }
+function probarHabilitacionEst() { CacheService.getScriptCache().remove('acc_hab_est'); const H = accHabEst_(); Logger.log(JSON.stringify({ HMH: H && H.HMH, Telsen: H && H.Telsen, ejemploFiltro: accFiltrarEst_('Telsen', ACC_MODULOS) })); }
+
 // Verifica el ingreso. Devuelve { ok, modulos, nombre, rol, dni, maestra, comun } o { ok:false, error, mensaje }
 function acceso_(est, clave, dni) {
   clave = accTxt_(clave); dni = accDni_(dni);
@@ -101,14 +123,16 @@ function acceso_(est, clave, dni) {
     if (!accClaveReal_(p.clave) || p.clave.toLowerCase() !== clave.toLowerCase()) return { ok: false, error: 'clave', mensaje: 'La clave no es correcta. Revisala (no importan las mayúsculas) o pedila a Higiene y Seguridad.' };
     if (!accEstOk_(p, est)) return { ok: false, error: 'clave', mensaje: 'Tu acceso no incluye este establecimiento.' };
     if (!p.modulos.length) return { ok: false, error: 'clave', mensaje: 'Todavía no tenés módulos asignados. Consultá con Higiene y Seguridad.' };
-    return { ok: true, modulos: p.modulos, nombre: p.nombre, rol: p.rol, dni: p.dni };
+    const mp = accFiltrarEst_(est, p.modulos);
+    if (!mp.length) return { ok: false, error: 'clave', mensaje: 'Todavía no están habilitados para este establecimiento los módulos de tu acceso. Consultá con Higiene y Seguridad.' };
+    return { ok: true, modulos: mp, nombre: p.nombre, rol: p.rol, dni: p.dni };
   }
   // Clave por SERVICIO (empresas: SOMI, MAREM): fila de ACCESOS con ROL = Servicio, sin DNI. Se entra sin DNI y cada registro pide
   // quién lo hace (DNI, nombre y correo, cruzados con la base de personal: IncendioServicios.gs). 14/10/2026.
   const sv = accesosLeer_().find(p => /servicio/i.test(p.rol) && p.activo && accClaveReal_(p.clave) && p.clave.toLowerCase() === clave.toLowerCase() && accEstOk_(p, est));
-  if (sv) return sv.modulos.length ? { ok: true, servicio: sv.nombre, modulos: sv.modulos, nombre: '', rol: 'Servicio · ' + sv.nombre } : { ok: false, error: 'clave', mensaje: 'Esta clave todavía no tiene módulos asignados.' };
+  if (sv) { const ms = accFiltrarEst_(est, sv.modulos); return ms.length ? { ok: true, servicio: sv.nombre, modulos: ms, nombre: '', rol: 'Servicio · ' + sv.nombre } : { ok: false, error: 'clave', mensaje: sv.modulos.length ? 'Todavía no están habilitados para este establecimiento los módulos de esta clave. Consultá con Higiene y Seguridad.' : 'Esta clave todavía no tiene módulos asignados.' }; }
   if (!claveOk_(est, clave)) return { ok: false, error: 'clave', mensaje: 'La clave no es correcta.' };
-  const pers = accModulosPersonales_(est), hab = accHabilitados_(), mods = ACC_MODULOS.filter(m => !pers[m] && ACC_SOLO_PERSONAL.indexOf(m) < 0 && hab[m]);
+  const pers = accModulosPersonales_(est), hab = accHabilitados_(), mods = accFiltrarEst_(est, ACC_MODULOS.filter(m => !pers[m] && ACC_SOLO_PERSONAL.indexOf(m) < 0 && hab[m]));
   if (!mods.length) return { ok: false, error: 'clave', mensaje: ACC_MODULOS.some(m => !pers[m] && ACC_SOLO_PERSONAL.indexOf(m) < 0 && !hab[m]) ? 'Todavía no hay módulos habilitados para esta clave. Consultá con Higiene y Seguridad.' : 'Este establecimiento ya usa claves personales: ingresá con tu DNI y tu clave.' };
   return { ok: true, comun: true, modulos: mods, nombre: '' };
 }
