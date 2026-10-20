@@ -101,6 +101,8 @@ nav.lat .titu { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color:
 .kpi2 small { font-size: 12.5px; color: var(--mu); }
 .at { display: flex; gap: 10px; align-items: flex-start; text-decoration: none; padding: 9px 0; border-top: 1px solid #EEF2F4; color: inherit; }
 .at:first-of-type { border-top: 0; }
+.atg { display: block; } .atg > summary { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; list-style: none; } .atg > summary::-webkit-details-marker { display: none; } .atg[open] > summary b::after { content: ' ▴'; } .atg:not([open]) > summary b::after { content: ' ▾'; }
+.atg-l { display: flex; flex-direction: column; margin: 6px 0 0 62px; } .atg-l a { font-size: 13px; padding: 5px 0; border-top: 1px dashed #EEF2F4; text-decoration: none; color: inherit; }
 .at b { font-size: 14px; display: block; } .at small { font-size: 12.5px; color: var(--mu); }
 .tag { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
 .tag.er { background: #FBE6E1; color: #B4361F; } .tag.ok { background: #E2F2E8; color: #1E6B42; } .tag.gr { background: #EEF2F4; color: #5B6B73; } .tag.wa { background: #FFF1D6; color: #8A5200; } .tag.av { background: #E7F0F3; color: #2E5E70; }
@@ -516,7 +518,7 @@ const AYUDA = {
   '#rgrl': ['RGRL · Relevamiento General de Riesgos Laborales', ['Es el formulario del Anexo I de la Res. SRT 463/09 (formulario A general, Dto. 351/79), con el mismo texto y numeración: datos generales, 161 condiciones a cumplir, planillas A (cancerígenos), B (PCB) y C (sustancias a declarar), gremios, contratistas y responsable.', 'Uno por establecimiento o sitio (red Trelew y HSST). Elegí el establecimiento y el lugar y tocá «Empezar». Se actualiza una vez al año: abrí el anterior y «Copiar para este año».', 'Cada condición: Sí, No o No aplica (tocá de nuevo para borrar). Con «No», la fecha de regularización es obligatoria para guardarlo como completo.', 'Vencido (más de 12 meses) = aviso en el tablero. Todo queda en la planilla «M8 · RGRL y mediciones» (hojas RGRL, RGRL_RESPUESTAS y RGRL_PLANILLAS) y se puede completar a mano.']],
   '#medic': ['Mediciones con vencimiento', ['Puesta a tierra y continuidad de masas (Res. SRT 900/15), iluminación (Res. SRT 84/12), ruido (Res. SRT 85/12), pararrayos y otras.', '«Cargar medición»: establecimiento, lugar, tipo, fecha y protocolo (PDF o foto). Si no cargás el vencimiento, es la fecha + 12 meses. La nueva reemplaza a la anterior del mismo tipo y lugar.', 'Vencidas o que vencen en 30 días: urgentes en el tablero de control y en esta pantalla.', 'Recordatorio por correo los jueves a las 7 h a los correos de «Recordatorio a», mientras siga vencida o por vencer. «Ver el recordatorio» muestra el texto sin enviarlo.']],
   '#m8libros': ['Libros para la red', ['Generar: elegí el establecimiento y sus servicios; el libro queda en la carpeta del módulo › LIBROS DE LA RED. Compartilo vos con el referente como editor.', 'El referente completa solo las columnas amarillas (respuesta, observación y foto) y te avisa.', 'Importar: pegá el enlace del libro completo. Se crea un relevamiento por servicio y, si lo marcás, sus hallazgos.']],
-  '#inicio': ['Tablero de control', ['Muestra el estado de toda la red. Cada número, gráfico y aviso se toca y lleva al detalle.', '«Requiere atención»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos. Incluye agua, plagas, residuos, auditorías, documentos y, del módulo 4, las personas de cocina con carnet o libreta vencidos o por vencer.', 'Remisión semanal de manifiestos (PROT-RES-003, rige desde el 14/10/2026): avisa por establecimiento los sitios sin manifiestos cargados de las últimas 2 semanas (quincenal: 20 días; mensual: 40; los «no corresponde» no cuentan) y, durante 7 días, cada vez que el establecimiento indicó en la aplicación «No se recibieron manifiestos esta semana». Esas indicaciones quedan en el libro general › REMISION_OBS.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
+  '#inicio': ['Tablero de control', ['Panorama de la gestión de toda la red, de arriba hacia abajo: 1) los totales de Urgente, Pronto y Avisos (tocá uno para ver solo esos); 2) «Lo que requiere atención ahora», con filtro por módulo; 3) «Estado de la gestión por módulo», una tarjeta por módulo con su semáforo (rojo: hay algo urgente; amarillo: hay algo pronto; verde: al día; gris: sin datos); 4) el semáforo por establecimiento; 5) los gráficos de residuos, agua y acciones. Cada número, tarjeta y aviso se toca y lleva al detalle.', '«Lo que requiere atención ahora»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos. Incluye residuos, agua, plagas, cocinas (carnets y libretas), radiaciones (registros anormales, extravíos, investigaciones, controles), infraestructura (RGRL y mediciones), extintores, documentos, acciones y auditorías.', 'Remisión semanal de manifiestos (PROT-RES-003, rige desde el 14/10/2026): avisa por establecimiento los sitios sin manifiestos cargados de las últimas 2 semanas (quincenal: 20 días; mensual: 40; los «no corresponde» no cuentan) y, durante 7 días, cada vez que el establecimiento indicó en la aplicación «No se recibieron manifiestos esta semana». Esas indicaciones quedan en el libro general › REMISION_OBS.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
   '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
   '#ficha': ['Ficha del establecimiento', ['«Estado del establecimiento» (arriba): matriz de urgencia × gravedad con los temas a atender. Actuar ya = urgente y grave; Resolver rápido = urgente y leve; Planificar = no urgente y grave; Vigilar = no urgente y leve. Usa los datos del tablero de control.', 'Los botones de temas (Residuos, Agua, Plagas, Cocina, Documentos, Personal y RAR, Infraestructura) muestran la matriz solo de ese tema, sus datos principales y accesos a sus pantallas. «Otro establecimiento» cambia de ficha sin volver a la lista.', 'Qué cuenta como urgente: agua NO APTA, limpiezas y análisis vencidos, más de 10 días sin retiro (grave si pasa de 30), acciones vencidas o que vencen en 7 días, revisiones de plagas atrasadas, carnets de cocina vencidos y documentos vencidos. Qué cuenta como grave sin ser urgente: sin diagnóstico de residuos, puntos críticos o menos de 50 % de cumplimiento, sin inventario de agua y tanques o canillas sin registro.', 'Personal y RAR (siniestros): investigación pendiente = grave, y además urgente si pasaron más de 15 días del siniestro; siniestro con avisos = urgente; persona en ILT = vigilar. Infraestructura: los hallazgos abiertos del módulo 6 siguen la misma regla que las acciones de los demás módulos (vencidos, prioridad «Actuar ya» o que vencen en 7 días = urgente). Siniestros y módulo 6 se leen después de abrir la ficha: aparecen unos segundos más tarde.', 'Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento». Los tanques, cisternas y canillas también se agregan o corrigen desde acá: «+ Agregar tanque o cisterna», «+ Agregar canilla» y «Cambiar datos» en cada fila (queda en la BASE COMÚN con historial).', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.', 'Remisión semanal de manifiestos (PROT-RES-003): en «Resolver rápido» aparecen los sitios sin manifiestos cargados de las últimas 2 semanas y cada «No se recibieron manifiestos esta semana» que indicó el establecimiento en el último mes, con el recordatorio del protocolo de trabajo y cuántas veces pasó.']],
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
@@ -655,6 +657,7 @@ async function inicio(fresco) {
   Object.keys(porEst).forEach(c => at.push(['er', porEst[c] + ' acción(es) vencida(s) · ' + c, nom(c), '#ges']));
   Array.from(new Set(tanq.filter(t => t.estado === 'vencida').map(t => t.cod))).forEach(c => at.push(['er', c + ': limpieza de tanque vencida', 'Registrar la limpieza con el F-AGU-01', '#ficha/' + encodeURIComponent(c)]));
   Array.from(new Set((TB.puntos || []).filter(p => enA(p.cod) && p.estado === 'vencida').map(p => p.cod))).forEach(c => at.push(['er', c + ': análisis de agua vencido', 'Tomar muestra según el proceso provincial', '#ficha/' + encodeURIComponent(c) + '/agua']));
+  estActivos().filter(f => enA(f.cod) && !(TB.tanques || []).some(t => t.cod === f.cod) && !(TB.puntos || []).some(t => t.cod === f.cod)).forEach(f => at.push(['er', f.cod + ': sin inventario de agua cargado (tanques y canillas)', 'No se puede controlar la limpieza ni los análisis · cargar el inventario', '#ficha/' + encodeURIComponent(f.cod) + '/agua']));   // 2 · Agua: habilitados sin datos
   (TB.mediciones || []).filter(m => enA(m.cod) && (m.estado === 'vencida' || m.estado === 'porvencer')).forEach(m => at.push(['er', m.cod + ': ' + m.tipo.toLowerCase() + (m.estado === 'vencida' ? ' vencida' : ' vence el ' + fechaTxt(m.vence)), (m.estado === 'vencida' ? 'Venció el ' + fechaTxt(m.vence) + ' · ' : '') + 'Coordinar la medición y cargar el protocolo (recordatorio por correo los jueves)', '#medic']));
   (TB.rgrl || []).filter(r => enA(r.cod) && r.estadoVto === 'vencida').forEach(r => at.push(['wa', r.cod + ': RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' (' + r.lugar + ')' : ''), 'Se actualiza una vez al año (Res. SRT 463/09)', '#rgrl/' + encodeURIComponent(r.id)]));
   plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
@@ -697,19 +700,66 @@ async function inicio(fresco) {
     filasS.map(f => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><a href="#ficha/' + encodeURIComponent(f.cod) + '" style="font-weight:700;text-decoration:none">' + esc(f.cod) + '</a><div class="mu" style="font-size:12px">' + esc(f.nombre) + '</div></td><td style="padding:8px">' + celRes(f) + '</td><td style="padding:8px">' + celDiag(f) + '</td><td style="padding:8px">' + celAgua(f.cod) + '</td><td style="padding:8px">' + celPlag(f.cod) + '</td><td style="padding:8px">' + celAcc(f.cod) + '</td></tr>').join('') + '</tbody></table></div>' +
     '<span class="mu peq">Establecimientos habilitados en la aplicación y los que tienen algún dato cargado. Tocá el código para abrir la ficha.</span>'
     : '<div class="mu">Todavía no hay establecimientos con datos en esta área.</div>';
+  // ---- Panorama de la gestión (20/10/2026): lo urgente primero, estado por módulo, gráficos al final
+  if (!inicio.rad) { inicio.rad = true; api('p_rad_tablero', {}, 180000).then(r => { if (r && r.ok) { RADT = r; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }   // 5 · Radiaciones
+  if (RADT && RADT.ok) RADT.establecimientos.filter(e => enA(e.cod) && (e.r.personas || e.r.equipos)).forEach(e => { const r = e.r, h = '#radest/' + encodeURIComponent(e.cod);
+    if (r.anormalesAbiertos) at.push(['er', e.cod + ': ' + r.anormalesAbiertos + ' registro(s) anormal(es) de dosimetría abierto(s)', 'investigar con la persona expuesta', h + '/eve']);
+    if (r.extraviados) at.push(['er', e.cod + ': ' + r.extraviados + ' dosímetro(s) extraviado(s)', 'reponer', h + '/per']);
+    if (r.habVencidas) at.push(['er', e.cod + ': ' + r.habVencidas + ' habilitación(es) de equipo de rayos X vencida(s)', 'revisar en Salas y equipos', h + '/sal']);
+    if (r.invAbiertas) at.push(['wa', e.cod + ': ' + r.invAbiertas + ' investigación(es) de dosis abierta(s)', 'completar causa y medidas', h + '/inv']);
+    if (r.faltanMeses.length) at.push(['wa', e.cod + ': falta el informe de dosimetría de ' + r.faltanMeses.map(radMes).join(', '), 'cargar el PDF del servicio de dosimetría', h + '/con']); });
+  at.sort((a, b) => ord[a[0]] - ord[b[0]]);
+  const MODS = [['1', 'Residuos', '#est'], ['2', 'Agua', '#agua'], ['3', 'Plagas', '#plagas'], ['4', 'Cocinas hospitalarias', '#coc'], ['5', 'Radiaciones ionizantes', '#rad'], ['6', 'Servicios e infraestructura', '#m8'], ['7', 'Protección contra incendios', '#inc'], ['10', 'Documentos', '#docest'], ['pl', 'Plan de acción y auditorías', '#ges']];
+  const modDe = x => { const t = x[1] + ' ' + x[2] + ' ' + x[3];
+    if (/#rad/.test(x[3])) return '5'; if (/extintor|#inc/i.test(t)) return '7'; if (/#cocper|carnet|libreta/i.test(t)) return '4'; if (/plaga/i.test(t)) return '3'; if (/agua|tanque|canilla/i.test(t)) return '2';
+    if (/RGRL|#rgrl|#medic|puesta a tierra/i.test(t)) return '6'; if (/#docest|#bib|documento|revisión vencida|llega a su revisión/i.test(t)) return '10'; if (/acci[oó]n|#ges|auditor|#audr/i.test(t)) return 'pl'; return '1'; };
+  at.forEach(x => x[4] = modDe(x));
+  const nEr = at.filter(x => x[0] === 'er').length, nWa = at.filter(x => x[0] === 'wa').length, nAv = at.filter(x => x[0] === 'av').length;
+  const resumenHtml = '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">' +
+    '<a class="kpi2" href="#" data-uf="er"><span>URGENTE</span><b style="color:#B4361F">' + nEr + '</b><small>vencido o con riesgo: resolver primero</small></a>' +
+    '<a class="kpi2" href="#" data-uf="wa"><span>PRONTO</span><b style="color:#8A5200">' + nWa + '</b><small>por vencer o a verificar</small></a>' +
+    '<a class="kpi2" href="#" data-uf="av"><span>AVISOS</span><b>' + nAv + '</b><small>para tener en cuenta</small></a>' +
+    '<a class="kpi2" href="#ges"><span>PLAN DE ACCIÓN</span><b style="color:' + (venc.length ? '#B4361F' : 'inherit') + '">' + venc.length + '</b><small>vencida(s) de ' + acc.length + ' abiertas</small></a>' +
+    '<a class="kpi2" href="#est"><span>ESTABLECIMIENTOS</span><b>' + hab.length + ' / ' + F.length + '</b><small>habilitados en la aplicación</small></a></div>';
+  const nombreMod = k => (MODS.find(m => m[0] === k) || [0, 'Residuos'])[1];
+  // Agrupa las filas del mismo módulo y nivel (3 o más) en una sola, que se despliega al tocarla
+  const filasU = []; { const gr = {}; at.forEach(x => { const k = x[4] + '|' + x[0]; (gr[k] = gr[k] || []).push(x); });
+    const hecho = {}; at.forEach(x => { const k = x[4] + '|' + x[0], g = gr[k];
+      if (g.length < 3) { filasU.push({ u: x[0], t: x[1], s: x[2], h: x[3], m: x[4] }); return; }
+      if (hecho[k]) return; hecho[k] = 1; const cods = Array.from(new Set(g.map(y => String(y[1]).split(/[ :·]/)[0]))).filter(Boolean);
+      filasU.push({ u: x[0], m: x[4], hijos: g, t: g.length + ' avisos de ' + nombreMod(x[4]).toLowerCase() + (cods.length ? ' (' + cods.join(', ') + ')' : ''), s: ({ er: 'urgentes', wa: 'próximos a vencer', av: 'para tener en cuenta' })[x[0]] }); }); }
+  const urgentesHtml = '<section class="card" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:17px">Lo que requiere atención ahora</h2><span class="mu peq">Ordenado por prioridad · tocá una fila para resolverlo</span></div>' +
+    (at.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap" id="uFil"><button class="fchip on" data-um="">Todos (' + at.length + ')</button>' + MODS.filter(m => at.some(x => x[4] === m[0])).map(m => '<button class="fchip" data-um="' + m[0] + '">' + esc(m[1]) + ' (' + at.filter(x => x[4] === m[0]).length + ')</button>').join('') + '</div>' +
+      '<div id="uLista" style="display:flex;flex-direction:column">' + filasU.map((x, i) => { const tg = '<span class="tag ' + x.u + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.u]) + '</span>';
+        if (!x.hijos) return '<a class="at" href="' + x.h + '" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + '</small></span></a>';
+        return '<details class="at atg" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '><summary>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + ' · tocá para ver el detalle</small></span></summary><div class="atg-l">' + x.hijos.map(y => '<a href="' + y[3] + '">' + esc(y[1]) + '</a>').join('') + '</div></details>'; }).join('') + '</div>' +
+      (filasU.length > 8 ? '<button class="btn sec" id="uMas" style="align-self:flex-start">Ver los ' + (filasU.length - 8) + ' restantes</button>' : '')
+      : '<div class="mu">Nada urgente: todo al día con los datos cargados.</div>') + '</section>';
+  const cnM = (k, n) => at.filter(x => x[4] === k && x[0] === n).length;
+  const radT = RADT && RADT.ok ? RADT.establecimientos.filter(e => enA(e.cod)).reduce((o, e) => { o.act += e.r.activos || 0; o.ev += (e.r.eventosAbiertos || 0) + (e.r.invAbiertas || 0); return o; }, { act: 0, ev: 0 }) : null;
+  const incA = ((TB.incendio || {}).avisos || []).filter(x => enA(x.cod)), cocV = (TB.cocina || []).filter(c => enA(c.cod)).reduce((s, c) => s + (c.vencidos || 0), 0);
+  const infraN = (TB.mediciones || []).filter(m => enA(m.cod) && m.estado !== 'aldia').length + (TB.rgrl || []).filter(r => enA(r.cod) && r.estadoVto === 'vencida').length;
+  const cabM = {
+    '1': [atr.length ? atr.length + ' lugar(es) con más de 10 días sin retiro' : 'Retiros al día', hab.length > 0],
+    '2': [(noApta.length + tanV + ptoV) ? noApta.length + ' NO APTA · ' + tanV + ' tanque(s) y ' + ptoV + ' análisis vencidos' : 'Sin vencimientos', tanq.length + ptos.length > 0],
+    '3': [plagas.length ? plagas.length + ' caso(s) abierto(s) · ' + plAtr + ' con revisión atrasada' : 'Sin casos abiertos', true],
+    '4': [cocV ? cocV + ' persona(s) sin carnet o libreta vigente' : 'Sin vencimientos', (TB.cocina || []).length > 0],
+    '5': [radT ? radT.act + ' con dosímetro · ' + radT.ev + ' evento(s) o investigación(es) abiertos' : 'Cargando…', !!radT],
+    '6': [infraN ? infraN + ' medición(es) o RGRL por atender' : 'Ver el estado de cada edificio', infraN > 0],
+    '7': [incA.length ? incA.length + ' aviso(s) de extintores' : 'Extintores al día', ((TB.incendio || {}).avisos || []).length > 0 || !!TB.incendio],
+    '10': [(docs.length + ((TB.docsEst || {}).avisos || []).length) ? docs.length + ' documento(s) HyS y ' + ((TB.docsEst || {}).avisos || []).length + ' de establecimientos por revisar' : 'Sin vencimientos', true],
+    'pl': [venc.length ? venc.length + ' acción(es) vencida(s) de ' + acc.length : acc.length + ' acción(es) abierta(s)', true] };
+  const estadoModulosHtml = '<h2 style="margin:18px 0 8px;font-size:17px">Estado de la gestión por módulo</h2><div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">' + MODS.map(m => { const k = m[0], er = cnM(k, 'er'), wa = cnM(k, 'wa'), c = cabM[k] || ['', false];
+    const col = er ? ['er', 'Urgente'] : wa ? ['wa', 'Pronto'] : c[1] ? ['ok', 'Al día'] : ['gr', 'Sin datos'];
+    return '<a class="card" href="' + m[2] + '" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;border-left:5px solid ' + ({ er: '#B4361F', wa: '#B7791F', ok: '#1E6B42', gr: '#B8C4CA' }[col[0]]) + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + (/^\d/.test(k) ? k + ' · ' : '') + esc(m[1]) + '</b><span class="tag ' + col[0] + '">' + col[1] + '</span></div><span class="peq">' + esc(c[0]) + '</span>' +
+      ((er || wa) ? '<span class="mu peq">' + (er ? er + ' urgente(s)' : '') + (er && wa ? ' · ' : '') + (wa ? wa + ' pronto' : '') + '</span>' : '') + '</a>'; }).join('') + '</div>';
   const estadoBarra = (l) => [[cnt(l, 'aldia'), '#1E6B42'], [cnt(l, 'porvencer'), '#B7791F'], [cnt(l, 'vencida'), '#B4361F'], [cnt(l, 'sin'), '#B8C4CA']];
   marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><label class="f">Ver un establecimiento<select class="c" id="tbEst">' + selectorEst('', false) + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
-    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
-      kpi('#ges', 'Acciones vencidas', venc.length, 'de ' + acc.length + ' abiertas (todos los temas)', venc.length ? '#B4361F' : '') +
-      kpi('#est', 'Residuos', atr.length, 'con más de 10 días sin retiro', atr.length ? '#8A5200' : '') +
-      kpi('#agua', 'Agua', noApta.length + tanV + ptoV, noApta.length + ' NO APTA · ' + tanV + ' limpieza(s) · ' + ptoV + ' análisis vencidos', (noApta.length + tanV + ptoV) ? '#B4361F' : '') +
-      kpi('#plagas', 'Plagas', plagas.length, 'casos abiertos · ' + plAtr + ' con revisión atrasada', plAtr ? '#B4361F' : '') +
-      kpi('#bib', 'Documentos', docs.length, 'a revisar en 60 días', docs.length ? '#8A5200' : '') +
-      kpi('#est', 'Establecimientos', hab.length + ' / ' + F.length, 'habilitados en la aplicación') + '</div>' +
+    resumenHtml + urgentesHtml + estadoModulosHtml +
+    '<div style="margin-top:6px">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) + '</div>' +
     modulosHtml(TB.modulos, card, TB.docsEst) +
-    '<div class="tb2" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr)">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) +
-      card('Requiere atención', null, at.length ? '<div style="display:flex;flex-direction:column">' + at.slice(0, 10).map(x => '<a class="at" href="' + x[3] + '"><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(x[2]) + '</small></span></a>').join('') + '</div>' + (at.length > 10 ? '<span class="mu peq">Y ' + (at.length - 10) + ' más.</span>' : '') : '<div class="mu">Nada urgente: todo al día.</div>') + '</div>' +
+    '<h2 style="margin:18px 0 8px;font-size:17px">Gráficos: residuos, agua y acciones</h2>' +
     '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">' +
       card('Agua: tanques y canillas', ['#agua', 'Ver'], grHoriz([['Tanques y cisternas', estadoBarra(tanq)], ['Canillas (bacteriológico)', estadoBarra(ptos)]], Math.max(1, tanq.length, ptos.length)) + leyenda([['Al día', '#1E6B42'], ['Por vencer', '#B7791F'], ['Vencido', '#B4361F'], ['Sin registro', '#B8C4CA']])) +
       card('Acciones abiertas por tema', ['#ges', 'Ver todas'], grHoriz(orig, Math.max(1, ...orig.map(o => o[1][0][0] + o[1][1][0]))) + leyenda([['En plazo', '#5894A7'], ['Vencidas', '#B4361F']])) +
@@ -718,6 +768,10 @@ async function inicio(fresco) {
       card('Diagnóstico de residuos por área', ['#diag', 'Ver'], grHoriz(diagA, 100)) +
       card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') + '</div>');
   $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
+  { let fm = '', fu = '', todos = false; const L = document.querySelectorAll('#uLista [data-m]'), ver = () => { let n = 0; L.forEach(a => { const ok = (!fm || a.dataset.m === fm) && (!fu || a.dataset.u === fu); n += ok ? 1 : 0; a.hidden = !(ok && (todos || fm || fu || n <= 8)); }); const b = $('uMas'); if (b) b.hidden = todos || fm || fu; };
+    document.querySelectorAll('#uFil [data-um]').forEach(b => b.onclick = () => { fm = b.dataset.um; document.querySelectorAll('#uFil [data-um]').forEach(x => x.classList.toggle('on', x === b)); ver(); });
+    document.querySelectorAll('[data-uf]').forEach(a => a.onclick = e => { e.preventDefault(); fu = fu === a.dataset.uf ? '' : a.dataset.uf; ver(); const l = $('uLista'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    if ($('uMas')) $('uMas').onclick = () => { todos = true; ver(); }; }
   $('tbEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
   $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
 }
@@ -1257,9 +1311,10 @@ const BJ_TIPOS_UI = {
   CONTACTOS: { t: 'Contactos y referentes', d: 'Dirección, servicios y un referente de residuos por cada lugar, con teléfonos y correos. Al volver, actualiza la agenda (CONTACTOS).', para: 'Dirección o referente' },
   RED_HYS: { t: 'Profesionales y técnicos de HyS', d: 'Quiénes trabajan en Higiene y Seguridad en el establecimiento: matrícula, horas y contacto. Al volver, actualiza la red de HyS.', para: 'Profesionales y técnicos' },
   NOMINA_PERSONAL: { t: 'Nómina de personal', d: 'Todo el personal del establecimiento con CUIL, fecha de ingreso, lugar, servicio, puesto y tareas. Al volver, actualiza la base de trabajadores (datos para la NTE).', para: 'Servicio de Personal' },
+  INVENTARIO_AGUA: { t: 'Inventario de agua: tanques, cisternas y canillas', d: 'Los tanques, cisternas y canillas de muestreo que ya están cargados, más filas vacías para agregar. Sirve para cualquier establecimiento, incluidos los que se sumen. Al volver, actualiza el inventario de Agua (la limpieza y los análisis se cargan en la ficha).', para: 'Referente, Mantenimiento o HyS' },
   DATOS_ESTABLECIMIENTO: { t: 'Datos del establecimiento', d: 'Director, dirección, teléfonos, empresa de residuos y servicio de HyS. Al volver, actualiza la BASE COMÚN.', para: 'Dirección' }
 };
-const BJ_CAMPOS = { FECHA_INGRESO: 'Fecha de ingreso', SITIO: 'Lugar', FUNCION: 'Función o puesto',  RESPONSABLE_DIRECCION: 'Responsable', FECHA_PREVISTA: 'Fecha prevista', OBSERVACIONES: 'Observaciones', RESPONSABLE: 'Nombre', TELEFONO_FIJO: 'Teléfono fijo', CORREO_INSTITUCIONAL: 'Correo institucional', CORREO_PERSONAL: 'Correo personal', APELLIDO_Y_NOMBRE: 'Apellido y nombre', TITULO_O_MATRICULA: 'Título y matrícula', HORAS_SEMANALES: 'Horas semanales', EMPRESA_RESIDUOS: 'Empresa de residuos', SERVICIO_HYS: 'Servicio de HyS' };
+const BJ_CAMPOS = { FECHA_INGRESO: 'Fecha de ingreso', SITIO: 'Lugar', FUNCION: 'Función o puesto',  RESPONSABLE_DIRECCION: 'Responsable', FECHA_PREVISTA: 'Fecha prevista', OBSERVACIONES: 'Observaciones', RESPONSABLE: 'Nombre', TELEFONO_FIJO: 'Teléfono fijo', CORREO_INSTITUCIONAL: 'Correo institucional', CORREO_PERSONAL: 'Correo personal', APELLIDO_Y_NOMBRE: 'Apellido y nombre', TITULO_O_MATRICULA: 'Título y matrícula', HORAS_SEMANALES: 'Horas semanales', EMPRESA_RESIDUOS: 'Empresa de residuos', SERVICIO_HYS: 'Servicio de HyS', UBICACION: 'Ubicación', CAPACIDAD_L: 'Capacidad (litros)', QUIEN_LIMPIA: 'Quién lo limpia', FRECUENCIA_LIMPIEZA_MESES: 'Frecuencia de limpieza (meses)', TANQUE_ASOCIADO: 'Tanque que la abastece', FUENTE: 'Fuente', USO: 'Uso', TAPA: 'Tapa', ACCESO: 'Acceso' };
 const bjCampo = c => BJ_CAMPOS[c] || (c.charAt(0) + c.slice(1).toLowerCase()).replace(/_/g, ' ');
 let MOD = { tipo: 'RESPUESTA_INFORME', cod: '' };
 async function modelos() {
@@ -1952,7 +2007,7 @@ async function agua(modo) {
   if (!TB || TB.vacio) { cargando(R, 'Leyendo…'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
   const nom = c => ((RES && RES.filas.find(f => f.cod === c)) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
   const porEst = {}; TB.tanques.forEach(t => { const x = porEst[t.cod] = porEst[t.cod] || { t: 0, ok: 0 }; x.t++; if (t.aldia) x.ok++; });
-  const A = FILTRO.area, todos = RES ? RES.filas.filter(f => !A || f.area === A) : [], areas = RES ? Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort() : [];
+  const A = FILTRO.area, todos = RES ? RES.filas.filter(f => /^activ/i.test(f.estado) && (!A || f.area === A)) : [], areas = RES ? Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort() : [];
   const enA = c => !A || (RES && (RES.filas.find(f => f.cod === c) || {}).area === A);
   const listaT = todos.map(f => f.cod).concat(Object.keys(porEst).filter(c => !RES || !RES.filas.some(f => f.cod === c))).sort((a, b) => (porEst[b] ? 1 : 0) - (porEst[a] ? 1 : 0) || nom(a).localeCompare(nom(b), 'es'));
   const conInv = listaT.filter(c => porEst[c]).length;
@@ -1962,17 +2017,19 @@ async function agua(modo) {
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
     ? '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
-      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : 'Sin inventario cargado', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Todos los establecimientos; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS). Los que no están habilitados en la aplicación todavía no pueden cargar.</span></section>' +
+      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
-      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + (ptoEst.length ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
+      '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
+        todos.filter(f => !pe[f.cod]).map(f => fila(esc(nom(f.cod)), '<span style="color:#B4361F;font-weight:700">Sin canillas (puntos de muestreo) cargadas · pendiente</span>', '#ficha/' + encodeURIComponent(f.cod) + '/agua')).join('') +
         ptoEst.map(([c, x]) => fila(esc(nom(c)), x.t + (x.t > 1 ? ' canillas' : ' canilla') + ' · ' + [[x.aldia, 'al día'], [x.porvencer, 'por vencer'], [x.vencida, 'vencidas'], [x.sin, 'sin análisis'], [x.unica, 'muestra única']].filter(y => y[0]).map(y => y[0] + ' ' + y[1]).join(' · '), '#ficha/' + encodeURIComponent(c) + '/agua')).join('')
-        : '<div class="mu">Ningún establecimiento cargó todavía sus canillas (puntos de muestreo).</div>') + '</section>'
+        : '<div class="mu">Ningún establecimiento cargó todavía sus canillas (puntos de muestreo).</div>') + '<a class="btn sec" href="#modelos" id="invModelo" style="margin-top:10px;display:inline-block">Modelo para relevar el inventario de agua</a><span class="mu peq" style="display:block;margin-top:6px">Planilla para completar los tanques, cisternas y canillas de cualquier establecimiento. Al volver se carga desde «Bandeja de entrada».</span></section>'
     : '<section class="card" id="mipyvBox" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Registro MIPyV (operarios de la red Trelew)</h2><div class="mu">Leyendo…</div></section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Avisos de los establecimientos (casos abiertos)</h2>' + (plagas.length ? plagas.map(p => fila(esc(nom(p.cod)) + ' · ' + esc(p.plaga), esc(p.caso) + (p.revision ? ' · revisión ' + fechaTxt(p.revision) + (p.revision < hoy ? ' (atrasada)' : '') : ' · sin intervención'), '#ficha/' + encodeURIComponent(p.cod) + '/plagas')).join('') : '<div class="mu">Ninguno.</div>') + '</section>';
   marco(R, '<div class="cab"><div><span class="mu peq">' + (modo === 'agua' ? '2 · Agua' : '3 · Plagas') + '</span><h1>' + (modo === 'agua' ? 'Agua en la red' : 'Plagas en la red') + '</h1><span class="mu peq">' + (modo === 'agua' ? 'Lo cargan los establecimientos desde «Mi establecimiento». Detalle en la ficha de cada uno.' : 'Lo cargan los operarios desde la app MIPyV y los establecimientos desde «Mi establecimiento» (avisos).') + '</span></div>' +
     '<div class="filtros"><label class="f">Área<select class="c" id="agA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div></div>' +
     '<div class="tb3">' + cuerpo + '</div>');
   $('agA').onchange = e => { FILTRO.area = e.target.value; agua(modo); };
+  if ($('invModelo')) $('invModelo').onclick = () => { MOD.tipo = 'INVENTARIO_AGUA'; };
   if (modo === 'plagas') mipyv();
 }
 // Registro MIPyV (Modulo5.gs): lo cargan los operarios desde su app; acá se ve y se marca «revisado»
@@ -4274,12 +4331,13 @@ function eeDibujar(cod) {
 }
 </script>
 <script>
-// Portal HyS · 5 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026) · 0.4 (19/10/2026): pestaña Investigaciones
+// Portal HyS · 5 · Radiaciones ionizantes (Radiaciones.gs) · versión 0 (13/10/2026) · 0.4 (19/10/2026): pestaña Investigaciones · 0.5 (20/10/2026): vistas del tablero
 // Rayos X: radiología, tomografía, arco en C y odontológicos, para toda la red. Personal expuesto y dosímetros (altas, bajas a pedido,
 // reactivaciones, extravíos), controles dosimétricos mensuales (PDF), eventos (registros anormales, extravíos, exposición accidental),
 // salas y equipos (habilitación, plano de plomado, blindaje, levantamiento radiométrico, control de calidad), documentos y requisitos legales.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
-let RADT = null, RADD = {}, RADF = { cod: '', tab: 'sit', ver: 'act', q: '', sitio: '' };
+let RADT = null, RADD = {}, RADF = { cod: '', tab: 'sit', ver: 'act', q: '', sitio: '', vista: (function () { try { return localStorage.getItem('radVista') || 'res'; } catch (e) { return 'res'; } })() };
+const RADV = { est: '', grupo: '', estado: 'uso', q: '', solo: '', ev: 'abiertos' };
 const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['inv', 'Investigaciones'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
 const RAD_FECHA = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], sd: ['Sin dato', 'gr'] };
 const radChipF = (e, f) => { const x = RAD_FECHA[e] || RAD_FECHA.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (f ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(f) + '</div>' : ''); };
@@ -4295,13 +4353,22 @@ function radNoInstalado(hash, r) {
     (r && r.instalado === false ? '<section class="card"><h2>Cómo se instala</h2><ol class="peq"><li>En el editor de Apps Script del «Sistema HyS», elegí la función <b>construirModuloRadiaciones</b> y tocá «Ejecutar» (una sola vez).</li><li>Se crea el libro «RADIACIONES IONIZANTES · Sistema HyS» y la carpeta SISTEMA HyS › MÓDULO 9 · RADIACIONES IONIZANTES.</li><li>Volvé a esta pantalla y tocá «Actualizar».</li></ol></section>' : ''));
 }
 // ------------------------------------------------------------------ Tablero de la red
+const RAD_ALCANCE = '<div class="aviso" style="margin-bottom:14px"><b>Quién va en cada establecimiento.</b> El personal del <b>Servicio de Radiología</b> (no incluye PROSATE, quirófano, traumatología, cirugía ni odontología) rota entre el HZT y el HMH: se gestiona como una sola unidad <b>HZT/HMH</b> y se carga en el HZT. <b>PROSATE</b> es la ex ADOS y depende del HZT. <b>Odontología</b> depende del HZT (CAPS y sede ex ADOS). Quirófano, traumatología y cirugía se cargan en el establecimiento donde trabajan.</div>';
 async function radTablero(fresco) {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } }
   if (!RADT || fresco) { cargando('#rad', 'Armando el tablero de radiaciones…'); try { RADT = await api('p_rad_tablero', { fresco: !!fresco }, 180000); } catch (e) { return; } }
   if (!RADT.ok) { const r = RADT; RADT = null; return radNoInstalado('#rad', r); }
   const T = RADT.totales, A = FILTRO.area, areas = Array.from(new Set(RADT.establecimientos.map(e => e.area))).filter(Boolean).sort();
-  const E = RADT.establecimientos.filter(e => (!A || e.area === A) && (RADF.todos || e.r.personas || e.r.equipos || e.r.sitiosRx)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
-  const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
+  let E = RADT.establecimientos.filter(e => (!A || e.area === A) && (RADF.todos || e.r.personas || e.r.equipos || e.r.sitiosRx)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  // HZT y HMH se muestran juntos: el servicio de Radiología rota entre ambos y se gestiona como una sola unidad (se carga en el HZT).
+  const uH = E.find(e => e.cod === 'HZT'), uM = E.find(e => e.cod === 'HMH'); let nUnidad = 0;
+  if (uH && uM) { const a = uH.r, b = uM.r, r = Object.assign({}, a);
+    ['sitiosRx', 'sitiosConfirmar', 'personas', 'activos', 'bajas', 'extraviados', 'sinAutorizacion', 'eventosAbiertos', 'anormalesAbiertos', 'equipos', 'habVencidas', 'habSinDato', 'habPorVencer', 'sinPlano', 'invAbiertas'].forEach(k => r[k] = (a[k] || 0) + (b[k] || 0));
+    r.ultimoControl = [a.ultimoControl, b.ultimoControl].filter(Boolean).sort().pop() || ''; r.faltanMeses = Array.from(new Set((a.faltanMeses || []).concat(b.faltanMeses || []))).sort();
+    r.requisitos = a.requisitos; r.requisitosConDoc = Math.max(a.requisitosConDoc || 0, b.requisitosConDoc || 0);
+    const u = { cod: 'HZT', nombre: 'HZT / HMH · Radiología (unidad conjunta)', area: uH.area, r: r, unidad: true };
+    E = E.filter(e => e !== uH && e !== uM); E.unshift(u); nUnidad = 1; }
+  const kpi = (t, v, s, col, vv) => '<' + (vv ? 'a href="#rad" data-v="' + vv + '" style="cursor:pointer"' : 'div') + ' class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></' + (vv ? 'a' : 'div') + '>';
   const at = [];
   RADT.establecimientos.filter(e => !A || e.area === A).forEach(e => { const r = e.r, h = '#radest/' + encodeURIComponent(e.cod);
     if (r.anormalesAbiertos) at.push(['er', r.anormalesAbiertos + ' registro(s) anormal(es) o exposición accidental abiertos', e.nombre, h + '/eve']);
@@ -4315,11 +4382,11 @@ async function radTablero(fresco) {
     '<div class="filtros"><label class="f">Área<select class="c" id="rdA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
     '<label class="f">Abrir un establecimiento<select class="c" id="rdE">' + selectorEst('', false) + '</select></label>' +
     radLink(RADT.libro, 'Planilla del módulo') + ' ' + radLink(RADT.carpeta, 'Carpeta del módulo') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
-    '<div class="tb5">' + kpi('Sitios con rayos X', T.sitiosRx || 0, (T.sitiosConfirmar || 0) + ' sitios de la provincia a confirmar') + kpi('Establecimientos', T.establecimientos, 'con sitios, personal o equipos cargados') + kpi('Dosímetros activos', T.activos, 'personas con dosímetro en uso') +
-    kpi('Extraviados', T.extraviados, 'dosímetros a reponer', T.extraviados ? 'var(--er)' : '') + kpi('Eventos abiertos', T.eventosAbiertos, T.invAbiertas ? T.invAbiertas + ' investigación(es) de dosis abierta(s)' : 'anormales, extravíos y otros', T.eventosAbiertos || T.invAbiertas ? 'var(--er)' : '') +
-    kpi('Equipos', T.equipos, T.habVencidas ? T.habVencidas + ' con habilitación vencida' : 'en uso o fuera de servicio', T.habVencidas ? 'var(--er)' : '') + kpi('Sin controles al día', T.faltanControles, 'establecimientos con meses sin PDF (últimos 3)', T.faltanControles ? 'var(--wa)' : '') + '</div>' +
+    radVistasTabs() + (RADF.vista !== 'res' ? '<div id="rdV"></div>' : RAD_ALCANCE + '<div class="tb5">' + kpi('Sitios con rayos X', T.sitiosRx || 0, (T.sitiosConfirmar || 0) + ' sitios de la provincia a confirmar') + kpi('Establecimientos', T.establecimientos - nUnidad, nUnidad ? 'con datos cargados (HZT y HMH cuentan como uno)' : 'con sitios, personal o equipos cargados') + kpi('Dosímetros activos', T.activos, 'personas con dosímetro en uso', '', 'per') +
+    kpi('Extraviados', T.extraviados, 'dosímetros a reponer', T.extraviados ? 'var(--er)' : '', 'per') + kpi('Eventos abiertos', T.eventosAbiertos, T.invAbiertas ? T.invAbiertas + ' investigación(es) de dosis abierta(s)' : 'anormales, extravíos y otros', T.eventosAbiertos || T.invAbiertas ? 'var(--er)' : '', 'eve') +
+    kpi('Equipos', T.equipos, T.habVencidas ? T.habVencidas + ' con habilitación vencida' : 'en uso o fuera de servicio', T.habVencidas ? 'var(--er)' : '', 'sal') + kpi('Sin controles al día', T.faltanControles, 'establecimientos con meses sin PDF (últimos 3)', T.faltanControles ? 'var(--wa)' : '', 'con') + '</div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Por establecimiento</h2><label class="peq"><input type="checkbox" id="rdTodos"' + (RADF.todos ? ' checked' : '') + '> Mostrar también los que no tienen datos</label></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Sitios con rayos X</th><th>Dosímetros</th><th>Último control</th><th>Eventos</th><th>Equipos</th><th>Requisitos con documento</th></tr></thead><tbody>' +
-    (E.length ? E.map(e => { const r = e.r; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td>' +
+    (E.length ? E.map(e => { const r = e.r; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + (e.unidad ? 'Hospital Zonal Trelew + Hospital María Humphreys · se carga en el HZT' : esc(e.cod)) + '</div></td>' +
       '<td>' + (r.sitiosRx ? r.sitiosRx : '<span class="mu">—</span>') + (r.sitiosConfirmar ? ' <span class="chip wa mini">' + r.sitiosConfirmar + ' a confirmar</span>' : '') + '</td>' +
       '<td>' + (r.personas ? r.activos + ' activos' + (r.bajas ? ' <span class="mu peq">· ' + r.bajas + ' de baja</span>' : '') + (r.extraviados ? ' <span class="chip er mini">' + r.extraviados + ' extraviado(s)</span>' : '') : '<span class="mu">—</span>') + '</td>' +
       '<td>' + (r.ultimoControl ? radMes(r.ultimoControl) : '<span class="mu">—</span>') + (r.faltanMeses.length ? '<div class="chip wa mini">faltan ' + r.faltanMeses.length + '</div>' : '') + '</td>' +
@@ -4327,11 +4394,14 @@ async function radTablero(fresco) {
       '<td>' + (r.equipos ? r.equipos + (r.habVencidas ? ' <span class="chip er mini">' + r.habVencidas + ' hab. vencida</span>' : r.habSinDato ? ' <span class="chip gr mini">' + r.habSinDato + ' sin dato</span>' : '') : '<span class="mu">—</span>') + '</td>' +
       '<td>' + (r.requisitos ? r.requisitosConDoc + ' de ' + r.requisitos : '—') + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="mu">Todavía no hay datos cargados. Elegí un establecimiento arriba para empezar.</td></tr>') +
     '</tbody></table></div></section>' +
-    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 16).map(v => '<a class="at" href="' + v[3] + '"><span class="tag ' + v[0] + '">' + (v[0] === 'er' ? 'Urgente' : v[0] === 'wa' ? 'Pronto' : 'Completar') + '</span><span><b>' + esc(v[1]) + '</b><small>' + esc(v[2]) + '</small></span></a>').join('') : '<p class="mu" style="margin:0">Nada pendiente con los datos cargados.</p>') + '</section></div>');
+    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 16).map(v => '<a class="at" href="' + v[3] + '"><span class="tag ' + v[0] + '">' + (v[0] === 'er' ? 'Urgente' : v[0] === 'wa' ? 'Pronto' : 'Completar') + '</span><span><b>' + esc(v[1]) + '</b><small>' + esc(v[2]) + '</small></span></a>').join('') : '<p class="mu" style="margin:0">Nada pendiente con los datos cargados.</p>') + '</section></div>'));
   $('rdA').onchange = e => { FILTRO.area = e.target.value; radTablero(); };
   $('rdE').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value); };
-  $('rdTodos').onchange = e => { RADF.todos = e.target.checked; radTablero(); };
-  $('rdAct').onclick = () => radTablero(true);
+  if ($('rdTodos')) $('rdTodos').onchange = e => { RADF.todos = e.target.checked; radTablero(); };
+  $('rdAct').onclick = () => { RADD = {}; radTablero(true); };
+  document.querySelectorAll('[data-v]').forEach(a => a.onclick = ev => { ev.preventDefault(); radSetVista(a.dataset.v); });
+  document.querySelectorAll('[data-vt]').forEach(a => a.onclick = ev => { ev.preventDefault(); radSetVista(a.dataset.vt); });
+  if (RADF.vista !== 'res') radVista(E.map(e => e.unidad ? 'HZT' : e.cod).concat(uH && uM && E.some(e => e.unidad) ? ['HMH'] : []), at);
   document.querySelectorAll('tr.cl[data-cod]').forEach(tr => tr.onclick = () => location.hash = '#radest/' + encodeURIComponent(tr.dataset.cod));
 }
 // ------------------------------------------------------------------ Establecimiento
@@ -4349,7 +4419,7 @@ async function radEst(a, fresco) {
   marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">5 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
     R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + (R.invAbiertas ? R.invAbiertas + ' investigación(es) de dosis abierta(s) · ' : '') + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
     '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
-    '<div class="tabs" style="margin-bottom:14px">' + RAD_TABS.map(t => '<a class="btn ' + (t[0] === RADF.tab ? 'pri' : 'sec') + '" href="#radest/' + encodeURIComponent(cod) + '/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>' + cuerpo);
+    ((cod === 'HZT' || cod === 'HMH') ? RAD_ALCANCE : '') + '<div class="tabs" style="margin-bottom:14px">' + RAD_TABS.map(t => '<a class="btn ' + (t[0] === RADF.tab ? 'pri' : 'sec') + '" href="#radest/' + encodeURIComponent(cod) + '/' + t[0] + '">' + t[1] + '</a>').join('') + '</div>' + cuerpo);
   $('rdOtro').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value) + '/' + RADF.tab; };
   $('rdAct').onclick = () => radEst(encodeURIComponent(cod) + '/' + RADF.tab, true);
   $('rdSit').onchange = e => { RADF.sitio = e.target.value; radEst(encodeURIComponent(cod) + '/' + RADF.tab); };
@@ -4773,6 +4843,99 @@ function radMov(D) {
   return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Movimientos del personal expuesto</h2><span class="mu peq">Altas, bajas, reactivaciones, cambios y extravíos. Los últimos 200.</span></div><div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Persona</th><th>Movimiento</th><th>Dosímetro</th><th>Detalle</th><th>Documento</th><th>Cargó</th></tr></thead><tbody>' +
     (D.movimientos.length ? D.movimientos.map(m => '<tr><td>' + fechaTxt(m.FECHA) + '</td><td>' + esc(m.APELLIDO_Y_NOMBRE) + '</td><td><b>' + esc(m.TIPO) + '</b></td><td>' + esc(m.DOSIMETRO_NRO || '—') + '</td><td class="peq">' + esc(m.DETALLE || '') + '</td><td>' + radLink(m.DOCUMENTO, 'Abrir') + '</td><td class="peq">' + esc(m.CARGADO_POR || '') + '</td></tr>').join('')
       : '<tr><td colspan="7" class="mu">Sin movimientos.</td></tr>') + '</tbody></table></div></section>';
+}
+
+// ------------------------------------------------------------------ Vistas del tablero (0.5, 20/10/2026)
+// El tablero se puede ver como: Resumen · Personal y dosímetros · Dosis · Controles · Eventos e investigaciones · Equipos · Pendientes.
+// Las vistas distintas del resumen juntan los datos de todos los establecimientos con información (HZT y HMH, y los que se vayan sumando).
+const RAD_VISTAS = [['res', 'Resumen'], ['per', 'Personal y dosímetros'], ['dos', 'Dosis'], ['con', 'Controles mensuales'], ['eve', 'Eventos e investigaciones'], ['sal', 'Equipos'], ['pen', 'Pendientes']];
+function radVistasTabs() {
+  return '<div class="tabs" style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px">' + RAD_VISTAS.map(v => '<a class="btn ' + (v[0] === RADF.vista ? 'pri' : 'sec') + '" href="#rad" data-vt="' + v[0] + '">' + v[1] + '</a>').join('') + '</div>';
+}
+function radSetVista(v) { RADF.vista = v; try { localStorage.setItem('radVista', v); } catch (e) { } radTablero(); }
+// Grupo de trabajo según el alcance del módulo (ver RAD_ALCANCE)
+function radGrupo(p) {
+  const t = [p.SERVICIO, p.SECTOR_EXPOSICION, p.FUNCION].join(' ').toLowerCase();
+  if (/prosate/.test(t)) return 'PROSATE (ex ADOS)';
+  if (/quir[óo]fano|cirug|traumat|arco/.test(t)) return 'Quirófano, cirugía y traumatología';
+  if (/odont|caps|primer nivel/.test(t)) return 'Odontología y CAPS';
+  return 'Radiología';
+}
+const radNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? null : n; };
+async function radVista(cods, at) {
+  const cont = $('rdV'); if (!cont) return;
+  cods = Array.from(new Set(cods));
+  const faltan = cods.filter(c => !RADD[c]);
+  if (faltan.length) { cont.innerHTML = '<div class="card"><p class="mu" style="margin:0">Juntando los datos de ' + cods.length + ' establecimiento(s)…</p></div>';
+    try { await Promise.all(faltan.map(async c => { RADD[c] = await api('p_rad_detalle', { cod: c }, 180000); })); } catch (e) { return; } }
+  const Ds = cods.map(c => RADD[c]).filter(d => d && d.ok);
+  const todo = k => [].concat.apply([], Ds.map(d => (d[k] || []).map(x => Object.assign({}, x, { _est: d.cod }))));
+  const lim = (Ds[0] && Ds[0].limites) || { anual: 50, periodo: 30 };
+  const optEst = '<option value="">Todos</option>' + cods.map(c => '<option value="' + esc(c) + '"' + (RADV.est === c ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+  const fEst = l => RADV.est ? l.filter(x => x._est === RADV.est) : l;
+  const lnk = (c, t, x) => '#radest/' + encodeURIComponent(c) + '/' + t;
+  const sel = (id, t, ops, val) => '<label class="f">' + t + '<select class="c" id="' + id + '">' + ops.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label>';
+  const head = (tit, sub, filtros) => '<div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:end"><div><h2>' + tit + '</h2><span class="mu peq">' + sub + '</span></div><div class="filtros">' + filtros + '</div></div>';
+  const rer = () => radVista(cods, at);
+  const bind = (ids) => ids.forEach(([id, k]) => { const el = $(id); if (!el) return; if (el.tagName === 'INPUT') el.oninput = () => { RADV[k] = el.value; clearTimeout(radVista.t); radVista.t = setTimeout(() => { rer(); const i = $(id); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); }; else el.onchange = () => { RADV[k] = el.value; rer(); }; });
+  const grupos = ['Radiología', 'PROSATE (ex ADOS)', 'Odontología y CAPS', 'Quirófano, cirugía y traumatología'];
+  const q = (RADV.q || '').toLowerCase();
+  let html = '';
+  // última dosis por persona (por DNI)
+  const dosis = todo('dosis').filter(d => d.ESTADO !== 'Anulado'), ult = {};
+  dosis.forEach(d => { const k = String(d.DNI || d.APELLIDO_Y_NOMBRE); if (!ult[k] || String(d.PERIODO_HASTA) > String(ult[k].PERIODO_HASTA)) ult[k] = d; });
+  if (RADF.vista === 'per') {
+    const P = fEst(todo('personal')).map(p => Object.assign(p, { _g: radGrupo(p), _d: ult[String(p.DNI)] }));
+    const cnt = f => P.filter(f).length, uso = p => p.ESTADO_DOSIMETRO === 'Activo';
+    const F = P.filter(p => (!RADV.grupo || p._g === RADV.grupo) && (RADV.estado === 'todos' || (RADV.estado === 'uso' ? uso(p) : RADV.estado === 'bajas' ? /^Baja/.test(p.ESTADO_DOSIMETRO) : RADV.estado === 'sd' ? /Sin dos|Extrav|Suspend/.test(p.ESTADO_DOSIMETRO) : RADV.estado === 'sinaut' ? uso(p) && p.AUTORIZACION_INDIVIDUAL !== 'Sí' : true)) &&
+      (!q || (p.APELLIDO_Y_NOMBRE + ' ' + p.DNI + ' ' + p.DOSIMETRO_NRO + ' ' + p.SERVICIO).toLowerCase().indexOf(q) >= 0)).sort((a, b) => a._g.localeCompare(b._g) || String(a.APELLIDO_Y_NOMBRE).localeCompare(String(b.APELLIDO_Y_NOMBRE)));
+    const resumen = grupos.map(g => '<span class="chip gr" style="margin-right:6px">' + esc(g) + ': ' + cnt(p => p._g === g && uso(p)) + '</span>').join('');
+    html = '<section class="card tabla">' + head('Personal y dosímetros (' + F.length + ' de ' + P.length + ')', 'Todos los establecimientos juntos. En uso por grupo: ' + resumen,
+      sel('vEst', 'Establecimiento', [['', 'Todos']].concat(cods.map(c => [c, c])), RADV.est) + sel('vGr', 'Grupo', [['', 'Todos']].concat(grupos.map(g => [g, g])), RADV.grupo) +
+      sel('vEs', 'Estado', [['uso', 'En uso (' + cnt(uso) + ')'], ['sd', 'Sin dosímetro / extraviado'], ['sinaut', 'En uso sin autorización individual'], ['bajas', 'Bajas'], ['todos', 'Todos']], RADV.estado) + '<label class="f">Buscar<input class="c" id="vQ" value="' + esc(RADV.q) + '" placeholder="Nombre, DNI o dosímetro"></label>') +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Grupo</th><th>Dosímetro</th><th>Estado</th><th>Última dosis</th><th>Autorización</th><th>Est.</th></tr></thead><tbody>' +
+      (F.length ? F.map(p => { const d = p._d; return '<tr class="cl" data-go="' + esc(lnk(p._est, 'per')) + '"><td><b>' + esc(p.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">DNI ' + esc(p.DNI || 's/d') + '</div></td><td class="peq">' + esc(p._g) + '<div class="mu">' + esc(p.SERVICIO || 's/d') + '</div></td><td class="peq">' + esc(p.DOSIMETRO_NRO || '—') + '</td><td>' + radChipD(p.ESTADO_DOSIMETRO) + '</td>' +
+        '<td class="peq">' + (d ? (radNum(d.DOSIS_MSV) != null ? d.DOSIS_MSV + ' mSv' : esc(d.OBSERVACION || '—')) + '<div class="mu">' + radMes(d.PERIODO_HASTA) + (d.ANUAL_12 !== '' && d.ANUAL_12 != null ? ' · 12 m: ' + d.ANUAL_12 : '') + '</div>' : '<span class="mu">sin dato</span>') + '</td>' +
+        '<td>' + (p.AUTORIZACION_INDIVIDUAL === 'Sí' ? '<span class="chip ok">Sí</span>' : '<span class="chip ' + (p.AUTORIZACION_INDIVIDUAL === 'No' ? 'er' : 'gr') + '">' + esc(p.AUTORIZACION_INDIVIDUAL || 's/d') + '</span>') + '</td><td class="peq">' + esc(p._est) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="mu">Nadie con ese filtro.</td></tr>') + '</tbody></table></div></section>';
+  } else if (RADF.vista === 'dos') {
+    const P = {}; todo('personal').forEach(p => P[String(p.DNI)] = p);
+    let L = Object.keys(ult).map(k => ult[k]); L = fEst(L).map(d => Object.assign(d, { _g: radGrupo(P[String(d.DNI)] || {}) }));
+    const marcado = d => /^[BC\s]+$/i.test(d.OBSERVACION || '') && (d.OBSERVACION || '').trim() !== '', alto = d => radNum(d.DOSIS_MSV) > lim.periodo || radNum(d.ANUAL_C) > lim.anual || radNum(d.ANUAL_12) > lim.anual;
+    const F = L.filter(d => (!RADV.grupo || d._g === RADV.grupo) && (!RADV.solo || (RADV.solo === 'dosis' ? radNum(d.DOSIS_MSV) > 0 : RADV.solo === 'inv' ? marcado(d) : alto(d))) && (!q || (d.APELLIDO_Y_NOMBRE + ' ' + d.DNI).toLowerCase().indexOf(q) >= 0))
+      .sort((a, b) => (radNum(b.ANUAL_12) || 0) - (radNum(a.ANUAL_12) || 0) || (radNum(b.DOSIS_MSV) || 0) - (radNum(a.DOSIS_MSV) || 0));
+    html = '<section class="card tabla">' + head('Dosis: último informe de cada persona (' + F.length + ')', 'Ordenado por la dosis de los últimos 12 meses. Límites: ' + lim.periodo + ' mSv por período y ' + lim.anual + ' mSv por año (Res. SS 273/86).',
+      sel('vEst', 'Establecimiento', [['', 'Todos']].concat(cods.map(c => [c, c])), RADV.est) + sel('vGr', 'Grupo', [['', 'Todos']].concat(grupos.map(g => [g, g])), RADV.grupo) +
+      sel('vSo', 'Mostrar', [['', 'Todos'], ['dosis', 'Con dosis mayor a 0'], ['inv', 'Marcados B o C (a investigar)'], ['alto', 'Sobre los límites']], RADV.solo) + '<label class="f">Buscar<input class="c" id="vQ" value="' + esc(RADV.q) + '" placeholder="Nombre o DNI"></label>') +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Grupo</th><th>Período</th><th>Dosis (mSv)</th><th>Obs.</th><th>Año calendario</th><th>12 meses</th><th>Informe</th></tr></thead><tbody>' +
+      (F.length ? F.map(d => '<tr class="cl"' + (alto(d) ? ' style="background:#FDECEA"' : marcado(d) ? ' style="background:#FFF6E0"' : '') + ' data-go="' + esc(lnk(d._est, 'dos')) + '"><td><b>' + esc(d.APELLIDO_Y_NOMBRE) + '</b><div class="mu peq">DNI ' + esc(d.DNI || 's/d') + '</div></td><td class="peq">' + esc(d._g) + '</td><td class="peq">' + radMes(d.PERIODO_DESDE) + (d.PERIODO_HASTA !== d.PERIODO_DESDE ? ' a ' + radMes(d.PERIODO_HASTA) : '') + '</td><td>' + (d.DOSIS_MSV !== '' && d.DOSIS_MSV != null ? esc(d.DOSIS_MSV) : '<span class="mu">—</span>') + '</td><td class="peq">' + esc(d.OBSERVACION || '') + '</td><td>' + esc(d.ANUAL_C || '') + '</td><td>' + esc(d.ANUAL_12 || '') + '</td><td class="peq">' + radLink(d.ARCHIVO, 'PDF') + '</td></tr>').join('') : '<tr><td colspan="8" class="mu">Nada con ese filtro.</td></tr>') + '</tbody></table></div></section>';
+  } else if (RADF.vista === 'con') {
+    html = '<section class="card tabla">' + head('Controles mensuales: últimos 12 meses', 'Verde: hay informe de dosimetría cargado (PDF). Rojo: falta, con personal en uso. Tocá un establecimiento para cargar o ver el detalle.', '') +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th>' + (Ds[0] ? Ds[0].meses : []).slice().reverse().map(m => '<th class="peq">' + radMes(m).replace(' ', '<br>') + '</th>').join('') + '</tr></thead><tbody>' +
+      Ds.map(d => { const act = (d.personal || []).some(p => p.ESTADO_DOSIMETRO === 'Activo'), con = (d.controles || []).filter(c => c.ESTADO !== 'Anulado');
+        return '<tr class="cl" data-go="' + esc(lnk(d.cod, 'con')) + '"><td><b>' + esc(d.cod) + '</b><div class="mu peq">' + esc(radNom(d.cod)) + '</div></td>' + d.meses.slice().reverse().map(m => { const ok = con.some(c => c.PERIODO === m) || (d.cubiertos && d.cubiertos[m]); return '<td style="text-align:center"><span class="chip ' + (ok ? 'ok' : act ? 'er' : 'gr') + '">' + (ok ? '✓' : act ? '✗' : '–') + '</span></td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div></section>' +
+      '<section class="card tabla" style="margin-top:14px">' + head('Informes cargados', 'Los más recientes primero.', sel('vEst', 'Establecimiento', [['', 'Todos']].concat(cods.map(c => [c, c])), RADV.est)) +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Período</th><th>Est.</th><th>Sitio</th><th>Servicio de dosimetría</th><th>Recibido</th><th>Anormales</th><th>PDF</th></tr></thead><tbody>' +
+      (fEst(todo('controles')).filter(c => c.ESTADO !== 'Anulado').sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))).slice(0, 60).map(c => '<tr class="cl" data-go="' + esc(lnk(c._est, 'con')) + '"><td><b>' + radMes(c.PERIODO) + '</b></td><td>' + esc(c._est) + '</td><td class="peq">' + esc(c.SITIO || 'todo el establecimiento') + '</td><td class="peq">' + esc(c.PROVEEDOR || 's/d') + '</td><td class="peq">' + (c.FECHA_RECEPCION ? fechaTxt(c.FECHA_RECEPCION) : '—') + '</td><td>' + (c.CON_ANORMALES === 'Sí' ? '<span class="chip er">Sí</span>' : esc(c.CON_ANORMALES || '—')) + '</td><td>' + radLink(c.ARCHIVO, 'PDF') + '</td></tr>').join('') || '<tr><td colspan="7" class="mu">Todavía no hay informes cargados.</td></tr>') + '</tbody></table></div></section>';
+  } else if (RADF.vista === 'eve') {
+    const ab = x => !/Cerrado|Anulado/.test(x.ESTADO || ''), ev = fEst(todo('eventos')).map(e => ({ t: 'Evento', f: e.FECHA, c: e._est, p: e.APELLIDO_Y_NOMBRE, d: e.TIPO + (e.DOSIS_MSV ? ' · ' + e.DOSIS_MSV + ' mSv' : ''), s: e.ESTADO, ab: ab(e), tab: 'eve' }))
+      .concat(fEst(todo('investigaciones')).map(i => ({ t: 'Investigación', f: i.FECHA_DETECCION, c: i._est, p: i.APELLIDO_Y_NOMBRE, d: radMes(i.PERIODO) + ' · ' + (i.DOSIS_MSV || '') + ' mSv · causa: ' + (i.CAUSA_PROBABLE || 's/d'), s: i.ESTADO, ab: /Abierto|análisis/.test(i.ESTADO || ''), tab: 'inv' })));
+    const F = ev.filter(x => RADV.ev === 'todos' || x.ab);
+    html = '<section class="card tabla">' + head('Eventos e investigaciones (' + F.length + ')', 'Registros anormales, extravíos, exposiciones accidentales e investigaciones de dosis.', sel('vEst', 'Establecimiento', [['', 'Todos']].concat(cods.map(c => [c, c])), RADV.est) + sel('vEv', 'Mostrar', [['abiertos', 'Solo abiertos'], ['todos', 'Todos']], RADV.ev)) +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Tipo</th><th>Persona</th><th>Detalle</th><th>Est.</th><th>Estado</th></tr></thead><tbody>' +
+      (F.length ? F.map(x => '<tr class="cl" data-go="' + esc(lnk(x.c, x.tab)) + '"><td>' + x.t + '<div class="mu peq">' + (x.f ? fechaTxt(x.f) : '') + '</div></td><td><b>' + esc(x.p || 's/d') + '</b></td><td class="peq">' + esc(x.d) + '</td><td>' + esc(x.c) + '</td><td>' + (x.t === 'Investigación' ? RAD_INV_CHIP(x.s) : '<span class="chip ' + (x.ab ? 'er' : 'ok') + '">' + esc(x.s || 'Abierto') + '</span>') + '</td></tr>').join('') : '<tr><td colspan="5" class="mu">Nada pendiente.</td></tr>') + '</tbody></table></div></section>';
+  } else if (RADF.vista === 'sal') {
+    const S = fEst(todo('salas')).filter(s => s.ESTADO !== 'Baja');
+    html = '<section class="card tabla">' + head('Equipos y vencimientos (' + S.length + ')', 'Habilitación (ARN), levantamiento radiométrico y control de calidad.', sel('vEst', 'Establecimiento', [['', 'Todos']].concat(cods.map(c => [c, c])), RADV.est)) +
+      '<div style="overflow-x:auto"><table><thead><tr><th>Equipo</th><th>Est. / sitio</th><th>Habilitación</th><th>Levantamiento</th><th>Control de calidad</th></tr></thead><tbody>' +
+      (S.length ? S.map(s => '<tr class="cl" data-go="' + esc(lnk(s._est, 'sal')) + '"><td><b>' + esc(s.SALA || 's/d') + '</b><div class="mu peq">' + esc([s.TIPO_EQUIPO, s.MARCA, s.MODELO].filter(Boolean).join(' · ')) + '</div></td><td class="peq">' + esc(s._est) + '<div class="mu">' + esc(s.SITIO || '') + '</div></td><td>' + radChipF(s.hab, s.HABILITACION_VENCE) + '</td><td>' + radChipF(s.lev, s.LEVANTAMIENTO_PROXIMO) + '</td><td>' + radChipF(s.cc, s.CONTROL_CALIDAD_PROXIMO) + '</td></tr>').join('') : '<tr><td colspan="5" class="mu">Todavía no hay equipos cargados. Se cargan en cada establecimiento, pestaña «Salas y equipos».</td></tr>') + '</tbody></table></div></section>';
+  } else if (RADF.vista === 'pen') {
+    const tag = { er: 'Urgente', wa: 'Pronto', gr: 'Completar' };
+    html = '<section class="card" style="display:flex;flex-direction:column;gap:6px"><h2>Pendientes (' + at.length + ')</h2>' + (at.length ? ['er', 'wa', 'gr'].map(k => at.filter(v => v[0] === k).map(v => '<a class="at" href="' + v[3] + '"><span class="tag ' + k + '">' + tag[k] + '</span><span><b>' + esc(v[1]) + '</b><small>' + esc(v[2]) + '</small></span></a>').join('')).join('') : '<p class="mu" style="margin:0">Nada pendiente con los datos cargados.</p>') + '</section>';
+  }
+  cont.innerHTML = html;
+  bind([['vGr', 'grupo'], ['vEs', 'estado'], ['vSo', 'solo'], ['vQ', 'q'], ['vEv', 'ev']]);
+  const e = $('vEst'); if (e) e.onchange = () => { RADV.est = e.value; rer(); };
+  cont.querySelectorAll('tr.cl[data-go]').forEach(tr => tr.onclick = ev => { if (ev.target.closest('a')) return; location.hash = tr.dataset.go; });
 }
 </script>
 <script>
