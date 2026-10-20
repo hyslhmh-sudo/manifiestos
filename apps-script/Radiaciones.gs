@@ -120,10 +120,10 @@ function radSembrarSitios_(ss) {
   pTabla_(sh, RAD.H_SIT.length).forEach(r => ya[limpio_(r.v[1]) + '|' + sinTildes_(r.v[2])] = true);
   const S = pTabla_(pBC_().getSheetByName('SITIOS'), 7), E = pEstablecimientos_().filas, filas = [], hoy = new Date();
   const regla = (cod, sitio, tipo) => {
-    if (cod === 'HZT' && /central/i.test(sitio)) return ['Sí', 'Rayos X y tomografía', ''];
-    if (cod === 'HZT' && /ados/i.test(sitio)) return ['Sí', 'Odontológico', 'Confirmar tipo y cantidad de equipos.'];
-    if (cod === 'HZT' && /CAPS/i.test(tipo)) return ['Sí', 'Odontológico', 'Confirmar tipo de equipo.'];
-    if (cod === 'HMH' && /edificio/i.test(tipo)) return ['Sí', 'Rayos X digital; arco en C (quirófano)', 'Confirmar arco en C.'];
+    if (cod === 'HZT' && /central/i.test(sitio)) return ['Sí', 'Rayos X y tomografía', 'Servicio de Radiología: el personal rota entre HZT y HMH (una sola unidad HZT/HMH, se carga acá). No incluye PROSATE, quirófano, traumatología, cirugía ni odontología.'];
+    if (cod === 'HZT' && /ados/i.test(sitio)) return ['Sí', 'Odontológico', 'Sede ex ADOS: depende del HZT (Odontología). Confirmar tipo y cantidad de equipos.'];
+    if (cod === 'HZT' && /CAPS/i.test(tipo)) return ['Sí', 'Odontológico', 'Odontología depende del HZT. Confirmar tipo de equipo.'];
+    if (cod === 'HMH' && /edificio/i.test(tipo)) return ['Sí', 'Rayos X digital; arco en C (quirófano)', 'Radiología HZT/HMH: el personal del Servicio rota y se carga en HZT. Quirófano y traumatología: se cargan acá. Confirmar arco en C.'];
     return ['A confirmar', '', ''];
   };
   let n = 0;
@@ -178,6 +178,7 @@ const RAD_AYUDA = [
   ['Ayuda · Módulo 9 · Radiaciones ionizantes', ''],
   ['Qué es', 'El registro de rayos X de toda la red: personal expuesto y sus dosímetros, controles mensuales, eventos, salas y equipos, documentos y requisitos legales. Versión 0.'],
   ['Desde dónde se carga', 'Portal HyS › 9 · Radiaciones ionizantes. Todo se puede cargar y corregir también acá, en cada hoja (las filas empiezan en la 6).'],
+  ['Alcance: quién va en cada establecimiento', 'El personal del Servicio de Radiología (técnicos y profesionales de diagnóstico por imágenes; no incluye PROSATE, quirófano, traumatología, cirugía ni odontología) rota entre el HZT y el HMH: se gestiona como una sola unidad HZT/HMH y se carga en el HZT (sitio HZT Central), con un único informe de dosimetría. PROSATE es la ex ADOS y depende del HZT. Odontología depende del HZT (consultorios en los CAPS y en la sede ex ADOS). El personal de quirófano, traumatología y cirugía que use rayos X (arco en C) se carga en el establecimiento donde trabaja.'],
   ['SITIOS_RX', 'Un renglón por sitio de cada establecimiento (edificio, CAPS, sede ex ADOS, dispositivos), copiado de BASE COMÚN › SITIOS. RAYOS_X = Sí, No o A confirmar, y qué equipos hay. Red Trelew: HZT Central, sede ex ADOS, CAPS y HMH cargados con Sí; el resto de la provincia, A confirmar. Las personas, los equipos, los eventos y los documentos llevan su SITIO.'],
   ['PERSONAL_EXPUESTO', 'Una fila por persona. Al cargar el DNI, el portal trae nombre, CUIL, servicio y función de la BASE DE TRABAJADORES. La baja del dosímetro no borra la fila: cambia el estado y queda en MOVIMIENTOS. Una persona puede pedir la baja y volver a darse de alta (Reactivación): se usa la misma fila.'],
   ['MOVIMIENTOS', 'Historial automático de cada alta, baja, reactivación, cambio de dosímetro y extravío.'],
