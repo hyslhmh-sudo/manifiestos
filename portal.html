@@ -101,6 +101,8 @@ nav.lat .titu { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color:
 .kpi2 small { font-size: 12.5px; color: var(--mu); }
 .at { display: flex; gap: 10px; align-items: flex-start; text-decoration: none; padding: 9px 0; border-top: 1px solid #EEF2F4; color: inherit; }
 .at:first-of-type { border-top: 0; }
+.atg { display: block; } .atg > summary { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; list-style: none; } .atg > summary::-webkit-details-marker { display: none; } .atg[open] > summary b::after { content: ' ▴'; } .atg:not([open]) > summary b::after { content: ' ▾'; }
+.atg-l { display: flex; flex-direction: column; margin: 6px 0 0 62px; } .atg-l a { font-size: 13px; padding: 5px 0; border-top: 1px dashed #EEF2F4; text-decoration: none; color: inherit; }
 .at b { font-size: 14px; display: block; } .at small { font-size: 12.5px; color: var(--mu); }
 .tag { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
 .tag.er { background: #FBE6E1; color: #B4361F; } .tag.ok { background: #E2F2E8; color: #1E6B42; } .tag.gr { background: #EEF2F4; color: #5B6B73; } .tag.wa { background: #FFF1D6; color: #8A5200; } .tag.av { background: #E7F0F3; color: #2E5E70; }
@@ -719,10 +721,18 @@ async function inicio(fresco) {
     '<a class="kpi2" href="#ges"><span>PLAN DE ACCIÓN</span><b style="color:' + (venc.length ? '#B4361F' : 'inherit') + '">' + venc.length + '</b><small>vencida(s) de ' + acc.length + ' abiertas</small></a>' +
     '<a class="kpi2" href="#est"><span>ESTABLECIMIENTOS</span><b>' + hab.length + ' / ' + F.length + '</b><small>habilitados en la aplicación</small></a></div>';
   const nombreMod = k => (MODS.find(m => m[0] === k) || [0, 'Residuos'])[1];
+  // Agrupa las filas del mismo módulo y nivel (3 o más) en una sola, que se despliega al tocarla
+  const filasU = []; { const gr = {}; at.forEach(x => { const k = x[4] + '|' + x[0]; (gr[k] = gr[k] || []).push(x); });
+    const hecho = {}; at.forEach(x => { const k = x[4] + '|' + x[0], g = gr[k];
+      if (g.length < 3) { filasU.push({ u: x[0], t: x[1], s: x[2], h: x[3], m: x[4] }); return; }
+      if (hecho[k]) return; hecho[k] = 1; const cods = Array.from(new Set(g.map(y => String(y[1]).split(/[ :·]/)[0]))).filter(Boolean);
+      filasU.push({ u: x[0], m: x[4], hijos: g, t: g.length + ' avisos de ' + nombreMod(x[4]).toLowerCase() + (cods.length ? ' (' + cods.join(', ') + ')' : ''), s: ({ er: 'urgentes', wa: 'próximos a vencer', av: 'para tener en cuenta' })[x[0]] }); }); }
   const urgentesHtml = '<section class="card" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:17px">Lo que requiere atención ahora</h2><span class="mu peq">Ordenado por prioridad · tocá una fila para resolverlo</span></div>' +
     (at.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap" id="uFil"><button class="fchip on" data-um="">Todos (' + at.length + ')</button>' + MODS.filter(m => at.some(x => x[4] === m[0])).map(m => '<button class="fchip" data-um="' + m[0] + '">' + esc(m[1]) + ' (' + at.filter(x => x[4] === m[0]).length + ')</button>').join('') + '</div>' +
-      '<div id="uLista" style="display:flex;flex-direction:column">' + at.map((x, i) => '<a class="at" href="' + x[3] + '" data-u="' + x[0] + '" data-m="' + x[4] + '"' + (i >= 8 ? ' hidden' : '') + '><span class="tag ' + x[0] + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x[0]]) + '</span><span><b>' + esc(x[1]) + '</b><small>' + esc(nombreMod(x[4])) + ' · ' + esc(x[2]) + '</small></span></a>').join('') + '</div>' +
-      (at.length > 8 ? '<button class="btn sec" id="uMas" style="align-self:flex-start">Ver los ' + (at.length - 8) + ' restantes</button>' : '')
+      '<div id="uLista" style="display:flex;flex-direction:column">' + filasU.map((x, i) => { const tg = '<span class="tag ' + x.u + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.u]) + '</span>';
+        if (!x.hijos) return '<a class="at" href="' + x.h + '" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + '</small></span></a>';
+        return '<details class="at atg" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '><summary>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + ' · tocá para ver el detalle</small></span></summary><div class="atg-l">' + x.hijos.map(y => '<a href="' + y[3] + '">' + esc(y[1]) + '</a>').join('') + '</div></details>'; }).join('') + '</div>' +
+      (filasU.length > 8 ? '<button class="btn sec" id="uMas" style="align-self:flex-start">Ver los ' + (filasU.length - 8) + ' restantes</button>' : '')
       : '<div class="mu">Nada urgente: todo al día con los datos cargados.</div>') + '</section>';
   const cnM = (k, n) => at.filter(x => x[4] === k && x[0] === n).length;
   const radT = RADT && RADT.ok ? RADT.establecimientos.filter(e => enA(e.cod)).reduce((o, e) => { o.act += e.r.activos || 0; o.ev += (e.r.eventosAbiertos || 0) + (e.r.invAbiertas || 0); return o; }, { act: 0, ev: 0 }) : null;
