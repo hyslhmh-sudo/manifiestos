@@ -657,6 +657,7 @@ async function inicio(fresco) {
   Object.keys(porEst).forEach(c => at.push(['er', porEst[c] + ' acción(es) vencida(s) · ' + c, nom(c), '#ges']));
   Array.from(new Set(tanq.filter(t => t.estado === 'vencida').map(t => t.cod))).forEach(c => at.push(['er', c + ': limpieza de tanque vencida', 'Registrar la limpieza con el F-AGU-01', '#ficha/' + encodeURIComponent(c)]));
   Array.from(new Set((TB.puntos || []).filter(p => enA(p.cod) && p.estado === 'vencida').map(p => p.cod))).forEach(c => at.push(['er', c + ': análisis de agua vencido', 'Tomar muestra según el proceso provincial', '#ficha/' + encodeURIComponent(c) + '/agua']));
+  estActivos().filter(f => enA(f.cod) && !(TB.tanques || []).some(t => t.cod === f.cod) && !(TB.puntos || []).some(t => t.cod === f.cod)).forEach(f => at.push(['er', f.cod + ': sin inventario de agua cargado (tanques y canillas)', 'No se puede controlar la limpieza ni los análisis · cargar el inventario', '#ficha/' + encodeURIComponent(f.cod) + '/agua']));   // 2 · Agua: habilitados sin datos
   (TB.mediciones || []).filter(m => enA(m.cod) && (m.estado === 'vencida' || m.estado === 'porvencer')).forEach(m => at.push(['er', m.cod + ': ' + m.tipo.toLowerCase() + (m.estado === 'vencida' ? ' vencida' : ' vence el ' + fechaTxt(m.vence)), (m.estado === 'vencida' ? 'Venció el ' + fechaTxt(m.vence) + ' · ' : '') + 'Coordinar la medición y cargar el protocolo (recordatorio por correo los jueves)', '#medic']));
   (TB.rgrl || []).filter(r => enA(r.cod) && r.estadoVto === 'vencida').forEach(r => at.push(['wa', r.cod + ': RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' (' + r.lugar + ')' : ''), 'Se actualiza una vez al año (Res. SRT 463/09)', '#rgrl/' + encodeURIComponent(r.id)]));
   plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
@@ -1069,7 +1070,7 @@ function fichaPunto(cod, R, p) {
 <script src="modulos/cocinas.js?v=14.72"></script>
 <script src="modulos/trabajadores.js?v=14.4"></script>
 <script src="modulos/siniestros.js?v=14.13"></script>
-<script src="modulos/agua-plagas.js?v=14.49"></script>
+<script src="modulos/agua-plagas.js?v=14.77"></script>
 <script src="modulos/capacitaciones.js?v=14.74"></script>
 <script src="modulos/residuos.js?v=14.4"></script>
 <script src="modulos/diagnostico.js?v=14.7"></script>
