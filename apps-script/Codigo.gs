@@ -26,7 +26,7 @@ const CFG = {
 };
 const TZ = 'America/Argentina/Buenos_Aires';
 // Versión del sistema: cambia con cada entrega. Se ve al pie del menú del portal. Si no coincide con la del manual, falta instalar algo.
-const VERSION_SISTEMA = '2026-10-15 · 14.72';
+const VERSION_SISTEMA = '2026-10-20 · 14.73';
 function versionSistema() { Logger.log('Sistema HyS · versión ' + VERSION_SISTEMA); }
 const FOTO_OBLIGATORIA_DESDE = '2027-01-01';   // certificados: desde esta fecha la foto es obligatoria al cargarlos
 // Manifiestos: la foto (o el escaneo en el lote .zip del mes) nunca es obligatoria al cargar, pero tiene que estar antes del día 10 del mes siguiente.
@@ -354,10 +354,32 @@ function librosMapa_() {
 }
 function est_(codigo) { return librosMapa_()[String(codigo || '').trim()] || null; }
 // Establecimientos que aparecen en la aplicación: los que tienen libro y estado «Activa…» en la planilla de claves
+// Establecimientos que aparecen en la lista desplegable. Una sola fuente: BASE COMÚN › ESTABLECIMIENTOS › ESTADO_EN_SISTEMA
+// (los que empiezan con «Activ…», por ejemplo «Activa (piloto)»). Para habilitar uno, se cambia esa celda; se ve en hasta 5 minutos.
+// Si no se puede leer la BASE COMÚN (falta la hoja o la columna), usa como antes la columna de estado de la planilla de claves.
 function listaActivos_() {
-  const m = librosMapa_(), v = SpreadsheetApp.openById(CFG.CLAVES).getSheets()[0].getDataRange().getValues().slice(1);
+  const m = librosMapa_();
+  const ids = listaActivosBC_();
+  if (ids) return ids.filter(id => m[id]).map(id => ({ id: id, nombre: m[id].nombre }));
+  const v = SpreadsheetApp.openById(CFG.CLAVES).getSheets()[0].getDataRange().getValues().slice(1);
   return v.filter(r => m[String(r[1]).trim()] && /^activ/i.test(String(r[4]))).map(r => ({ id: String(r[1]).trim(), nombre: m[String(r[1]).trim()].nombre }));
 }
+function listaActivosBC_() {
+  const c = CacheService.getScriptCache(), k = c.get('est_activos');
+  if (k) return JSON.parse(k);
+  try {
+    const sh = pBC_().getSheetByName('ESTABLECIMIENTOS');
+    if (!sh || sh.getLastRow() < 6) return null;
+    const H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(x => String(x).trim());
+    const jC = H.indexOf('CODIGO'), jE = H.indexOf('ESTADO_EN_SISTEMA');
+    if (jC < 0 || jE < 0) return null;
+    const ids = sh.getRange(6, 1, sh.getLastRow() - 5, sh.getLastColumn()).getValues()
+      .filter(r => String(r[jC]).trim() && /^activ/i.test(String(r[jE]).trim())).map(r => String(r[jC]).trim());
+    c.put('est_activos', JSON.stringify(ids), 300);
+    return ids;
+  } catch (e) { return null; }
+}
+function probarListaActivos() { CacheService.getScriptCache().remove('est_activos'); Logger.log(JSON.stringify({ baseComun: listaActivosBC_(), lista: listaActivos_().map(x => x.id) })); }
 
 /**
  * Crea el libro de cada establecimiento que todavía no tiene: carpeta propia, copia del libro modelo
