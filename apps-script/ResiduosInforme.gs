@@ -1,5 +1,5 @@
 /**
- * SISTEMA HyS · MÓDULO 1 · RESIDUOS · INFORME DE FRECUENCIA DE RETIRO (versión 14.26, 13/10/2026)
+ * SISTEMA HyS · MÓDULO 1 · RESIDUOS · INFORME DE FRECUENCIA DE RETIRO (versión 14.26, 13/10/2026; calendario real 14.80, 20/10/2026)
  * Informe mensual, semestral, anual o de un período a elección, para Jefatura de Área Externa / CAPS, STyC, Direcciones o la
  * Secretaría de Salud. Belén elige los establecimientos y sitios (toda la red Trelew, HZT con o sin CAPS, un CAPS, todos los CAPS,
  * la sede ex ADOS, HSST con sus CAPS, etc.) y el informe muestra, por sitio, la frecuencia pactada y la real, con las fechas
@@ -51,26 +51,32 @@ function resInfCalcular_(x) {
     const d = s.dias[r.fecha] = s.dias[r.fecha] || { fecha: r.fecha, nros: [], y1: 0, y3: 0, otras: 0, enKg: 0 }; if (r.nro && d.nros.indexOf(r.nro) < 0) d.nros.push(r.nro);
     d.y1 += r.y1; d.y3 += r.y3; d.otras += r.otras; if (r.enKg) d.enKg++; });
   const meses = rctMeses_(desde, hasta), dif = (a, b) => Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 864e5);
+  // Calendario real (14.80, 20/10/2026): la empresa no retira los domingos ni los feriados nacionales (BASE COMÚN › FERIADOS, IMPEESA_NO_RETIRA = Sí);
+  // retira los feriados y días no laborables provinciales de Chubut. Los esperados salen de los días lunes a sábado sin feriado nacional.
+  const FER = gregFeriados_(), ferEntre = (a, b) => Object.keys(FER).filter(f => f > a && f < b).length;
+  const CAL = (() => { let hab = 0, sab = 0; const fer = []; for (let t = new Date(desde + 'T12:00:00'), e = new Date(hasta + 'T12:00:00'); t <= e; t.setDate(t.getDate() + 1)) {
+    const f = Utilities.formatDate(t, TZ, 'yyyy-MM-dd'), w = t.getDay(); if (w === 0) continue; if (FER[f]) { fer.push([f, FER[f]]); continue; } hab++; if (w === 6) sab++; } return { hab: hab, sab: sab, fer: fer }; })();
   const sitios = Object.keys(S).map(k => {
     const s = S[k], R = Object.keys(s.dias).sort().map(f => s.dias[f]);
     const u = rctUbicar_(C, s.cod, s.sitio, s.tipo, hasta.slice(0, 7)) || {};
     const frec = u.frecuencia && !/^s\/d/i.test(u.frecuencia) ? u.frecuencia : (frecBC[k] || u.frecuencia || 's/d (revisar)');
     const origen = u.frecuencia && !/^s\/d/i.test(u.frecuencia) ? (u.deduccion ? 'Deducción (no figura en el contrato)' : 'Contrato ' + u.contrato) : (frecBC[k] ? 'BASE COMÚN › SITIOS' : 's/d');
-    const porMes = rctEsperados_(frec), esperados = porMes ? Math.round(porMes * dPer / 30.4375 * 10) / 10 : null, lim = resLimiteDias_(frec);
+    const porMes = rctEsperados_(frec), fN = sinTildes_(frec), diaria = /diari/.test(fN) && !/todos los dias|lun a dom/.test(fN),
+      esperados = porMes ? Math.round((diaria ? CAL.hab : porMes * CAL.hab / 26.083) * 10) / 10 : null, lim = resLimiteDias_(frec);
     let ant = null; const fuera = [];
-    R.forEach(d => { d.desdeAnt = ant ? dif(ant.fecha, d.fecha) : null; d.excede = d.desdeAnt != null && d.desdeAnt > lim; if (d.excede) fuera.push({ desde: ant.fecha, nrosDesde: ant.nros, hasta: d.fecha, nrosHasta: d.nros, dias: d.desdeAnt }); ant = d; });
+    R.forEach(d => { d.desdeAnt = ant ? dif(ant.fecha, d.fecha) : null; const fe = ant ? ferEntre(ant.fecha, d.fecha) : 0; d.excede = d.desdeAnt != null && d.desdeAnt - fe > lim; if (d.excede) fuera.push({ desde: ant.fecha, nrosDesde: ant.nros, hasta: d.fecha, nrosHasta: d.nros, dias: d.desdeAnt, fer: fe }); ant = d; });
     const sinRetiroFinal = R.length ? dif(R[R.length - 1].fecha, hasta) : null;
-    if (R.length && sinRetiroFinal > lim) fuera.push({ desde: R[R.length - 1].fecha, nrosDesde: R[R.length - 1].nros, hasta: '', nrosHasta: [], dias: sinRetiroFinal, abierto: true });
+    if (R.length && sinRetiroFinal - ferEntre(R[R.length - 1].fecha, hasta) > lim) fuera.push({ desde: R[R.length - 1].fecha, nrosDesde: R[R.length - 1].nros, hasta: '', nrosHasta: [], dias: sinRetiroFinal, abierto: true, fer: ferEntre(R[R.length - 1].fecha, hasta) });
     const gaps = R.slice(1).map(d => d.desdeAnt), cuenta = {}; R.forEach(d => cuenta[d.fecha.slice(0, 7)] = (cuenta[d.fecha.slice(0, 7)] || 0) + 1);
     return { cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, noAplica: /no corresponde|no aplica/i.test(sinTildes_(frec)), origen: origen, limite: lim, esperados: esperados,
       retiros: R.length, manifiestos: R.reduce((a, d) => a + d.nros.length, 0), cumplimiento: esperados ? Math.round(100 * R.length / esperados) : null,
       intervaloProm: gaps.length ? Math.round(10 * gaps.reduce((a, b) => a + b, 0) / gaps.length) / 10 : null, intervaloMax: gaps.length ? Math.max.apply(null, gaps) : null,
       primero: R.length ? R[0].fecha : '', ultimo: R.length ? R[R.length - 1].fecha : '', sinRetiroFinal: sinRetiroFinal, fuera: fuera, porMes: cuenta,
-      y1: Math.round(R.reduce((a, d) => a + d.y1, 0)), y3: Math.round(R.reduce((a, d) => a + d.y3, 0)), enKg: R.reduce((a, d) => a + d.enKg, 0),
+      sabados: diaria ? { pactados: CAL.sab, retirados: R.filter(d => new Date(d.fecha + 'T12:00:00').getDay() === 6).length } : null, enFeriado: R.filter(d => FER[d.fecha]).length, y1: Math.round(R.reduce((a, d) => a + d.y1, 0)), y3: Math.round(R.reduce((a, d) => a + d.y3, 0)), enKg: R.reduce((a, d) => a + d.enKg, 0),
       detalle: R.map(d => ({ fecha: d.fecha, nros: d.nros, y1: Math.round(d.y1), y3: Math.round(d.y3), desdeAnt: d.desdeAnt, excede: d.excede })) };
   }).sort((a, b) => (a.nombre + (a.tipo === 'CAPS' ? 'z' : 'a') + a.sitio).localeCompare(b.nombre + (b.tipo === 'CAPS' ? 'z' : 'a') + b.sitio));
   const ests = Array.from(new Set(sitios.map(s => s.cod))), tot = sitios.reduce((a, s) => a + s.retiros, 0), esp = sitios.filter(s => s.esperados).reduce((a, s) => a + s.esperados, 0);
-  return { ok: true, desde: desde, hasta: hasta, hastaPedido: x.hasta, hoy: hoy, dias: dPer, meses: meses, sitios: sitios, establecimientos: ests.map(c => ({ cod: c, nombre: (L.info[c] || {}).nombre || c })),
+  return { ok: true, desde: desde, hasta: hasta, hastaPedido: x.hasta, hoy: hoy, dias: dPer, habiles: CAL.hab, feriados: CAL.fer, meses: meses, sitios: sitios, establecimientos: ests.map(c => ({ cod: c, nombre: (L.info[c] || {}).nombre || c })),
     totales: { sitios: sitios.length, conRetiros: sitios.filter(s => s.retiros).length, retiros: tot, manifiestos: sitios.reduce((a, s) => a + s.manifiestos, 0),
       esperados: Math.round(esp), cumplimiento: esp ? Math.round(100 * sitios.filter(s => s.esperados).reduce((a, s) => a + s.retiros, 0) / esp) : null,
       intervalosFuera: sitios.reduce((a, s) => a + s.fuera.length, 0), sitiosBajo: sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80).length } };
@@ -156,8 +162,9 @@ function resInfDocumento_(x, R) {
 
     // ---------------- 2. MÉTODO DE TRABAJO
     H1('2. Método de trabajo');
-    P_('Se tomaron los manifiestos cargados en el Sistema HyS para el período indicado. Se considera un retiro cada fecha en que la empresa retiró residuos de un sitio, con uno o más manifiestos. Para cada sitio se informa la frecuencia pactada' + ANEXO + ', los retiros esperados en el período, los realizados, el intervalo promedio y el máximo entre retiros, y los intervalos que superan el admisible.');
+    P_('Se tomaron los manifiestos cargados en el Sistema HyS para el período indicado. Se considera un retiro cada fecha en que la empresa retiró residuos de un sitio, con uno o más manifiestos. Para cada sitio se informa la frecuencia pactada' + ANEXO + ', los retiros esperados en el período, los realizados, el intervalo promedio y el máximo entre retiros, y los intervalos que superan el admisible. Los retiros esperados se calculan sobre el calendario real del período: se descuentan los domingos y los feriados nacionales, en los que la empresa transportista y operadora de residuos peligrosos (Impeesa) no retira; los feriados y días no laborables provinciales de Chubut no se descuentan, porque la empresa retira esos días. Del intervalo entre dos retiros tampoco se computan los feriados nacionales comprendidos. En el período hubo ' + num(R.habiles) + ' días de lunes a sábado con servicio posible.');
     TAB([['Frecuencia pactada', 'Retiros esperados por mes', 'Intervalo máximo admisible'], ['Diaria (lunes a sábado)', '26', '3 días'], ['Tres días por semana', '13', '5 días'], ['Dos días por semana', '8,7', '6 días'], ['Semanal', '4,3', '10 días'], ['Quincenal', '2,2', '20 días'], ['Mensual', '1', '40 días'], ['Sin frecuencia definida', 's/d', '30 días (referencia)']], [170, 150, 150]);
+    P_(R.feriados.length ? 'Feriados nacionales descontados en el período (' + R.feriados.length + '): ' + R.feriados.map(f => fTxt(f[0]) + ' ' + f[1]).join('; ') + '.' : 'En el período no hubo feriados nacionales de lunes a sábado.');
     P_('Limitaciones: el informe refleja solo lo cargado en el sistema. Un retiro sin manifiesto cargado no aparece y baja el cumplimiento; por eso, antes de reclamar, conviene verificar con el establecimiento que la carga esté completa.' + (R.hastaPedido > R.hasta ? ' El período elegido termina después de la fecha del informe: los datos llegan hasta el ' + fTxt(R.hasta) + '.' : ''));
 
     // ---------------- 3. DESCRIPCIÓN DE LOS HECHOS
@@ -180,9 +187,12 @@ function resInfDocumento_(x, R) {
     H2('4.1 Cumplimiento de la frecuencia');
     if (conEsp.length) P_('De los ' + conEsp.length + ' sitios con frecuencia definida, ' + conEsp.filter(s => s.cumplimiento >= 80).length + ' alcanzaron al menos el 80 % de los retiros esperados y ' + bajos.length + ' quedaron por debajo. ' + (bajos.length ? 'Los de menor cumplimiento son ' + bajos.slice().sort((a, b) => a.cumplimiento - b.cumplimiento).slice(0, 5).map(s => s.sitio + ' (' + num(s.retiros) + ' de ' + num(s.esperados) + ')').join(', ') + '.' : ''));
     else P_('Ningún sitio incluido tiene una frecuencia pactada que permita calcular el cumplimiento.');
+    const diarias = R.sitios.filter(s => s.sabados && s.sabados.pactados);
+    if (diarias.length) P_('Sábados: la frecuencia diaria pactada incluye los sábados. ' + diarias.map(s => s.sitio + ': ' + s.sabados.retirados + ' retiro(s) en ' + s.sabados.pactados + ' sábados del período').join('; ') + '.');
+    const enFer = R.sitios.filter(s => s.enFeriado); if (enFer.length) P_('Retiros registrados en un feriado nacional: ' + enFer.map(s => s.sitio + ' (' + s.enFeriado + ')').join(', ') + '. Conviene verificar la fecha cargada.');
     const sd = R.sitios.filter(s => !s.esperados && !s.noAplica), na = R.sitios.filter(s => s.noAplica); if (na.length) P_('Sin retiro por la empresa (frecuencia «no corresponde»): ' + na.map(s => s.sitio).join(', ') + '.'); if (sd.length) P_('Sin frecuencia definida: ' + sd.map(s => s.sitio).join(', ') + '. Para estos sitios se informan solo los retiros realizados.');
     H2('4.2 Intervalos mayores que el admisible');
-    const F = []; R.sitios.forEach(s => s.fuera.forEach(f => F.push([s.sitio, fTxt(f.desde) + (f.nrosDesde.length ? ' (N.º ' + f.nrosDesde.join(', ') + ')' : ''), f.abierto ? 'Sin retiro hasta el ' + fTxt(R.hasta) : fTxt(f.hasta) + (f.nrosHasta.length ? ' (N.º ' + f.nrosHasta.join(', ') + ')' : ''), String(f.dias), String(s.limite)])));
+    const F = []; R.sitios.forEach(s => s.fuera.forEach(f => F.push([s.sitio, fTxt(f.desde) + (f.nrosDesde.length ? ' (N.º ' + f.nrosDesde.join(', ') + ')' : ''), f.abierto ? 'Sin retiro hasta el ' + fTxt(R.hasta) : fTxt(f.hasta) + (f.nrosHasta.length ? ' (N.º ' + f.nrosHasta.join(', ') + ')' : ''), String(f.dias) + (f.fer ? ' (' + f.fer + (f.fer === 1 ? ' feriado' : ' feriados') + ' nacional' + (f.fer === 1 ? '' : 'es') + ')' : ''), String(s.limite)])));
     if (F.length) { P_('Cada fila muestra el retiro anterior y el siguiente, con sus números de manifiesto, y los días transcurridos:'); TAB([['Sitio', 'Retiro anterior', 'Retiro siguiente', 'Días', 'Admisible']].concat(F), [100, 120, 135, 45, 55]); }
     else P_('No se registraron intervalos mayores que el admisible.');
     H2('4.3 Sitios sin retiros en el período');
@@ -198,6 +208,8 @@ function resInfDocumento_(x, R) {
     const rec = [];
     if (T.intervalosFuera || bajos.length) rec.push('Poner en conocimiento de la empresa prestadora y de la Secretaría de Salud los intervalos y sitios con cumplimiento menor al 80 %, con las fechas y números de manifiesto del punto 4, y solicitar que se regularice la frecuencia del Anexo I del contrato.');
     if (sinRet.length) rec.push('Verificar con cada establecimiento si los sitios sin retiros no tuvieron retiro o si faltan cargar manifiestos, y completar la carga.');
+    const sabBajos = diarias.filter(s => s.sabados.retirados < s.sabados.pactados / 2);
+    if (sabBajos.length) rec.push('Solicitar a la empresa, por intermedio de la Secretaría de Salud, que cumpla los retiros de los sábados previstos para la frecuencia diaria en el Anexo I del contrato (' + sabBajos.map(s => s.sitio).join(', ') + '), o que la frecuencia pactada se ajuste a la que efectivamente se presta.');
     if (sd.length) rec.push('Definir la frecuencia de retiro de los sitios que no la tienen (' + sd.slice(0, 5).map(s => s.sitio).join(', ') + (sd.length > 5 ? ', entre otros' : '') + ') e incorporarla al contrato en la próxima renovación.');
     if (!rec.length) rec.push('Sostener la frecuencia actual y la carga de los manifiestos en el sistema.');
     rec.forEach((t, i) => P_((i + 1) + '. ' + t));
