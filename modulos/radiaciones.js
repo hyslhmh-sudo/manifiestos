@@ -25,7 +25,15 @@ async function radTablero(fresco) {
   if (!RADT || fresco) { cargando('#rad', 'Armando el tablero de radiaciones…'); try { RADT = await api('p_rad_tablero', { fresco: !!fresco }, 180000); } catch (e) { return; } }
   if (!RADT.ok) { const r = RADT; RADT = null; return radNoInstalado('#rad', r); }
   const T = RADT.totales, A = FILTRO.area, areas = Array.from(new Set(RADT.establecimientos.map(e => e.area))).filter(Boolean).sort();
-  const E = RADT.establecimientos.filter(e => (!A || e.area === A) && (RADF.todos || e.r.personas || e.r.equipos || e.r.sitiosRx)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  let E = RADT.establecimientos.filter(e => (!A || e.area === A) && (RADF.todos || e.r.personas || e.r.equipos || e.r.sitiosRx)).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  // HZT y HMH se muestran juntos: el servicio de Radiología rota entre ambos y se gestiona como una sola unidad (se carga en el HZT).
+  const uH = E.find(e => e.cod === 'HZT'), uM = E.find(e => e.cod === 'HMH'); let nUnidad = 0;
+  if (uH && uM) { const a = uH.r, b = uM.r, r = Object.assign({}, a);
+    ['sitiosRx', 'sitiosConfirmar', 'personas', 'activos', 'bajas', 'extraviados', 'sinAutorizacion', 'eventosAbiertos', 'anormalesAbiertos', 'equipos', 'habVencidas', 'habSinDato', 'habPorVencer', 'sinPlano', 'invAbiertas'].forEach(k => r[k] = (a[k] || 0) + (b[k] || 0));
+    r.ultimoControl = [a.ultimoControl, b.ultimoControl].filter(Boolean).sort().pop() || ''; r.faltanMeses = Array.from(new Set((a.faltanMeses || []).concat(b.faltanMeses || []))).sort();
+    r.requisitos = a.requisitos; r.requisitosConDoc = Math.max(a.requisitosConDoc || 0, b.requisitosConDoc || 0);
+    const u = { cod: 'HZT', nombre: 'HZT / HMH · Radiología (unidad conjunta)', area: uH.area, r: r, unidad: true };
+    E = E.filter(e => e !== uH && e !== uM); E.unshift(u); nUnidad = 1; }
   const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
   const at = [];
   RADT.establecimientos.filter(e => !A || e.area === A).forEach(e => { const r = e.r, h = '#radest/' + encodeURIComponent(e.cod);
@@ -40,11 +48,11 @@ async function radTablero(fresco) {
     '<div class="filtros"><label class="f">Área<select class="c" id="rdA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
     '<label class="f">Abrir un establecimiento<select class="c" id="rdE">' + selectorEst('', false) + '</select></label>' +
     radLink(RADT.libro, 'Planilla del módulo') + ' ' + radLink(RADT.carpeta, 'Carpeta del módulo') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
-    RAD_ALCANCE + '<div class="tb5">' + kpi('Sitios con rayos X', T.sitiosRx || 0, (T.sitiosConfirmar || 0) + ' sitios de la provincia a confirmar') + kpi('Establecimientos', T.establecimientos, 'con sitios, personal o equipos cargados') + kpi('Dosímetros activos', T.activos, 'personas con dosímetro en uso') +
+    RAD_ALCANCE + '<div class="tb5">' + kpi('Sitios con rayos X', T.sitiosRx || 0, (T.sitiosConfirmar || 0) + ' sitios de la provincia a confirmar') + kpi('Establecimientos', T.establecimientos - nUnidad, nUnidad ? 'con datos cargados (HZT y HMH cuentan como uno)' : 'con sitios, personal o equipos cargados') + kpi('Dosímetros activos', T.activos, 'personas con dosímetro en uso') +
     kpi('Extraviados', T.extraviados, 'dosímetros a reponer', T.extraviados ? 'var(--er)' : '') + kpi('Eventos abiertos', T.eventosAbiertos, T.invAbiertas ? T.invAbiertas + ' investigación(es) de dosis abierta(s)' : 'anormales, extravíos y otros', T.eventosAbiertos || T.invAbiertas ? 'var(--er)' : '') +
     kpi('Equipos', T.equipos, T.habVencidas ? T.habVencidas + ' con habilitación vencida' : 'en uso o fuera de servicio', T.habVencidas ? 'var(--er)' : '') + kpi('Sin controles al día', T.faltanControles, 'establecimientos con meses sin PDF (últimos 3)', T.faltanControles ? 'var(--wa)' : '') + '</div>' +
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2>Por establecimiento</h2><label class="peq"><input type="checkbox" id="rdTodos"' + (RADF.todos ? ' checked' : '') + '> Mostrar también los que no tienen datos</label></div><div style="overflow-x:auto"><table><thead><tr><th>Establecimiento</th><th>Sitios con rayos X</th><th>Dosímetros</th><th>Último control</th><th>Eventos</th><th>Equipos</th><th>Requisitos con documento</th></tr></thead><tbody>' +
-    (E.length ? E.map(e => { const r = e.r; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + '</div></td>' +
+    (E.length ? E.map(e => { const r = e.r; return '<tr class="cl" data-cod="' + esc(e.cod) + '"><td><b>' + esc(e.nombre) + '</b><div class="mu peq">' + (e.unidad ? 'Hospital Zonal Trelew + Hospital María Humphreys · se carga en el HZT' : esc(e.cod)) + '</div></td>' +
       '<td>' + (r.sitiosRx ? r.sitiosRx : '<span class="mu">—</span>') + (r.sitiosConfirmar ? ' <span class="chip wa mini">' + r.sitiosConfirmar + ' a confirmar</span>' : '') + '</td>' +
       '<td>' + (r.personas ? r.activos + ' activos' + (r.bajas ? ' <span class="mu peq">· ' + r.bajas + ' de baja</span>' : '') + (r.extraviados ? ' <span class="chip er mini">' + r.extraviados + ' extraviado(s)</span>' : '') : '<span class="mu">—</span>') + '</td>' +
       '<td>' + (r.ultimoControl ? radMes(r.ultimoControl) : '<span class="mu">—</span>') + (r.faltanMeses.length ? '<div class="chip wa mini">faltan ' + r.faltanMeses.length + '</div>' : '') + '</td>' +
