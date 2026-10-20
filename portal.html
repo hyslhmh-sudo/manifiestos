@@ -675,7 +675,7 @@ async function inicio(fresco) {
   const ord = { er: 0, wa: 1, av: 2 }; at.sort((a, b) => ord[a[0]] - ord[b[0]]);
   const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
   const card = (titulo, link, cuerpo, extra) => '<section class="card" style="display:flex;flex-direction:column;gap:10px;min-width:0' + (extra || '') + '"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">' + titulo + '</h2>' + (link ? '<a href="' + link[0] + '" class="peq" style="font-weight:700">' + link[1] + '</a>' : '') + '</div>' + cuerpo + '</section>';
-  const areas = Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort();
+  const areas = Array.from(new Set(estActivos().map(f => f.area))).filter(Boolean).sort();
   const dias = [['Hasta 10 días', F.filter(f => f.diasSinRetiro != null && f.diasSinRetiro <= 10).length, '#1E6B42'], ['11 a 30 días', F.filter(f => f.diasSinRetiro > 10 && f.diasSinRetiro <= 30).length, '#B7791F'], ['Más de 30 días', F.filter(f => f.diasSinRetiro > 30).length, '#B4361F'], ['Sin datos', F.filter(f => f.diasSinRetiro == null).length, '#B8C4CA']];
   const orig = ['Diagnóstico', 'Auditorías', 'Agua', 'Plagas'].map(o => { const l = acc.filter(a => a.origen === o || String(a.origen || '').indexOf(o + ' (') === 0), v = l.filter(a => a.vencida).length; return [o, [[l.length - v, '#5894A7'], [v, '#B4361F']]]; });
   const diagA = areas.filter(a => !A || a === A).map(a => { const l = RES.filas.filter(f => f.area === a && f.diag && f.diag.pct !== '' && f.diag.pct != null); const p = l.length ? Math.round(l.reduce((s, f) => s + Number(f.diag.pct), 0) / l.length) : 0; return [a.replace('Área Programática ', 'Área '), p, '#0D313F', l.length ? p + ' %' : '—']; });
@@ -808,10 +808,21 @@ function bibForm(v, version) {
 }
 
 // ------------------------------------------------------------------ Ficha del establecimiento
+// Establecimientos activos (BASE COMÚN › ESTABLECIMIENTOS › ESTADO_EN_SISTEMA = «Activa…»), ordenados por área programática y nombre.
+// Todas las listas desplegables de establecimientos salen de acá, para que muestren lo mismo.
+function estActivos(extra) {
+  return (RES ? RES.filas : []).filter(f => /^activ/i.test(f.estado) || (extra && f.cod === extra))
+    .sort((a, b) => String(a.area || '~').localeCompare(String(b.area || '~'), 'es') || String(a.nombre).localeCompare(String(b.nombre), 'es'));
+}
+// Opciones agrupadas por área programática (<optgroup>)
+function optsEst(F, sel, valor) {
+  const grupos = [], porArea = {};
+  F.forEach(f => { const a = f.area || 'Sin área'; if (!porArea[a]) { porArea[a] = []; grupos.push(a); } porArea[a].push(f); });
+  return grupos.map(a => '<optgroup label="' + esc(a) + '">' + porArea[a].map(f => { const v = valor ? valor(f) : f.cod; return '<option value="' + esc(v) + '"' + (f.cod === sel || v === sel ? ' selected' : '') + '>' + esc(f.nombre) + '</option>'; }).join('') + '</optgroup>').join('');
+}
 function selectorEst(sel, conExtra, conTodos) {
-  const F = (RES ? RES.filas : []).slice().sort((a, b) => (a.area + a.nombre).localeCompare(b.area + b.nombre));
   return (conTodos ? '<option value="*"' + (sel === '*' ? ' selected' : '') + '>Todos los establecimientos</option>' : '<option value="">Elegí…</option>') +
-    F.map(f => '<option value="' + esc(f.cod) + '"' + (f.cod === sel ? ' selected' : '') + '>' + esc(f.nombre) + '</option>').join('') +
+    optsEst(estActivos(sel), sel) +
     (conExtra ? CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('') : '');
 }
 async function ficha(cod) {
@@ -999,9 +1010,9 @@ function fichaPunto(cod, R, p) {
 
 // ------------------------------------------------------------------ Navegación
 </script>
-<script src="modulos/riesgos.js?v=14.4"></script>
+<script src="modulos/riesgos.js?v=14.75"></script>
 <script src="modulos/plan.js?v=14.9"></script>
-<script src="modulos/documentos.js?v=14.14"></script>
+<script src="modulos/documentos.js?v=14.75"></script>
 <script src="modulos/cocinas.js?v=14.72"></script>
 <script src="modulos/trabajadores.js?v=14.4"></script>
 <script src="modulos/siniestros.js?v=14.13"></script>

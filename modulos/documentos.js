@@ -7,8 +7,8 @@ async function documentos(est) {
   if (!RES) { const g = LS.get('res', null); if (g) RES = g; else { try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   cargando('#docs', 'Leyendo el registro…');
   let R; try { R = await api('p_registro', { est: DOCS.est, anio: DOCS.anio }); } catch (e) { return; }
-  const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
-  const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (sel === e.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('');
+  const ests = estActivos();
+  const opEst = (sel, todos) => (todos ? '<option value="">Todos</option>' : '') + '<option value="RED"' + (sel === 'RED' ? ' selected' : '') + '>RED · Toda la red</option>' + optsEst(ests, sel);
   const chipE = e => '<span class="chip ' + ({ Reservado: 'wa', Emitido: 'ok', Anulado: 'gr' }[e] || 'gr') + '">' + esc(e) + '</span>';
   const filas = (R.filas || []);
   marco('#docs', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Registro de informes</h1><span class="mu">Los informes que genera el sistema toman solos su número HYSL (correlativo por establecimiento y por año). Un número no se borra: se anula con motivo. Las notas las numera el hospital (Mesa de Entradas).</span></div></div>' +
@@ -130,12 +130,12 @@ let MOD = { tipo: 'RESPUESTA_INFORME', cod: '' };
 async function modelos() {
   if (!RES) { try { RES = await api('p_resumen', {}, 240000); } catch (e) { return; } }
   let planes = []; try { planes = (await api('p_plan_listar', {})).informes || []; } catch (e) {}
-  const ests = RES.filas.slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const ests = estActivos(MOD.cod);
   const T = BJ_TIPOS_UI[MOD.tipo], infs = planes.filter(p => !MOD.cod || p.cod === MOD.cod);
   marco('#modelos', '<div class="cab"><div><span class="mu peq">10 · Documentos</span><h1>Modelos para completar</h1><span class="mu">Generá la planilla prellenada, mandala y, cuando vuelva completa, subila en <a class="link" href="#bandeja">Bandeja de entrada</a>. Siempre es una hoja de cálculo.</span></div></div>' +
     '<section class="card"><h2>1. ¿Qué modelo?</h2><div class="grid g2" style="margin-top:10px">' + Object.keys(BJ_TIPOS_UI).map(k => '<button class="card" data-mt="' + k + '" style="text-align:left;cursor:pointer;border:2px solid ' + (k === MOD.tipo ? 'var(--az)' : 'var(--ln)') + '"><b>' + esc(BJ_TIPOS_UI[k].t) + '</b><div class="mu peq" style="margin-top:4px">' + esc(BJ_TIPOS_UI[k].d) + '</div><div class="peq" style="margin-top:6px">Para: ' + esc(BJ_TIPOS_UI[k].para) + '</div></button>').join('') +
       '<div class="card" style="opacity:.6"><b>RAR y NTE · RGRL</b><div class="mu peq" style="margin-top:4px">Formatos de la SRT, en hoja de cálculo. Próximamente, con el eje Riesgos.</div></div></div></section>' +
-    '<section class="card"><h2>2. ¿Para qué establecimiento?</h2><div class="grid g3" style="margin-top:10px"><label class="f">Establecimiento<select class="c" id="mEst"><option value="">Elegí…</option>' + ests.map(e => '<option value="' + esc(e.cod) + '"' + (e.cod === MOD.cod ? ' selected' : '') + '>' + esc(e.nombre) + '</option>').join('') + '</select></label>' +
+    '<section class="card"><h2>2. ¿Para qué establecimiento?</h2><div class="grid g3" style="margin-top:10px"><label class="f">Establecimiento<select class="c" id="mEst"><option value="">Elegí…</option>' + optsEst(ests, MOD.cod) + '</select></label>' +
       (MOD.tipo === 'RESPUESTA_INFORME' ? '<label class="f">Informe<select class="c" id="mRef">' + (infs.length ? infs.map(p => '<option value="' + esc(p.codigo) + '">' + esc(p.codigo) + '</option>').join('') : '<option value="">No hay informes emitidos' + (MOD.cod ? ' de este establecimiento' : '') + '</option>') + '</select></label>' : '') +
       '</div><div style="margin-top:14px"><button class="btn pri" id="mGen">Generar el modelo</button></div><div id="mRes" style="margin-top:14px"></div></section>');
   document.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { MOD.tipo = b.dataset.mt; modelos(); });
