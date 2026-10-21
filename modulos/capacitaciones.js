@@ -511,21 +511,34 @@ async function capAlta() {
 }
 
 // ---------- Dictados
+// La lista muestra solo lo vigente (próximos y con registro abierto). Un dictado sale de la lista solo
+// cuando se cierra su registro (48 h después de la clase); no se borra: queda en «Ver anteriores».
+let CAPDIC_ANT = false;
+function capDicPasado(x) {
+  if (/^cerrado$/i.test(x.ahora)) return true;
+  if (/cancel|suspend/i.test(x.ahora)) { const m = String(x.fecha || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return false; const hoy = new Date(); hoy.setHours(0, 0, 0, 0); return new Date(+m[3], m[2] - 1, +m[1]) < hoy; }
+  return false;
+}
 async function capDictados() {
   cargando('#capdic', 'Leyendo los dictados…');
   let r; try { r = await capApi('c_dictados', { dias: 60 }); } catch (e) { return capFalla('#capdic', 'Dictados', e); }
   if (location.hash.split('/')[0] !== '#capdic') return;
   const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
-  marco('#capdic', capTit('Dictados', 'Últimos 60 días y próximos. El link de registro abre a la hora de la clase y cierra solo a las 48 h.', '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a><a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
-    (!r.lista.length ? '<div class="card vacio">No hay dictados recientes ni próximos.</div>' :
+  const nAnt = r.lista.filter(capDicPasado).length;
+  const lista = CAPDIC_ANT ? r.lista.slice().reverse() : r.lista.filter(x => !capDicPasado(x));
+  const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días con el registro ya cerrado, del más reciente al más antiguo. Tocá uno para ver asistentes y certificados.' : 'Próximos y con registro abierto. El link de registro abre a la hora de la clase y cierra solo a las 48 h; al cerrarse, el dictado pasa a «Ver anteriores».';
+  const btnAnt = '<button class="btn sec" id="dicAnt">' + (CAPDIC_ANT ? 'Volver a los vigentes' : 'Ver anteriores' + (nAnt ? ' (' + nAnt + ')' : '')) + '</button>';
+  marco('#capdic', capTit('Dictados', sub, '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a>' + btnAnt + '<a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
+    (!lista.length ? '<div class="card vacio">' + (CAPDIC_ANT ? 'No hay dictados anteriores en los últimos 60 días.' : 'No hay dictados próximos ni con registro abierto.' + (nAnt ? ' Los anteriores están en «Ver anteriores».' : '')) + '</div>' :
     '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
-    r.lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
+    lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
       '<td><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></td><td>' + (x.linkInscripcion ? esc(x.inscriptos) + (capVacio(x.cupo) || /sin/i.test(x.cupo) ? '' : ' / ' + esc(x.cupo)) : '<span class="mu">—</span>') + '</td><td>' + esc(x.asistentes) + '</td>' +
       '<td style="white-space:nowrap"><button class="link" data-cop="' + j + '">Link</button> · <button class="link" data-wa="' + j + '">WhatsApp</button> · <a class="link" href="' + esc(x.qr) + '" target="_blank" rel="noopener">QR</a></td></tr>').join('') + '</tbody></table></section>' +
-    '<div class="tarjetas">' + r.lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
+    '<div class="tarjetas">' + lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
+  $('dicAnt').onclick = () => { CAPDIC_ANT = !CAPDIC_ANT; capDictados(); };
   document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
-  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(r.lista[b.dataset.cop].link, 'Link de registro copiado.'));
-  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(r.lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
+  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.cop].link, 'Link de registro copiado.'));
+  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
 }
 async function capDictadoNuevo(cod) {
   if (!CAPC) { cargando('#capdic', 'Preparando…'); try { await capCargar(); } catch (e) { return capFalla('#capdic', 'Nuevo dictado', e); } }
