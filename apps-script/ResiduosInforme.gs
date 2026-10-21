@@ -1,5 +1,5 @@
 /**
- * SISTEMA HyS · MÓDULO 1 · RESIDUOS · INFORME DE FRECUENCIA DE RETIRO (versión 14.26, 13/10/2026; calendario real 14.80, 20/10/2026)
+ * SISTEMA HyS · MÓDULO 1 · RESIDUOS · INFORME DE FRECUENCIA DE RETIRO (versión 14.26, 13/10/2026; calendario real 14.80, 20/10/2026; 14.81, 20/10/2026: logos centrados, protocolo de manifiestos, comparación 2024-2026, costos desde la vigencia del contrato, corriente Y3, PDF solo a pedido)
  * Informe mensual, semestral, anual o de un período a elección, para Jefatura de Área Externa / CAPS, STyC, Direcciones o la
  * Secretaría de Salud. Belén elige los establecimientos y sitios (toda la red Trelew, HZT con o sin CAPS, un CAPS, todos los CAPS,
  * la sede ex ADOS, HSST con sus CAPS, etc.) y el informe muestra, por sitio, la frecuencia pactada y la real, con las fechas
@@ -41,7 +41,8 @@ function resInfCalcular_(x) {
   if (x.desde > x.hasta) return { ok: false, mensaje: 'La fecha «desde» es posterior a «hasta».' };
   const sel = (x.sitios || []).map(String).filter(s => s.indexOf('|') > 0); if (!sel.length) return { ok: false, mensaje: 'Elegí al menos un establecimiento o sitio.' };
   const hasta = x.hasta > hoy ? hoy : x.hasta, desde = x.desde, dPer = (new Date(hasta + 'T12:00:00') - new Date(desde + 'T12:00:00')) / 864e5 + 1;
-  const g = SpreadsheetApp.openById(CFG.GENERAL), K = rctContratos_(g), C = K.contratos, L = rctRetiros_(g, desde);
+  const g = SpreadsheetApp.openById(CFG.GENERAL), K = rctContratos_(g), C = K.contratos, anioH = Number(hasta.slice(0, 4)), ANIOS = [anioH - 2, anioH - 1, anioH], base3 = ANIOS[0] + '-01-01',
+    LA = rctRetiros_(g, base3 < desde ? base3 : desde), L = { retiros: LA.retiros.filter(r => r.fecha >= desde), info: LA.info };
   const elegido = {}; sel.forEach(s => { const i = s.indexOf('|'); elegido[s.slice(0, i) + '|' + sinTildes_(s.slice(i + 1))] = s.slice(i + 1); });
   const frecBC = {}, tipoBC = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 7).forEach(r => { const k = limpio_(r.v[0]) + '|' + sinTildes_(r.v[1]); frecBC[k] = limpio_(r.v[6]); tipoBC[k] = limpio_(r.v[4]); }); } catch (e) {}
   // Retiros del período agrupados por sitio y fecha (un retiro = una fecha con uno o más manifiestos)
@@ -67,16 +68,33 @@ function resInfCalcular_(x) {
     R.forEach(d => { d.desdeAnt = ant ? dif(ant.fecha, d.fecha) : null; const fe = ant ? ferEntre(ant.fecha, d.fecha) : 0; d.excede = d.desdeAnt != null && d.desdeAnt - fe > lim; if (d.excede) fuera.push({ desde: ant.fecha, nrosDesde: ant.nros, hasta: d.fecha, nrosHasta: d.nros, dias: d.desdeAnt, fer: fe }); ant = d; });
     const sinRetiroFinal = R.length ? dif(R[R.length - 1].fecha, hasta) : null;
     if (R.length && sinRetiroFinal - ferEntre(R[R.length - 1].fecha, hasta) > lim) fuera.push({ desde: R[R.length - 1].fecha, nrosDesde: R[R.length - 1].nros, hasta: '', nrosHasta: [], dias: sinRetiroFinal, abierto: true, fer: ferEntre(R[R.length - 1].fecha, hasta) });
+    // Comparación de los últimos 3 años (año completo y mismo período, del 1.º de enero al día y mes de «hasta»): retiros = fechas distintas con retiro
+    const kS = s.cod + '|' + sinTildes_(s.sitio), md = hasta.slice(5), anios = {};
+    ANIOS.forEach(a => anios[a] = { ret: 0, dm3: 0, y1: 0, y3: 0, ret3: 0, retMP: 0, dm3MP: 0, y3MP: 0, _f: {}, _f3: {}, _fm: {} });
+    LA.retiros.forEach(r => { if (r.cod + '|' + sinTildes_(r.sitio) !== kS || r.fecha > hasta && Number(r.fecha.slice(0, 4)) === anioH) return; const a = anios[Number(r.fecha.slice(0, 4))]; if (!a) return;
+      const t = r.y1 + r.y3 + r.otras, mp = r.fecha.slice(5) <= md; a.dm3 += t; a.y1 += r.y1; a.y3 += r.y3; a._f[r.fecha] = 1; if (r.y3 > 0) a._f3[r.fecha] = 1; if (mp) { a.dm3MP += t; a.y3MP += r.y3; a._fm[r.fecha] = 1; } });
+    ANIOS.forEach(y => { const a = anios[y]; a.ret = Object.keys(a._f).length; a.ret3 = Object.keys(a._f3).length; a.retMP = Object.keys(a._fm).length; ['dm3', 'y1', 'y3', 'dm3MP', 'y3MP'].forEach(k => a[k] = Math.round(a[k])); delete a._f; delete a._f3; delete a._fm; });
     const gaps = R.slice(1).map(d => d.desdeAnt), cuenta = {}; R.forEach(d => cuenta[d.fecha.slice(0, 7)] = (cuenta[d.fecha.slice(0, 7)] || 0) + 1);
-    return { cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, noAplica: /no corresponde|no aplica/i.test(sinTildes_(frec)), origen: origen, limite: lim, esperados: esperados,
+    return { anios: anios, cod: s.cod, nombre: s.nombre, sitio: s.sitio, tipo: s.tipo || 's/d', frecuencia: frec, noAplica: /no corresponde|no aplica/i.test(sinTildes_(frec)), origen: origen, limite: lim, esperados: esperados,
       retiros: R.length, manifiestos: R.reduce((a, d) => a + d.nros.length, 0), cumplimiento: esperados ? Math.round(100 * R.length / esperados) : null,
       intervaloProm: gaps.length ? Math.round(10 * gaps.reduce((a, b) => a + b, 0) / gaps.length) / 10 : null, intervaloMax: gaps.length ? Math.max.apply(null, gaps) : null,
       primero: R.length ? R[0].fecha : '', ultimo: R.length ? R[R.length - 1].fecha : '', sinRetiroFinal: sinRetiroFinal, fuera: fuera, porMes: cuenta,
       sabados: diaria ? { pactados: CAL.sab, retirados: R.filter(d => new Date(d.fecha + 'T12:00:00').getDay() === 6).length } : null, enFeriado: R.filter(d => FER[d.fecha]).length, y1: Math.round(R.reduce((a, d) => a + d.y1, 0)), y3: Math.round(R.reduce((a, d) => a + d.y3, 0)), enKg: R.reduce((a, d) => a + d.enKg, 0),
       detalle: R.map(d => ({ fecha: d.fecha, nros: d.nros, y1: Math.round(d.y1), y3: Math.round(d.y3), desdeAnt: d.desdeAnt, excede: d.excede })) };
   }).sort((a, b) => (a.nombre + (a.tipo === 'CAPS' ? 'z' : 'a') + a.sitio).localeCompare(b.nombre + (b.tipo === 'CAPS' ? 'z' : 'a') + b.sitio));
+  // Costos: solo desde la vigencia del contrato vigente (no hacia atrás): volumen retirado (todas las corrientes, en dm³) por el precio por dm³ del grupo del sitio
+  const cv = C.find(c => c.ESTADO === 'Vigente') || null, costos = { contrato: cv ? cv.ID : '', empresa: cv ? cv.EMPRESA : '', expediente: cv ? cv.EXPEDIENTE : '', resolucion: cv ? cv.RESOLUCION : '', vigencia: cv ? cv.DESDE : '', desde: '', filas: [], total: 0, dm3: 0, retiros: 0, cupo: cv ? cv.CUPO_TOTAL_DM3_MES : 0 };
+  if (cv && cv.DESDE) {
+    costos.desde = cv.DESDE > desde ? cv.DESDE : desde; const M = {}, kk = {};
+    LA.retiros.forEach(r => { if (r.fecha < costos.desde || r.fecha > hasta || !elegido[r.cod + '|' + sinTildes_(r.sitio)]) return; const m = r.fecha.slice(0, 7), u = rctUbicar_([cv], r.cod, r.sitio, r.tipo, m); if (!u) return;
+      const p = cv.grupos.filter(x => x.GRUPO === u.grupo && (!x.DESDE || x.DESDE.slice(0, 7) <= m) && (!x.HASTA || x.HASTA.slice(0, 7) >= m)).sort((a, b) => String(b.DESDE).localeCompare(String(a.DESDE)))[0]; if (!p) return;
+      const o = M[m] = M[m] || { mes: m, retiros: 0, dm3: 0, costo: 0, precio: p.PRECIO_DM3 }, t = r.y1 + r.y3 + r.otras, kf = r.cod + '|' + r.sitio + '|' + r.fecha;
+      if (!kk[kf]) { kk[kf] = 1; o.retiros++; } o.dm3 += t; o.costo += t * p.PRECIO_DM3; o.precio = p.PRECIO_DM3; });
+    costos.filas = rctMeses_(costos.desde, hasta).map(m => M[m] || { mes: m, retiros: 0, dm3: 0, costo: 0, precio: null }); costos.filas.forEach(f => { f.dm3 = Math.round(f.dm3); f.costo = Math.round(f.costo); costos.total += f.costo; costos.dm3 += f.dm3; costos.retiros += f.retiros; });
+  }
+  const totAnio = ANIOS.map(y => { const o = { anio: y, ret: 0, dm3: 0, y1: 0, y3: 0, ret3: 0, retMP: 0, dm3MP: 0 }; sitios.forEach(s => { const a = s.anios[y]; ['ret', 'dm3', 'y1', 'y3', 'ret3', 'retMP', 'dm3MP'].forEach(k => o[k] += a[k]); }); return o; });
   const ests = Array.from(new Set(sitios.map(s => s.cod))), tot = sitios.reduce((a, s) => a + s.retiros, 0), esp = sitios.filter(s => s.esperados).reduce((a, s) => a + s.esperados, 0);
-  return { ok: true, desde: desde, hasta: hasta, hastaPedido: x.hasta, hoy: hoy, dias: dPer, habiles: CAL.hab, feriados: CAL.fer, meses: meses, sitios: sitios, establecimientos: ests.map(c => ({ cod: c, nombre: (L.info[c] || {}).nombre || c })),
+  return { ok: true, desde: desde, hasta: hasta, hastaPedido: x.hasta, hoy: hoy, dias: dPer, habiles: CAL.hab, feriados: CAL.fer, meses: meses, anios: ANIOS, totAnio: totAnio, costos: costos, sitios: sitios, establecimientos: ests.map(c => ({ cod: c, nombre: (L.info[c] || {}).nombre || c })),
     totales: { sitios: sitios.length, conRetiros: sitios.filter(s => s.retiros).length, retiros: tot, manifiestos: sitios.reduce((a, s) => a + s.manifiestos, 0),
       esperados: Math.round(esp), cumplimiento: esp ? Math.round(100 * sitios.filter(s => s.esperados).reduce((a, s) => a + s.retiros, 0) / esp) : null,
       intervalosFuera: sitios.reduce((a, s) => a + s.fuera.length, 0), sitiosBajo: sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80).length } };
@@ -89,7 +107,21 @@ function resInforme_(x) {
   return resInfDocumento_(x, R);
 }
 
-// ------------------------------------------------------------------ Documento (Google Doc + PDF)
+// ------------------------------------------------------------------ Asistencia a capacitaciones de residuos (CAP-HYS-003 y CAP-HYS-020) por sitio, desde el libro CAPACITACIONES
+// Se cruza el servicio / institución de cada persona con el nombre del sitio; el sistema registra desde 2026 (los dictados anteriores no están cargados)
+function resInfCapac_(sitios) {
+  try {
+    const ss = SpreadsheetApp.openById(CG.LIBRO), tabla = n => { const v = ss.getSheetByName(n).getDataRange().getValues(), h = v[4].map(String); return v.slice(5).filter(r => r[0] !== '').map(r => { const o = {}; h.forEach((k, i) => o[k] = r[i]); return o; }); };
+    const P = {}; tabla('PERSONAS').forEach(p => P[cgDni_(p.DNI)] = p);
+    const dni = {}; tabla('REGISTROS').forEach(r => { if (['CAP-HYS-003', 'CAP-HYS-020'].indexOf(String(r.CODIGO)) >= 0 && String(r.ESTADO) === 'Válido') dni[cgDni_(r.DNI)] = 1; });
+    const por = {}; let total = 0, caps = 0;
+    Object.keys(dni).forEach(d => { const p = P[d]; if (!p) return; total++; const sv = sinTildes_(String(p.SERVICIO || '') + ' ' + String(p.INSTITUCION || ''));
+      if (/caps|primer nivel|area externa/.test(sv)) caps++; sitios.forEach(x => { const n = sinTildes_(x.sitio); if (n && sv.indexOf(n) >= 0) por[x.sitio] = (por[x.sitio] || 0) + 1; }); });
+    return { ok: true, total: total, caps: caps, por: por };
+  } catch (e) { return { ok: false }; }
+}
+
+// ------------------------------------------------------------------ Documento (Google Doc; el PDF solo si se pide con pdf: true)
 function resInfDocumento_(x, R) {
   const fTxt = f => f ? f.split('-').reverse().join('/') : 's/d', num = n => n == null ? 's/d' : Number(n).toLocaleString('es-AR'), pc = n => n == null ? 's/d' : n + ' %';
   const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], dia = f => DIAS[new Date(f + 'T12:00:00').getDay()];
@@ -127,6 +159,11 @@ function resInfDocumento_(x, R) {
     const COMP = nota('comp', 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo y Decreto N.º 351/79; Resolución SRT N.º 905/2015, Anexo I (funciones del Servicio de Higiene y Seguridad en el Trabajo).');
     const MANI = nota('mani', 'Ley N.º 24.051 de Residuos Peligrosos, arts. 12 y 13 (manifiesto), y Decreto N.º 831/93; Ley XI N.º 35 (Código Ambiental de la Provincia del Chubut).');
     const ANEXO = nota('anexo', 'Contrato vigente de recolección, tratamiento y disposición final de residuos patogénicos, Anexo I «Forma de ejecución de los trabajos · De las frecuencias de recolección». Cuando el contrato no fija la frecuencia de un sitio, se usa la frecuencia registrada en BASE COMÚN › SITIOS.');
+    const notaProt = () => trelew ? nota('prot', 'PROT-RES-003 «Manifiesto de residuos peligrosos: retiro, verificación y registro» (versión 00): reglas fundamentales 1 a 5, pasos 11 a 30, punto 9 (situaciones anormales) y punto 10 (prohibiciones). https://drive.google.com/file/d/1tA--YuvTH2LNqDlUMY05sxMsqTMIpLv1/view') : MANI;
+    const notaY3 = () => nota('y3', 'Ley N.º 24.051, Anexo I (categorías sometidas a control: Y1, desechos clínicos resultantes de la atención médica; Y3, desechos de medicamentos y productos farmacéuticos) y Decreto N.º 831/93.');
+    const CT = R.costos, mon = n => n == null ? 's/d' : '$ ' + Number(n).toLocaleString('es-AR');
+    const notaCont = () => nota('cont', CT.contrato ? 'Contrato ' + CT.contrato + ' · ' + CT.empresa + ' · Expte. ' + CT.expediente + ' · ' + CT.resolucion + ', vigente desde el ' + fTxt(CT.vigencia) + '. Precio por dm³ del grupo de cada sitio, IVA incluido; cláusula SÉPTIMA (cupo mensual y excedente), Libro general de residuos › CONTRATO_GRUPOS.' : 'Contrato vigente: s/d (revisar).');
+    const AN = R.anios, corte = fTxt(R.hasta).slice(0, 5), lblA = (y, i) => i === 2 ? y + ' (al ' + corte + ')' : String(y);
     const T = R.totales, conEsp = R.sitios.filter(s => s.esperados), bajos = R.sitios.filter(s => s.cumplimiento != null && s.cumplimiento < 80), sinRet = R.sitios.filter(s => !s.retiros && !s.noAplica);
 
     // ---------------- PORTADA
@@ -142,7 +179,7 @@ function resInfDocumento_(x, R) {
     b.appendPageBreak();
     // ---------------- ÍNDICE
     H1('Índice'); G('Para tener el índice con números de página: Insertar › Índice, y borrar esta lista.');
-    ['Resumen ejecutivo', '1. Presentación', '2. Método de trabajo', '3. Descripción de los hechos', '4. Análisis de los datos', '5. Conclusión', '6. Recomendaciones', 'Anexo · Detalle de retiros por sitio'].forEach(t => P_(t, { izq: true, desp: 0, inter: 1.3 }));
+    ['Resumen ejecutivo', '1. Presentación', '2. Método de trabajo (2.1 Datos y cálculo · 2.2 Protocolo de manifiestos y criterio para el reclamo)', '3. Descripción de los hechos (retiros, comparación ' + AN[0] + '-' + AN[2] + ', corriente Y3, costos)', '4. Análisis de los datos', '5. Conclusión', '6. Recomendaciones', 'Anexo · Detalle de retiros por sitio'].forEach(t => P_(t, { izq: true, desp: 0, inter: 1.3 }));
     b.appendPageBreak();
 
     // ---------------- RESUMEN EJECUTIVO (prosa, sin tablas)
@@ -151,8 +188,11 @@ function resInfDocumento_(x, R) {
       (T.esperados ? 'Según la frecuencia pactada correspondían unos ' + num(T.esperados) + ' retiros en los sitios que la tienen definida, por lo que el cumplimiento fue del ' + pc(T.cumplimiento) + '. ' : 'Ningún sitio incluido tiene una frecuencia pactada que permita calcular los retiros esperados. ') +
       (bajos.length ? (bajos.length === 1 ? 'Un sitio quedó por debajo del 80 %: ' : bajos.length + ' sitios quedaron por debajo del 80 %: ') + bajos.slice(0, 6).map(s => s.sitio + ' (' + pc(s.cumplimiento) + ')').join(', ') + (bajos.length > 6 ? ', entre otros' : '') + '. ' : '') +
       (sinRet.length ? (sinRet.length === 1 ? 'Un sitio no registra retiros en el período: ' : sinRet.length + ' sitios no registran retiros en el período: ') + sinRet.slice(0, 6).map(s => s.sitio).join(', ') + (sinRet.length > 6 ? ', entre otros' : '') + '.' : ''));
-    P_(T.intervalosFuera ? 'Se identificaron ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' entre retiros mayores que el admisible para la frecuencia de cada sitio, con las fechas y los números de manifiesto que lo acreditan en el punto 4. Se recomienda poner esta información en conocimiento de la empresa prestadora y de la Secretaría de Salud, que gestiona el contrato, para que se regularice la frecuencia.'
-      : 'No se identificaron intervalos entre retiros mayores que el admisible para la frecuencia de cada sitio.');
+    const sinY3r = R.sitios.filter(s => !s.noAplica && !s.y3);
+    P_((T.intervalosFuera ? 'Se identificaron ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' entre retiros mayores que el admisible para la frecuencia de cada sitio, con las fechas y los números de manifiesto en el punto 4.2. Con los datos del sistema no es posible establecer si la diferencia con lo pactado se debe a retiros no realizados por la empresa o a manifiestos no entregados, no remitidos o no cargados; por eso el punto 2.2 indica la verificación previa que establece el protocolo de manifiestos y, confirmada la omisión, el reclamo ante la Secretaría de Salud, que gestiona el contrato. '
+      : 'No se identificaron intervalos entre retiros mayores que el admisible para la frecuencia de cada sitio. ') +
+      (sinY3r.length ? (sinY3r.length === 1 ? 'Un sitio no registra' : sinY3r.length + ' sitios no registran') + ' retiros de residuos Y3 (medicamentos) en el período, lo que en un centro con farmacia indica una gestión inadecuada de esa corriente. ' : '') +
+      (CT.filas.length ? 'Desde la vigencia del contrato (' + fTxt(CT.vigencia) + ') el volumen retirado fue de ' + num(CT.dm3) + ' dm³, equivalente a ' + mon(CT.total) + ' al precio unitario contratado.' : ''));
     G('Revisar: uno o dos párrafos en prosa; debe leerse en un minuto.');
 
     // ---------------- 1. PRESENTACIÓN
@@ -162,10 +202,22 @@ function resInfDocumento_(x, R) {
 
     // ---------------- 2. MÉTODO DE TRABAJO
     H1('2. Método de trabajo');
+    H2('2.1 Datos y cálculo');
     P_('Se tomaron los manifiestos cargados en el Sistema HyS para el período indicado. Se considera un retiro cada fecha en que la empresa retiró residuos de un sitio, con uno o más manifiestos. Para cada sitio se informa la frecuencia pactada' + ANEXO + ', los retiros esperados en el período, los realizados, el intervalo promedio y el máximo entre retiros, y los intervalos que superan el admisible. Los retiros esperados se calculan sobre el calendario real del período: se descuentan los domingos y los feriados nacionales, en los que la empresa transportista y operadora de residuos peligrosos (Impeesa) no retira; los feriados y días no laborables provinciales de Chubut no se descuentan, porque la empresa retira esos días. Del intervalo entre dos retiros tampoco se computan los feriados nacionales comprendidos. En el período hubo ' + num(R.habiles) + ' días de lunes a sábado con servicio posible.');
     TAB([['Frecuencia pactada', 'Retiros esperados por mes', 'Intervalo máximo admisible'], ['Diaria (lunes a sábado)', '26', '3 días'], ['Tres días por semana', '13', '5 días'], ['Dos días por semana', '8,7', '6 días'], ['Semanal', '4,3', '10 días'], ['Quincenal', '2,2', '20 días'], ['Mensual', '1', '40 días'], ['Sin frecuencia definida', 's/d', '30 días (referencia)']], [170, 150, 150]);
     P_(R.feriados.length ? 'Feriados nacionales descontados en el período (' + R.feriados.length + '): ' + R.feriados.map(f => fTxt(f[0]) + ' ' + f[1]).join('; ') + '.' : 'En el período no hubo feriados nacionales de lunes a sábado.');
-    P_('Limitaciones: el informe refleja solo lo cargado en el sistema. Un retiro sin manifiesto cargado no aparece y baja el cumplimiento; por eso, antes de reclamar, conviene verificar con el establecimiento que la carga esté completa.' + (R.hastaPedido > R.hasta ? ' El período elegido termina después de la fecha del informe: los datos llegan hasta el ' + fTxt(R.hasta) + '.' : ''));
+    P_('Comparación de años y costos: se comparan los retiros (fechas con retiro) y el volumen retirado (dm³, todas las corrientes) de ' + AN.join(', ') + ', tanto del año completo como del mismo período (del 1.º de enero al ' + corte + '). Los costos se calculan solo desde la vigencia del contrato vigente' + (CT.contrato ? ' (' + CT.contrato + ', desde el ' + fTxt(CT.vigencia) + ')' : '') + ', y no hacia atrás, multiplicando el volumen retirado por el precio por dm³ del grupo de cada sitio' + notaCont() + '.');
+    P_('Limitaciones: el informe refleja solo los manifiestos cargados en el sistema. Un retiro sin manifiesto cargado no aparece y baja el cumplimiento. La causa puede ser que el retiro no se realizó, que la empresa no entregó el manifiesto o su copia, que el sitio no lo remitió a Higiene y Seguridad o que no se cargó; el sistema no permite distinguirlas y se establece con la verificación del punto 2.2.' + (R.hastaPedido > R.hasta ? ' El período elegido termina después de la fecha del informe: los datos llegan hasta el ' + fTxt(R.hasta) + '.' : ''));
+    H2('2.2 Protocolo de manifiestos y criterio para el reclamo');
+    P_(trelew
+      ? 'El manifiesto lo emite la empresa transportista y operadora en el momento del retiro y es la prueba de que los residuos salieron del establecimiento y fueron entregados a la empresa' + notaProt() + '. El protocolo PROT-RES-003, que es el parámetro para los manifiestos de la red Trelew, establece que: (a) no hay retiro sin el operador del sitio presente (regla 1); (b) el operador verifica el manifiesto (sitio, fecha, corriente, cantidad y transportista) y exige la copia del generador (pasos 11 a 19); (c) cada retiro queda anotado en el libro de actas del sitio, una línea por corriente, con fecha, número de manifiesto, bolsas, volumen en dm³ y las firmas del operador y de la empresa (regla 4, pasos 20 a 23); (d) los manifiestos se remiten a Higiene y Seguridad una vez por semana, en sobre cerrado, y no se retienen más de una semana (regla 5, pasos 24 a 29 y punto 10); y (e) Higiene y Seguridad los controla, los coteja con los libros de actas y con los certificados de tratamiento y los archiva por sitio y fecha (paso 30). Desde el 14/10/2026 el Sistema HyS avisa cuando el último manifiesto de un sitio supera los 14 días, una semana de remisión y otra de carga.'
+      : 'El manifiesto lo emite la empresa transportista y operadora en el momento del retiro y es la prueba de que los residuos salieron del establecimiento y fueron entregados a la empresa' + MANI + '. El generador conserva la copia que le corresponde y debe registrar cada retiro (fecha, número de manifiesto, corriente y volumen); esos registros son los que se contrastan con los manifiestos cargados en el Sistema HyS.');
+    P_('Para atribuir una diferencia a la empresa se requiere descartar antes las demás causas posibles. Cada situación detectada se verifica de la siguiente manera:');
+    TAB([['Situación detectada', 'Verificación', 'Si se confirma, corresponde'],
+      ['Intervalo mayor que el admisible, con manifiestos cargados antes y después', trelew ? 'Libro de actas del sitio entre ambas fechas (regla 4) y sobre de remisión semanal (pasos 25 a 28)' : 'Registro de retiros del establecimiento y copias del manifiesto entre ambas fechas', 'Sin retiro anotado: retiro no realizado; reclamo a la empresa por la frecuencia del Anexo I, por intermedio de la Secretaría de Salud. Con retiro anotado y sin manifiesto cargado: reclamo de la copia y carga.'],
+      ['Sitio sin manifiestos en el período', trelew ? 'Libro de actas, consulta al operador y a la coordinación del sitio, y a la empresa por los manifiestos emitidos' : 'Registro de retiros, consulta a la coordinación del sitio y a la empresa por los manifiestos emitidos', 'Sin retiros anotados: retiro no realizado (reclamo). Con retiros anotados: reclamo de las copias a la empresa y recordatorio del protocolo al sitio.'],
+      ['Manifiesto con datos que no coinciden o sin copia legible', trelew ? 'Pasos 12 a 16 y 18, y punto 9 (situaciones anormales)' : 'Datos del manifiesto contra lo retirado', 'Solicitar a la empresa la corrección o la copia; recordar el procedimiento al sitio.']], [130, 150, 190]);
+    P_('Este informe no atribuye la diferencia a una de las partes: señala dónde está y qué evidencia debe contrastarse. Las fechas y los números de manifiesto del punto 4.2 son la base documental del reclamo, que se eleva una vez completada la verificación.');
 
     // ---------------- 3. DESCRIPCIÓN DE LOS HECHOS
     H1('3. Descripción de los hechos');
@@ -182,6 +234,37 @@ function resInfDocumento_(x, R) {
       if (R.meses.length > 12) G('Se muestran los últimos 12 meses del período; el detalle completo está en el anexo.');
     }
 
+    // ---------------- 3.3 COMPARACIÓN DE LOS ÚLTIMOS 3 AÑOS
+    const TA = R.totAnio, cats = AN.map(lblA);
+    H2('3.3 Comparación ' + AN[0] + '-' + AN[2] + ': retiros y volumen (dm³)');
+    TAB([['Año', 'Retiros del año', 'Retiros hasta el ' + corte, 'dm³ del año', 'dm³ hasta el ' + corte, 'de ellos Y3 (dm³, año)']].concat(TA.map((a, i) => [lblA(a.anio, i), num(a.ret), num(a.retMP), num(a.dm3), num(a.dm3MP), num(a.y3)])), [80, 75, 80, 75, 80, 80]);
+    if (R.sitios.length > 1) {
+      P_('Por sitio (retiros · dm³ de cada año; el último año llega hasta el ' + fTxt(R.hasta) + '):', { antes: 6 });
+      TAB([['Sitio'].concat(AN.map((y, i) => 'Retiros ' + lblA(y, i).replace(' (al ', ' al ').replace(')', ''))).concat(AN.map((y, i) => 'dm³ ' + lblA(y, i).replace(' (al ', ' al ').replace(')', '')))].concat(R.sitios.map(s => [(R.establecimientos.length > 1 ? s.cod + ' · ' : '') + s.sitio].concat(AN.map(y => num(s.anios[y].ret))).concat(AN.map(y => num(s.anios[y].dm3))))), [100].concat([62, 62, 62, 62, 62, 62]));
+    }
+    const grafico = (titulo, eje, series, colores, apilado) => { try {
+      const dt = Charts.newDataTable().addColumn(Charts.ColumnType.STRING, 'Año'); series.forEach(x => dt.addColumn(Charts.ColumnType.NUMBER, x.n)); cats.forEach((c, i) => dt.addRow([c].concat(series.map(x => x.v[i]))));
+      let cb = Charts.newColumnChart().setDataTable(dt).setTitle(titulo).setDimensions(470, 240).setColors(colores).setLegendPosition(Charts.Position.BOTTOM).setYAxisTitle(eje); if (apilado) cb = cb.setStacked();
+      const ip = b.appendParagraph(''); ip.setAlignment(DocumentApp.HorizontalAlignment.CENTER); ip.appendInlineImage(cb.build().getAs('image/png')); ip.setSpacingAfter(8);
+    } catch (e) { G('No se pudo dibujar el gráfico «' + titulo + '» (' + e.message + '): puede armarse con la tabla anterior.'); } };
+    grafico('Retiros por año · ' + (R.sitios.length === 1 ? R.sitios[0].sitio : 'sitios incluidos'), 'Retiros (fechas con retiro)', [{ n: 'Retiros', v: TA.map(a => a.ret) }], [COL.AZUL]);
+    grafico('Volumen retirado por año (dm³) · ' + (R.sitios.length === 1 ? R.sitios[0].sitio : 'sitios incluidos'), 'dm³', [{ n: 'Y1 · biopatogénicos', v: TA.map(a => a.y1) }, { n: 'Y3 · medicamentos', v: TA.map(a => a.y3) }], [COL.AZUL, COL.ACENTO], true);
+    P_('El último año se compara con los anteriores hasta la misma fecha en la segunda columna de la tabla; el gráfico muestra los años completos y el año en curso hasta el ' + fTxt(R.hasta) + '.');
+
+    // ---------------- 3.4 CORRIENTE Y3
+    H2('3.4 Residuos Y3 (medicamentos y productos farmacéuticos)');
+    TAB([['Sitio', 'Retiros con Y3 (período)', 'dm³ Y3 (período)'].concat(AN.map((y, i) => 'Y3 ' + lblA(y, i).replace(' (al ', ' al ').replace(')', '') + ' (dm³)'))].concat(R.sitios.map(s => [(R.establecimientos.length > 1 ? s.cod + ' · ' : '') + s.sitio, num(s.detalle.filter(d => d.y3).length), s.y3 ? num(s.y3) : 'Sin registro'].concat(AN.map(y => s.anios[y].y3 ? num(s.anios[y].y3) : '—')))), [115, 70, 70, 72, 72, 72],
+      R.sitios.map((s, i) => !s.noAplica && !s.y3 ? i + 1 : null).filter(i => i));
+    const CP = trelew && R.sitios.some(s => s.tipo === 'CAPS') ? resInfCapac_(R.sitios.filter(s => s.tipo === 'CAPS')) : null;
+
+    // ---------------- 3.5 COSTOS DESDE LA VIGENCIA DEL CONTRATO
+    H2('3.5 Costo del volumen retirado desde la vigencia del contrato');
+    if (CT.filas.length) {
+      P_('Contrato ' + CT.contrato + ' (' + CT.empresa + ')' + notaCont() + '. Se informa desde el ' + fTxt(CT.desde) + ' hasta el ' + fTxt(R.hasta) + '.');
+      TAB([['Mes', 'Retiros', 'Volumen (dm³)', 'Precio por dm³', 'Costo estimado']].concat(CT.filas.map(f => [mesTxt(f.mes), num(f.retiros), num(f.dm3), f.precio == null ? 's/d' : mon(f.precio), mon(f.costo)]).concat([['Total', num(CT.retiros), num(CT.dm3), '', mon(CT.total)]])), [110, 70, 90, 100, 100]);
+      P_('El costo es una estimación del volumen retirado de los sitios incluidos al precio unitario contratado (IVA incluido). La facturación del contrato se rige por el cupo mensual y su excedente (cláusula SÉPTIMA), que se calculan sobre el conjunto de los establecimientos del contrato y no sobre estos sitios; por eso la cifra es de referencia y no reemplaza a la factura.');
+    } else P_('No hay un contrato vigente con precio cargado para el período (Libro general de residuos › CONTRATO_GRUPOS): costo s/d (revisar).');
+
     // ---------------- 4. ANÁLISIS DE LOS DATOS
     H1('4. Análisis de los datos');
     H2('4.1 Cumplimiento de la frecuencia');
@@ -196,18 +279,35 @@ function resInfDocumento_(x, R) {
     if (F.length) { P_('Cada fila muestra el retiro anterior y el siguiente, con sus números de manifiesto, y los días transcurridos:'); TAB([['Sitio', 'Retiro anterior', 'Retiro siguiente', 'Días', 'Admisible']].concat(F), [100, 120, 135, 45, 55]); }
     else P_('No se registraron intervalos mayores que el admisible.');
     H2('4.3 Sitios sin retiros en el período');
-    P_(sinRet.length ? sinRet.map(s => s.sitio + (R.establecimientos.length > 1 ? ' (' + s.cod + ')' : '')).join(', ') + '. Puede tratarse de falta de retiro o de manifiestos no cargados: corresponde verificarlo con el establecimiento.' : 'Todos los sitios incluidos registran retiros en el período.');
+    P_(sinRet.length ? sinRet.map(s => s.sitio + (R.establecimientos.length > 1 ? ' (' + s.cod + ')' : '')).join(', ') + '. Con los datos del sistema no puede saberse si la empresa no retiró, si no entregó los manifiestos o si el sitio no los remitió o no se cargaron: corresponde verificarlo según el punto 2.2 antes de reclamar.' : 'Todos los sitios incluidos registran retiros en el período.');
+    H2('4.4 Residuos Y3 y antecedentes de gestión');
+    const sinY3 = R.sitios.filter(s => !s.noAplica && !s.y3), conY3 = R.sitios.filter(s => s.y3);
+    P_(conY3.length + ' de los ' + R.sitios.length + ' sitios registran retiros de Y3 en el período' + (conY3.length ? ' (' + conY3.slice(0, 8).map(s => s.sitio + ': ' + num(s.y3) + ' dm³').join('; ') + (conY3.length > 8 ? '; entre otros' : '') + ')' : '') + '.');
+    if (sinY3.length) {
+      P_('Sin registro de Y3 en el período: ' + sinY3.map(s => s.sitio).join(', ') + '. Un centro de salud con farmacia y prestaciones ambulatorias genera residuos de la corriente Y3 (medicamentos vencidos, deteriorados o sobrantes y productos farmacéuticos)' + notaY3() + ', por lo que debería existir registro de su generación y retiro. La ausencia de registros es un indicio de gestión inadecuada de esta corriente: falta de segregación en origen, de retiro o de documentación, que corresponde subsanar con cada sitio.');
+      if (trelew) {
+        P_('Desde 2024 el Servicio de Higiene y Seguridad Laboral viene trabajando en la gestión de residuos de los CAPS: la Nota Interna N.º 51/24 (04/04/2024) a la Jefatura de Área Externa solicitó fechas para capacitar en gestión de residuos al personal de todos los CAPS y servicios a su cargo, y se dictaron capacitaciones en gestión de residuos. Recientemente se actualizó el manual general de gestión de residuos de la red Trelew y se elaboró un manual específico para los CAPS (MAN-RES-001 CAPS); además, el Manual de Gestión Integral de Residuos, con las guías y protocolos asociados (GD-RES-001, PROT-RES-001 a 004), existe desde 2023.');
+        if (CP && CP.ok) {
+          P_('Asistencia a las capacitaciones de gestión de residuos (CAP-HYS-003 y CAP-HYS-020) registrada en el sistema de capacitaciones: ' + num(CP.total) + ' personas con la capacitación aprobada o asistida, de las cuales ' + num(CP.caps) + ' pertenecen a CAPS o Área Externa.');
+          TAB([['CAPS', 'Personas capacitadas (registro del sistema)']].concat(R.sitios.filter(s => s.tipo === 'CAPS').map(s => [s.sitio, CP.por[s.sitio] ? num(CP.por[s.sitio]) : 's/d (revisar)'])), [200, 270]);
+        }
+        G('Completar la asistencia por CAPS: el sistema de capacitaciones registra desde 2026 y no incluye los dictados de 2024 y 2025; cargar o adjuntar las planillas de asistencia de cada CAPS.');
+      } else G('Completar los antecedentes del establecimiento: notas enviadas, capacitaciones en gestión de residuos (con asistencia por sitio) y manuales vigentes.');
+    }
+    H2('4.5 Costos');
+    P_(CT.filas.length ? 'Desde el ' + fTxt(CT.desde) + ' se retiraron ' + num(CT.dm3) + ' dm³ en ' + num(CT.retiros) + ' retiros, con un costo estimado de ' + mon(CT.total) + (CT.filas.filter(f => f.dm3).length > 1 ? ' (promedio mensual de ' + mon(Math.round(CT.total / CT.filas.filter(f => f.dm3).length)) + ' en los meses con retiros)' : '') + '. La cifra permite dimensionar lo que representa la prestación para estos sitios; no se proyecta hacia atrás porque las condiciones económicas de los contratos anteriores no son comparables.' : 'No se dispone de precios del contrato vigente para estimar el costo (s/d, revisar).');
 
     // ---------------- 5. CONCLUSIÓN
     H1('5. Conclusión');
-    P_('En el período analizado ' + (T.esperados ? 'la frecuencia de retiro alcanzó el ' + pc(T.cumplimiento) + ' de lo pactado' : 'no puede medirse el cumplimiento por falta de frecuencias definidas') + (T.intervalosFuera ? ', con ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' mayores que el admisible' : '') + (sinRet.length ? ' y ' + sinRet.length + (sinRet.length === 1 ? ' sitio' : ' sitios') + ' sin retiros registrados' : '') + '. Los datos surgen de los manifiestos cargados y quedan disponibles con su número para el control de la prestación.');
+    P_('En el período analizado ' + (T.esperados ? 'la frecuencia de retiro alcanzó el ' + pc(T.cumplimiento) + ' de lo pactado' : 'no puede medirse el cumplimiento por falta de frecuencias definidas') + (T.intervalosFuera ? ', con ' + T.intervalosFuera + (T.intervalosFuera === 1 ? ' intervalo' : ' intervalos') + ' mayores que el admisible' : '') + (sinRet.length ? ' y ' + sinRet.length + (sinRet.length === 1 ? ' sitio' : ' sitios') + ' sin retiros registrados' : '') + '. Los datos surgen de los manifiestos cargados y quedan disponibles con su número para el control de la prestación. Las diferencias con lo pactado se verifican contra el protocolo de manifiestos (punto 2.2) antes de atribuirlas a la empresa o al circuito de remisión.' + (R.sitios.some(s => !s.noAplica && !s.y3) ? ' La falta de registros de residuos Y3 en ' + R.sitios.filter(s => !s.noAplica && !s.y3).length + ' sitios indica una gestión inadecuada de esa corriente.' : ''));
     G('Completar o ajustar: qué significa este resultado para el establecimiento (acopios, espacio, riesgos) y qué cambió respecto del informe anterior.');
 
     // ---------------- 6. RECOMENDACIONES
     H1('6. Recomendaciones');
     const rec = [];
-    if (T.intervalosFuera || bajos.length) rec.push('Poner en conocimiento de la empresa prestadora y de la Secretaría de Salud los intervalos y sitios con cumplimiento menor al 80 %, con las fechas y números de manifiesto del punto 4, y solicitar que se regularice la frecuencia del Anexo I del contrato.');
-    if (sinRet.length) rec.push('Verificar con cada establecimiento si los sitios sin retiros no tuvieron retiro o si faltan cargar manifiestos, y completar la carga.');
+    if (T.intervalosFuera || bajos.length) rec.push('Verificar los intervalos y los sitios con cumplimiento menor al 80 % contra el libro de actas y los sobres de remisión de cada sitio (punto 2.2) y, confirmados los retiros no realizados, elevar el reclamo a la empresa por intermedio de la Secretaría de Salud, con las fechas y números de manifiesto del punto 4.2, para que se regularice la frecuencia del Anexo I del contrato.');
+    if (sinRet.length) rec.push('Verificar con cada sitio sin manifiestos si hubo retiros anotados en el libro de actas; reclamar a la empresa las copias de los manifiestos emitidos y recordar al sitio la remisión semanal.');
+    if (R.sitios.some(s => !s.noAplica && !s.y3)) rec.push('Trabajar con cada sitio sin registros de Y3 la segregación y el registro de medicamentos vencidos o sobrantes, reforzar la capacitación en gestión de residuos y registrar la asistencia por sitio.');
     const sabBajos = diarias.filter(s => s.sabados.retirados < s.sabados.pactados / 2);
     if (sabBajos.length) rec.push('Solicitar a la empresa, por intermedio de la Secretaría de Salud, que cumpla los retiros de los sábados previstos para la frecuencia diaria en el Anexo I del contrato (' + sabBajos.map(s => s.sitio).join(', ') + '), o que la frecuencia pactada se ajuste a la que efectivamente se presta.');
     if (sd.length) rec.push('Definir la frecuencia de retiro de los sitios que no la tienen (' + sd.slice(0, 5).map(s => s.sitio).join(', ') + (sd.length > 5 ? ', entre otros' : '') + ') e incorporarla al contrato en la próxima renovación.');
@@ -234,14 +334,20 @@ function resInfDocumento_(x, R) {
     }
 
     // ---------------- ENCABEZADO Y PIE
+    const centrarLogos = sec => { if (!sec) return; const rec = el => { const t = el.getType();
+      if (t === DocumentApp.ElementType.PARAGRAPH) { const p = el.asParagraph(); let img = false; for (let i = 0; i < p.getNumChildren(); i++) if (p.getChild(i).getType() === DocumentApp.ElementType.INLINE_IMAGE) img = true; if (img) p.setAlignment(DocumentApp.HorizontalAlignment.CENTER); }
+      else if (t === DocumentApp.ElementType.TABLE) { const tb = el.asTable(); for (let i = 0; i < tb.getNumRows(); i++) for (let j = 0; j < tb.getRow(i).getNumCells(); j++) { const c = tb.getRow(i).getCell(j); for (let k = 0; k < c.getNumChildren(); k++) rec(c.getChild(k)); } } };
+      for (let i = 0; i < sec.getNumChildren(); i++) rec(sec.getChild(i)); };
     if (deModelo) { try { doc.getFooter().replaceText('\\{\\{CODIGO\\}\\}', codigo); } catch (e) {}
-      if (!trelew) { try { doc.getHeader().clear(); } catch (e) {} } }   // el logo HZT/HMH del modelo solo va en informes de la red Trelew
+      if (!trelew) { try { doc.getHeader().clear(); } catch (e) {} }   // el logo HZT/HMH del modelo solo va en informes de la red Trelew
+      try { centrarLogos(doc.getHeader()); } catch (e) {} try { centrarLogos(doc.getFooter()); } catch (e) {} }   // logos centrados (14.81)
     else try { const pie = doc.addFooter(), p0 = pie.getParagraphs()[0]; p0.setText(codigo); p0.setAttributes(estilo({ tam: 7.5, color: COL.ACENTO })); p0.setAlignment(IZQ);
       const pl = pie.appendParagraph(''); pl.setAlignment(DocumentApp.HorizontalAlignment.CENTER); const img = pl.appendInlineImage(DriveApp.getFileById(RINF.LOGO_PIE).getBlob()), w = 260; img.setHeight(Math.round(img.getHeight() * w / img.getWidth())); img.setWidth(w); } catch (e) {}
     doc.saveAndClose();
   } catch (err) { try { if (doc) DriveApp.getFileById(doc.getId()).setTrashed(true); } catch (e) {} throw err; }
   const notasOk = infNotas_(doc.getId(), notas);
-  const pdf = carpeta.createFile(DriveApp.getFileById(doc.getId()).getAs('application/pdf')).setName(titulo + '.pdf');
-  if (!x.prueba) docActualizar_({ codigo: codigo, documento: doc.getUrl(), pdf: pdf.getUrl(), estado: 'Emitido' });
-  return Object.assign(R, { generado: true, codigo: codigo, doc: doc.getUrl(), pdf: pdf.getUrl(), carpeta: carpeta.getUrl(), notasAlPie: notasOk });
+  // El PDF solo se genera si se pide (pdf: true): mientras el informe se revisa, cada corrección regenera el Doc y el PDF gasta créditos de uso
+  const pdf = x.pdf ? carpeta.createFile(DriveApp.getFileById(doc.getId()).getAs('application/pdf')).setName(titulo + '.pdf') : null;
+  if (!x.prueba) docActualizar_({ codigo: codigo, documento: doc.getUrl(), pdf: pdf ? pdf.getUrl() : '', estado: 'Emitido' });
+  return Object.assign(R, { generado: true, codigo: codigo, doc: doc.getUrl(), pdf: pdf ? pdf.getUrl() : '', carpeta: carpeta.getUrl(), notasAlPie: notasOk });
 }

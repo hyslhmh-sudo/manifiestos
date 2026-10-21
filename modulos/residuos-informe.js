@@ -2,7 +2,7 @@
 // (p_res_inf_opciones, p_res_informe). Belén elige período (mensual, semestral, anual u otro), destinatario y establecimientos/sitios;
 // ve una vista previa y genera el informe en Google Docs + PDF (borrador versión 0, numerado en REGISTRO_DOCUMENTOS).
 let RINFO = null, RINFP = null;
-const RINFF = Object.assign({ tipo: 'Mensual', mes: '', sem: '', anio: '', desde: '', hasta: '', dest: '', cargo: '', detalle: true, sel: [] }, LS.get('rinfF', {}));
+const RINFF = Object.assign({ tipo: 'Mensual', mes: '', sem: '', anio: '', desde: '', hasta: '', dest: '', cargo: '', detalle: true, pdf: false, sel: [] }, LS.get('rinfF', {}));
 const rinfGuardar = () => LS.set('rinfF', RINFF);
 const rinfPad = n => String(n).padStart(2, '0');
 function rinfPeriodo() {
@@ -51,7 +51,7 @@ async function resInforme(fresco) {
       '<span class="mu peq" style="align-self:center">' + sel.size + ' sitio(s) elegido(s)</span></div>' +
       conD.map(estHTML).join('') +
       (sinD.length ? '<details style="margin-top:8px"><summary class="mu" style="cursor:pointer">Otros establecimientos con sitios cargados pero sin manifiestos (' + sinD.length + ')</summary>' + sinD.map(estHTML).join('') + '</details>' : '') + '</section>' +
-    '<section class="card"><h2>4. Generar</h2><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="riDet"' + (F.detalle ? ' checked' : '') + '> Incluir el anexo con el detalle de cada retiro (fecha, día, N.º de manifiesto, volumen y días desde el anterior)</label>' +
+    '<section class="card"><h2>4. Generar</h2><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="riDet"' + (F.detalle ? ' checked' : '') + '> Incluir el anexo con el detalle de cada retiro (fecha, día, N.º de manifiesto, volumen y días desde el anterior)</label>' + '<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="riPdf"' + (F.pdf ? ' checked' : '') + '> Generar también el PDF (recién con el visto bueno del Doc: si hay que corregir, el Doc se elimina y se vuelve a generar)</label>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="riVer">Vista previa</button><button class="btn sec" id="riGen">Generar informe (Google Docs + PDF)</button></div>' +
       '<p class="mu peq" style="margin:8px 0 0">El informe sale como borrador (versión 0), con número en el registro de documentos, en la carpeta «Informes» del establecimiento (o «Informes de la red» si elegís más de uno). Con HZT/HMH usa la paleta azul y el logo HZT/HMH; con otros establecimientos, los colores de la Secretaría de Salud.</p>' +
       '<div id="riRes">' + rinfUltimo() + '</div></section><div id="riPrev"></div>');
@@ -64,7 +64,7 @@ async function resInforme(fresco) {
     $('riPer').textContent = !ok ? 'Completá las dos fechas (día, mes y año)' : p.desde > p.hasta ? '«Desde» es posterior a «Hasta»' : 'Del ' + fechaTxt(p.desde) + ' al ' + fechaTxt(p.hasta) + (p.hasta > O.hoy ? ' (los datos llegan hasta hoy)' : ''); };
   [['riD', 'desde'], ['riH', 'hasta']].forEach(([id, k]) => { if ($(id)) $(id).oninput = $(id).onchange = e => { RINFF[k] = e.target.value; rinfGuardar(); rotulo(); }; });
   if ($('riD')) rotulo();
-  $('riDe').onchange = e => set('dest', e.target.value.trim()); $('riCa').onchange = e => set('cargo', e.target.value.trim()); $('riDet').onchange = e => set('detalle', e.target.checked);
+  $('riDe').onchange = e => set('dest', e.target.value.trim()); $('riCa').onchange = e => set('cargo', e.target.value.trim()); $('riDet').onchange = e => set('detalle', e.target.checked); $('riPdf').onchange = e => set('pdf', e.target.checked);
   const marcar = (lista, on) => { const s = new Set(RINFF.sel); lista.forEach(k => on ? s.add(k) : s.delete(k)); set('sel', Array.from(s)); resInforme(); };
   document.querySelectorAll('.rinfS').forEach(c => c.onchange = () => marcar([c.value], c.checked));
   document.querySelectorAll('.rinfB').forEach(b => b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); const e = O.establecimientos.find(x => x.cod === b.dataset.cod), q = b.dataset.q, todos = e.sitios.map(s => clave(e, s));
@@ -75,7 +75,7 @@ async function resInforme(fresco) {
   const pedir = async generar => {
     const p = rinfPeriodo(); if (!p || !/^\d{4}-\d{2}-\d{2}$/.test(p.desde) || !/^\d{4}-\d{2}-\d{2}$/.test(p.hasta) || p.desde.slice(0, 4) < '2000') return toast('Completá las fechas del período (día, mes y año).'); if (p.desde > p.hasta) return toast('«Desde» es posterior a «Hasta».'); if (!RINFF.sel.length) return toast('Elegí al menos un sitio.');
     if (generar && !RINFF.dest) return toast('Indicá el destinatario.');
-    const datos = { desde: p.desde, hasta: p.hasta, sitios: RINFF.sel, tipoPeriodo: RINFF.tipo, destinatario: RINFF.dest, cargo: RINFF.cargo, detalle: RINFF.detalle, generar: generar };
+    const datos = { desde: p.desde, hasta: p.hasta, sitios: RINFF.sel, tipoPeriodo: RINFF.tipo, destinatario: RINFF.dest, cargo: RINFF.cargo, detalle: RINFF.detalle, pdf: !!RINFF.pdf, generar: generar };
     $('riRes').innerHTML = '<p class="mu" style="margin-top:10px">' + (generar ? 'Generando el informe (puede tardar hasta un minuto)…' : 'Calculando…') + '</p>';
     try { const r = await api('p_res_informe', datos, 300000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo calcular.'); RINFP = r;
       if (r.generado) { const u = LS.get('rinfUlt', []); u.unshift({ codigo: r.codigo, doc: r.doc, pdf: r.pdf, carpeta: r.carpeta, fecha: new Date().toISOString(), periodo: fechaTxt(r.desde) + ' al ' + fechaTxt(r.hastaPedido || r.hasta), notas: r.notasAlPie }); LS.set('rinfUlt', u.slice(0, 10)); }
@@ -91,7 +91,7 @@ function rinfUltimo(recien) {
   const bot = (h, t, pri) => '<a class="btn' + (pri ? '' : ' sec') + '" style="text-decoration:none;display:inline-flex;align-items:center' + (pri ? ';background:#0D313F;color:#fff;border-color:#0D313F' : '') + '" href="' + esc(h) + '" target="_blank" rel="noopener">' + t + '</a>';
   const x = u[0];
   return '<div class="aviso" style="margin-top:12px"><b>' + (recien ? 'Informe generado: ' : 'Último informe generado: ') + esc(x.codigo) + '</b> <span class="mu peq">· ' + esc(x.periodo || '') + '</span>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + bot(x.doc, 'Abrir en Google Docs', true) + bot(x.pdf, 'Abrir el PDF') + bot(x.carpeta, 'Abrir la carpeta') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + bot(x.doc, 'Abrir en Google Docs', true) + (x.pdf ? bot(x.pdf, 'Abrir el PDF') : '') + bot(x.carpeta, 'Abrir la carpeta') + '</div>' +
     (x.notas === false ? '<p class="mu peq" style="margin:6px 0 0">Las referencias normativas quedaron al final (no como notas al pie).</p>' : '') +
     (u.length > 1 ? '<details style="margin-top:8px"><summary class="mu peq" style="cursor:pointer">Anteriores (' + (u.length - 1) + ')</summary>' + u.slice(1).map(y => '<div class="peq" style="margin:4px 0">' + esc(y.codigo) + ' · ' + esc(y.periodo || '') + ' · <a class="link" href="' + esc(y.doc) + '" target="_blank" rel="noopener">Docs ↗</a> · <a class="link" href="' + esc(y.pdf) + '" target="_blank" rel="noopener">PDF ↗</a></div>').join('') + '</details>' : '') + '</div>';
 }
