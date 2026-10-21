@@ -525,7 +525,7 @@ async function capDictados() {
   if (location.hash.split('/')[0] !== '#capdic') return;
   const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
   const nAnt = r.lista.filter(capDicPasado).length;
-  const lista = CAPDIC_ANT ? r.lista.slice().reverse() : r.lista.filter(x => !capDicPasado(x));
+  const lista = CAPDIC_ANT ? r.lista.filter(capDicPasado).reverse() : r.lista.filter(x => !capDicPasado(x));
   const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días con el registro ya cerrado, del más reciente al más antiguo. Tocá uno para ver asistentes y certificados.' : 'Próximos y con registro abierto. El link de registro abre a la hora de la clase y cierra solo a las 48 h; al cerrarse, el dictado pasa a «Ver anteriores».';
   const btnAnt = '<button class="btn sec" id="dicAnt">' + (CAPDIC_ANT ? 'Volver a los vigentes' : 'Ver anteriores' + (nAnt ? ' (' + nAnt + ')' : '')) + '</button>';
   marco('#capdic', capTit('Dictados', sub, '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a>' + btnAnt + '<a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
