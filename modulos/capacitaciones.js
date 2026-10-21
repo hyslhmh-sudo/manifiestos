@@ -525,6 +525,11 @@ async function capDictados() {
   if (location.hash.split('/')[0] !== '#capdic') return;
   const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
   const nAnt = r.lista.filter(capDicPasado).length;
+  // Antes de la clase, si hay inscripción previa, «Link» y «QR» comparten la inscripción (el link de asistencia recién abre a la hora de la clase)
+  const conInsc = x => !!x.linkInscripcion && /próximo/i.test(x.ahora);
+  const linkDe = x => conInsc(x) ? x.linkInscripcion : x.link;
+  const qrDe = x => conInsc(x) ? 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=' + encodeURIComponent(x.linkInscripcion) : x.qr;
+  const ESPERA_WA = '\n\nAl abrir el link, la página puede tardar entre 10 y 30 segundos en cargar. Es normal: no la cierres.';
   const lista = CAPDIC_ANT ? r.lista.filter(capDicPasado).reverse() : r.lista.filter(x => !capDicPasado(x));
   const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días con el registro ya cerrado, del más reciente al más antiguo. Tocá uno para ver asistentes y certificados.' : 'Próximos y con registro abierto. El link de registro abre a la hora de la clase y cierra solo a las 48 h; al cerrarse, el dictado pasa a «Ver anteriores».';
   const btnAnt = '<button class="btn sec" id="dicAnt">' + (CAPDIC_ANT ? 'Volver a los vigentes' : 'Ver anteriores' + (nAnt ? ' (' + nAnt + ')' : '')) + '</button>';
@@ -533,12 +538,12 @@ async function capDictados() {
     '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
     lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
       '<td><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></td><td>' + (x.linkInscripcion ? esc(x.inscriptos) + (capVacio(x.cupo) || /sin/i.test(x.cupo) ? '' : ' / ' + esc(x.cupo)) : '<span class="mu">—</span>') + '</td><td>' + esc(x.asistentes) + '</td>' +
-      '<td style="white-space:nowrap"><button class="link" data-cop="' + j + '">Link</button> · <button class="link" data-wa="' + j + '">WhatsApp</button> · <a class="link" href="' + esc(x.qr) + '" target="_blank" rel="noopener">QR</a></td></tr>').join('') + '</tbody></table></section>' +
+      '<td style="white-space:nowrap"><button class="link" data-cop="' + j + '" title="' + (conInsc(x) ? 'Link de inscripción' : 'Link de registro de asistencia') + '">Link' + (conInsc(x) ? ' inscripción' : '') + '</button> · <button class="link" data-wa="' + j + '">WhatsApp</button> · <a class="link" href="' + esc(qrDe(x)) + '" target="_blank" rel="noopener">QR</a></td></tr>').join('') + '</tbody></table></section>' +
     '<div class="tarjetas">' + lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
   $('dicAnt').onclick = () => { CAPDIC_ANT = !CAPDIC_ANT; capDictados(); };
   document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
-  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.cop].link, 'Link de registro copiado.'));
-  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
+  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(linkDe(lista[b.dataset.cop]), conInsc(lista[b.dataset.cop]) ? 'Link de inscripción copiado.' : 'Link de registro copiado.'));
+  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp + ESPERA_WA, 'Texto para WhatsApp copiado.'));
 }
 async function capDictadoNuevo(cod) {
   if (!CAPC) { cargando('#capdic', 'Preparando…'); try { await capCargar(); } catch (e) { return capFalla('#capdic', 'Nuevo dictado', e); } }
