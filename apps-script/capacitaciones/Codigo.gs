@@ -843,6 +843,10 @@ function siNo_(v) { return /^s[ií]/i.test(String(v || '').trim()); }
 function token12_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 12); }
 function linkReg_(q) { return REGISTRO_URL + '?' + q; }
 function qrDe_(link) { return QR_API + encodeURIComponent(link); }
+// Links que se comparten (WhatsApp, QR, portal): pasan por la página de GitHub, que abre esta aplicación sin el aviso de Google
+// y evita el error de Google con varias cuentas abiertas en el teléfono. En la hoja DICTADOS quedan además los links directos (respaldo).
+const PUBLICO_URL = 'https://hyslhmh-sudo.github.io/capacitaciones/';
+function linkPub_(q) { return PUBLICO_URL + '?' + q; }
 function fmt_(d) { return Utilities.formatDate(d, ZONA, 'dd/MM/yyyy HH:mm'); }
 function sello_() { return Utilities.formatDate(new Date(), ZONA, 'yyyyMMdd-HHmmss'); }
 function uid_(pre, doc) { return pre + '-' + sello_() + '-' + String(doc || '').slice(-3) + Utilities.getUuid().replace(/-/g, '').slice(0, 6); }   // único aunque coincida el segundo
@@ -1122,14 +1126,22 @@ function aperturaDictado_(o, estadoCap) {
 function resumenDictado_(o) {
   const v = ventana_(o);
   return { id: o.ID_DICTADO, codigo: o.CODIGO, encuentro: o.ENCUENTRO_N, fecha: dma_(isoDe_(o.FECHA)), hora: hhmm_(o.HORA_INICIO), horaFin: hhmm_(o.HORA_FIN), modalidad: o.MODALIDAD, lugar: o.LUGAR, servicios: o.SERVICIO_DESTINO,
-    organizador: o.ORGANIZADOR, institucion: o.INSTITUCION, disertantes: o.DISERTANTES, firmantes: o.FIRMANTES, abre: fmt_(v.abre), cierra: fmt_(v.cierra), link: o.LINK, qr: o.QR,
-    linkInscripcion: vacio_(o.LINK_INSCRIPCION) ? '' : o.LINK_INSCRIPCION, cierreInscripcion: o.CIERRE_INSCRIPCION, cupo: o.CUPO_PRESENCIAL, estado: o.ESTADO, observaciones: o.OBSERVACIONES };
+    organizador: o.ORGANIZADOR, institucion: o.INSTITUCION, disertantes: o.DISERTANTES, firmantes: o.FIRMANTES, abre: fmt_(v.abre), cierra: fmt_(v.cierra), link: linkPub_('d=' + encodeURIComponent(o.ID_DICTADO)), qr: qrDe_(linkPub_('d=' + encodeURIComponent(o.ID_DICTADO))),
+    linkInscripcion: vacio_(o.LINK_INSCRIPCION) ? '' : linkPub_('i=' + encodeURIComponent(o.ID_DICTADO)), cierreInscripcion: o.CIERRE_INSCRIPCION, cupo: o.CUPO_PRESENCIAL, estado: o.ESTADO, observaciones: o.OBSERVACIONES };
 }
 function textoWhatsapp_(cap, o) {
+  // Un solo link por mensaje, para que nadie use el equivocado:
+  // antes de la clase, si hay inscripción previa abierta, va el de inscripción; si no, el de registro de asistencia.
   const lineas = ['*Capacitación de Higiene y Seguridad*', cap.NOMBRE + (num_(o.ENCUENTRO_N) > 0 && num_(cap.ENCUENTROS) > 1 ? ' · encuentro ' + o.ENCUENTRO_N + ' de ' + cap.ENCUENTROS : ''),
     'Día: ' + dma_(isoDe_(o.FECHA)) + (hhmm_(o.HORA_INICIO) ? ' · ' + hhmm_(o.HORA_INICIO) + ' h' : ''), 'Modalidad: ' + o.MODALIDAD + (vacio_(o.LUGAR) || /virtual/i.test(o.LUGAR) ? '' : ' · ' + o.LUGAR), ''];
-  if (!vacio_(o.LINK_INSCRIPCION)) lineas.push('Inscribite antes acá:', o.LINK_INSCRIPCION, '');
-  lineas.push('Registrá tu asistencia acá (queda abierto ' + HS_VENTANA + ' h desde el inicio):', o.LINK);
+  const v = ventana_(o), ahora = new Date(), id = encodeURIComponent(o.ID_DICTADO);
+  const cierreIns = !vacio_(o.CIERRE_INSCRIPCION) ? fechaHora_(o.CIERRE_INSCRIPCION) : v.abre;
+  if (!vacio_(o.LINK_INSCRIPCION) && ahora < v.abre && ahora < cierreIns) {
+    lineas.push('Inscribite acá (cierra el ' + fmt_(cierreIns) + ' o al completarse el cupo):', linkPub_('i=' + id), '', 'El día de la clase comparto el link para registrar la asistencia.');
+  } else {
+    lineas.push('Registrá tu asistencia acá (se abre el ' + fmt_(v.abre) + ' y cierra el ' + fmt_(v.cierra) + '):', linkPub_('d=' + id));
+  }
+  lineas.push('', 'Al abrir el link, la página puede tardar entre 10 y 30 segundos en cargar. Es normal: no la cierres.');
   return lineas.join('\n');
 }
 function firmantesOrden_(lista) {

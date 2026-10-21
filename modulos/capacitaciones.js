@@ -529,7 +529,6 @@ async function capDictados() {
   const conInsc = x => !!x.linkInscripcion && /próximo/i.test(x.ahora);
   const linkDe = x => conInsc(x) ? x.linkInscripcion : x.link;
   const qrDe = x => conInsc(x) ? 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=' + encodeURIComponent(x.linkInscripcion) : x.qr;
-  const ESPERA_WA = '\n\nAl abrir el link, la página puede tardar entre 10 y 30 segundos en cargar. Es normal: no la cierres.';
   const lista = CAPDIC_ANT ? r.lista.filter(capDicPasado).reverse() : r.lista.filter(x => !capDicPasado(x));
   const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días con el registro ya cerrado, del más reciente al más antiguo. Tocá uno para ver asistentes y certificados.' : 'Próximos y con registro abierto. El link de registro abre a la hora de la clase y cierra solo a las 48 h; al cerrarse, el dictado pasa a «Ver anteriores».';
   const btnAnt = '<button class="btn sec" id="dicAnt">' + (CAPDIC_ANT ? 'Volver a los vigentes' : 'Ver anteriores' + (nAnt ? ' (' + nAnt + ')' : '')) + '</button>';
@@ -543,7 +542,7 @@ async function capDictados() {
   $('dicAnt').onclick = () => { CAPDIC_ANT = !CAPDIC_ANT; capDictados(); };
   document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
   document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(linkDe(lista[b.dataset.cop]), conInsc(lista[b.dataset.cop]) ? 'Link de inscripción copiado.' : 'Link de registro copiado.'));
-  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp + ESPERA_WA, 'Texto para WhatsApp copiado.'));
+  document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
 }
 async function capDictadoNuevo(cod) {
   if (!CAPC) { cargando('#capdic', 'Preparando…'); try { await capCargar(); } catch (e) { return capFalla('#capdic', 'Nuevo dictado', e); } }

@@ -230,6 +230,8 @@
       $('cCod').textContent = AV ? 'CAPACITACIÓN HyS · AUTOADMINISTRADA' : 'CAPACITACIÓN HyS'; $('cNom').textContent = CAP.nombre;
       if (AV) { $('cSub').textContent = [VIDS.length > 1 ? VIDS.length + ' videos' : 'Video', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : '', r.evaluacion ? 'con evaluación' : 'sin evaluación'].filter(Boolean).join(' · '); if (!ABIERTA.abierta) error(ABIERTA.texto); return listo(r.listas); }
       $('cSub').textContent = [CAP.encuentros > 1 ? (ABIERTA.abierta && ABIERTA.idDictado !== 'PERMANENTE' ? 'Encuentro ' + ABIERTA.encuentro + ' de ' + CAP.encuentros : CAP.encuentros + ' encuentros') : '', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : '', ABIERTA.texto].filter(Boolean).join(' · ');
+      // Registro cerrado (todavía no abrió o ya cerró): no se muestra el formulario, para que nadie crea que quedó registrado
+      if (ABIERTA && !ABIERTA.abierta) { if ($('espera')) $('espera').hidden = true; $('cSub').textContent = [CAP.encuentros > 1 ? CAP.encuentros + ' encuentros' : '', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : ''].filter(Boolean).join(' · '); return error((/se abre/i.test(ABIERTA.texto || '') ? 'Todavía no se puede registrar la asistencia. ' : '') + ABIERTA.texto); }
       listo(r.listas);
   }
 
