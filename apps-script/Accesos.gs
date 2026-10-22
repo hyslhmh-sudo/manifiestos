@@ -33,13 +33,21 @@ function accModulosDe_(txt) {
 }
 const accDni_ = v => String(v == null ? '' : v).replace(/\D/g, '');
 const accClaveReal_ = c => !!c && !/^(usa |por ahora|s\/d)/i.test(c);   // textos de aviso que no son claves
+// Claves personales protegidas (22/10/2026): la clave real se guarda en las propiedades del script, que no se ven al abrir
+// el libro. En ACCESOS › CLAVE queda «(guardada)». Una clave escrita a mano en la celda sigue sirviendo hasta que se corra
+// protegerClavesAccesos() (menú o portal › Accesos), que la pasa a las propiedades y deja «(guardada)».
+const ACC_GUARDADA = '(guardada)';
+const accClaveKey_ = (dni, nombre) => { const d = accDni_(dni); return d ? 'ACC_CLAVE_DNI_' + d : 'ACC_CLAVE_SRV_' + String(nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ''); };
+function accClaveDe_(celda, dni, nombre, P) { const c = accTxt_(celda); if (c !== ACC_GUARDADA) return c; P = P || PropertiesService.getScriptProperties().getProperties(); return accTxt_(P[accClaveKey_(dni, nombre)] || ''); }
+function accClaveGuardar_(sh, fila, jC, dni, nombre, clave) { PropertiesService.getScriptProperties().setProperty(accClaveKey_(dni, nombre), clave); sh.getRange(fila, jC + 1).setValue(ACC_GUARDADA); }
 
 // Filas de ACCESOS (se guardan 5 minutos en memoria: un cambio en la planilla tarda hasta 5 minutos en verse)
 function accesosLeer_() {
   const c = CacheService.getScriptCache(), k = c.get('accesos'); if (k) return JSON.parse(k);
   const sh = pBC_().getSheetByName('ACCESOS'); if (!sh || sh.getLastRow() < 6) return [];
   const H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(accTxt_);
-  const L = sh.getRange(6, 1, sh.getLastRow() - 5, H.length).getDisplayValues().map((r, i) => { const o = { fila: 6 + i }; H.forEach((h, j) => o[h] = accTxt_(r[j])); return o; })
+  const P = PropertiesService.getScriptProperties().getProperties();
+  const L = sh.getRange(6, 1, sh.getLastRow() - 5, H.length).getDisplayValues().map((r, i) => { const o = { fila: 6 + i }; H.forEach((h, j) => o[h] = accTxt_(r[j])); o.CLAVE = accClaveDe_(o.CLAVE, o.DNI, o.APELLIDO_Y_NOMBRE, P); return o; })
     .filter(o => o.APELLIDO_Y_NOMBRE || o.DNI).map(o => {
       const ests = /toda|todos/i.test(o.ESTABLECIMIENTOS) ? ['*'] : o.ESTABLECIMIENTOS.split(/[,;·]+/).map(accTxt_).filter(Boolean);   // separados por coma (lista desplegable con varias selecciones); hay códigos con espacios: «Gan Gan»
       const mods = /(^|[,;·])\s*todos\s*($|[,;·])/i.test(o.MODULOS) ? ACC_MODULOS.slice() : accModulosDe_(o.MODULOS);
@@ -129,10 +137,10 @@ function generarClavesAccesos() {
   v.forEach((r, i) => {
     const dni = accDni_(r[jD]), clave = accTxt_(r[jC]);
     if (!dni || !/^activ/i.test(accTxt_(r[jE])) || accClaveReal_(clave) || /maestra/i.test(clave)) return;
-    const k = nueva(); sh.getRange(6 + i, jC + 1).setValue(k); hechas.push(accTxt_(r[jN]) + ' (DNI ' + dni + '): ' + k);
+    const k = nueva(); accClaveGuardar_(sh, 6 + i, jC, dni, accTxt_(r[jN]), k); hechas.push(accTxt_(r[jN]) + ' (DNI ' + dni + '): ' + k);
   });
   CacheService.getScriptCache().remove('accesos');
-  Logger.log(hechas.length ? 'Claves nuevas (pasáselas a cada persona; también quedaron en ACCESOS › CLAVE):\n' + hechas.join('\n') : 'No había personas activas con DNI y sin clave.');
+  Logger.log(hechas.length ? 'Claves nuevas (pasáselas a cada persona; quedaron guardadas en el sistema y se ven en el portal › Accesos):\n' + hechas.join('\n') : 'No había personas activas con DNI y sin clave.');
 }
 // Ordena la hoja: lista de ESTADO y ayuda de MODULOS (ejecutar una vez, o de nuevo si cambia la regla)
 function prepararHojaAccesos() {
@@ -168,7 +176,8 @@ function accPortal_(accion, x) {
     const L = bc.getSheetByName('LISTAS'), listas = {};
     if (L) { const v = L.getDataRange().getDisplayValues(), h = v[0].map(accTxt_);
       ['ESTABLECIMIENTOS', 'MODULOS', 'ROL', 'ESTADO'].forEach(k => { const j = h.indexOf('ACCESOS_' + k); listas[k] = j < 0 ? [] : v.slice(1).map(r => accTxt_(r[j])).filter(Boolean); }); }
-    const F = filas().map(o => { const c = o.CLAVE || '';
+    const P = PropertiesService.getScriptProperties().getProperties();
+    const F = filas().map(o => { const c = accClaveDe_(o.CLAVE, o.DNI, o.APELLIDO_Y_NOMBRE, P) || '';
       o.CLAVE = esMaestra_(c) || /maestra/i.test(c) ? '(clave maestra)' : accClaveReal_(c) ? c : ''; return o; });
     const shH = bc.getSheetByName('HABILITACION');
     return { ok: true, filas: F, listas: listas, modulos: ACC_MODULOS, soloPersonal: ACC_SOLO_PERSONAL,
@@ -200,9 +209,29 @@ function accPortal_(accion, x) {
     if (!(fila >= 6 && fila <= sh.getLastRow())) return { ok: false, mensaje: 'No encontré esa fila en ACCESOS. Actualizá la pantalla.' };
     const actual = accTxt_(sh.getRange(fila, jC + 1).getDisplayValue());
     if (esMaestra_(actual) || /maestra/i.test(actual)) return { ok: false, mensaje: 'Esa persona usa la clave maestra: no se cambia desde acá.' };
-    const k = nueva(); sh.getRange(fila, jC + 1).setValue(k); limpiar();
+    const dniF = col('DNI') >= 0 ? sh.getRange(fila, col('DNI') + 1).getDisplayValue() : '', nomF = col('APELLIDO_Y_NOMBRE') >= 0 ? sh.getRange(fila, col('APELLIDO_Y_NOMBRE') + 1).getDisplayValue() : '';
+    const k = nueva(); accClaveGuardar_(sh, fila, jC, dniF, nomF, k); limpiar();
     return { ok: true, clave: k };
   });
 
+  if (accion === 'p_acc_proteger') return conLock_(() => { const n = protegerClavesAccesos(); limpiar(); return { ok: true, protegidas: n }; });
+
   return { ok: false, mensaje: 'Acción desconocida.' };
+}
+
+// Pasa a las propiedades del script toda clave personal que esté escrita en ACCESOS › CLAVE y deja «(guardada)».
+// No toca la clave maestra ni los textos de aviso. Devuelve cuántas protegió. Se puede correr las veces que haga falta.
+function protegerClavesAccesos() {
+  const sh = pBC_().getSheetByName('ACCESOS'); if (!sh || sh.getLastRow() < 6) return 0;
+  const H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(accTxt_), jC = H.indexOf('CLAVE'), jD = H.indexOf('DNI'), jN = H.indexOf('APELLIDO_Y_NOMBRE');
+  if (jC < 0) return 0;
+  const v = sh.getRange(6, 1, sh.getLastRow() - 5, H.length).getDisplayValues(); let n = 0;
+  v.forEach((r, i) => {
+    const c = accTxt_(r[jC]); if (!c || c === ACC_GUARDADA || !accClaveReal_(c) || /maestra/i.test(c) || esMaestra_(c)) return;
+    if (!accDni_(r[jD]) && !accTxt_(r[jN])) return;
+    accClaveGuardar_(sh, 6 + i, jC, r[jD], r[jN], c); n++;
+  });
+  CacheService.getScriptCache().remove('accesos');
+  Logger.log(n + ' clave(s) protegida(s).');
+  return n;
 }
