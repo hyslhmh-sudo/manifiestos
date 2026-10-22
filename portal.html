@@ -381,7 +381,7 @@ function marco(activo, contenido) {
   else if (!NAV.act) { NAV.act = base; NAV.dejadas.delete(base); }
   else if (base !== NAV.act && NAV.dejadas.has(base)) throw NAV_VIEJA;
   // Pantallas que no están en el menú se marcan en el ítem del que dependen
-  const ALIAS = { '#ficha': '#est', '#inv': '#sin', '#buscar': '#trab', '#audr': '#aud', '#capficha': '#capcat', '#capalta': '#capcat', '#capdicnuevo': '#capdic', '#capins': '#capdic', '#capserv': '#capcump', '#capjef': '#capcump' };
+  const ALIAS = { '#ficha': '#est', '#inv': '#sin', '#buscar': '#trab', '#audr': '#aud', '#capficha': '#capcat', '#capalta': '#capcat', '#capdicnuevo': '#capdic', '#capins': '#capdic', '#capserv': '#capcump', '#capjef': '#capcump', '#m8plan': '#m8' };
   const ruta0 = activo.split('/')[0], ruta = ALIAS[ruta0] || ruta0;
   const it = (h, ico, t, sub) => '<a href="' + h + '" class="' + (ruta === h ? 'on' : '') + (sub ? ' sub' : '') + '"' + (ruta === h ? ' aria-current="page"' : '') + '>' + (ico ? '<span class="ms" aria-hidden="true">' + ico + '</span>' : '') + t + '</a>';
   // Módulos desplegables: se abre solo el de la pantalla actual y los que se abran a mano en esta sesión
@@ -419,7 +419,7 @@ function marco(activo, contenido) {
     '<nav class="inf" aria-label="Menú">' + inf('#inicio', 'dashboard', 'Tablero') + inf('#est', 'apartment', 'Establec.') + inf('#ges', 'task_alt', 'Plan') + inf('#bib', 'folder_open', 'Documentos') + '<button id="btnMas"><span class="ms" aria-hidden="true">menu</span>Más</button></nav>' +
     '<button class="ayudaBtn" id="btnAyuda" aria-label="Ayuda de esta pantalla"><span class="ms" aria-hidden="true">help</span><span class="txt">Ayuda</span></button>';
   $('btnSalir').onclick = () => salir();
-  $('fBusca').onsubmit = e => { e.preventDefault(); const q = $('qBusca').value.trim(); if (q.length >= 3) location.hash = '#buscar/' + encodeURIComponent(q); else toast('Escribí al menos 3 letras o números.'); };
+  $('fBusca').onsubmit = e => { e.preventDefault(); let q = $('qBusca').value.trim(); if (/^[\d.\s-]+$/.test(q)) q = q.replace(/\D/g, ''); if (q.length >= 3) location.hash = '#buscar/' + encodeURIComponent(q); else toast('Escribí al menos 3 letras o números.'); };
   $('btnMas').onclick = () => $('lat').classList.toggle('abierto');
   const rAy = AYUDA[ruta0] ? ruta0 : ruta;
   $('btnAyuda').onclick = () => abrirAyuda(rAy);
@@ -943,7 +943,7 @@ async function ficha(cod) {
 async function guardarFicha(tipo, fila, datos) {
   const r = await api('p_ficha_guardar', { cod: FICHA.cod, tipo: tipo, fila: fila, datos: datos });
   if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-  const vv = r.vinculo || {}; toast((r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') + (vv.vinculado ? ' Base de personal: ' + vv.persona + (vv.cambios ? ' actualizado/a.' : ' ya estaba al día.') : vv.aviso ? ' ⚠ ' + vv.aviso : '')); delete FICHAS[FICHA.cod]; ficha(FICHA.cod); return '';
+  const vv = r.vinculo || {}; toast((r.cambios ? 'Guardado: ' + r.cambios + ' cambio(s).' : 'Sin cambios.') + (vv.vinculado ? ' Base de personal: ' + vv.persona + (vv.cambios ? ' actualizado.' : ' ya estaba al día.') : vv.aviso ? ' ⚠ ' + vv.aviso : '')); delete FICHAS[FICHA.cod]; ficha(FICHA.cod); return '';
 }
 
 // ------------------------------------------------------------------ Modal genérico
@@ -1072,10 +1072,10 @@ function fichaPunto(cod, R, p) {
 <script src="modulos/plan.js?v=14.9"></script>
 <script src="modulos/documentos.js?v=14.78"></script>
 <script src="modulos/cocinas.js?v=14.72"></script>
-<script src="modulos/trabajadores.js?v=14.4"></script>
+<script src="modulos/trabajadores.js?v=14.87"></script>
 <script src="modulos/siniestros.js?v=14.13"></script>
 <script src="modulos/agua-plagas.js?v=14.79"></script>
-<script src="modulos/capacitaciones.js?v=14.78"></script>
+<script src="modulos/capacitaciones.js?v=14.87"></script>
 <script src="modulos/residuos.js?v=14.4"></script>
 <script src="modulos/diagnostico.js?v=14.7"></script>
 <script src="modulos/diag-modulos.js?v=14.8"></script>
@@ -1086,7 +1086,7 @@ function fichaPunto(cod, R, p) {
 <script src="modulos/radiaciones.js?v=14.76"></script>
 <script src="modulos/rgrl.js?v=14.49"></script>
 <script src="modulos/datos.js?v=14.53"></script>
-<script src="modulos/gestion.js?v=14.64"></script>
+<script src="modulos/gestion.js?v=14.87"></script>
 <script src="modulos/incendio.js?v=14.48"></script>
 <script src="modulos/residuos-novedades.js?v=14.83"></script>
 <script src="modulos/desvios-acciones.js?v=14.86"></script>
