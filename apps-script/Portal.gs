@@ -41,12 +41,13 @@ function portal_(d) {
 }
 function portalAccion_(d) {
   const x = d.datos || {};
+  if (/^p_resnov_/.test(d.accion)) return typeof rnovPortal_ === 'function' ? (rnovPortal_(d.accion, x, x.quien) || { ok: false, error: 'Acción desconocida.' }) : { ok: false, mensaje: 'Falta instalar ResiduosNovedades.gs.' };   // 1 · Residuos › novedades de residuos (22/10/2026)
   if (/^p_ges_/.test(d.accion)) return typeof gesPortal_ === 'function' ? gesPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Gestion.gs.' };   // 11 · Gestión (14.60)
   if (/^p_dat_/.test(d.accion)) return typeof datPortal_ === 'function' ? datPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Datos.gs.' };   // editor general (14.53)
   switch (d.accion) {
     case 'p_ping': return { ok: true, version: VERSION_SISTEMA };   // solo valida la clave (ingreso rápido)
     case 'p_resumen': return pResumen_(x.fresco);
-    case 'p_tablero': { const t = tbTablero_(x.fresco); try { if (t && t.ok !== false && typeof remRed_ === 'function') t.remision = remRed_(x.fresco); } catch (e) {} try { if (t && t.ok !== false && typeof incTablero_ === 'function' && PropertiesService.getScriptProperties().getProperty('INC_ID')) t.incendio = { avisos: incTablero_(x.fresco).avisos }; } catch (e) {} return t; }   // tablero de control (Tablero.gs) + remisión semanal de manifiestos (ResiduosRemision.gs)
+    case 'p_tablero': { const t = tbTablero_(x.fresco); try { if (t && t.ok !== false && typeof remRed_ === 'function') t.remision = remRed_(x.fresco); } catch (e) {} try { if (t && t.ok !== false && typeof incTablero_ === 'function' && PropertiesService.getScriptProperties().getProperty('INC_ID')) t.incendio = { avisos: incTablero_(x.fresco).avisos }; } catch (e) {} try { if (t && t.ok !== false && typeof rnovAvisos_ === 'function') t.resnov = rnovAvisos_(); } catch (e) {} return t; }   // tablero de control (Tablero.gs) + remisión semanal de manifiestos (ResiduosRemision.gs)
     case 'p_res_tablero': return typeof resTablero_ === 'function' ? resTablero_(x.fresco) : { ok: false, mensaje: 'Falta instalar ResiduosTablero.gs.' };   // 1 · Residuos: tablero general (14.22)
     case 'p_res_frecuencias': return typeof resFrecuencias_ === 'function' ? resFrecuencias_(x) : { ok: false, mensaje: 'Falta instalar ResiduosContratos.gs.' };   // frecuencias de retiro (14.23)
     case 'p_res_inf_opciones': return typeof resInfOpciones_ === 'function' ? resInfOpciones_() : { ok: false, mensaje: 'Falta instalar ResiduosInforme.gs.' };   // informe de frecuencia de retiro (14.26)
