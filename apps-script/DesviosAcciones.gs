@@ -209,13 +209,17 @@ function dacCrearNota_(desvios, t, x, LS) {
   const reg = LS.libro.getSheetByName('REGISTRO'), col = reg.getRange(4, 1, Math.max(1, reg.getMaxRows() - 3), 1).getValues();
   let fila = col.findIndex(r => r[0] === '' || r[0] === null); fila = fila < 0 ? reg.getMaxRows() + 1 : fila + 4;
   if (fila > reg.getMaxRows()) reg.insertRowsAfter(reg.getMaxRows(), 20);
-  reg.getRange(fila, 1, 1, 5).setValues([[hoy, DAC.TIPO_NOTA, 'HMH', 'Residuos', nro]]);
+  reg.getRange(fila, 1, 1, 4).setValues([[hoy, DAC.TIPO_NOTA, 'HMH', 'Residuos']]);
   reg.getRange(fila, 9, 1, 3).setValues([[asunto, etiqueta, limpio_(x.antecedentes)]]);
   reg.getRange(fila, 17).setValue('Borrador');
   reg.getRange(fila, 19).setValue('Desvíos del recorrido (HMH)');
   reg.getRange(fila, 20).setValue(url);
-  reg.getRange(fila, 21).setValue('Generado por el sistema desde «Desvíos: acciones y seguimiento» (' + desvios.map(d => d.ID).join(', ') + ').' + (sinNro ? ' Sin número: completar N.º si corresponde.' : ''));
-  return { codigo: mapa.CODIGO, url: url, nombre: nombre };
+  reg.getRange(fila, 21).setValue('Generado por el sistema desde «Desvíos: acciones y seguimiento» (' + desvios.map(d => d.ID).join(', ') + ').' + (sinNro ? ' Sin número (s/n): completar N.º si corresponde.' : ''));
+  SpreadsheetApp.flush();
+  // El N.º va aparte: la columna E tiene validación (solo el número que indica «Próximo N.º»); las notas s/n la dejan vacía
+  let aviso = '';
+  if (!sinNro) { try { reg.getRange(fila, 5).setValue(nro); SpreadsheetApp.flush(); } catch (e) { aviso = 'No se pudo anotar el N.º ' + nro + ' en el registro de notas (' + (e.message || e) + '): completalo a mano.'; } }
+  return { codigo: mapa.CODIGO, url: url, nombre: nombre, aviso: aviso };
 }
 
 // ------------------------------------------------------------------ ACCIONES DEL PORTAL

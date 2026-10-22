@@ -5848,7 +5848,7 @@ function desvAccModal(ids) {
     const notas = r.hechas.filter(h => h.nota);
     await desvAcc(true);
     if (notas.length) setTimeout(() => { const v = modal('Listo', [], {}, async () => '', '<p>Se guardó la acción. ' + (notas.length > 1 ? 'Borradores' : 'Borrador') + ' de nota (revisalo y envialo vos):</p><ul>' +
-      notas.map(h => '<li><a class="link" href="' + esc(h.nota.url) + '" target="_blank" rel="noopener">' + esc(h.nota.codigo + ' · ' + h.destinatario) + ' ↗</a> <span class="mu peq">(' + esc(h.desvios.join(', ')) + ')</span></li>').join('') + '</ul>');
+      notas.map(h => '<li><a class="link" href="' + esc(h.nota.url) + '" target="_blank" rel="noopener">' + esc(h.nota.codigo + ' · ' + h.destinatario) + ' ↗</a> <span class="mu peq">(' + esc(h.desvios.join(', ')) + ')</span>' + (h.nota.aviso ? '<div class="aviso error">' + esc(h.nota.aviso) + '</div>' : '') + '</li>').join('') + '</ul>');
       $('mOk').textContent = 'Cerrar'; $('mOk').onclick = v.cerrar; $('mCan').hidden = true; }, 50);
     else toast('Acción guardada.');
     return '';
