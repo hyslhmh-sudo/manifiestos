@@ -393,7 +393,7 @@ function dacReporteHtml_(R) {
     '<h3 style="color:#0D313F">4. Desvíos abiertos (' + R.abiertos.length + ')</h3>' +
     li(R.abiertos.map(d => '<li>' + e(d.ID) + ' · ' + f(d.FECHA) + ' · ' + e(d.TIPOS) + ' · ' + e([d.SERVICIO, d.UBICACION].filter(Boolean).join(' · ')) + ' · ' + e(d.ESTADO) + ' · gravedad ' + e(d.GRAVEDAD) + '</li>')) +
     '<p>Corregidos y verificados en la semana: <b>' + R.cerrados7 + '</b>.</p>' +
-    '<p style="color:#555;font-size:12px;margin-top:18px">El detalle completo (fotos, lugar, operario y estado de cada desvío) está en «Mi establecimiento» › 1 · Residuos › «Desvíos: supervisión». ' +
+    '<p style="color:#555;font-size:12px;margin-top:18px">El detalle completo (fotos, lugar, operario y estado de cada desvío) está en la página de carga de desvíos, botón «Supervisión» (https://hyslhmh-sudo.github.io/manifiestos/desvios/, entrando con tu nombre y los 3 últimos números de tu DNI). ' +
     'Servicio de Higiene y Seguridad Laboral HZT / HMH · belenpellegrini.hys@gmail.com</p></div>';
 }
 

@@ -30,6 +30,9 @@
   .chips button.urg.sel { border-color:var(--er); background:var(--er); }
   .causa { margin:14px 0 6px; padding:12px 14px 4px; border-left:4px solid var(--pa); background:#EEF4F6; border-radius:8px; }
   .causa h2 { margin-top:0; }
+  .sv { border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:8px 0; background:#fff; } .sv b { display:block; } .sv small { color:var(--mu); font-size:13px; display:block; }
+  .sv .t { float:right; font-size:12px; font-weight:700; padding:2px 8px; border-radius:20px; background:var(--cl); margin-left:8px; } .sv .t.wa { background:var(--wabg); color:var(--wa); } .sv .t.ok { background:var(--okbg); color:var(--ok); }
+  .kp { display:grid; grid-template-columns:1fr 1fr; gap:8px; } .kp div { border:1px solid var(--line); border-radius:12px; padding:10px; background:#fff; } .kp b { display:block; font-size:22px; } .kp span { font-size:12.5px; color:var(--mu); }
   .aisl { margin:14px 0 6px; padding:12px 14px 4px; border-left:4px solid var(--er); background:var(--erbg); border-radius:8px; }
   .aisl p { margin:0 0 10px; font-size:14.5px; } .aisl a { color:var(--az); font-weight:700; }
   .dos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
@@ -72,6 +75,7 @@
     <li>Si en ese lugar ya se había registrado algo, la página te lo muestra: marcá si <b>sigue igual</b> o si <b>ya está corregido</b>. Si no hay nada nuevo, tocá «Enviar solo la revisión».</li>
     <li>Sacá una <b>foto</b>. Que no aparezcan pacientes ni personas.</li>
     <li>Si alguien se lastimó, marcalo: llega como <b>URGENTE</b> a Higiene y Seguridad.</li>
+    <li>Si sos supervisor de la empresa, arriba tenés el botón <b>Supervisión</b>: todo lo cargado, las acciones de Higiene y Seguridad y cuántos desvíos registró cada operario.</li>
     <li>Tocá <b>Enviar</b>. Si no hay señal, queda guardado en el teléfono y se manda solo cuando vuelve la conexión.</li>
   </ol>
   <p class="mu">Mirá sin tocar: nunca abras una bolsa cerrada ni levantes cortopunzantes con la mano.</p>
@@ -155,7 +159,9 @@ function pantallaCarga(err) {
   const chips = (k, arr, multi) => '<div class="chips">' + arr.map(v => { const val = typeof v === 'string' ? v : v.tipo, urg = typeof v === 'object' && v.urgente;
     const sel = multi ? F[k].indexOf(val) >= 0 : F[k] === val;
     return '<button type="button" class="' + (sel ? 'sel ' : '') + (urg ? 'urg' : '') + '" data-k="' + k + '" data-v="' + esc(val) + '" data-m="' + (multi ? 1 : 0) + '">' + esc(val) + '</button>'; }).join('') + '</div>';
-  $('app').innerHTML = '<h1>Registrar un desvío</h1><p class="mu">La fecha y la hora se guardan solas.</p>' + (err ? '<div class="notice er">' + esc(err) + '</div>' : '') +
+  const esSup = (L.operarios || []).some(o => o.cod === YO.cod && o.supervisor);
+  $('app').innerHTML = (esSup ? '<button type="button" class="btn" id="irSup" style="width:100%;margin-top:16px">Supervisión: todo lo cargado y las acciones de HyS</button>' : '') +
+    '<h1>Registrar un desvío</h1><p class="mu">La fecha y la hora se guardan solas.</p>' + (err ? '<div class="notice er">' + esc(err) + '</div>' : '') +
     '<h2>1 · ¿Dónde?</h2>' +
     (p ? '<div class="elegido"><div><b>' + esc(p.servicio) + '</b><br><span class="mu">' + esc(p.piso + ' · ' + p.ubicacion) + '</span></div><button class="link" id="cambiarP">Cambiar</button></div>'
        : '<div class="pisos">' + ['Planta baja', 'Planta alta', 'Otro'].map(x => '<button type="button" class="' + ((x === 'Otro' ? 's/d' : x) === PISO ? 'sel' : '') + '" data-piso="' + (x === 'Otro' ? 's/d' : x) + '">' + x + '</button>').join('') + '</div>' +
@@ -201,6 +207,7 @@ function pantallaCarga(err) {
   document.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => { leer(); F.fotos.splice(Number(b.dataset.quitar), 1); pantallaCarga(); });
   const cp = $('cambiarP'); if (cp) cp.onclick = () => { leer(); F.punto = ''; pantallaCarga(); };
   $('otraPersona').onclick = () => { leer(); YO = null; LS.set('yo', null); pantallaQuien(); };
+  const is = $('irSup'); if (is) is.onclick = () => { leer(); pantallaSupervision(); };
   const fi = $('foto'); if (fi) fi.onchange = async () => { leer(); const f = fi.files[0]; if (!f) return; try { F.fotos.push({ base64: await achicar(f), tipo: 'image/jpeg' }); } catch (e) {} const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); };
   $('enviar').onclick = () => { leer(); enviar(); };
 }
@@ -209,6 +216,45 @@ function achicar(file) {
   return new Promise((ok, mal) => { const r = new FileReader(); r.onerror = mal; r.onload = () => { const im = new Image(); im.onerror = mal; im.onload = () => {
     const M = 1280, k = Math.min(1, M / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.72)); }; im.src = r.result; }; r.readAsDataURL(file); });
+}
+
+// ---------------- Supervisión (supervisor de la empresa: OPERARIOS › SUPERVISOR = Sí)
+let SUP = null, SUPF = { op: '', dias: '30', ver: 'abiertos' };
+async function pantallaSupervision(fresco) {
+  bar('<button class="btn" id="volverCarga">Volver a la carga</button>'); $('volverCarga').onclick = () => { pantallaCarga(); window.scrollTo(0, 0); };
+  if (!SUP || fresco) { $('app').innerHTML = '<h1>Supervisión</h1><p class="mu">Cargando…</p>';
+    const r = await mandar({ accion: 'supervision', operario: YO.cod, dni3: YO.dni3 });
+    if (!r || !r.ok) { $('app').innerHTML = '<h1>Supervisión</h1><div class="notice er">' + esc((r && r.error) || 'No hay señal. Probá de nuevo cuando vuelva la conexión.') + '</div>'; return; }
+    SUP = r; }
+  const D = SUP, R = D.reporte, F = SUPF, ft = t => t ? String(t).slice(0, 10).split('-').reverse().join('/') : '';
+  const lim = Number(F.dias) ? new Date(Date.now() - (Number(F.dias) - 1) * 864e5).toISOString().slice(0, 10) : '';
+  const L = D.desvios.filter(d => (!F.op || d.OPERARIO_COD === F.op) && (!lim || d.FECHA >= lim) && (F.ver !== 'abiertos' || !/^Cerrado/.test(d.ESTADO)));
+  const tag = e => /^Cerrado/.test(e) ? '<span class="t ok">' + esc(e) + '</span>' : e === 'Sin acción' ? '<span class="t wa">Sin acción de HyS</span>' : '<span class="t">' + esc(e) + '</span>';
+  const maxS = Math.max(1, ...D.semanas.map(x => x.n));
+  $('app').innerHTML = '<h1>Supervisión · ' + esc(D.empresa) + '</h1><p class="mu">Lo que registran los operarios en el recorrido del HMH y lo que hace Higiene y Seguridad con cada desvío.</p>' +
+    '<div class="kp"><div><span>Desvíos en 7 días</span><b>' + R.cargas7 + '</b></div><div><span>Operarios que reportaron (7 días)</span><b>' + R.reportaron + ' / ' + R.totalOperarios + '</b></div>' +
+    '<div><span>Acciones de HyS (7 días)</span><b>' + R.acciones7 + '</b></div><div><span>Desvíos abiertos</span><b>' + R.abiertos + '</b></div></div>' +
+    (R.faltanContenedores ? '<div class="notice">En los últimos 30 días hubo <b>' + R.faltanContenedores + '</b> registro(s) sin lugar en ningún contenedor.</div>' : '') +
+    '<h2>Para seguir con la empresa</h2><p class="mu">Acciones abiertas dirigidas a Star Union, a Servicios Generales o por falta de contenedores.</p>' +
+    (R.paraLaEmpresa.length ? R.paraLaEmpresa.map(a => '<div class="sv"><span class="t wa">' + esc(a.estado) + '</span><b>' + esc(a.tipo) + '</b><small>' + esc(ft(a.fecha) + (a.destinatario ? ' · ' + a.destinatario : '') + ' · ' + a.desvios.join(', ')) + (a.detalle ? '<br>' + esc(a.detalle) : '') + '</small></div>').join('') : '<div class="notice ok">No hay acciones abiertas para la empresa.</div>') +
+    '<h2>Adhesión de los operarios</h2>' + D.adhesion.map(a => '<div class="sv">' + (a.d30 ? '<span class="t ok">' + a.d30 + ' en 30 días</span>' : '<span class="t wa">Sin reportes en 30 días</span>') + '<b>' + esc(a.nombre) + '</b><small>' +
+      esc([a.turno && a.turno !== 's/d' ? 'Turno ' + a.turno : '', '7 días: ' + a.d7, 'total: ' + a.total, a.ultimo ? 'último: ' + ft(a.ultimo) : 'nunca reportó', a.revisiones7 ? 'revisiones: ' + a.revisiones7 : ''].filter(Boolean).join(' · ')) + '</small></div>').join('') +
+    '<h2>Desvíos por semana</h2>' + D.semanas.map(x => '<div class="sv"><span class="t">' + x.n + '</span><b>' + ft(x.desde) + ' al ' + ft(x.hasta) + '</b><small><span style="display:inline-block;height:8px;border-radius:4px;background:var(--az);width:' + Math.round(100 * x.n / maxS) + '%;min-width:2px"></span></small></div>').join('') +
+    '<h2>Acciones de Higiene y Seguridad</h2>' + (D.acciones.length ? D.acciones.slice(0, 40).map(a => '<div class="sv"><span class="t ' + (a.abierta ? 'wa' : 'ok') + '">' + esc(a.estado) + '</span><b>' + esc(a.tipo) + '</b><small>' + esc(ft(a.fecha) + (a.destinatario && a.destinatario !== a.tipo ? ' · ' + a.destinatario : '') + ' · ' + a.desvios.join(', ')) + '</small></div>').join('') : '<div class="notice">Todavía no hay acciones registradas.</div>') +
+    '<h2>Todo lo cargado</h2><div class="field"><select id="sOp"><option value="">Todos los operarios</option>' + D.adhesion.map(a => '<option value="' + esc(a.cod) + '"' + (F.op === a.cod ? ' selected' : '') + '>' + esc(a.nombre) + '</option>').join('') + '</select></div>' +
+    '<div class="field"><select id="sDias">' + [['7', 'Últimos 7 días'], ['30', 'Últimos 30 días'], ['90', 'Últimos 90 días'], ['0', 'Todo']].map(x => '<option value="' + x[0] + '"' + (F.dias === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>' +
+    '<div class="field"><select id="sVer"><option value="abiertos"' + (F.ver === 'abiertos' ? ' selected' : '') + '>Solo abiertos</option><option value="todos"' + (F.ver === 'todos' ? ' selected' : '') + '>Abiertos y cerrados</option></select></div>' +
+    (L.length ? L.slice(0, 150).map(d => '<div class="sv">' + tag(d.ESTADO) + '<b>' + esc(d.TIPOS) + '</b><small>' + esc([ft(d.FECHA) + (d.HORA ? ' ' + d.HORA : ''), d.PISO, d.SERVICIO, d.UBICACION].filter(Boolean).join(' · ')) +
+      (d.DESCRIPCION && d.DESCRIPCION !== 's/d' ? '<br>' + esc(d.DESCRIPCION) : '') + (d.CAUSA ? '<br>Por qué: ' + esc(d.CAUSA) + (d.CONTENEDORES ? ' (' + esc(d.CONTENEDORES) + ')' : '') : '') +
+      (d.FOTOS.length ? '<br>' + d.FOTOS.map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + '</a>').join(' · ') : '') +
+      '<br>Registró: ' + esc(d.OPERARIO || 's/d') + ' · ' + esc(d.ID) + ' · Gravedad: ' + esc(d.GRAVEDAD) +
+      (d.ACCIONES.length ? '<br>Acción de HyS: ' + d.ACCIONES.map(a => esc(ft(a.fecha) + ' · ' + a.tipo + (a.destinatario && a.destinatario !== a.tipo ? ' (' + a.destinatario + ')' : ''))).join('; ') : '') +
+      (d.ULTIMO_SEGUIMIENTO ? '<br>Verificación: ' + esc(d.ULTIMO_SEGUIMIENTO) : '') + '</small></div>').join('') : '<div class="notice ok">No hay desvíos con estos filtros.</div>') +
+    '<p class="mu"><button class="link" id="supAct">Actualizar</button> · Cada semana llega además un resumen por correo.</p>';
+  const re = () => { const y = window.scrollY; pantallaSupervision(); window.scrollTo(0, y); };
+  $('sOp').onchange = e => { F.op = e.target.value; re(); }; $('sDias').onchange = e => { F.dias = e.target.value; re(); }; $('sVer').onchange = e => { F.ver = e.target.value; re(); };
+  $('supAct').onclick = () => { SUP = null; pantallaSupervision(true); };
+  window.scrollTo(0, 0);
 }
 
 // ---------------- Envío (con cola si no hay señal)

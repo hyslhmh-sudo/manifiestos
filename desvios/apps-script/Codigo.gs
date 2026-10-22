@@ -106,7 +106,8 @@ function doPost(e) {
     if (d.accion === 'cargar') return json_(guardarCarga_(d));
     if (d.accion === 'registros') return json_(registros_(d));
     if (d.accion === 'seguir') return json_(seguirOperario_(d));            // el operario verifica en el recorrido
-    if (d.accion === 'verificar') return json_(verificarPortal_(d));        // Melani verifica desde «Mi establecimiento»
+    if (d.accion === 'verificar') return json_(verificarPortal_(d));
+    if (d.accion === 'supervision') return json_(supervision_(d));         // supervisor de Star Union (OPERARIOS › SUPERVISOR = Sí) desde la página de carga        // Melani verifica desde «Mi establecimiento»
     return json_({ ok: false, error: 'Acción desconocida' });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -121,7 +122,7 @@ function listasDesdeRespaldo() { return listas_(); }
 function listas_() {
   var ope = tabla_(HOJA_OPE).filter(function (o) { return o.ACTIVO === 'Sí'; })
     .map(function (o) {
-      return { cod: o.COD, nombre: o.NOMBRE + ' ' + o.APELLIDO, empresa: o.EMPRESA, turno: o.TURNO_HABITUAL };
+      return { cod: o.COD, nombre: o.NOMBRE + ' ' + o.APELLIDO, empresa: o.EMPRESA, turno: o.TURNO_HABITUAL, supervisor: o.SUPERVISOR === 'Sí' || o.EMPRESA === 'HySL' };
     });
   var pun = tabla_(HOJA_PUN).filter(function (x) { return x.ACTIVO === 'Sí'; })
     .map(function (x) {
@@ -657,4 +658,61 @@ function recalcularGravedades() {
     if (g !== String(v[i][j('GRAVEDAD_REGLA')] || '')) { hoja.getRange(i + 1, j('GRAVEDAD_REGLA') + 1).setValue(g); n++; }
   }
   try { SpreadsheetApp.getUi().alert('Gravedad recalculada en ' + n + ' desvío(s) abiertos.'); } catch (e) { Logger.log(n); }
+}
+
+
+// ---------------------------------------------------------------
+// 10. Supervisión de Star Union desde la página de carga (pedido de Belén, 22/10/2026)
+//     El supervisor (OPERARIOS › SUPERVISOR = Sí) entra como operario (nombre + 3 números del DNI) y ve todo lo que cargan
+//     los operarios, las acciones de HyS (tipo, fecha, destinatario; nunca el borrador de la nota) y la adhesión de cada operario.
+//     HyS (HYS-01) también lo puede ver.
+// ---------------------------------------------------------------
+function supervision_(d) {
+  var ope = tabla_(HOJA_OPE).filter(function (o) { return o.COD === d.operario; })[0];
+  if (!ope || ope.ACTIVO !== 'Sí') return { ok: false, error: 'Operario no habilitado.' };
+  if (ope.EMPRESA !== 'HySL' && String(ope.DNI || '').slice(-3) !== String(d.dni3 || '').trim()) return { ok: false, error: 'Los 3 números del DNI no coinciden. Revisá y volvé a intentar.' };
+  if (ope.SUPERVISOR !== 'Sí' && ope.EMPRESA !== 'HySL') return { ok: false, error: 'La supervisión es solo para el supervisor de la empresa.' };
+  var F = function (v) { return v instanceof Date ? Utilities.formatDate(v, ZONA, 'yyyy-MM-dd') : (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(String(v)) ? String(v).replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*/, function (m, a, b, c) { return c + '-' + ('0' + b).slice(-2) + '-' + ('0' + a).slice(-2); }) : String(v || '').slice(0, 10)); };
+  var hoy = new Date(), dia = function (n) { var x = new Date(hoy.getTime()); x.setDate(x.getDate() - n); return Utilities.formatDate(x, ZONA, 'yyyy-MM-dd'); };
+  var lim7 = dia(6), lim30 = dia(29);
+  var regs = tabla_(HOJA_REG).map(function (o) {
+    return { ID: o.ID, FECHA: F(o.FECHA_CARGA) || F(o.FECHA_OBSERVACION), HORA: o.HORA instanceof Date ? Utilities.formatDate(o.HORA, ZONA, 'HH:mm') : String(o.HORA || ''),
+      PISO: o.PISO, SERVICIO: o.SERVICIO, UBICACION: o.UBICACION, TIPOS: o.TIPOS_DESVIO, DESCRIPCION: o.DESCRIPCION, CAUSA: o.CAUSA || '', CONTENEDORES: o.CONTENEDORES || '',
+      FOTOS: String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/g) || [], OPERARIO: o.OPERARIO, OPERARIO_COD: o.OPERARIO_COD,
+      GRAVEDAD: o.GRAVEDAD_HYS || o.GRAVEDAD_REGLA || (o.GRAVEDAD_INFORMANTE !== 's/d' ? o.GRAVEDAD_INFORMANTE : '') || 's/d',
+      ESTADO: o.ESTADO_GESTION || 'Sin acción', ULTIMO_SEGUIMIENTO: o.ULTIMO_SEGUIMIENTO || '', ACCIONES: [] };
+  });
+  var porId = {}; regs.forEach(function (x) { porId[x.ID] = x; });
+  var acciones = [];
+  try {
+    tabla_('ACCIONES').forEach(function (a) {
+      var ids = String(a.DESVIOS || '').split(/[;,\s]+/).filter(String);
+      ids.forEach(function (id) { if (porId[id]) porId[id].ACCIONES.push({ fecha: F(a.FECHA), tipo: a.TIPO, destinatario: a.DESTINATARIO }); });
+      var abiertos = ids.filter(function (id) { return porId[id] && !/^Cerrado/.test(porId[id].ESTADO); }).length;
+      acciones.push({ id: a.ID, fecha: F(a.FECHA), tipo: a.TIPO, destinatario: a.DESTINATARIO, desvios: ids, detalle: a.DETALLE || '',
+        estado: abiertos ? abiertos + ' de ' + ids.length + ' desvío(s) en seguimiento' : 'Cerrada', abierta: abiertos > 0,
+        empresa: /star union|contenedor|servicios generales/i.test(String(a.TIPO) + ' ' + String(a.DESTINATARIO)) });
+    });
+  } catch (e) {}
+  acciones.reverse();
+  var revis = []; try { revis = tabla_('SEGUIMIENTOS'); } catch (e) {}
+  var ops = tabla_(HOJA_OPE).filter(function (o) { return o.EMPRESA === 'Star Union' && o.ACTIVO === 'Sí'; });
+  var adhesion = ops.map(function (o) {
+    var nombre = o.NOMBRE + ' ' + o.APELLIDO, mis = regs.filter(function (x) { return x.OPERARIO_COD === o.COD; }).map(function (x) { return x.FECHA; }).sort();
+    return { cod: o.COD, nombre: nombre, turno: o.TURNO_HABITUAL, d7: mis.filter(function (f) { return f >= lim7; }).length, d30: mis.filter(function (f) { return f >= lim30; }).length,
+      total: mis.length, ultimo: mis.length ? mis[mis.length - 1] : '',
+      revisiones7: revis.filter(function (s) { return s.ORIGEN === 'Operario' && s.QUIEN === nombre && F(s.FECHA) >= lim7; }).length };
+  }).sort(function (a, b) { return b.d30 - a.d30 || String(a.nombre).localeCompare(String(b.nombre)); });
+  var semanas = [], l = new Date(hoy.getTime()); l.setDate(l.getDate() - ((l.getDay() + 6) % 7));
+  for (var i = 7; i >= 0; i--) {
+    var ini = new Date(l.getTime()); ini.setDate(ini.getDate() - 7 * i); var fin = new Date(ini.getTime()); fin.setDate(fin.getDate() + 6);
+    var a1 = Utilities.formatDate(ini, ZONA, 'yyyy-MM-dd'), b1 = Utilities.formatDate(fin, ZONA, 'yyyy-MM-dd');
+    semanas.push({ desde: a1, hasta: b1, n: regs.filter(function (x) { return x.FECHA >= a1 && x.FECHA <= b1; }).length });
+  }
+  var abiertos = regs.filter(function (x) { return !/^Cerrado/.test(x.ESTADO); });
+  return { ok: true, empresa: 'Star Union', adhesion: adhesion, semanas: semanas, acciones: acciones, desvios: regs.slice().reverse(),
+    reporte: { cargas7: regs.filter(function (x) { return x.FECHA >= lim7; }).length, reportaron: adhesion.filter(function (a) { return a.d7 > 0; }).length,
+      totalOperarios: adhesion.length, acciones7: acciones.filter(function (a) { return a.fecha >= lim7; }).length, abiertos: abiertos.length,
+      paraLaEmpresa: acciones.filter(function (a) { return a.empresa && a.abierta; }),
+      faltanContenedores: regs.filter(function (x) { return x.FECHA >= lim30 && /^No había lugar/.test(x.CAUSA); }).length } };
 }
