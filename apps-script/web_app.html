@@ -881,7 +881,7 @@ function inicio() {
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
-    (puede('Residuos') || puede('Diagnóstico') || puede('Auditoría') ? '<h2>1 · Residuos</h2><div class="menu">' + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') : '') +
+    (puede('Residuos') || puede('Diagnóstico') || puede('Auditoría') ? '<h2>1 · Residuos</h2><div class="menu">' + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
       (puede('Residuos') ? tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') : '') + '</div>' : '') +
     (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
@@ -1871,6 +1871,70 @@ Object.assign(ACT, { idnBuscar: () => idnBuscar(), idnOk: () => idnOk(), idnEdit
   incRec: () => incRec(), incRecGuardar: () => incRecGuardar(), incNov: () => incNov(), incNovGuardar: () => incNovGuardar(), incVolverIni: () => { F = null; inicio(); },
   incNovLista: () => { F = null; incNovLista(); }, incNovAct: () => incNovLista(true), incNovRes: b => incNovRes(b.dataset.arg), incNovResGuardar: () => incNovResGuardar() });
 
+// ------------------------------------------------------------------ 1 · Residuos › Novedades de residuos (ResiduosNovedades.gs, versión 0, 22/10/2026)
+// Lo que se ve mal en una recorrida. Lo usan Melani (red Trelew) y el referente de residuos del HSST. No envía correos.
+const RES_TIPOS_NOV = ['Residuo peligroso en la bolsa equivocada', 'Cortopunzante fuera del descartador', 'Bolsa roja o descartador sobrellenado o mal cerrado', 'Medicamentos, ampollas o químicos mal descartados',
+  'Derrame o bolsa rota', 'Residuos peligrosos acumulados más del tiempo permitido', 'La empresa no retiró', 'Depósito de residuos abierto, sucio o con residuos ajenos', 'Residuo común o reciclable en bolsa roja',
+  'Recipiente sin tapa, sin rótulo o sin bolsa', 'Bolsas fuera del recipiente o en lugar de paso', 'Carro sucio, roto o con corrientes mezcladas', 'Faltan bolsas, descartadores o recipientes', 'Manifiesto con errores o faltante', 'Otra'];
+const RES_CORR_NOV = ['Biopatogénicos (bolsa roja)', 'Cortopunzantes', 'Medicamentos (Y3)', 'Ampollas y frascos ampolla (Y3)', 'Químicos peligrosos', 'Comunes (bolsa negra)', 'Reciclables o compostables', 'Especiales (pilas, aceite, RAEE)', 'Varias o no corresponde'];
+let RNOVL = null;
+function resNov() { F = { _f: 'resNov', SITIO: (sitiosCfg()[0] || {}).sitio || SES.est, SECTOR: '', TIPO: '', CORRIENTE: '', DETALLE: '' }; MIV = { f: formResNov }; formResNov(); }
+function formResNov() {
+  VISTA = 'mi'; vista('form'); const S = sitiosCfg().map(s => s.sitio);
+  $('app').innerHTML = miTit('Informar una novedad', 'Residuos. Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado), avisá también en el momento a Higiene y Seguridad.') + fErr +
+    (S.length > 1 ? fSel('SITIO', '¿En qué lugar?', S) : '') +
+    fInp('SECTOR', '¿En qué sector?', 'text', 'Ej.: Guardia · office de enfermería') +
+    fSeg('TIPO', '¿Qué viste?', RES_TIPOS_NOV) +
+    fSeg('CORRIENTE', '¿Qué residuo es?', RES_CORR_NOV) +
+    fTxt('DETALLE', 'Contalo brevemente', 'Ej.: cajas de cartón limpias dentro de la bolsa roja del office') +
+    fFoto('FOTO', 'Foto (si se puede)', 'Opcional. Que no aparezcan pacientes ni datos personales.');
+  bar('<button class="btn sec" data-act="resNovVolver">Cancelar</button><button class="btn pri" data-act="resNovGuardar">Informar</button>');
+}
+async function resNovGuardar() {
+  if (!String(F.SECTOR || '').trim()) return miErr('Escribí el sector (dónde lo viste).'); if (!F.TIPO) return miErr('Elegí qué viste.'); if (!F.CORRIENTE) return miErr('Elegí qué residuo es.');
+  if (String(F.DETALLE || '').trim().length < 4) return miErr('Contá brevemente qué viste.');
+  if (F.FOTO && !/^data:image\//.test(F.FOTO)) return miErr('La foto tiene que ser una imagen (no PDF).');
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  const d = { SITIO: F.SITIO || SES.est, SECTOR: F.SECTOR.trim(), TIPO: F.TIPO, CORRIENTE: F.CORRIENTE, DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', quien: SES.persona.nombre };
+  await resNovEnviar('m_res_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>' + (r.peligrosa ? 'Quedó marcada como de <b>residuos peligrosos</b>: aparece primero en la lista. ' : '') + 'Higiene y Seguridad la ve en el sistema.</div>');
+}
+async function resNovEnviar(accion, d, ok) {
+  const b = document.querySelector('#bar .btn.pri'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const antes = ESPERA_MS; ESPERA_MS = 180000;
+  try { const r = await api(accion, d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    F = null; RNOVL = null; vista('form'); $('app').innerHTML = ok(r) + '<div class="menu"><button class="big main" data-act="resNovLista"><b>Ver novedades de residuos</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+  } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
+}
+async function resNovLista(fresco) {
+  VISTA = 'mi'; MIV = { f: () => resNovLista() }; vista('wide');
+  if (!RNOVL || fresco) { $('app').innerHTML = miTit('Novedades de residuos') + '<p class="mu">Cargando…</p>'; bar(null);
+    try { const r = await api('m_res_novedades', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RNOVL = r; }
+    catch (e) { $('app').innerHTML = miTit('Novedades de residuos') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return; } }
+  const item = (n, abierta) => '<div class="item" style="align-items:flex-start"><div><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="tag er">Peligroso</span>' : '') +
+    '<small>' + esc([fechaTxt(n.FECHA) + (n.HORA ? ' ' + n.HORA : ''), n.SITIO !== n.ESTABLECIMIENTO ? n.SITIO : '', n.SECTOR, n.CORRIENTE].filter(Boolean).join(' · ')) + (n.DETALLE ? '<br>' + esc(n.DETALLE) : '') +
+    (n.FOTO ? '<br><a href="' + esc(n.FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + (n.QUIEN ? '<br>Informó: ' + esc(n.QUIEN) : '') +
+    (abierta ? '' : '<br>Resuelta ' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ': ' + esc(n.RESOLUCION) : '')) + '</small></div>' +
+    (abierta ? (RNOVL.puedeResolver ? '<button class="btn sec" data-act="resNovRes" data-arg="' + esc(n.ID) + '" style="flex:0 0 auto">Resuelta</button>' : '<span class="tag wa">Abierta</span>') : '<span class="tag ok">Resuelta</span>') + '</div>';
+  $('app').innerHTML = miTit('Novedades de residuos', 'Lo que se vio mal en las recorridas. Primero, lo de residuos peligrosos.') +
+    '<div class="menu"><button class="big main" data-act="resNov"><b>+ Informar una novedad</b><span>Algo mal en una recorrida</span></button></div>' +
+    '<h2>Abiertas (' + RNOVL.abiertas.length + ')</h2>' + (RNOVL.abiertas.length ? '<div class="lista">' + RNOVL.abiertas.map(n => item(n, true)).join('') + '</div>' : '<div class="notice ok">No hay novedades abiertas.</div>') +
+    (RNOVL.resueltas.length ? '<h2>Resueltas</h2><div class="lista">' + RNOVL.resueltas.map(n => item(n, false)).join('') + '</div>' : '') +
+    '<p class="mu" style="font-size:13px"><button class="link" data-act="resNovAct">Actualizar</button></p>';
+  miVolver(); window.scrollTo(0, 0);
+}
+function resNovRes(id) { const n = RNOVL && RNOVL.abiertas.find(x => x.ID === id); if (!n) return; F = { _f: 'resNovRes', ID: id, _n: n, RESOLUCION: '' }; MIV = { f: formResNovRes }; formResNovRes(); }
+function formResNovRes() {
+  VISTA = 'mi'; vista('form'); const n = F._n;
+  $('app').innerHTML = miTit('Novedad resuelta', esc(n.TIPO + ' · ' + n.SECTOR)) + fErr + fTxt('RESOLUCION', 'Qué se hizo (opcional)', 'Ej.: el servicio retiró el cartón de la bolsa roja; se habló con la jefatura');
+  bar('<button class="btn sec" data-act="resNovLista">Cancelar</button><button class="btn pri" data-act="resNovResGuardar">Marcar resuelta</button>');
+}
+async function resNovResGuardar() {
+  if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
+  await resNovEnviar('m_res_nov_resolver', { ID: F.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre }, () => '<div class="notice ok" style="margin-top:24px"><b>Novedad marcada como resuelta.</b></div>');
+}
+Object.assign(ACT, { resNov: () => resNov(), resNovGuardar: () => resNovGuardar(), resNovVolver: () => { F = null; inicio(); }, resNovLista: () => { F = null; resNovLista(); },
+  resNovAct: () => resNovLista(true), resNovRes: b => resNovRes(b.dataset.arg), resNovResGuardar: () => resNovResGuardar() });
+
 Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incTodoOk: () => incTodoOk(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incResolver: () => incResolver(), incResolverGuardar: () => incResolverGuardar(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
 
 function rxListo(aviso, volver) {
@@ -1935,6 +1999,7 @@ const AYG = [
   { m: 'Residuos', t: 'Foto del manifiesto: plazo', p: ['Se puede guardar sin foto, pero hay que subirla antes del día 10 del mes siguiente: «Mis registros» › «Subir foto», o con el lote .zip del mes.', 'Desde 2027, si no se sube a tiempo, no se pueden cargar manifiestos nuevos.'] },
   { m: 'Residuos', t: 'Certificado de tratamiento', p: ['Inicio › Residuos › «Cargar un certificado»: uno por mes, cubre todos los retiros del mes.', 'Empresa, mes y año, número y fecha de tratamiento; la cantidad tratada por corriente (dm³ o kg) es opcional; la foto es obligatoria desde 2027.', '«Ver avance por mes» muestra qué meses tienen retiros y certificado.'] },
   { m: 'Residuos', t: 'Enviar escaneados (lote .zip)', p: ['Desde una computadora: poné los escaneos del mes en una carpeta (si cada archivo se llama con el número de manifiesto, se une solo).', 'Clic derecho › Enviar a › Carpeta comprimida (.zip); hasta 20 MB cada una.', 'Inicio › Residuos › «Enviar escaneados», elegí mes y año, la carpeta, y «Enviar». No cierres hasta ver el resultado.'] },
+  { m: 'Residuos', t: 'Informar una novedad de residuos', p: ['Inicio › Residuos › «Informar una novedad»: para lo que se ve mal en una recorrida (bolsa equivocada, cortopunzante fuera del descartador, descartador lleno, depósito abierto, la empresa no retiró, etc.).', 'Elegí el lugar, escribí el sector, qué viste y qué residuo es, y contalo en pocas palabras. La foto es opcional, pero ayuda mucho: que no aparezcan pacientes ni datos personales.', 'Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado), avisá también en el momento a Higiene y Seguridad.', '«Novedades de residuos»: lo abierto (primero lo de residuos peligrosos) y lo resuelto. Cuando se corrige, tocá «Resuelta» y contá qué se hizo.', 'No envía correos: Higiene y Seguridad las ve en el sistema.'] },
   { m: 'Agua', t: 'Tanques, cisternas y canillas', p: ['Inicio › Agua › «Mis tanques y canillas». Se cargan una sola vez; para cambiar algo, «Cambiar datos». Necesita señal.'] },
   { m: 'Agua', t: 'Limpieza de tanque', p: ['Completá y hacé firmar el formulario F-AGU-01.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento y datos del formulario (mínimo 6 horas cerrado).', 'La foto del F-AGU-01 firmado es obligatoria.'] },
   { m: 'Agua', t: 'Análisis de agua y NO APTA', p: ['Inicio › Agua › «Cargar análisis de agua»: canilla, tipo, motivo, fecha, laboratorio y resultado, con la foto o el PDF del informe.', 'Si todavía no llegó el informe: «Pendiente»; cuando llegue, cargalo de nuevo con el resultado.', 'NO APTA: avisá a Higiene y Seguridad en el día. Hay que limpiar y tomar una nueva muestra en no más de 15 días hábiles.'] },
