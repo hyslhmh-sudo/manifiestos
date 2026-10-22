@@ -460,3 +460,11 @@ function recalcularReiterados() {
   hoja.getRange(2, COLS.indexOf('REITERADO') + 1, out.length, 1).setValues(out);
   SpreadsheetApp.getUi().alert('Listo: se recalculó la columna REITERADO.');
 }
+
+
+/** Ejecutar una vez desde el editor para autorizar la conexión con el Sistema HyS (comprobación de claves). */
+function autorizarConexionSistema() {
+  var cfg = config_();
+  var r = UrlFetchApp.fetch(cfg.URL_SISTEMA, { muteHttpExceptions: true });
+  Logger.log('Sistema HyS respondió: ' + r.getResponseCode());
+}
