@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#343A40">
+<title>Desvíos en residuos · HMH</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --gris:#343A40; --az:#21708C; --pa:#5894A7; --nar:#FF682C; --cl:#EAF3F6; --tx:#343A40; --mu:#5F6B73; --line:#D1D1D1;
+    --ok:#1E6B42; --okbg:#E3F4EA; --wa:#8A5200; --wabg:#FFF3D6; --er:#B4361F; --erbg:#FDE8E2; color-scheme: light; }
+  *, *::before, *::after { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:#fff; color:var(--tx); font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif; font-size:16px; line-height:1.45; }
+  header { background:var(--gris); color:#fff; padding:12px 16px; border-bottom:5px solid var(--nar); position:sticky; top:0; z-index:5; }
+  header .in { max-width:560px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  header b { font-size:17px; display:block; } header small { color:#D9DEE2; font-size:12.5px; }
+  .ayuda { width:38px; height:38px; border-radius:50%; border:2px solid #fff; background:none; color:#fff; font:inherit; font-weight:800; font-size:18px; cursor:pointer; flex:none; }
+  .net { font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; white-space:nowrap; }
+  .net.on { background:#DDF1E5; color:var(--ok); } .net.off { background:#FFF1D6; color:#8A5A00; }
+  main { max-width:560px; margin:0 auto; padding:0 16px 140px; }
+  h1 { font-size:21px; margin:20px 0 4px; } h2 { font-size:16px; margin:22px 0 8px; }
+  .mu { color:var(--mu); font-size:14px; }
+  .field { margin:16px 0; } .lab { font-weight:700; font-size:15px; margin-bottom:6px; display:block; }
+  input, select, textarea { width:100%; font:inherit; font-size:16px; color:var(--tx); background:#fff; border:2px solid var(--line); border-radius:10px; padding:12px; }
+  textarea { min-height:84px; resize:vertical; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button { padding:10px 12px; border-radius:10px; border:2px solid var(--line); background:#fff; color:var(--tx); font:inherit; font-size:14.5px; font-weight:600; cursor:pointer; text-align:left; }
+  .chips button.sel { border-color:var(--az); background:var(--az); color:#fff; }
+  .chips button.urg.sel { border-color:var(--er); background:var(--er); }
+  .pisos { display:flex; gap:8px; margin-bottom:8px; } .pisos button { flex:1; padding:10px; border-radius:10px; border:2px solid var(--line); background:#fff; font:inherit; font-weight:700; cursor:pointer; color:var(--tx); }
+  .pisos button.sel { background:var(--gris); border-color:var(--gris); color:#fff; }
+  .lista button { display:block; width:100%; text-align:left; background:#fff; border:2px solid var(--line); border-radius:12px; padding:12px 14px; margin:8px 0; cursor:pointer; font:inherit; color:var(--tx); }
+  .lista button b { display:block; } .lista button span { color:var(--mu); font-size:13.5px; }
+  .lista button.sel { border-color:var(--az); background:var(--cl); }
+  .elegido { background:var(--cl); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; gap:10px; align-items:center; }
+  .link { background:none; border:0; color:var(--az); font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; padding:0; }
+  .fotos { display:flex; gap:8px; flex-wrap:wrap; } .fotos div { position:relative; } .fotos img { width:96px; height:96px; object-fit:cover; border-radius:10px; border:1px solid var(--line); }
+  .fotos button { position:absolute; top:-8px; right:-8px; width:28px; height:28px; border-radius:50%; border:0; background:var(--er); color:#fff; font-weight:800; cursor:pointer; }
+  .camara { display:flex; align-items:center; justify-content:center; width:96px; height:96px; border:2px dashed var(--pa); border-radius:10px; color:var(--pa); font-weight:800; cursor:pointer; text-align:center; font-size:13px; }
+  .notice { border-radius:12px; padding:12px 14px; margin:14px 0; background:var(--wabg); color:var(--wa); font-size:14.5px; }
+  .notice.ok { background:var(--okbg); color:var(--ok); } .notice.er { background:var(--erbg); color:var(--er); }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); }
+  .bar .in { max-width:560px; margin:0 auto; display:flex; gap:10px; }
+  .btn { flex:1; padding:14px; border-radius:12px; border:2px solid var(--az); background:#fff; color:var(--az); font:inherit; font-weight:800; font-size:16px; cursor:pointer; }
+  .btn.pri { background:var(--nar); border-color:var(--nar); color:#fff; } .btn:disabled { opacity:.55; cursor:default; }
+  footer { text-align:center; padding:28px 0 8px; } footer img { width:100%; max-width:360px; height:auto; }
+  dialog { border:0; border-radius:14px; max-width:520px; width:calc(100% - 32px); padding:18px; } dialog::backdrop { background:rgba(0,0,0,.45); }
+  dialog h2 { margin-top:0; } dialog li { margin:6px 0; }
+  :focus-visible { outline:3px solid var(--nar); outline-offset:2px; }
+</style>
+</head>
+<body>
+<header><div class="in"><div><b>Desvíos en residuos · HMH</b><small id="quienTop">Registro del recorrido de retiro</small></div>
+  <div style="display:flex;gap:8px;align-items:center"><span id="net" class="net on">En línea</span><button class="ayuda" id="btnAyuda" aria-label="Ayuda">?</button></div></div></header>
+<main id="app"><p class="mu" style="margin-top:24px">Cargando…</p></main>
+<div class="bar" id="bar" hidden><div class="in" id="barIn"></div></div>
+<dialog id="dlgAyuda">
+  <h2>Ayuda</h2>
+  <p><b>Para qué es:</b> para registrar lo que ves mal en el recorrido de retiro de residuos (bolsas en el piso, bolsa del color equivocado, agujas o vidrios sueltos, contenedor lleno, etc.).</p>
+  <ol>
+    <li>Elegí tu nombre y escribí los <b>3 últimos números de tu DNI</b>. El teléfono te recuerda para la próxima.</li>
+    <li>Elegí el <b>lugar</b> del recorrido (planta baja o alta). Si escaneaste el QR del depósito, ya aparece elegido.</li>
+    <li>Marcá <b>qué viste</b> (podés marcar varias cosas) y qué residuo es.</li>
+    <li>Sacá una <b>foto</b>. Que no aparezcan pacientes ni personas.</li>
+    <li>Si alguien se lastimó, marcalo: llega como <b>URGENTE</b> a Higiene y Seguridad.</li>
+    <li>Tocá <b>Enviar</b>. Si no hay señal, queda guardado en el teléfono y se manda solo cuando vuelve la conexión.</li>
+  </ol>
+  <p class="mu">Mirá sin tocar: nunca abras una bolsa cerrada ni levantes cortopunzantes con la mano.</p>
+  <p class="mu">La fecha y la hora se registran solas.</p>
+  <button class="btn" onclick="this.closest('dialog').close()">Entendido</button>
+</dialog>
+<script>
+// ==================================================================
+// DESVÍOS EN GESTIÓN DE RESIDUOS · HMH · página de carga (versión 0)
+// Servicio de Higiene y Seguridad Laboral · HZT / HMH
+// Guarda en la planilla «DESVÍOS RESIDUOS HMH · Registro (v0)» a través de su Apps Script.
+// Si GitHub no anda, la misma página se abre desde Google: URL de la app web + ?p=carga
+// ==================================================================
+const API = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
+const RESIDUOS = ['Biopatogénico (bolsa roja)', 'Cortopunzante', 'Común / RSU (bolsa negra)', 'Reciclable (bolsa verde)', 'Químico / especial (bolsa amarilla)', 'Medicamentos / ampollas', 'No se puede saber'];
+const GRAV = ['Baja', 'Media', 'Alta', 'Crítica'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const LS = { get: (k, d) => { try { const v = localStorage.getItem('desv_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set: (k, v) => { try { localStorage.setItem('desv_' + k, JSON.stringify(v)); } catch (e) {} } };
+let L = LS.get('listas', null), YO = LS.get('yo', null), F = null, PISO = 'Planta baja';
+const QR = new URLSearchParams(location.search).get('p');   // ?p=PB-06 (QR pegado en el punto)
+
+function bar(html) { $('bar').hidden = !html; $('barIn').innerHTML = html || ''; }
+function red() { const on = navigator.onLine, n = cola().length; $('net').className = 'net ' + (on ? 'on' : 'off'); $('net').textContent = (on ? 'En línea' : 'Sin señal') + (n ? ' · ' + n + ' sin enviar' : ''); }
+function cola() { return LS.get('cola', []); }
+
+async function listas() {
+  try { const r = await fetch(API, { redirect: 'follow' }).then(x => x.json()); if (r.ok) { L = r; LS.set('listas', r); } } catch (e) {}
+  if (!L) { $('app').innerHTML = '<div class="notice er" style="margin-top:24px">No se pudo abrir la lista de operarios y lugares. Revisá la señal y volvé a entrar.</div>'; return false; }
+  return true;
+}
+
+// ---------------- Paso 1: quién carga
+function pantallaQuien(msg) {
+  bar(null);
+  const ops = L.operarios || [];
+  $('app').innerHTML = '<h1>¿Quién carga?</h1><p class="mu">Elegí tu nombre y escribí los 3 últimos números de tu DNI.</p>' + (msg ? '<div class="notice er">' + esc(msg) + '</div>' : '') +
+    '<div class="field"><label class="lab" for="op">Tu nombre</label><select id="op"><option value="">Elegí…</option>' + ops.map(o => '<option value="' + esc(o.cod) + '"' + (YO && YO.cod === o.cod ? ' selected' : '') + '>' + esc(o.nombre) + (o.empresa ? ' · ' + esc(o.empresa) : '') + '</option>').join('') + '</select></div>' +
+    '<div class="field"><label class="lab" for="dni3">3 últimos números del DNI</label><input id="dni3" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Ej.: 674"></div>' +
+    '<p class="mu">Si tu nombre no está, avisale a Higiene y Seguridad.</p>';
+  bar('<button class="btn pri" id="bQuien">Seguir</button>');
+  $('bQuien').onclick = () => {
+    const cod = $('op').value, d3 = $('dni3').value.replace(/\D/g, '');
+    const o = ops.find(x => x.cod === cod);
+    if (!o) return pantallaQuien('Elegí tu nombre.');
+    if (o.empresa !== 'HySL' && d3.length !== 3) return pantallaQuien('Escribí los 3 últimos números de tu DNI.');
+    YO = { cod: o.cod, nombre: o.nombre, empresa: o.empresa, dni3: d3 }; LS.set('yo', YO); nuevo();
+  };
+}
+
+// ---------------- Paso 2: la carga
+function nuevo() {
+  F = { punto: QR || '', tipos: [], residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
+  pantallaCarga();
+}
+function puntoDe(cod) { return (L.puntos || []).find(p => p.cod === cod); }
+function pantallaCarga(err) {
+  $('quienTop').textContent = YO.nombre + ' · ' + (YO.empresa || '');
+  const p = puntoDe(F.punto), pisos = ['Planta baja', 'Planta alta', 's/d'];
+  const lugares = (L.puntos || []).filter(x => x.piso === PISO || (PISO === 's/d' && pisos.indexOf(x.piso) < 0));
+  const chips = (k, arr, multi) => '<div class="chips">' + arr.map(v => { const val = typeof v === 'string' ? v : v.tipo, urg = typeof v === 'object' && v.urgente;
+    const sel = multi ? F[k].indexOf(val) >= 0 : F[k] === val;
+    return '<button type="button" class="' + (sel ? 'sel ' : '') + (urg ? 'urg' : '') + '" data-k="' + k + '" data-v="' + esc(val) + '" data-m="' + (multi ? 1 : 0) + '">' + esc(val) + '</button>'; }).join('') + '</div>';
+  $('app').innerHTML = '<h1>Registrar un desvío</h1><p class="mu">La fecha y la hora se guardan solas.</p>' + (err ? '<div class="notice er">' + esc(err) + '</div>' : '') +
+    '<h2>1 · ¿Dónde?</h2>' +
+    (p ? '<div class="elegido"><div><b>' + esc(p.servicio) + '</b><br><span class="mu">' + esc(p.piso + ' · ' + p.ubicacion) + '</span></div><button class="link" id="cambiarP">Cambiar</button></div>'
+       : '<div class="pisos">' + ['Planta baja', 'Planta alta', 'Otro'].map(x => '<button type="button" class="' + ((x === 'Otro' ? 's/d' : x) === PISO ? 'sel' : '') + '" data-piso="' + (x === 'Otro' ? 's/d' : x) + '">' + x + '</button>').join('') + '</div>' +
+         '<div class="lista">' + lugares.map(x => '<button type="button" data-punto="' + esc(x.cod) + '"><b>' + esc(x.servicio) + '</b><span>' + esc(x.ubicacion) + '</span></button>').join('') + '</div>') +
+    '<div class="field"><label class="lab" for="detalle">Más precisión del lugar (opcional)</label><input id="detalle" value="' + esc(F.detalle) + '" placeholder="Ej.: al lado del ascensor, tacho del fondo"></div>' +
+    '<h2>2 · ¿Qué viste? <span class="mu">(podés marcar varias)</span></h2>' + chips('tipos', L.tipos || [], true) +
+    '<h2>3 · ¿Qué residuo es?</h2>' + chips('residuos', RESIDUOS, true) +
+    '<h2>¿Había residuos mezclados?</h2>' + chips('mezcla', ['Sí', 'No', 'No se puede ver'], false) +
+    '<div class="field"><label class="lab" for="descripcion">4 · Contalo en pocas palabras</label><textarea id="descripcion" placeholder="Ej.: bolsa roja abierta en el piso del depósito, tacho vacío al lado">' + esc(F.descripcion) + '</textarea></div>' +
+    '<h2>5 · Fotos <span class="mu">(hasta 3)</span></h2><div class="fotos">' + F.fotos.map((f, i) => '<div><img src="' + f.base64 + '" alt="Foto ' + (i + 1) + '"><button type="button" data-quitar="' + i + '" aria-label="Quitar foto">×</button></div>').join('') +
+    (F.fotos.length < 3 ? '<label class="camara">📷<br>Sacar foto<input type="file" accept="image/*" capture="environment" id="foto" hidden></label>' : '') + '</div>' +
+    '<p class="mu">Que no aparezcan pacientes ni personas.</p>' +
+    '<h2>6 · ¿Qué tan grave te parece?</h2>' + chips('gravedad', GRAV, false) +
+    '<h2>7 · ¿Alguien se lastimó?</h2>' + chips('lesion', ['No', 'Sí'], false) +
+    (F.lesion === 'Sí' ? '<div class="field"><label class="lab" for="detalleLesion">¿Qué pasó? ¿Quién?</label><textarea id="detalleLesion" placeholder="Ej.: me pinché el dedo con una aguja suelta al levantar la bolsa">' + esc(F.detalleLesion) + '</textarea></div><div class="notice er">Avisá ya a tu supervisor y andá a la guardia. Esta carga llega como URGENTE a Higiene y Seguridad.</div>' : '') +
+    '<div class="field"><label class="lab" for="observaciones">Algo más (opcional)</label><input id="observaciones" value="' + esc(F.observaciones) + '"></div>' +
+    '<p class="mu">Carga: <b>' + esc(YO.nombre) + '</b> · <button class="link" id="otraPersona">No soy yo</button></p>' +
+    '<footer><img src="data:image/png;base64,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" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas" onerror="this.remove()"></footer>';
+  bar('<button class="btn pri" id="enviar">Enviar</button>');
+  const leer = () => ['detalle', 'descripcion', 'observaciones', 'detalleLesion'].forEach(k => { const e = $(k); if (e) F[k] = e.value; });
+  document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { leer(); const k = b.dataset.k, v = b.dataset.v;
+    if (b.dataset.m === '1') { const i = F[k].indexOf(v); i >= 0 ? F[k].splice(i, 1) : F[k].push(v); } else F[k] = F[k] === v ? '' : v;
+    const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
+  document.querySelectorAll('[data-piso]').forEach(b => b.onclick = () => { leer(); PISO = b.dataset.piso; const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
+  document.querySelectorAll('[data-punto]').forEach(b => b.onclick = () => { leer(); F.punto = b.dataset.punto; const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
+  document.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => { leer(); F.fotos.splice(Number(b.dataset.quitar), 1); pantallaCarga(); });
+  const cp = $('cambiarP'); if (cp) cp.onclick = () => { leer(); F.punto = ''; pantallaCarga(); };
+  $('otraPersona').onclick = () => { leer(); YO = null; LS.set('yo', null); pantallaQuien(); };
+  const fi = $('foto'); if (fi) fi.onchange = async () => { leer(); const f = fi.files[0]; if (!f) return; try { F.fotos.push({ base64: await achicar(f), tipo: 'image/jpeg' }); } catch (e) {} const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); };
+  $('enviar').onclick = () => { leer(); enviar(); };
+}
+// Achica la foto (lado mayor 1280 px, JPEG) para que se mande rápido
+function achicar(file) {
+  return new Promise((ok, mal) => { const r = new FileReader(); r.onerror = mal; r.onload = () => { const im = new Image(); im.onerror = mal; im.onload = () => {
+    const M = 1280, k = Math.min(1, M / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.72)); }; im.src = r.result; }; r.readAsDataURL(file); });
+}
+
+// ---------------- Envío (con cola si no hay señal)
+async function enviar() {
+  if (!F.punto) return pantallaCarga('Elegí el lugar donde lo viste.');
+  if (!F.tipos.length) return pantallaCarga('Marcá qué viste.');
+  if (String(F.descripcion).trim().length < 4) return pantallaCarga('Contá en pocas palabras qué viste.');
+  if (F.lesion === 'Sí' && String(F.detalleLesion).trim().length < 4) return pantallaCarga('Contá qué pasó con la lesión.');
+  const datos = { accion: 'cargar', operario: YO.cod, dni3: YO.dni3, punto: F.punto, tipos: F.tipos, residuos: F.residuos, mezcla: F.mezcla || 's/d', gravedad: F.gravedad || 's/d',
+    lesion: F.lesion, detalleLesion: F.detalleLesion, detalle: F.detalle.trim(), descripcion: F.descripcion.trim(), observaciones: F.observaciones.trim(), fotos: F.fotos,
+    fuente: 'Página de carga', creado: new Date().toISOString() };
+  const b = $('enviar'); b.disabled = true; b.textContent = 'Enviando…';
+  const r = await mandar(datos);
+  if (r && r.ok) return listo(r);
+  if (r && r.error && !r.red) { b.disabled = false; b.textContent = 'Enviar'; if (/DNI/.test(r.error)) { YO = null; LS.set('yo', null); return pantallaQuien(r.error); } return pantallaCarga(r.error); }
+  const q = cola(); q.push(datos); LS.set('cola', q); red();
+  bar(null); $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Quedó guardado en el teléfono.</b><br>No hay señal: se manda solo cuando vuelva la conexión. No lo cargues de nuevo.</div>' + otraVez();
+  activarOtraVez();
+}
+async function mandar(d) {
+  try { const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(d), redirect: 'follow' }).then(x => x.json()); return r; }
+  catch (e) { return { ok: false, red: true }; }
+}
+async function vaciarCola() {
+  if (!navigator.onLine) return; let q = cola(); if (!q.length) return; const quedan = [];
+  for (const d of q) { const r = await mandar(d); if (!(r && r.ok) && (!r || r.red)) quedan.push(d); }
+  LS.set('cola', quedan); red();
+}
+function otraVez() { return '<div style="display:flex;flex-direction:column;gap:10px;margin-top:18px"><button class="btn pri" id="otro">Registrar otro desvío</button><button class="btn" id="mismo">Otro en el mismo lugar</button></div>'; }
+function activarOtraVez() { const pto = F.punto; $('otro').onclick = () => nuevo(); $('mismo').onclick = () => { nuevo(); F.punto = pto; pantallaCarga(); }; }
+function listo(r) {
+  bar(null);
+  $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Enviado. Registro ' + esc(r.id) + '.</b><br>Higiene y Seguridad ya recibió el aviso' + (r.urgente ? ' como <b>URGENTE</b>' : '') + '. Gracias.</div>' + otraVez();
+  activarOtraVez(); window.scrollTo(0, 0);
+}
+
+$('btnAyuda').onclick = () => $('dlgAyuda').showModal();
+window.addEventListener('online', () => { red(); vaciarCola(); }); window.addEventListener('offline', red);
+(async function inicio() {
+  red(); const ok = await listas(); if (!ok) return;
+  vaciarCola(); if (YO && (L.operarios || []).some(o => o.cod === YO.cod)) nuevo(); else pantallaQuien();
+})();
+</script>
+</body>
+</html>
