@@ -468,3 +468,15 @@ function autorizarConexionSistema() {
   var r = UrlFetchApp.fetch(cfg.URL_SISTEMA, { muteHttpExceptions: true });
   Logger.log('Sistema HyS respondió: ' + r.getResponseCode());
 }
+
+
+/** Copia a Drive la guía para operarios (DOCUMENTOS PARA COLABORADORES) y los carteles QR (carpeta del registro). Se ejecuta desde el editor. */
+function guardarGuiaYQr() {
+  var base = 'https://raw.githubusercontent.com/hyslhmh-sudo/manifiestos/b6a2fcf/desvios/impresion/';
+  var guia = UrlFetchApp.fetch(base + 'Guia_registro_desvios_HMH_v0.docx').getBlob().setName('Guía · Registro de desvíos en el recorrido de residuos · HMH (v0).docx');
+  var qr = UrlFetchApp.fetch(base + 'QR_puntos_recorrido_HMH_v0.pdf').getBlob().setName('QR · Puntos del recorrido de residuos · HMH (v0).pdf');
+  var g = DriveApp.getFolderById('1tT3WC_Qj8yD6-xgkba2QpPQFCAxZUwCk').createFile(guia);
+  var q = DriveApp.getFolderById('1dmWBDp9iL8xS76pxF0WisMbjAtQn_AzP').createFile(qr);
+  Logger.log('Guía: ' + g.getUrl());
+  Logger.log('QR: ' + q.getUrl());
+}
