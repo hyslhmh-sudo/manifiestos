@@ -211,7 +211,7 @@ function pResumenTrab_(forzar) {
   }
   const capDni = pCapsDnis_(), bt = pBT_(), trab = {};
   bt.getSheets().forEach(sh => {
-    const cod = sh.getName(); if (sh.getLastRow() < 6 || ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS'].indexOf(cod) >= 0) return;
+    const cod = sh.getName(); if (sh.getLastRow() < 6 || BT_SISTEMA.indexOf(cod) >= 0) return;
     const v = sh.getRange(6, 2, sh.getLastRow() - 5, 19).getValues();
     const act = v.filter(r => r[0] !== '' && (r[18] === 'Activo' || r[18] === ''));
     trab[cod] = { total: v.filter(r => r[0] !== '').length, activos: act.length, capacitados: act.filter(r => capDni[pDni_(r[0])]).length };
@@ -356,7 +356,7 @@ function pTrabGuardar_(x) {
   const eCuil = pCuilOk_(d.CUIL, dni); if (eCuil) return { ok: false, mensaje: eCuil };
   if (!limpio_(d.APELLIDOS) || !limpio_(d.NOMBRES)) return { ok: false, mensaje: 'Faltan apellido o nombre.' };
   // El mismo DNI en otra fila (de cualquier establecimiento)
-  const todos = bt.getSheets().map(s => s.getName()).filter(n => ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS'].indexOf(n) < 0);
+  const todos = bt.getSheets().map(s => s.getName()).filter(n => BT_SISTEMA.indexOf(n) < 0);
   for (const h of todos) {
     const r = pFilasTrab_(bt.getSheetByName(h)).find(f => String(f.v[1]).replace(/\D/g, '') === dni && !(h === cod && f.fila === x.fila) && !/^(Baja|Traslado)/.test(String(f.v[19])));
     if (r) return { ok: false, mensaje: 'Ese DNI ya está cargado en ' + h + ' (fila ' + r.fila + '). Si cambió de establecimiento, usá «Traslado».' };

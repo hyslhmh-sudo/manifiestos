@@ -22,7 +22,7 @@ const CRUCE = {
   ORIGEN: 'Cruce nocturno con capacitaciones',
   LABORALES: ['FUNCION', 'FUNCION_DETALLE', 'SERVICIO', 'VINCULO', 'EMPRESA', 'EN_NTEAR'],   // los que no existan en el libro nuevo se saltean
   PUBLICOS: ['Red Trelew', 'Red Chubut'],
-  HOJAS_FUERA: ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS', 'MATRIZ_EXPOSICION'],
+  HOJAS_FUERA: ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS', 'MATRIZ_EXPOSICION', 'EMPRESAS'],
   HORA: 3,
   MAX_DIFERENCIAS: 5000
 };

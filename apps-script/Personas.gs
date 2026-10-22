@@ -8,7 +8,7 @@
  */
 
 const PERS_NTEAR_ID = '1iLlahqu2XtHePHtqKMhEm7h9sbKyqm7cj-_aKs1fpx4';   // NTEAR 2026 (Drive). Si cambia la planilla, se corrige acá.
-const PERS_NO_HOJAS = ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL'];
+const PERS_NO_HOJAS = ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS', 'MATRIZ_EXPOSICION', 'EMPRESAS'];
 const PERS_TITULOS = /^(dr|dra|lic|ing|cdor|cdora|cdra|cr|cra|sr|sra|srta|enf|tec|téc|prof|bioq|farm|arq|mg|esp)\.?$/i;
 
 function persTokens_(s) { return sinTildes_(String(s || '').replace(/\([^)]*\)/g, ' ').replace(/,/g, ' ')).split(' ').filter(t => t && !PERS_TITULOS.test(t) && t.length > 1); }

@@ -290,7 +290,7 @@ function hojaTrab_(ss, cod, nombre, filas, posicion) {
 }
 
 // ------------------------------------------------------------------ 3. SINCRONIZACIONES (cuando se suman establecimientos o sitios)
-const BT_SISTEMA = ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS'];
+const BT_SISTEMA = ['INICIO', 'TODOS', 'DUPLICADOS', 'IMPORTACIONES', 'HISTORIAL', 'LISTAS', 'MATRIZ_EXPOSICION', 'EMPRESAS'];   // hojas que no son establecimientos
 /**
  * Para cada establecimiento de la BASE COMÚN que no tenga hoja en la BASE DE TRABAJADORES, la crea.
  * Después rehace la fórmula de TODOS y el índice de INICIO con todas las hojas.
