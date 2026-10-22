@@ -169,13 +169,61 @@ function rnovAvisos_() {
   try { ca.put('rnov_avisos', JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
+// ------------------------------------------------------------------ DESVÍOS DEL RECORRIDO (Star Union, HMH)
+// Pedido de Belén (22/10/2026): que en «Novedades de residuos» aparezca también lo que registran los operarios de Star Union en el
+// recorrido de retiro del HMH (planilla «DESVÍOS RESIDUOS HMH · Registro (v0)», hoja REGISTROS). Se leen desde acá, sin copiarlos.
+// Abierto = sin revisar por HyS (REVISADO_POR y FECHA_REVISION vacíos). «Resuelta» escribe REVISADO_POR, FECHA_REVISION y OBS_HYS en esa planilla.
+const RDESV = { LIBRO: '14bK84HUpTXXGcBBQ737SUScFWHOykUh9V50VTpiVCXw', HOJA: 'REGISTROS', EST: 'HMH' };
+function rdesvLeer_() {
+  const sh = SpreadsheetApp.openById(RDESV.LIBRO).getSheetByName(RDESV.HOJA); if (!sh || sh.getLastRow() < 2) return { sh: sh, H: [], L: [] };
+  const v = sh.getDataRange().getValues(), H = v.shift().map(h => String(h).trim()), L = [];
+  v.forEach((r, i) => {
+    const o = {}; H.forEach((h, j) => o[h] = r[j]); if (!o.ID) return;
+    const t = h => o[h] instanceof Date ? o[h] : limpio_(o[h]), fc = o.FECHA_CARGA instanceof Date ? o.FECHA_CARGA : null;
+    const resid = limpio_(o.TIPO_RESIDUO), tipos = limpio_(o.TIPOS_DESVIO);
+    const pel = /biopat|cortopun|químic|quimic|medicam|ampoll/i.test(resid) || /cortopun/i.test(tipos) || o.LESION === 'Sí';
+    const revisado = limpio_(o.REVISADO_POR) || (o.FECHA_REVISION instanceof Date || limpio_(o.FECHA_REVISION));
+    const det = [limpio_(o.DESCRIPCION), o.CAUSA ? 'Por qué: ' + limpio_(o.CAUSA) + (o.CONTENEDORES ? ' (' + limpio_(o.CONTENEDORES) + ')' : '') : '',
+      o.AISLAMIENTO ? '¿Aislamiento?: ' + limpio_(o.AISLAMIENTO) : '', o.LESION === 'Sí' ? 'LESIÓN: ' + limpio_(o.DETALLE_LESION) : ''].filter(Boolean).join(' · ');
+    L.push({ fila: i + 2, ID: limpio_(o.ID), ORIGEN: 'Recorrido Star Union',
+      FECHA: fc ? Utilities.formatDate(fc, TZ, 'yyyy-MM-dd') : limpio_(o.FECHA_OBSERVACION), HORA: limpio_(o.HORA),
+      ESTABLECIMIENTO: RDESV.EST, SITIO: RDESV.EST,
+      SECTOR: [o.PISO, o.SERVICIO, o.UBICACION].map(limpio_).filter(Boolean).join(' · ') + (limpio_(o.DETALLE_UBICACION) && limpio_(o.DETALLE_UBICACION) !== 's/d' ? ' · ' + limpio_(o.DETALLE_UBICACION) : ''),
+      TIPO: tipos, CORRIENTE: resid, PELIGROSA: pel ? 'Sí' : 'No', DETALLE: det,
+      FOTO: (String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/) || [''])[0], QUIEN: limpio_(o.OPERARIO) + (o.INFORMANTE ? ' (' + limpio_(o.INFORMANTE) + ')' : ''),
+      ESTADO: revisado ? 'Resuelta' : 'Abierta', RESUELTO: o.FECHA_REVISION instanceof Date ? Utilities.formatDate(o.FECHA_REVISION, TZ, 'yyyy-MM-dd') : limpio_(o.FECHA_REVISION),
+      RESUELTO_POR: limpio_(o.REVISADO_POR), RESOLUCION: [limpio_(o.ORIGEN_HYS), limpio_(o.ACCION_INDIVIDUAL), limpio_(o.OBS_HYS)].filter(Boolean).join(' · ') });
+  });
+  return { sh: sh, H: H, L: L };
+}
+function rdesvResolver_(x, quien) {
+  const D = rdesvLeer_(), n = D.L.find(z => z.ID === limpio_(x.ID)); if (!n) return { ok: false, mensaje: 'No encontré ese desvío.' };
+  if (n.ESTADO === 'Resuelta') return { ok: false, mensaje: 'Ese desvío ya estaba revisado.' };
+  const set = (k, v) => { const j = D.H.indexOf(k); if (j >= 0) D.sh.getRange(n.fila, j + 1).setValue(v); };
+  set('REVISADO_POR', quien); set('FECHA_REVISION', new Date());
+  const res = limpio_(x.RESOLUCION); if (res) { const j = D.H.indexOf('OBS_HYS'), prev = j >= 0 ? limpio_(D.sh.getRange(n.fila, j + 1).getValue()) : ''; set('OBS_HYS', prev ? prev + ' · ' + res : res); }
+  return { ok: true };
+}
+
 function rnovPortal_(accion, x, quien) {
   if (accion === 'p_resnov_listar') {
     const cods = x.cod ? [limpio_(x.cod)] : (listaActivos_() || []).map(e => e.id), abiertas = [], resueltas = [];
     cods.forEach(c => { try { const r = rnovListar_(c); r.abiertas.forEach(n => abiertas.push(n)); r.resueltas.forEach(n => resueltas.push(n)); } catch (e) {} });
-    return { ok: true, abiertas: abiertas, resueltas: resueltas.slice(0, 60), tipos: RNOV.TIPOS, corrientes: RNOV.CORRIENTES.map(c => c[0]) };
+    let errDesv = '';
+    if (cods.indexOf(RDESV.EST) >= 0) {
+      try { const L = rdesvLeer_().L.reverse().map(n => { const c = Object.assign({}, n); delete c.fila; return c; });
+        L.filter(n => n.ESTADO !== 'Resuelta').forEach(n => abiertas.push(n)); L.filter(n => n.ESTADO === 'Resuelta').slice(0, 30).forEach(n => resueltas.push(n)); }
+      catch (e) { errDesv = 'No se pudieron leer los desvíos del recorrido: ' + (e.message || e); }
+    }
+    // Primero lo de residuos peligrosos y, dentro de cada grupo, lo más nuevo arriba
+    const orden = (a, b) => (b.PELIGROSA === 'Sí') - (a.PELIGROSA === 'Sí') || String(b.FECHA + ' ' + b.HORA).localeCompare(String(a.FECHA + ' ' + a.HORA));
+    abiertas.sort(orden); resueltas.sort((a, b) => String(b.RESUELTO || b.FECHA).localeCompare(String(a.RESUELTO || a.FECHA)));
+    return { ok: true, abiertas: abiertas, resueltas: resueltas.slice(0, 60), aviso: errDesv, tipos: RNOV.TIPOS, corrientes: RNOV.CORRIENTES.map(c => c[0]) };
   }
-  if (accion === 'p_resnov_resolver') return conLock_(() => rnovResolver_(limpio_(x.cod), x, quien || 'Belén Pellegrini (portal)'));
+  if (accion === 'p_resnov_resolver') {
+    if (/^DR-/.test(limpio_(x.ID))) return conLock_(() => rdesvResolver_(x, quien || 'Belén Pellegrini (portal)'));
+    return conLock_(() => rnovResolver_(limpio_(x.cod), x, quien || 'Belén Pellegrini (portal)'));
+  }
   return null;
 }
 
