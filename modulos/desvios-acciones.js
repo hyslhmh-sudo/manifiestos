@@ -28,7 +28,7 @@ async function desvAcc(fresco) {
       '<td style="white-space:nowrap"><b>' + esc(d.ID) + '</b><div class="mu peq">' + fechaTxt(d.FECHA) + (d.HORA ? ' · ' + esc(d.HORA) : '') + '</div></td>' +
       '<td><b>' + esc(d.TIPOS) + '</b>' + (peligroso(d) ? ' <span class="tag er">Peligroso</span>' : '') + (/^No había lugar/.test(d.CAUSA) ? ' <span class="tag wa">Faltan contenedores</span>' : '') +
         (/infectocontagiosa/i.test(d.AISLAMIENTO) ? ' <span class="tag wa">Aislamiento infectocontagioso</span>' : '') + (d.escalar ? ' <span class="tag er" title="' + esc(d.escalar) + '">Evaluar escalar</span>' : '') +
-        '<div class="mu peq">' + esc(d.RESIDUO || '') + ' · Gravedad: ' + esc(d.GRAVEDAD) + (d.GRAVEDAD_HYS ? ' (HyS)' : '') + '</div></td>' +
+        '<div class="mu peq">' + esc(d.RESIDUO || '') + ' · Gravedad: ' + esc(d.GRAVEDAD) + (d.GRAVEDAD_FUENTE ? ' (' + esc(d.GRAVEDAD_FUENTE) + ')' : '') + '</div>' + (d.SEGREGACION ? '<div class="mu peq">Qué estaba mal: ' + esc(d.SEGREGACION) + '</div>' : '') + '</td>' +
       '<td class="peq">' + esc([d.PISO, d.SERVICIO].filter(Boolean).join(' · ')) + '<div class="mu">' + esc(d.UBICACION + (d.DETALLE_UBICACION ? ' · ' + d.DETALLE_UBICACION : '')) + '</div></td>' +
       '<td class="peq" style="max-width:300px">' + esc(d.DESCRIPCION || '') + (d.CAUSA ? '<div><b>Por qué:</b> ' + esc(d.CAUSA) + (d.CONTENEDORES ? ' (' + esc(d.CONTENEDORES) + ')' : '') + '</div>' : '') +
         (d.AISLAMIENTO ? '<div><b>¿Aislamiento?</b> ' + esc(d.AISLAMIENTO) + '</div>' : '') + (d.FOTOS.length ? '<div>' + d.FOTOS.map((u, i) => lk(u, 'Foto ' + (i + 1))).join(' · ') + '</div>' : '') +
@@ -40,7 +40,7 @@ async function desvAcc(fresco) {
         : abierto ? '<button class="btn sec peq" data-uno="' + esc(d.ID) + '">Acción</button> <button class="btn sec peq" data-ver="' + esc(d.ID) + '">Verificar</button>' : '') +
         ' <button class="btn sec peq" data-cla="' + esc(d.ID) + '" title="Gravedad y origen según HyS">Clasificar</button></div></td></tr>';
   };
-  marco('#desvacc', cab + '<div class="filtros"><a class="btn sec" href="' + esc(DAC.planilla) + '" target="_blank" rel="noopener">Planilla ↗</a><button class="btn sec" id="dvAct">Actualizar</button></div></div>' +
+  marco('#desvacc', cab + '<div class="filtros"><button class="btn sec" id="dvRep">Reporte semanal a Star Union</button><a class="btn sec" href="' + esc(DAC.planilla) + '" target="_blank" rel="noopener">Planilla ↗</a><button class="btn sec" id="dvAct">Actualizar</button></div></div>' +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
       kpi('actuar', 'PARA ACTUAR', R.sinAccion, 'sin acción tuya' + (R.vencidos ? ' · ' + R.vencidos + ' vencidos en total' : ''), '#B4361F') +
       kpi('seguimiento', 'EN SEGUIMIENTO', R.seguimiento, 'verificar en el lugar') + kpi('confirmar', 'A CONFIRMAR', R.confirmar, 'los operarios dicen que se corrigió', '#8A5200') +
@@ -54,6 +54,13 @@ async function desvAcc(fresco) {
       'Melani y los operarios también verifican (lo de los operarios queda «A confirmar»). Si un lugar acumula desvíos o uno persiste, aparece «Evaluar escalar».</p>');
   const re = () => { const y = window.scrollY; desvAcc(); window.scrollTo(0, y); };
   $('dvAct').onclick = () => { DAC = null; desvAcc(true); };
+  $('dvRep').onclick = async () => { const b = $('dvRep'); b.disabled = true; b.textContent = 'Armando…';
+    const r = await api('p_desv_reporte', {}, 120000); b.disabled = false; b.textContent = 'Reporte semanal a Star Union'; if (!r.ok) return toast(r.mensaje || 'No se pudo armar.');
+    const c = r.config || {};
+    const m = modal('Reporte semanal · vista previa', [], {}, async () => '', '<p class="mu peq" style="margin:0 0 8px">Para: <b>' + esc(c.correo || 's/d') + '</b> · Envío automático: <b>' + (c.activo ? 'activado (lunes 8 h)' : 'desactivado') + '</b>. Se configura en la planilla de desvíos › CONFIG (CORREO_SUPERVISOR y REPORTE_SEMANAL).</p>' +
+      '<div style="border:1px solid var(--ln);border-radius:10px;padding:12px;max-height:55vh;overflow:auto">' + r.html + '</div>');
+    $('mOk').textContent = 'Enviar ahora'; $('mOk').onclick = async () => { $('mOk').disabled = true; const e = await api('p_desv_reporte_enviar', {}, 120000); $('mOk').disabled = false;
+      if (!e.ok) { $('mErr').textContent = e.mensaje || 'No se pudo enviar.'; $('mErr').hidden = false; return; } m.cerrar(); toast('Reporte enviado a ' + e.enviado + '.'); }; };
   document.querySelectorAll('[data-dv]').forEach(a => a.onclick = e => { e.preventDefault(); F.vista = a.dataset.dv; F.sel = {}; desvAcc(); });
   $('dvQ').onchange = () => { F.q = $('dvQ').value.trim(); re(); };
   document.querySelectorAll('[data-sel]').forEach(c => c.onchange = () => { if (c.checked) F.sel[c.dataset.sel] = 1; else delete F.sel[c.dataset.sel]; re(); });
@@ -72,7 +79,7 @@ async function desvAcc(fresco) {
       { gravedad: d.GRAVEDAD_HYS, origen: d.ORIGEN_HYS || d.ORIGEN_SUGERIDO }, async out => {
         const r = await api('p_desv_clasificar', { id: d.ID, gravedad: out.gravedad, origen: out.origen }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
         toast('Clasificación guardada.'); DAC = null; desvAcc(true); return ''; },
-      '<p class="mu peq" style="margin:0">La gravedad define los plazos. Si no la clasificás, se usa la del operario.</p>'); });
+      '<p class="mu peq" style="margin:0">La gravedad define los plazos. Si no la clasificás, vale la de las reglas (hoja REGLAS_GRAVEDAD) y, si ninguna regla aplica, la del operario.</p>'); });
 }
 
 // Tomar una acción con uno o varios desvíos

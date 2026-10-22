@@ -37,7 +37,7 @@ var COLS = ['ID', 'FECHA_CARGA', 'FECHA_OBSERVACION', 'HORA', 'TURNO', 'ESTABLEC
   'ORIGEN_HYS', 'GRAVEDAD_HYS', 'ACCION_INDIVIDUAL', 'OBS_HYS', 'REVISADO_POR',
   'FECHA_REVISION', 'AVISO_ENVIADO', 'FUENTE', 'OBS_INFORMANTE', 'REVISAR_UBICACION',
   'REITERADO', 'CAUSA', 'CONTENEDORES', 'AISLAMIENTO',
-  'ESTADO_GESTION', 'VENCE', 'ACCIONES', 'ULTIMO_SEGUIMIENTO'];   // estas 4 las mantiene el Sistema HyS (DesviosAcciones.gs)
+  'ESTADO_GESTION', 'VENCE', 'ACCIONES', 'ULTIMO_SEGUIMIENTO', 'SEGREGACION', 'GRAVEDAD_REGLA'];   // estas 4 las mantiene el Sistema HyS (DesviosAcciones.gs)
 
 // Causas (hoja CAUSAS). Si la hoja falta, se usan estas.
 var CAUSAS_BASE = [
@@ -228,6 +228,8 @@ function guardarCarga_(d) {
       REITERADO: reiterado > 0 ? 'Sí (' + reiterado + ' en ' + (cfg.DIAS_REITERADO || 30) + ' días)' : 'No',
       CAUSA: causa,
       CONTENEDORES: contenedores,
+      SEGREGACION: String(d.segregacion || '').trim(),
+      GRAVEDAD_REGLA: gravedadRegla_(tipos, d.residuos || [], String(d.segregacion || '').trim(), lesion),
       AISLAMIENTO: String(d.aislamiento || '').trim()
     };
     hoja.appendRow(COLS.map(function (c) { return fila[c] !== undefined ? fila[c] : ''; }));
@@ -320,12 +322,14 @@ function enviarAviso_(f, urgente, cfg) {
     ['¿Venía de un aislamiento?', f.AISLAMIENTO || ''],
     ['Descripción', f.DESCRIPCION],
     ['Gravedad (operario)', f.GRAVEDAD_INFORMANTE],
+    ['Gravedad según reglas de HyS', f.GRAVEDAD_REGLA || ''],
+    ['¿Qué estaba mal?', f.SEGREGACION || ''],
     ['Lesión', f.LESION + (f.DETALLE_LESION ? ' · ' + f.DETALLE_LESION : '')],
     ['Reiterado', f.REITERADO],
     ['Origen sugerido', f.ORIGEN_SUGERIDO],
     ['Fotos', f.FOTOS]
   ];
-  filas = filas.filter(function (r) { return ['¿Por qué?', 'Contenedores', '¿Venía de un aislamiento?'].indexOf(r[0]) < 0 || r[1]; });
+  filas = filas.filter(function (r) { return ['¿Por qué?', 'Contenedores', '¿Venía de un aislamiento?', 'Gravedad según reglas de HyS', '¿Qué estaba mal?'].indexOf(r[0]) < 0 || r[1]; });
   var html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
     (urgente ? '<p style="color:#b00020;font-weight:bold">Requiere atención prioritaria (cortopunzante o lesión).</p>' : '') +
     '<p>Se registró un desvío en el recorrido de retiro de residuos.</p><table style="border-collapse:collapse">' +
@@ -452,6 +456,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Probar el aviso por correo', 'probarAviso')
     .addItem('Recalcular «Reiterado» en todos los registros', 'recalcularReiterados')
+    .addItem('Recalcular la gravedad según REGLAS_GRAVEDAD (casos abiertos)', 'recalcularGravedades')
     .addToUi();
 }
 
@@ -606,4 +611,50 @@ function verificarPortal_(d) {
   var lock = LockService.getScriptLock(); lock.waitLock(30000);
   try { return seguimientoAnotar_(d.ids || [], d.resultado, String(d.quien || 'Mi establecimiento'), 'Mi establecimiento', String(d.obs || ''), true); }
   finally { lock.releaseLock(); }
+}
+
+
+// ---------------------------------------------------------------
+// 9. Gravedad según las reglas de HyS (hoja REGLAS_GRAVEDAD). Pedido de Belén, 22/10/2026:
+//    lesión = crítica; residuos peligrosos separados como comunes o reciclables = alta; bolsas fuera de su contenedor o
+//    reciclable/RSU mal descartado = media; bolsas sin cerrar = baja. Si coinciden varias, vale la más grave.
+//    Pendiente: la lista completa de reglas. Los tipos sin regla quedan con la gravedad que marcó el operario.
+// ---------------------------------------------------------------
+var GRAV_ORDEN = ['Baja', 'Media', 'Alta', 'Crítica'];
+var RESIDUO_PELIGROSO = /biopat|cortopun|químic|quimic|medicam|ampoll/i;
+
+function reglasGravedad_() {
+  try {
+    return tabla_('REGLAS_GRAVEDAD').filter(function (r) { return GRAV_ORDEN.indexOf(String(r.GRAVEDAD).trim()) >= 0 && String(r.ACTIVO).trim() !== 'No'; });
+  } catch (e) { return []; }
+}
+function gravedadRegla_(tipos, residuos, segregacion, lesion, reglas) {
+  reglas = reglas || reglasGravedad_();
+  var pel = (residuos || []).some(function (x) { return RESIDUO_PELIGROSO.test(x); });
+  var sinResp = !segregacion || /^no s[ée]/i.test(segregacion);
+  var mejor = -1;
+  reglas.forEach(function (r) {
+    var t = String(r.TIPO_DESVIO || '*').trim(), rs = String(r.RESIDUO || '*').trim(), sg = String(r.SEGREGACION || '*').trim(), le = String(r.LESION || '*').trim();
+    if (le === 'Sí' && !lesion) return;
+    if (t !== '*' && !t.split(';').map(function (x) { return x.trim(); }).some(function (x) { return tipos.indexOf(x) >= 0; })) return;
+    if (rs === 'Peligroso' && !pel) return;
+    if (rs === 'No peligroso' && pel) return;
+    if (sg === '(sin respuesta)' && !sinResp) return;
+    if (sg !== '*' && sg !== '(sin respuesta)' && sg !== segregacion) return;
+    mejor = Math.max(mejor, GRAV_ORDEN.indexOf(String(r.GRAVEDAD).trim()));
+  });
+  return mejor >= 0 ? GRAV_ORDEN[mejor] : '';
+}
+/** Menú: vuelve a calcular GRAVEDAD_REGLA en los desvíos abiertos (por ejemplo, después de cambiar las reglas). */
+function recalcularGravedades() {
+  var hoja = ss_().getSheetByName(HOJA_REG), v = hoja.getDataRange().getValues(), enc = v[0].map(function (h) { return String(h).trim(); });
+  var j = function (k) { return enc.indexOf(k); }, reglas = reglasGravedad_(), n = 0;
+  for (var i = 1; i < v.length; i++) {
+    if (!v[i][j('ID')] || /^Cerrado/.test(String(v[i][j('ESTADO_GESTION')] || ''))) continue;
+    var tipos = String(v[i][j('TIPOS_DESVIO')] || '').split(';').map(function (s) { return s.trim(); }).filter(String);
+    var res = String(v[i][j('TIPO_RESIDUO')] || '').split(';').map(function (s) { return s.trim(); }).filter(String);
+    var g = gravedadRegla_(tipos, res, String(v[i][j('SEGREGACION')] || '').trim(), v[i][j('LESION')] === 'Sí', reglas);
+    if (g !== String(v[i][j('GRAVEDAD_REGLA')] || '')) { hoja.getRange(i + 1, j('GRAVEDAD_REGLA') + 1).setValue(g); n++; }
+  }
+  try { SpreadsheetApp.getUi().alert('Gravedad recalculada en ' + n + ' desvío(s) abiertos.'); } catch (e) { Logger.log(n); }
 }

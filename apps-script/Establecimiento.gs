@@ -90,6 +90,7 @@ function miArchivo_(cod, tema, sub, a) {
 function miRed_(d) {
   const cod = limpio_(d.est), x = d.datos || {}, quien = String(x.quien || '').trim(), maestra = esMaestra_(d.clave);
   const corr = (tipo, fn) => x.reemplaza ? regCorregir_(cod, tipo, x.reemplaza, maestra, quien, fn) : fn();   // corrección desde «Mis registros» (Registros.gs)
+  if (/^m_desv_/.test(String(d.accion))) return typeof dacMiRed_ === 'function' ? dacMiRed_(d) : { ok: false, mensaje: 'Falta instalar DesviosAcciones.gs.' };   // 1 · Residuos › supervisión de desvíos (Star Union, 22/10/2026)
   if (/^m_res_nov/.test(String(d.accion))) return typeof resNovRed_ === 'function' ? resNovRed_(d) : { ok: false, mensaje: 'Falta instalar ResiduosNovedades.gs.' };   // 1 · Residuos › novedades de residuos (ResiduosNovedades.gs, 22/10/2026)
   switch (d.accion) {
     case 'm_tablero': return miTablero_(cod);

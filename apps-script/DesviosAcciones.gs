@@ -78,7 +78,7 @@ function dacDatos_(ss) {
   S.filas.forEach(s => { const id = limpio_(s.DESVIO); if (!id) return; (seg[id] = seg[id] || []).push({ fila: s._fila, fecha: dacTxtF_(dacFecha_(s.FECHA)), resultado: limpio_(s.RESULTADO),
     quien: limpio_(s.QUIEN), origen: limpio_(s.ORIGEN), obs: limpio_(s.OBS), confirmado: limpio_(s.CONFIRMADO) }); });
   const L = R.filas.filter(o => limpio_(o.ID)).map(o => {
-    const f = dacFecha_(o.FECHA_CARGA) || dacFecha_(o.FECHA_OBSERVACION), grav = limpio_(o.GRAVEDAD_HYS) || (limpio_(o.GRAVEDAD_INFORMANTE) !== 's/d' ? limpio_(o.GRAVEDAD_INFORMANTE) : '') || 's/d';
+    const f = dacFecha_(o.FECHA_CARGA) || dacFecha_(o.FECHA_OBSERVACION), grav = limpio_(o.GRAVEDAD_HYS) || limpio_(o.GRAVEDAD_REGLA) || (limpio_(o.GRAVEDAD_INFORMANTE) !== 's/d' ? limpio_(o.GRAVEDAD_INFORMANTE) : '') || 's/d';   // HyS > reglas (REGLAS_GRAVEDAD) > operario
     const pl = P.grav[grav] || P.grav['s/d'];
     let estado = limpio_(o.ESTADO_GESTION) || DAC.ESTADOS.SIN;
     let vence = dacFecha_(o.VENCE);
@@ -89,8 +89,8 @@ function dacDatos_(ss) {
       DETALLE_UBICACION: limpio_(o.DETALLE_UBICACION) === 's/d' ? '' : limpio_(o.DETALLE_UBICACION),
       TIPOS: limpio_(o.TIPOS_DESVIO), RESIDUO: limpio_(o.TIPO_RESIDUO), DESCRIPCION: limpio_(o.DESCRIPCION), CAUSA: limpio_(o.CAUSA),
       CONTENEDORES: limpio_(o.CONTENEDORES), AISLAMIENTO: limpio_(o.AISLAMIENTO), LESION: limpio_(o.LESION), REITERADO: limpio_(o.REITERADO),
-      OPERARIO: limpio_(o.OPERARIO), FOTOS: String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/g) || [],
-      GRAVEDAD: grav, GRAVEDAD_HYS: limpio_(o.GRAVEDAD_HYS), ORIGEN_SUGERIDO: limpio_(o.ORIGEN_SUGERIDO), ORIGEN_HYS: limpio_(o.ORIGEN_HYS),
+      OPERARIO: limpio_(o.OPERARIO), OPERARIO_COD: limpio_(o.OPERARIO_COD), FOTOS: String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/g) || [],
+      GRAVEDAD: grav, GRAVEDAD_HYS: limpio_(o.GRAVEDAD_HYS), GRAVEDAD_FUENTE: limpio_(o.GRAVEDAD_HYS) ? 'HyS' : limpio_(o.GRAVEDAD_REGLA) ? 'regla' : 'operario', SEGREGACION: limpio_(o.SEGREGACION), ORIGEN_SUGERIDO: limpio_(o.ORIGEN_SUGERIDO), ORIGEN_HYS: limpio_(o.ORIGEN_HYS),
       ESTADO: estado, VENCE: cerrado ? '' : dacTxtF_(vence), vencido: !cerrado && !!vence && vence < hoy,
       ACCIONES: acc[limpio_(o.ID)] || [], SEGUIMIENTOS: (seg[limpio_(o.ID)] || []).map(s => { const c = Object.assign({}, s); delete c.fila; return c; }),
       ULTIMO_SEGUIMIENTO: limpio_(o.ULTIMO_SEGUIMIENTO), _f: f };
@@ -241,6 +241,8 @@ function dacPortal_(accion, x, quien) {
   if (accion === 'p_desv_seguimiento') return conLock_(() => dacSeguimiento_(x, quien, 'HyS'));
   if (accion === 'p_desv_confirmar') return conLock_(() => dacConfirmar_(x, quien));
   if (accion === 'p_desv_clasificar') return conLock_(() => dacClasificar_(x));
+  if (accion === 'p_desv_reporte') { const S = dacSupervision_(); return { ok: true, html: dacReporteHtml_(S.reporte), reporte: S.reporte, config: dacConfigRep_() }; }
+  if (accion === 'p_desv_reporte_enviar') return dacEnviarReporte_(true);
   return null;
 }
 
@@ -328,4 +330,101 @@ function dacAvisos_() {
   } catch (e) {}
   try { ca.put('dac_avisos', JSON.stringify(out), 600); } catch (e) {}
   return out;
+}
+
+
+// ------------------------------------------------------------------ SUPERVISIÓN DE STAR UNION (22/10/2026)
+// Pedido de Belén: Federico Obelar (supervisor de Star Union) ve todo lo que cargan sus operarios, las acciones de HyS y la
+// adhesión de su personal a reportar desvíos (lleva muchas acciones a sus superiores, por ejemplo si faltan carros o contenedores).
+// Entra a «Mi establecimiento» (HMH) con su DNI y su clave personal y el módulo «Desvíos» (BASE COMÚN › ACCESOS).
+// Además recibe un reporte semanal por correo (CONFIG de la planilla de desvíos: CORREO_SUPERVISOR y REPORTE_SEMANAL = Sí).
+const DAC_EMPRESA = 'Star Union';
+const DAC_PARA_EMPRESA = /star union|contenedor|servicios generales/i;   // acciones que la empresa tiene que seguir con sus superiores
+
+function dacSupervision_() {
+  const ss = dacSS_(), D = dacDatos_(ss), hoy = new Date(); hoy.setHours(23, 59, 59, 0);
+  const lim7 = dacMas_(hoy, -7), lim30 = dacMas_(hoy, -30);
+  const ops = dacTabla_(ss, 'OPERARIOS').filas.filter(o => limpio_(o.EMPRESA) === DAC_EMPRESA && limpio_(o.ACTIVO) === 'Sí');
+  const fecha = d => dacFecha_(d.FECHA);
+  const adhesion = ops.map(o => {
+    const nombre = (limpio_(o.NOMBRE) + ' ' + limpio_(o.APELLIDO)).trim(), mis = D.L.filter(d => d.OPERARIO_COD === limpio_(o.COD));
+    const fs = mis.map(fecha).filter(Boolean).sort((a, b) => a - b), ult = fs.length ? fs[fs.length - 1] : null;
+    const revis = D.S.filas.filter(s => limpio_(s.ORIGEN) === 'Operario' && limpio_(s.QUIEN) === nombre);
+    return { cod: limpio_(o.COD), nombre: nombre, turno: limpio_(o.TURNO_HABITUAL), d7: fs.filter(f => f >= lim7).length, d30: fs.filter(f => f >= lim30).length,
+      total: fs.length, ultimo: dacTxtF_(ult), revisiones7: revis.filter(s => { const f = dacFecha_(s.FECHA); return f && f >= lim7; }).length };
+  }).sort((a, b) => b.d30 - a.d30 || a.nombre.localeCompare(b.nombre));
+  // Semanas (lunes a domingo), las últimas 8
+  const lunes = d => { const x = new Date(d.getTime()); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const semanas = []; let l = lunes(new Date());
+  for (let i = 0; i < 8; i++) { const ini = dacMas_(l, -7 * i), fin = dacMas_(ini, 6); semanas.unshift({ desde: dacTxtF_(ini), hasta: dacTxtF_(fin), n: D.L.filter(d => d.FECHA && d.FECHA >= dacTxtF_(ini) && d.FECHA <= dacTxtF_(fin)).length }); }
+  const estadoDe = id => (D.L.find(d => d.ID === id) || {}).ESTADO || '';
+  const acciones = D.A.filas.filter(a => limpio_(a.ID)).map(a => {
+    const ids = String(a.DESVIOS || '').split(/[;,\s]+/).filter(Boolean), est = ids.map(estadoDe), abiertos = est.filter(e => !/^Cerrado/.test(e)).length;
+    return { id: limpio_(a.ID), fecha: dacTxtF_(dacFecha_(a.FECHA)), tipo: limpio_(a.TIPO), destinatario: limpio_(a.DESTINATARIO), desvios: ids, detalle: limpio_(a.DETALLE),
+      nota: limpio_(a.NOTA_CODIGO), estado: abiertos ? (abiertos + ' de ' + ids.length + ' desvío(s) en seguimiento') : 'Cerrada', abierta: abiertos > 0,
+      empresa: DAC_PARA_EMPRESA.test(limpio_(a.TIPO) + ' ' + limpio_(a.DESTINATARIO)) };
+  }).reverse();
+  const desvios = D.L.slice().reverse().map(d => { const c = Object.assign({}, d); delete c.fila; c.ACCIONES = d.ACCIONES.map(a => ({ fecha: a.fecha, tipo: a.tipo, destinatario: a.destinatario })); return c; });
+  const rep = {
+    desde: dacTxtF_(dacMas_(hoy, -6)), hasta: dacTxtF_(hoy),
+    cargas7: D.L.filter(d => { const f = fecha(d); return f && f >= lim7; }).length,
+    reportaron: adhesion.filter(a => a.d7 > 0).map(a => a.nombre), sinReportar: adhesion.filter(a => a.d7 === 0).map(a => a.nombre), totalOperarios: adhesion.length,
+    acciones7: acciones.filter(a => { const f = dacFecha_(a.fecha); return f && f >= lim7; }),
+    paraLaEmpresa: acciones.filter(a => a.empresa && a.abierta),
+    abiertos: D.L.filter(d => !/^Cerrado/.test(d.ESTADO)).map(d => ({ ID: d.ID, FECHA: d.FECHA, TIPOS: d.TIPOS, SERVICIO: d.SERVICIO, UBICACION: d.UBICACION, ESTADO: d.ESTADO, GRAVEDAD: d.GRAVEDAD, CAUSA: d.CAUSA })),
+    cerrados7: D.S.filas.filter(s => { const f = dacFecha_(s.FECHA); return f && f >= lim7 && limpio_(s.RESULTADO) === 'Corregido' && limpio_(s.CONFIRMADO) === 'Sí'; }).length,
+    faltanContenedores: D.L.filter(d => { const f = fecha(d); return f && f >= lim30 && /^No había lugar/.test(d.CAUSA); }).length
+  };
+  return { ok: true, empresa: DAC_EMPRESA, adhesion: adhesion, semanas: semanas, acciones: acciones, desvios: desvios, reporte: rep, estados: DAC.ESTADOS };
+}
+
+function dacReporteHtml_(R) {
+  const f = t => t ? t.split('-').reverse().join('/') : '', e = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const li = L => L.length ? '<ul>' + L.join('') + '</ul>' : '<p style="color:#666">Nada en este período.</p>';
+  return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:680px">' +
+    '<h2 style="color:#0D313F;margin:0 0 4px">Desvíos en el recorrido de residuos · HMH</h2><p style="color:#555;margin:0 0 14px">Reporte semanal para Star Union · del ' + f(R.desde) + ' al ' + f(R.hasta) + '</p>' +
+    '<h3 style="color:#0D313F">1. Reportes de los operarios</h3><p><b>' + R.cargas7 + '</b> desvío(s) registrados en la semana. Reportaron <b>' + R.reportaron.length + ' de ' + R.totalOperarios + '</b> operarios.</p>' +
+    (R.sinReportar.length ? '<p>Sin reportes en la semana: ' + e(R.sinReportar.join(', ')) + '.</p>' : '') +
+    '<h3 style="color:#0D313F">2. Acciones iniciadas por Higiene y Seguridad en la semana</h3>' +
+    li(R.acciones7.map(a => '<li>' + f(a.fecha) + ' · <b>' + e(a.tipo) + '</b>' + (a.destinatario && a.destinatario !== a.tipo ? ' · ' + e(a.destinatario) : '') + ' · ' + e(a.desvios.join(', ')) + ' · ' + e(a.estado) + '</li>')) +
+    '<h3 style="color:#0D313F">3. Para seguir con la empresa</h3><p style="color:#555;margin-top:0">Acciones abiertas dirigidas a Star Union, a Servicios Generales o por falta de contenedores.</p>' +
+    li(R.paraLaEmpresa.map(a => '<li>' + f(a.fecha) + ' · <b>' + e(a.tipo) + '</b>' + (a.destinatario ? ' · ' + e(a.destinatario) : '') + ' · ' + e(a.desvios.join(', ')) + ' · ' + e(a.estado) + '</li>')) +
+    (R.faltanContenedores ? '<p>En los últimos 30 días hubo <b>' + R.faltanContenedores + '</b> registro(s) en los que no había lugar en ningún contenedor.</p>' : '') +
+    '<h3 style="color:#0D313F">4. Desvíos abiertos (' + R.abiertos.length + ')</h3>' +
+    li(R.abiertos.map(d => '<li>' + e(d.ID) + ' · ' + f(d.FECHA) + ' · ' + e(d.TIPOS) + ' · ' + e([d.SERVICIO, d.UBICACION].filter(Boolean).join(' · ')) + ' · ' + e(d.ESTADO) + ' · gravedad ' + e(d.GRAVEDAD) + '</li>')) +
+    '<p>Corregidos y verificados en la semana: <b>' + R.cerrados7 + '</b>.</p>' +
+    '<p style="color:#555;font-size:12px;margin-top:18px">El detalle completo (fotos, lugar, operario y estado de cada desvío) está en «Mi establecimiento» › 1 · Residuos › «Desvíos: supervisión». ' +
+    'Servicio de Higiene y Seguridad Laboral HZT / HMH · belenpellegrini.hys@gmail.com</p></div>';
+}
+
+function dacConfigRep_() {
+  const c = {}; dacTabla_(dacSS_(), 'CONFIG').filas.forEach(o => { if (limpio_(o.CLAVE)) c[limpio_(o.CLAVE)] = limpio_(o.VALOR); });
+  return { correo: c.CORREO_SUPERVISOR || 's/d', activo: c.REPORTE_SEMANAL === 'Sí', remitente: c.REMITENTE || '' };
+}
+// Envía el reporte al supervisor. manual = lo pidió HyS desde el portal (igual exige un correo cargado).
+function dacEnviarReporte_(manual) {
+  const C = dacConfigRep_();
+  if (!manual && !C.activo) return { ok: false, mensaje: 'El reporte semanal está desactivado (CONFIG › REPORTE_SEMANAL).' };
+  const para = String(C.correo || '').split(',').map(s => s.trim()).filter(s => /@/.test(s));
+  if (!para.length) return { ok: false, mensaje: 'Falta el correo del supervisor (CONFIG › CORREO_SUPERVISOR de la planilla de desvíos).' };
+  const R = dacSupervision_().reporte, f = t => t.split('-').reverse().join('/');
+  const op = { htmlBody: dacReporteHtml_(R), name: 'Higiene y Seguridad Laboral HZT/HMH' }, propia = Session.getEffectiveUser().getEmail().toLowerCase();
+  if (C.remitente && C.remitente.toLowerCase() !== propia) { if (GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(C.remitente.toLowerCase()) >= 0) op.from = C.remitente; else op.replyTo = C.remitente; }
+  GmailApp.sendEmail(para.join(','), 'Desvíos en residuos HMH · reporte semanal del ' + f(R.desde) + ' al ' + f(R.hasta), 'Reporte semanal de desvíos en el recorrido de residuos del HMH. Abrilo en un programa de correo que muestre HTML.', op);
+  return { ok: true, enviado: para.join(', ') };
+}
+/** Disparador semanal (lunes, 8 h). Se instala una vez con instalarReporteSemanal(). */
+function enviarReporteSemanal() { const r = dacEnviarReporte_(false); Logger.log(JSON.stringify(r)); }
+function instalarReporteSemanal() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'enviarReporteSemanal').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('enviarReporteSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).inTimezone(TZ).create();
+  Logger.log('Reporte semanal instalado: lunes 8 h.');
+}
+
+// Entrada desde «Mi establecimiento» (acciones «m_desv_…»): DNI + clave personal con el módulo «Desvíos», o la clave de HyS
+function dacMiRed_(d) {
+  const acc = acceso_(d.est, d.clave, d.dni); if (!acc.ok) return acc;
+  if (!acc.maestra && (acc.modulos || []).indexOf('Desvíos') < 0) return { ok: false, error: 'permiso', mensaje: 'No tenés asignada la supervisión de desvíos. Consultá con Higiene y Seguridad.' };
+  if (d.accion === 'm_desv_supervision') return dacSupervision_();
+  return { ok: false, error: 'Acción desconocida.' };
 }
