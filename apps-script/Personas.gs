@@ -74,7 +74,8 @@ function persTrasladar_(lista) {
     const fila = sa.getRange(m.p.fila, 1, 1, sa.getLastColumn()).getValues()[0], Hs = bjCabTrab_(sa);
     if (String(fila[Hs.indexOf('DNI')]).replace(/\D/g, '') !== m.p.dni) return;   // la fila cambió: no se toca
     const Hd = bjCabTrab_(dest); Hs.forEach(h => { if (h && Hd.indexOf(h) < 0) { dest.getRange(5, Hd.length + 1).setValue(h); Hd.push(h); } });
-    const nueva = Hd.map(h => h === 'ESTABLECIMIENTO' ? m.destino : (h === 'REVISAR' || h === 'MOTIVO_REVISION') ? '' : (Hs.indexOf(h) >= 0 ? fila[Hs.indexOf(h)] : ''));
+    const jE = Hd.indexOf('ESTABLECIMIENTO'), estFormula = jE >= 0 && /^=/.test(String(dest.getRange(6, jE + 1).getFormula()));   // con fórmula, se deja vacío (escribir encima la rompe)
+    const nueva = Hd.map(h => h === 'ESTABLECIMIENTO' ? (estFormula ? '' : m.destino) : (h === 'REVISAR' || h === 'MOTIVO_REVISION') ? '' : (Hs.indexOf(h) >= 0 ? fila[Hs.indexOf(h)] : ''));
     dest.getRange(Math.max(dest.getLastRow(), 5) + 1, 1, 1, Hd.length).setValues([nueva]); borrar.push(m.p.fila);
     log.push([hoy, m.p.dni, m.destino, 'TRASLADO', 'SIN_ASIGNAR', m.destino + ' · por su cargo o comité', 'Sistema (vincular personas)']); });
   borrar.sort((a, b) => b - a).forEach(r => sa.deleteRow(r));

@@ -63,11 +63,13 @@ function bjAplicarTrab_(hoja, cambios, origen) {
   const shT = bjHojaTrab_(hoja), H = bjCabTrab_(shT), histT = shT.getParent().getSheetByName('HISTORIAL'), hoy = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy'), hist = [], altas = [];
   cambios.forEach(c => { const campos = c.nueva ? Object.keys(c.nueva) : [c.campo]; campos.forEach(k => { if (k && H.indexOf(k) < 0 && /^[A-Z_]+$/.test(k)) { shT.getRange(5, H.length + 1).setValue(k); H.push(k); } }); });
   // La fila se busca por DNI en el momento de aplicar (si se movieron o borraron filas desde la propuesta, no se escribe en la persona equivocada)
+  // ESTABLECIMIENTO se completa solo con una fórmula (fila 6). Si la columna tiene fórmula, las altas la dejan vacía: escribir el código encima la rompe (#REF!).
+  const jE = H.indexOf('ESTABLECIMIENTO'), estFormula = jE >= 0 && /^=/.test(String(shT.getRange(6, jE + 1).getFormula()));
   const jd = H.indexOf('DNI'), filaDe = {}; if (jd >= 0 && shT.getLastRow() > 5) shT.getRange(6, jd + 1, shT.getLastRow() - 5, 1).getValues().forEach((r, i) => { const d = String(r[0]).replace(/\D/g, ''); if (d && !filaDe[d]) filaDe[d] = 6 + i; });
   cambios.forEach(c => {
     const dni = (/DNI (\d+)/.exec(c.clave || '') || [])[1] || (c.nueva && c.nueva.DNI) || '';
     if (!c.nueva && dni) { if (!filaDe[dni]) return; c.fila = filaDe[dni]; }   // HISTORIAL: FECHA · DNI · ESTABLECIMIENTO · CAMPO · ANTES · DESPUÉS · ORIGEN
-    if (c.nueva) { altas.push(H.map(h => h === 'ESTABLECIMIENTO' ? hoja : h === 'FUENTES' ? origen : h === 'FECHA_ALTA' ? hoy : h === 'ESTADO' ? (c.nueva.ESTADO || 'Activo') : (c.nueva[h] || ''))); hist.push([hoy, dni, hoja, 'ALTA', '', c.despues, origen]); return; }
+    if (c.nueva) { altas.push(H.map(h => h === 'ESTABLECIMIENTO' ? (estFormula ? '' : hoja) : h === 'FUENTES' ? origen : h === 'FECHA_ALTA' ? hoy : h === 'ESTADO' ? (c.nueva.ESTADO || 'Activo') : (c.nueva[h] || ''))); hist.push([hoy, dni, hoja, 'ALTA', '', c.despues, origen]); return; }
     const j = H.indexOf(c.campo); if (j < 0 || !c.fila) return; shT.getRange(c.fila, j + 1).setValue(c.despues); hist.push([hoy, dni, hoja, c.campo, c.antes, c.despues, origen]);
   });
   if (altas.length) shT.getRange(Math.max(shT.getLastRow(), 5) + 1, 1, altas.length, H.length).setValues(altas);
