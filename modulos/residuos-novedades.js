@@ -3,7 +3,7 @@
 // Todas juntas (HZT, HMH, HSST): primero las abiertas de residuos peligrosos. HyS las marca resueltas desde acá. No envía correos.
 let RNP = null;
 async function resNovPortal(fresco) {
-  if (!RNP || fresco) { cargando('#resnov', 'Leyendo las novedades de residuos…'); try { RNP = await api('p_resnov_listar', {}, 120000); } catch (e) { return; } }
+  if (!RNP || fresco) { cargando('#resnov', 'Leyendo las novedades de residuos…'); try { RNP = await api('p_resnov_listar', fresco ? { fresco: true } : {}, 120000); } catch (e) { return; } }
   if (!RNP.ok) { const r = RNP; RNP = null;
     return marco('#resnov', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos</a></span><h1>Novedades de residuos</h1></div></div><div class="aviso error">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer.') + '</div>'); }
   const lk = (u, t) => u ? '<a class="link" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + ' ↗</a>' : '';
