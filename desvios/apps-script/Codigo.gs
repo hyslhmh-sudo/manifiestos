@@ -36,7 +36,7 @@ var COLS = ['ID', 'FECHA_CARGA', 'FECHA_OBSERVACION', 'HORA', 'TURNO', 'ESTABLEC
   'GRAVEDAD_INFORMANTE', 'LESION', 'DETALLE_LESION', 'FOTOS', 'ORIGEN_SUGERIDO',
   'ORIGEN_HYS', 'GRAVEDAD_HYS', 'ACCION_INDIVIDUAL', 'OBS_HYS', 'REVISADO_POR',
   'FECHA_REVISION', 'AVISO_ENVIADO', 'FUENTE', 'OBS_INFORMANTE', 'REVISAR_UBICACION',
-  'REITERADO', 'CAUSA', 'CONTENEDORES'];
+  'REITERADO', 'CAUSA', 'CONTENEDORES', 'AISLAMIENTO'];
 
 // Causas (hoja CAUSAS). Si la hoja falta, se usan estas.
 var CAUSAS_BASE = [
@@ -125,7 +125,7 @@ function listas_() {
       return { cod: x.COD, piso: x.PISO, servicio: x.SERVICIO, ubicacion: x.UBICACION };
     });
   var tip = tabla_(HOJA_TIP).map(function (t) {
-    return { tipo: t.TIPO, urgente: t.URGENTE === 'Sí', causa: t.PREGUNTA_CAUSA === 'Sí' };
+    return { tipo: t.TIPO, urgente: t.URGENTE === 'Sí', causa: t.PREGUNTA_CAUSA === 'Sí', aisl: t.AVISO_AISLAMIENTO === 'Sí' };
   });
   var cfg = config_();
   return { ok: true, operarios: ope, puntos: pun, tipos: tip, causas: causas_().map(function (c) { return c.causa; }),
@@ -215,7 +215,8 @@ function guardarCarga_(d) {
       REVISAR_UBICACION: pun.COD === 'OT-99' ? 'Sí' : 'No',
       REITERADO: reiterado > 0 ? 'Sí (' + reiterado + ' en ' + (cfg.DIAS_REITERADO || 30) + ' días)' : 'No',
       CAUSA: causa,
-      CONTENEDORES: contenedores
+      CONTENEDORES: contenedores,
+      AISLAMIENTO: String(d.aislamiento || '').trim()
     };
     hoja.appendRow(COLS.map(function (c) { return fila[c] !== undefined ? fila[c] : ''; }));
     var nFila = hoja.getLastRow();
@@ -304,6 +305,7 @@ function enviarAviso_(f, urgente, cfg) {
     ['Desvío', f.TIPOS_DESVIO],
     ['¿Por qué?', f.CAUSA || ''],
     ['Contenedores', f.CONTENEDORES || ''],
+    ['¿Venía de un aislamiento?', f.AISLAMIENTO || ''],
     ['Descripción', f.DESCRIPCION],
     ['Gravedad (operario)', f.GRAVEDAD_INFORMANTE],
     ['Lesión', f.LESION + (f.DETALLE_LESION ? ' · ' + f.DETALLE_LESION : '')],
@@ -311,7 +313,7 @@ function enviarAviso_(f, urgente, cfg) {
     ['Origen sugerido', f.ORIGEN_SUGERIDO],
     ['Fotos', f.FOTOS]
   ];
-  filas = filas.filter(function (r) { return r[0] !== '¿Por qué?' && r[0] !== 'Contenedores' || r[1]; });
+  filas = filas.filter(function (r) { return ['¿Por qué?', 'Contenedores', '¿Venía de un aislamiento?'].indexOf(r[0]) < 0 || r[1]; });
   var html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
     (urgente ? '<p style="color:#b00020;font-weight:bold">Requiere atención prioritaria (cortopunzante o lesión).</p>' : '') +
     '<p>Se registró un desvío en el recorrido de retiro de residuos.</p><table style="border-collapse:collapse">' +
@@ -399,7 +401,7 @@ function registros_(d) {
 
 /** Conteos para el tablero: por punto, por tipo de desvío, por mes y últimos 30 días. */
 function resumen_(L) {
-  var porPunto = {}, porTipo = {}, porMes = {}, porCausa = {}, ult30 = 0, urg = 0, lesion = 0, sinRevisar = 0, faltan = 0;
+  var porPunto = {}, porTipo = {}, porMes = {}, porCausa = {}, ult30 = 0, urg = 0, lesion = 0, sinRevisar = 0, faltan = 0, aislInf = 0;
   var lim = new Date().getTime() - 30 * 86400000;
   L.forEach(function (o) {
     var k = o.PUNTO_COD + ' · ' + o.SERVICIO + ' · ' + o.UBICACION;
@@ -413,10 +415,11 @@ function resumen_(L) {
     if (o.LESION === 'Sí') lesion++;
     if (/cortopunzante/i.test(o.TIPOS_DESVIO) || o.LESION === 'Sí') urg++;
     if (!o.ORIGEN_HYS) sinRevisar++;
+    if (/infectocontagiosa/i.test(o.AISLAMIENTO || '')) aislInf++;
     if (o.CAUSA) { porCausa[o.CAUSA] = (porCausa[o.CAUSA] || 0) + 1; if (/^No había lugar/.test(o.CAUSA)) faltan++; }
   });
   var orden = function (m) { return Object.keys(m).map(function (k) { return { k: k, n: m[k] }; }).sort(function (a, b) { return b.n - a.n; }); };
-  return { total: L.length, ultimos30: ult30, cortopunzantesOLesion: urg, lesiones: lesion, sinRevisarHyS: sinRevisar, faltanContenedores: faltan,
+  return { total: L.length, ultimos30: ult30, cortopunzantesOLesion: urg, lesiones: lesion, sinRevisarHyS: sinRevisar, faltanContenedores: faltan, deAislamientoInfecto: aislInf,
     porPunto: orden(porPunto), porCausa: orden(porCausa), porTipo: orden(porTipo), porMes: Object.keys(porMes).sort().map(function (k) { return { k: k, n: porMes[k] }; }) };
 }
 
@@ -443,6 +446,8 @@ function ayudaUsuarios() {
     '• Cuando falte un dato, escribir «s/d».\n' +
     '• En «Contenedor lleno» y «Residuo fuera de contenedor» el operario dice POR QUÉ pasó (columna CAUSA): ' +
     'si no había lugar en ningún contenedor, el problema es la falta de contenedores, no la práctica.\n' +
+    '• En «Segregación incorrecta» y «Bolsa incorrecta» la página recuerda que todo lo que sale de un aislamiento por enfermedad infectocontagiosa, ' +
+    'incluida la comida, es biopatogénico (bolsa roja), y pregunta si venía de un aislamiento (columna AISLAMIENTO). En el aislamiento inverso o protector se separa como siempre.\n' +
     '• Cada carga manda un aviso al correo de la secretaría HyS.',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -453,6 +458,7 @@ function ayudaAdmin() {
     '• PUNTOS: agregar filas con código nuevo; no cambiar códigos ya usados.\n' +
     '• TIPOS_DESVIO: la columna URGENTE «Sí» marca el aviso como URGENTE.\n' +
     '• TIPOS_DESVIO: la columna PREGUNTA_CAUSA «Sí» hace que la página pregunte por qué pasó (p. ej. contenedor lleno).\n' +
+    '• TIPOS_DESVIO: la columna AVISO_AISLAMIENTO «Sí» muestra el aviso de aislamiento y la pregunta «¿Venía de una habitación con aislamiento?».\n' +
     '• CAUSAS: las respuestas posibles y el origen que sugiere cada una (se pueden agregar o desactivar con ACTIVO «No»).\n' +
     '• CONFIG: correo de aviso, remitente, horarios de turno, clave del portal.\n' +
     '• Columnas grises de REGISTROS (ORIGEN_HYS a FECHA_REVISION): revisión de HyS.\n' +

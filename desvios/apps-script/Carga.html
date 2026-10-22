@@ -30,6 +30,8 @@
   .chips button.urg.sel { border-color:var(--er); background:var(--er); }
   .causa { margin:14px 0 6px; padding:12px 14px 4px; border-left:4px solid var(--pa); background:#EEF4F6; border-radius:8px; }
   .causa h2 { margin-top:0; }
+  .aisl { margin:14px 0 6px; padding:12px 14px 4px; border-left:4px solid var(--er); background:var(--erbg); border-radius:8px; }
+  .aisl p { margin:0 0 10px; font-size:14.5px; } .aisl a { color:var(--az); font-weight:700; }
   .dos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
   .pisos { display:flex; gap:8px; margin-bottom:8px; } .pisos button { flex:1; padding:10px; border-radius:10px; border:2px solid var(--line); background:#fff; font:inherit; font-weight:700; cursor:pointer; color:var(--tx); }
   .pisos button.sel { background:var(--gris); border-color:var(--gris); color:#fff; }
@@ -66,6 +68,7 @@
     <li>Elegí el <b>lugar</b> del recorrido (planta baja o alta). Si escaneaste el QR del depósito, ya aparece elegido.</li>
     <li>Marcá <b>qué viste</b> (podés marcar varias cosas) y qué residuo es.</li>
     <li>Si marcaste <b>contenedor lleno</b> o <b>residuo fuera de contenedor</b>, contá <b>por qué</b>: si no había lugar en ningún contenedor, el problema es que faltan contenedores, no la gente del servicio.</li>
+    <li>Si marcaste <b>segregación incorrecta</b> o <b>bolsa incorrecta</b>, fijate si venía de una habitación con <b>aislamiento</b>: si es por una enfermedad infectocontagiosa, todo lo que sale de ahí, incluida la comida, va en bolsa roja (no es un error).</li>
     <li>Sacá una <b>foto</b>. Que no aparezcan pacientes ni personas.</li>
     <li>Si alguien se lastimó, marcalo: llega como <b>URGENTE</b> a Higiene y Seguridad.</li>
     <li>Tocá <b>Enviar</b>. Si no hay señal, queda guardado en el teléfono y se manda solo cuando vuelve la conexión.</li>
@@ -84,6 +87,8 @@
 const API = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
 const RESIDUOS = ['Biopatogénico (bolsa roja)', 'Cortopunzante', 'Común / RSU (bolsa negra)', 'Reciclable (bolsa verde)', 'Químico / especial (bolsa amarilla)', 'Medicamentos / ampollas', 'No se puede saber'];
 const GRAV = ['Baja', 'Media', 'Alta', 'Crítica'];
+const AISL = ['No', 'Sí, por enfermedad infectocontagiosa', 'Sí, aislamiento inverso o protector', 'No sé'];
+const PORTAL_RES = 'https://hyslhmh-sudo.github.io/residuos-hmh/';
 const CAUSAS = ['No había lugar: todos los contenedores estaban llenos', 'Había lugar en otro contenedor y no lo usaron', 'Contenedor roto, sin tapa o sin bolsa', 'Hacía mucho que no se retiraba', 'No sé'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -122,11 +127,13 @@ function pantallaQuien(msg) {
 
 // ---------------- Paso 2: la carga
 function nuevo() {
-  F = { punto: QR || '', tipos: [], causa: '', contTotal: '', contLlenos: '', residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
+  F = { punto: QR || '', tipos: [], causa: '', contTotal: '', contLlenos: '', aislamiento: '', residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
   pantallaCarga();
 }
 // Desvíos que preguntan POR QUÉ pasó (columna PREGUNTA_CAUSA de la hoja TIPOS_DESVIO)
 function pideCausa() { return F.tipos.some(t => (L.tipos || []).some(x => x.tipo === t && x.causa)); }
+// Desvíos que muestran el aviso de aislamiento (columna AVISO_AISLAMIENTO de la hoja TIPOS_DESVIO)
+function pideAisl() { return F.tipos.some(t => (L.tipos || []).some(x => x.tipo === t && x.aisl)) || (!(L.tipos || []).some(x => 'aisl' in x) && F.tipos.some(t => /^(Segregación incorrecta|Bolsa incorrecta)$/.test(t))); }
 function puntoDe(cod) { return (L.puntos || []).find(p => p.cod === cod); }
 function pantallaCarga(err) {
   $('quienTop').textContent = YO.nombre + ' · ' + (YO.empresa || '');
@@ -145,6 +152,12 @@ function pantallaCarga(err) {
     (pideCausa() ? '<div class="causa"><h2>¿Por qué quedó afuera o desbordado?</h2><p class="mu">Mirá todos los contenedores del lugar antes de responder.</p>' + chips('causa', (L.causas && L.causas.length ? L.causas : CAUSAS), false) +
       '<div class="dos"><div class="field"><label class="lab" for="contTotal">¿Cuántos contenedores hay?</label><input id="contTotal" inputmode="numeric" maxlength="2" value="' + esc(F.contTotal) + '" placeholder="Ej.: 4"></div>' +
       '<div class="field"><label class="lab" for="contLlenos">¿Cuántos estaban llenos?</label><input id="contLlenos" inputmode="numeric" maxlength="2" value="' + esc(F.contLlenos) + '" placeholder="Ej.: 4"></div></div></div>' : '') +
+    (pideAisl() ? '<div class="aisl"><h2>Ojo con los aislamientos</h2>' +
+      '<p><b>Todo residuo que sale de un aislamiento por enfermedad infectocontagiosa</b> (cartel en la puerta para proteger a los demás), <b>incluida la comida y la vajilla descartable, es biopatogénico</b>: va en bolsa roja. En ese caso no es un error.</p>' +
+      '<p>En el <b>aislamiento inverso o protector</b> (el que cuida al paciente porque tiene las defensas bajas) los residuos se separan como siempre: la comida va como residuo común.</p>' +
+      '<p><a href="' + PORTAL_RES + '" target="_blank" rel="noopener">Ver en el portal de residuos</a> <span class="mu">(Categorías › Dudas frecuentes)</span></p>' +
+      '<h2>¿Venía de una habitación con aislamiento?</h2>' + chips('aislamiento', AISL, false) +
+      (F.aislamiento === AISL[1] ? '<div class="notice ok">Si lo que viste estaba en bolsa o tacho rojo, está bien hecho y no hace falta registrarlo. Si igual querés avisar algo, seguí.</div>' : '') + '</div>' : '') +
     '<h2>3 · ¿Qué residuo es?</h2>' + chips('residuos', RESIDUOS, true) +
     '<h2>¿Había residuos mezclados?</h2>' + chips('mezcla', ['Sí', 'No', 'No se puede ver'], false) +
     '<div class="field"><label class="lab" for="descripcion">4 · Contalo en pocas palabras</label><textarea id="descripcion" placeholder="Ej.: bolsa roja abierta en el piso del depósito, tacho vacío al lado">' + esc(F.descripcion) + '</textarea></div>' +
@@ -184,7 +197,7 @@ async function enviar() {
   if (pideCausa() && !F.causa) return pantallaCarga('Marcá por qué quedó afuera o desbordado (si no sabés, marcá «No sé»).');
   if (String(F.descripcion).trim().length < 4) return pantallaCarga('Contá en pocas palabras qué viste.');
   if (F.lesion === 'Sí' && String(F.detalleLesion).trim().length < 4) return pantallaCarga('Contá qué pasó con la lesión.');
-  const datos = { accion: 'cargar', operario: YO.cod, dni3: YO.dni3, punto: F.punto, tipos: F.tipos, causa: pideCausa() ? F.causa : '', contTotal: pideCausa() ? String(F.contTotal).replace(/\D/g, '') : '', contLlenos: pideCausa() ? String(F.contLlenos).replace(/\D/g, '') : '', residuos: F.residuos, mezcla: F.mezcla || 's/d', gravedad: F.gravedad || 's/d',
+  const datos = { accion: 'cargar', operario: YO.cod, dni3: YO.dni3, punto: F.punto, tipos: F.tipos, causa: pideCausa() ? F.causa : '', contTotal: pideCausa() ? String(F.contTotal).replace(/\D/g, '') : '', contLlenos: pideCausa() ? String(F.contLlenos).replace(/\D/g, '') : '', aislamiento: pideAisl() ? F.aislamiento : '', residuos: F.residuos, mezcla: F.mezcla || 's/d', gravedad: F.gravedad || 's/d',
     lesion: F.lesion, detalleLesion: F.detalleLesion, detalle: F.detalle.trim(), descripcion: F.descripcion.trim(), observaciones: F.observaciones.trim(), fotos: F.fotos,
     fuente: 'Página de carga', creado: new Date().toISOString() };
   const b = $('enviar'); b.disabled = true; b.textContent = 'Enviando…';
