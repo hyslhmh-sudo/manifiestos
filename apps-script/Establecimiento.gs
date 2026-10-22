@@ -11,6 +11,7 @@
  * Hospitales con dos edificios (HMH → HZT, ESTABLECIMIENTOS › COMITES_COMPARTIDOS) comparten red, tablero y carpeta.
  * Criterios: Dto. 351/79, arts. 57 y 58; procesos provinciales DPSB (limpieza 2026-2031 y toma de muestra 2025-2030);
  * normas locales en AGUA_NORMATIVA. No envía correos.
+ * 22/10/2026: las acciones «m_res_nov…» (novedades de residuos) se derivan a ResiduosNovedades.gs › resNovRed_.
  */
 
 const MI_FORM_CARPETA = '1R5OZ-KlYEhnmDYNGTJeeAk8B2fbP_H3R';
@@ -89,6 +90,7 @@ function miArchivo_(cod, tema, sub, a) {
 function miRed_(d) {
   const cod = limpio_(d.est), x = d.datos || {}, quien = String(x.quien || '').trim(), maestra = esMaestra_(d.clave);
   const corr = (tipo, fn) => x.reemplaza ? regCorregir_(cod, tipo, x.reemplaza, maestra, quien, fn) : fn();   // corrección desde «Mis registros» (Registros.gs)
+  if (/^m_res_nov/.test(String(d.accion))) return typeof resNovRed_ === 'function' ? resNovRed_(d) : { ok: false, mensaje: 'Falta instalar ResiduosNovedades.gs.' };   // 1 · Residuos › novedades de residuos (ResiduosNovedades.gs, 22/10/2026)
   switch (d.accion) {
     case 'm_tablero': return miTablero_(cod);
     case 'm_reservorio': return conLock_(() => miGuardarInv_(cod, 'RESERVORIOS', 'CODIGO_TANQUE', /cisterna/i.test(x.TIPO) ? 'C' : 'T', x));
