@@ -513,3 +513,15 @@ function guardarGuiaYQr() {
   Logger.log('Guía: ' + g.getUrl());
   Logger.log('QR: ' + q.getUrl());
 }
+
+/** Reemplaza la guía de operarios en DOCUMENTOS PARA COLABORADORES por la versión de GitHub (la anterior va a la papelera). */
+function actualizarGuia() {
+  var url = 'https://raw.githubusercontent.com/hyslhmh-sudo/manifiestos/main/desvios/impresion/Guia_registro_desvios_HMH_v0.docx';
+  var nombre = 'Guía · Registro de desvíos en el recorrido de residuos · HMH (v0).docx';
+  var carpeta = DriveApp.getFolderById('1tT3WC_Qj8yD6-xgkba2QpPQFCAxZUwCk');
+  var nueva = carpeta.createFile(UrlFetchApp.fetch(url + '?v=' + Date.now()).getBlob().setName(nombre));
+  var it = carpeta.getFilesByName(nombre);
+  while (it.hasNext()) { var f = it.next(); if (f.getId() !== nueva.getId()) f.setTrashed(true); }
+  Logger.log('Guía actualizada: ' + nueva.getUrl());
+  return nueva.getUrl();
+}
