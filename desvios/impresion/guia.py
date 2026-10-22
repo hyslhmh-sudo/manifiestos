@@ -78,7 +78,7 @@ t = d.add_paragraph(); t.alignment = WD_ALIGN_PARAGRAPH.LEFT
 r = t.add_run('Registro de desvíos en el recorrido de retiro de residuos'); r.font.size = Pt(20); r.bold = True; r.font.color.rgb = AZUL
 t.paragraph_format.line_spacing = 1.15
 P('Para los operarios de Star Union que hacen el traslado interno de residuos en el Hospital María Humphreys (HMH).', size=11, align=WD_ALIGN_PARAGRAPH.LEFT)
-P('Versión 0 · octubre de 2026 · Servicio de Higiene y Seguridad Laboral HZT / HMH', size=9, color=GRIS2, align=WD_ALIGN_PARAGRAPH.LEFT, after=10)
+P('Versión 0 (actualizada el 22/10/2026) · Servicio de Higiene y Seguridad Laboral HZT / HMH', size=9, color=GRIS2, align=WD_ALIGN_PARAGRAPH.LEFT, after=10)
 
 d.add_heading('1. Para qué sirve', level=1)
 P('En cada recorrido ustedes ven antes que nadie lo que está mal en la gestión de residuos: bolsas en el piso, bolsas del color equivocado, agujas o vidrios sueltos, contenedores llenos o depósitos desordenados. Este registro sirve para que eso llegue en el momento a Higiene y Seguridad, con lugar, hora y foto, y se pueda corregir en el servicio que lo genera.')
@@ -92,7 +92,10 @@ L([('Escaneando el QR ', 'pegado en el punto del recorrido: la página abre con 
 d.add_heading('3. Paso a paso', level=1)
 L([('Quién carga. ', 'La primera vez elegí tu nombre y escribí los 3 últimos números de tu DNI. El teléfono te recuerda para la próxima. Si usás un celular compartido, tocá «No soy yo» y elegí tu nombre.'),
    ('Dónde. ', 'Si entraste por el QR, el lugar ya está elegido. Si no, elegí planta baja o planta alta y tocá el lugar. Si querés, agregá más precisión (por ejemplo, «tacho del fondo, al lado del ascensor»).'),
+   ('Antes se registró en este lugar. ', 'Si en ese lugar ya hay un desvío en el que Higiene y Seguridad tomó una medida, la página te lo muestra. Mirá y marcá «Sigue igual» o «Ya está corregido». Si no hay nada nuevo para registrar, tocá «Enviar solo la revisión».'),
    ('Qué viste. ', 'Marcá una o varias opciones. Las de cortopunzantes se ven en rojo porque llegan como urgentes.'),
+   ('Por qué pasó. ', 'Si marcaste «Contenedor lleno» o «Residuo fuera de contenedor», la página pregunta por qué. Mirá todos los contenedores del lugar: si no había lugar en ninguno, marcá «No había lugar: todos los contenedores estaban llenos». Así se sabe que faltan contenedores y no que el servicio los dejó mal. Si podés, anotá cuántos contenedores hay y cuántos estaban llenos.'),
+   ('Aislamientos. ', 'Si marcaste «Segregación incorrecta» o «Bolsa incorrecta», la página recuerda que todo lo que sale de un aislamiento por enfermedad infectocontagiosa, incluida la comida, va en bolsa roja (no es un error), y pregunta si venía de un aislamiento. En el aislamiento inverso o protector se separa como siempre.'),
    ('Qué residuo es ', 'y si había residuos mezclados.'),
    ('Contalo en pocas palabras. ', 'Por ejemplo: «bolsa roja abierta en el piso del depósito, tacho vacío al lado».'),
    ('Fotos. ', 'Podés sacar hasta 5. Que no aparezcan pacientes ni personas.'),
@@ -101,10 +104,10 @@ L([('Quién carga. ', 'La primera vez elegí tu nombre y escribí los 3 últimos
 
 d.add_heading('4. Qué marcar en «¿Qué viste?»', level=1)
 tabla([('Opción', 'Ejemplo'),
-       ('Residuo fuera de contenedor', 'Bolsas rojas o negras en el piso; tacho vacío y bolsa al lado.'),
-       ('Bolsa incorrecta / Segregación incorrecta', 'Bandejas de comida en bolsa roja; residuo con sangre en bolsa negra.'),
+       ('Residuo fuera de contenedor', 'Bolsas rojas o negras en el piso o encima de los tachos; tacho vacío y bolsa al lado. También se pregunta por qué pasó.'),
+       ('Bolsa incorrecta / Segregación incorrecta', 'Residuo con sangre en bolsa negra; bandejas de comida en bolsa roja (salvo que vengan de un aislamiento por enfermedad infectocontagiosa: ahí la bolsa roja es lo correcto).'),
        ('Bolsa abierta / sin cerrar · Falta de bolsa', 'Bolsa roja sin cerrar; tacho sin bolsa.'),
-       ('Contenedor lleno / desbordado · Contenedor inadecuado', 'Tacho rebalsado; cajas de cartón usadas como contenedor.'),
+       ('Contenedor lleno / desbordado · Contenedor inadecuado', 'Tacho rebalsado; cajas de cartón usadas como contenedor. En «lleno» se pregunta por qué: no había lugar en ningún contenedor, había lugar y no se usó, contenedor roto o sin bolsa, o el retiro se demoró.'),
        ('Cortopunzante mal dispuesto', 'Agujas, ampollas o vidrios sueltos en bolsa o caja (llega como URGENTE).'),
        ('Depósito sin condiciones adecuadas', 'Depósito sucio, desordenado o con cosas que no son residuos.'),
        ('Residuo químico sin identificación · Falta de rotulado', 'Bidón o frasco sin etiqueta; recipiente sin rótulo.'),
