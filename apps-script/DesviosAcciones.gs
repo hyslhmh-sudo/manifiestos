@@ -344,7 +344,7 @@ const DAC_PARA_EMPRESA = /star union|contenedor|servicios generales/i;   // acci
 function dacSupervision_() {
   const ss = dacSS_(), D = dacDatos_(ss), hoy = new Date(); hoy.setHours(23, 59, 59, 0);
   const lim7 = dacMas_(hoy, -7), lim30 = dacMas_(hoy, -30);
-  const ops = dacTabla_(ss, 'OPERARIOS').filas.filter(o => limpio_(o.EMPRESA) === DAC_EMPRESA && limpio_(o.ACTIVO) === 'Sí' && !/supervisor/i.test(limpio_(o.OBSERVACIONES)));   // el supervisor no cuenta en la adhesión
+  const ops = dacTabla_(ss, 'OPERARIOS').filas.filter(o => limpio_(o.EMPRESA) === DAC_EMPRESA && limpio_(o.ACTIVO) === 'Sí');   // todos los operarios activos de la empresa, también el supervisor (Belén, 22/10/2026)
   const fecha = d => dacFecha_(d.FECHA);
   const adhesion = ops.map(o => {
     const nombre = (limpio_(o.NOMBRE) + ' ' + limpio_(o.APELLIDO)).trim(), mis = D.L.filter(d => d.OPERARIO_COD === limpio_(o.COD));
