@@ -1959,7 +1959,7 @@ async function desvLista(fresco) {
   const fotos = f => String(f || '').indexOf('http') === 0 ? String(f).split(', ').map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + '</a>').join(' · ') : '';
   const urg = o => o.LESION === 'Sí' || /cortopunzante/i.test(o.TIPOS_DESVIO || '');
   const item = o => '<div class="item" style="align-items:flex-start"><div><b>' + esc(o.TIPOS_DESVIO || 's/d') + '</b>' + (o.LESION === 'Sí' ? ' <span class="tag er">Lesión</span>' : urg(o) ? ' <span class="tag er">Cortopunzante</span>' : '') +
-    '<small>' + esc([fechaTxt(o.FECHA_CARGA) + ' ' + String(o.FECHA_CARGA || '').slice(11, 16), o.TURNO, o.PISO, o.SERVICIO, o.UBICACION].filter(Boolean).join(' · ')) +
+    '<small>' + esc([fechaTxt(String(o.FECHA_CARGA || '').slice(0, 10)) + ' ' + String(o.FECHA_CARGA || '').slice(11, 16), o.TURNO, o.PISO, o.SERVICIO, o.UBICACION].filter(Boolean).join(' · ')) +
     (o.DESCRIPCION && o.DESCRIPCION !== 's/d' ? '<br>' + esc(o.DESCRIPCION) : '') + (o.DETALLE_UBICACION && o.DETALLE_UBICACION !== 's/d' ? '<br>Lugar: ' + esc(o.DETALLE_UBICACION) : '') +
     (o.LESION === 'Sí' && o.DETALLE_LESION ? '<br><b>Lesión:</b> ' + esc(o.DETALLE_LESION) : '') + (fotos(o.FOTOS) ? '<br>' + fotos(o.FOTOS) : '') +
     '<br>Registró: ' + esc(o.OPERARIO && o.OPERARIO !== 's/d' ? o.OPERARIO : o.INFORMANTE) + ' · ' + esc(o.ID) + (o.REITERADO && /^Sí/.test(o.REITERADO) ? ' · Reiterado' : '') + '</small></div>' +
