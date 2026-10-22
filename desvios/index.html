@@ -138,8 +138,8 @@ function pantallaCarga(err) {
     '<h2>3 · ¿Qué residuo es?</h2>' + chips('residuos', RESIDUOS, true) +
     '<h2>¿Había residuos mezclados?</h2>' + chips('mezcla', ['Sí', 'No', 'No se puede ver'], false) +
     '<div class="field"><label class="lab" for="descripcion">4 · Contalo en pocas palabras</label><textarea id="descripcion" placeholder="Ej.: bolsa roja abierta en el piso del depósito, tacho vacío al lado">' + esc(F.descripcion) + '</textarea></div>' +
-    '<h2>5 · Fotos <span class="mu">(hasta 3)</span></h2><div class="fotos">' + F.fotos.map((f, i) => '<div><img src="' + f.base64 + '" alt="Foto ' + (i + 1) + '"><button type="button" data-quitar="' + i + '" aria-label="Quitar foto">×</button></div>').join('') +
-    (F.fotos.length < 3 ? '<label class="camara">📷<br>Sacar foto<input type="file" accept="image/*" capture="environment" id="foto" hidden></label>' : '') + '</div>' +
+    '<h2>5 · Fotos <span class="mu">(hasta 5)</span></h2><div class="fotos">' + F.fotos.map((f, i) => '<div><img src="' + f.base64 + '" alt="Foto ' + (i + 1) + '"><button type="button" data-quitar="' + i + '" aria-label="Quitar foto">×</button></div>').join('') +
+    (F.fotos.length < 5 ? '<label class="camara">📷<br>Sacar foto<input type="file" accept="image/*" capture="environment" id="foto" hidden></label>' : '') + '</div>' +
     '<p class="mu">Que no aparezcan pacientes ni personas.</p>' +
     '<h2>6 · ¿Qué tan grave te parece?</h2>' + chips('gravedad', GRAV, false) +
     '<h2>7 · ¿Alguien se lastimó?</h2>' + chips('lesion', ['No', 'Sí'], false) +
