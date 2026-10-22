@@ -25,6 +25,7 @@ var HOJA_REG = 'REGISTROS';
 var HOJA_OPE = 'OPERARIOS';
 var HOJA_PUN = 'PUNTOS';
 var HOJA_TIP = 'TIPOS_DESVIO';
+var HOJA_CAU = 'CAUSAS';
 var HOJA_CFG = 'CONFIG';
 var ZONA = 'America/Argentina/Buenos_Aires';
 
@@ -35,7 +36,22 @@ var COLS = ['ID', 'FECHA_CARGA', 'FECHA_OBSERVACION', 'HORA', 'TURNO', 'ESTABLEC
   'GRAVEDAD_INFORMANTE', 'LESION', 'DETALLE_LESION', 'FOTOS', 'ORIGEN_SUGERIDO',
   'ORIGEN_HYS', 'GRAVEDAD_HYS', 'ACCION_INDIVIDUAL', 'OBS_HYS', 'REVISADO_POR',
   'FECHA_REVISION', 'AVISO_ENVIADO', 'FUENTE', 'OBS_INFORMANTE', 'REVISAR_UBICACION',
-  'REITERADO'];
+  'REITERADO', 'CAUSA', 'CONTENEDORES'];
+
+// Causas (hoja CAUSAS). Si la hoja falta, se usan estas.
+var CAUSAS_BASE = [
+  ['No había lugar: todos los contenedores estaban llenos', 'Faltan contenedores (capacidad del punto)'],
+  ['Había lugar en otro contenedor y no lo usaron', 'Disposición en el servicio'],
+  ['Contenedor roto, sin tapa o sin bolsa', 'Estado o reposición del contenedor'],
+  ['Hacía mucho que no se retiraba', 'Frecuencia de retiro interno'],
+  ['No sé', 'Revisar (HyS)']
+];
+function causas_() {
+  var h = ss_().getSheetByName(HOJA_CAU);
+  if (!h || h.getLastRow() < 2) return CAUSAS_BASE.map(function (c) { return { causa: c[0], origen: c[1] }; });
+  return tabla_(HOJA_CAU).filter(function (c) { return c.ACTIVO !== 'No'; })
+    .map(function (c) { return { causa: String(c.CAUSA).trim(), origen: String(c.ORIGEN_SUGERIDO || '').trim() }; });
+}
 
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 
@@ -109,10 +125,10 @@ function listas_() {
       return { cod: x.COD, piso: x.PISO, servicio: x.SERVICIO, ubicacion: x.UBICACION };
     });
   var tip = tabla_(HOJA_TIP).map(function (t) {
-    return { tipo: t.TIPO, urgente: t.URGENTE === 'Sí' };
+    return { tipo: t.TIPO, urgente: t.URGENTE === 'Sí', causa: t.PREGUNTA_CAUSA === 'Sí' };
   });
   var cfg = config_();
-  return { ok: true, operarios: ope, puntos: pun, tipos: tip,
+  return { ok: true, operarios: ope, puntos: pun, tipos: tip, causas: causas_().map(function (c) { return c.causa; }),
     establecimiento: cfg.ESTABLECIMIENTO, version: cfg.VERSION };
 }
 
@@ -162,6 +178,13 @@ function guardarCarga_(d) {
     var urgente = lesion || tipos.some(function (t) { return urgTipos.indexOf(t) >= 0; });
     var reiterado = contarReiterados_(hoja, d.punto, tipos, Number(cfg.DIAS_REITERADO || 30));
 
+    // 3.6 Causa (solo en los desvíos que la preguntan, p. ej. contenedor lleno o residuo fuera de contenedor)
+    var causa = String(d.causa || '').trim();
+    var cau = causas_().filter(function (c) { return c.causa === causa; })[0];
+    var origen = cau && cau.origen && cau.origen !== 'Revisar (HyS)' ? cau.origen : (pun.TRAMO_SUGERIDO || 'Revisar (HyS)');
+    var nT = parseInt(d.contTotal, 10), nL = parseInt(d.contLlenos, 10);
+    var contenedores = !isNaN(nT) && nT > 0 ? (!isNaN(nL) ? nL + ' de ' + nT + ' llenos' : nT + ' en el lugar') : (!isNaN(nL) ? nL + ' llenos' : '');
+
     var fila = {
       ID: id,
       FECHA_CARGA: ahora,
@@ -185,12 +208,14 @@ function guardarCarga_(d) {
       LESION: lesion ? 'Sí' : 'No',
       DETALLE_LESION: lesion ? (d.detalleLesion || 's/d') : '',
       FOTOS: links.length ? links.join(', ') : 'Sin foto',
-      ORIGEN_SUGERIDO: pun.TRAMO_SUGERIDO || 'Revisar (HyS)',
+      ORIGEN_SUGERIDO: origen,
       AVISO_ENVIADO: 'Pendiente',
       FUENTE: d.fuente || 'Página de carga',
       OBS_INFORMANTE: d.observaciones || '',
       REVISAR_UBICACION: pun.COD === 'OT-99' ? 'Sí' : 'No',
-      REITERADO: reiterado > 0 ? 'Sí (' + reiterado + ' en ' + (cfg.DIAS_REITERADO || 30) + ' días)' : 'No'
+      REITERADO: reiterado > 0 ? 'Sí (' + reiterado + ' en ' + (cfg.DIAS_REITERADO || 30) + ' días)' : 'No',
+      CAUSA: causa,
+      CONTENEDORES: contenedores
     };
     hoja.appendRow(COLS.map(function (c) { return fila[c] !== undefined ? fila[c] : ''; }));
     var nFila = hoja.getLastRow();
@@ -277,6 +302,8 @@ function enviarAviso_(f, urgente, cfg) {
     ['Detalle del lugar', f.DETALLE_UBICACION],
     ['Tipo de residuo', f.TIPO_RESIDUO],
     ['Desvío', f.TIPOS_DESVIO],
+    ['¿Por qué?', f.CAUSA || ''],
+    ['Contenedores', f.CONTENEDORES || ''],
     ['Descripción', f.DESCRIPCION],
     ['Gravedad (operario)', f.GRAVEDAD_INFORMANTE],
     ['Lesión', f.LESION + (f.DETALLE_LESION ? ' · ' + f.DETALLE_LESION : '')],
@@ -284,6 +311,7 @@ function enviarAviso_(f, urgente, cfg) {
     ['Origen sugerido', f.ORIGEN_SUGERIDO],
     ['Fotos', f.FOTOS]
   ];
+  filas = filas.filter(function (r) { return r[0] !== '¿Por qué?' && r[0] !== 'Contenedores' || r[1]; });
   var html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
     (urgente ? '<p style="color:#b00020;font-weight:bold">Requiere atención prioritaria (cortopunzante o lesión).</p>' : '') +
     '<p>Se registró un desvío en el recorrido de retiro de residuos.</p><table style="border-collapse:collapse">' +
@@ -371,7 +399,7 @@ function registros_(d) {
 
 /** Conteos para el tablero: por punto, por tipo de desvío, por mes y últimos 30 días. */
 function resumen_(L) {
-  var porPunto = {}, porTipo = {}, porMes = {}, ult30 = 0, urg = 0, lesion = 0, sinRevisar = 0;
+  var porPunto = {}, porTipo = {}, porMes = {}, porCausa = {}, ult30 = 0, urg = 0, lesion = 0, sinRevisar = 0, faltan = 0;
   var lim = new Date().getTime() - 30 * 86400000;
   L.forEach(function (o) {
     var k = o.PUNTO_COD + ' · ' + o.SERVICIO + ' · ' + o.UBICACION;
@@ -385,10 +413,11 @@ function resumen_(L) {
     if (o.LESION === 'Sí') lesion++;
     if (/cortopunzante/i.test(o.TIPOS_DESVIO) || o.LESION === 'Sí') urg++;
     if (!o.ORIGEN_HYS) sinRevisar++;
+    if (o.CAUSA) { porCausa[o.CAUSA] = (porCausa[o.CAUSA] || 0) + 1; if (/^No había lugar/.test(o.CAUSA)) faltan++; }
   });
   var orden = function (m) { return Object.keys(m).map(function (k) { return { k: k, n: m[k] }; }).sort(function (a, b) { return b.n - a.n; }); };
-  return { total: L.length, ultimos30: ult30, cortopunzantesOLesion: urg, lesiones: lesion, sinRevisarHyS: sinRevisar,
-    porPunto: orden(porPunto), porTipo: orden(porTipo), porMes: Object.keys(porMes).sort().map(function (k) { return { k: k, n: porMes[k] }; }) };
+  return { total: L.length, ultimos30: ult30, cortopunzantesOLesion: urg, lesiones: lesion, sinRevisarHyS: sinRevisar, faltanContenedores: faltan,
+    porPunto: orden(porPunto), porCausa: orden(porCausa), porTipo: orden(porTipo), porMes: Object.keys(porMes).sort().map(function (k) { return { k: k, n: porMes[k] }; }) };
 }
 
 // ---------------------------------------------------------------
@@ -412,6 +441,8 @@ function ayudaUsuarios() {
     '• Si la página no funciona, se puede escribir una fila nueva a mano en REGISTROS ' +
     '(completar al menos fecha, operario, punto, desvío y descripción).\n' +
     '• Cuando falte un dato, escribir «s/d».\n' +
+    '• En «Contenedor lleno» y «Residuo fuera de contenedor» el operario dice POR QUÉ pasó (columna CAUSA): ' +
+    'si no había lugar en ningún contenedor, el problema es la falta de contenedores, no la práctica.\n' +
     '• Cada carga manda un aviso al correo de la secretaría HyS.',
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
@@ -421,6 +452,8 @@ function ayudaAdmin() {
     '• OPERARIOS: alta = fila nueva con código OP-xx; baja = ACTIVO «No".\n' +
     '• PUNTOS: agregar filas con código nuevo; no cambiar códigos ya usados.\n' +
     '• TIPOS_DESVIO: la columna URGENTE «Sí» marca el aviso como URGENTE.\n' +
+    '• TIPOS_DESVIO: la columna PREGUNTA_CAUSA «Sí» hace que la página pregunte por qué pasó (p. ej. contenedor lleno).\n' +
+    '• CAUSAS: las respuestas posibles y el origen que sugiere cada una (se pueden agregar o desactivar con ACTIVO «No»).\n' +
     '• CONFIG: correo de aviso, remitente, horarios de turno, clave del portal.\n' +
     '• Columnas grises de REGISTROS (ORIGEN_HYS a FECHA_REVISION): revisión de HyS.\n' +
     '• Si se cambia el código, volver a implementar la aplicación web (Implementar > Administrar implementaciones > Editar > Versión nueva).',

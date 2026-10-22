@@ -28,6 +28,9 @@
   .chips button { padding:10px 12px; border-radius:10px; border:2px solid var(--line); background:#fff; color:var(--tx); font:inherit; font-size:14.5px; font-weight:600; cursor:pointer; text-align:left; }
   .chips button.sel { border-color:var(--az); background:var(--az); color:#fff; }
   .chips button.urg.sel { border-color:var(--er); background:var(--er); }
+  .causa { margin:14px 0 6px; padding:12px 14px 4px; border-left:4px solid var(--pa); background:#EEF4F6; border-radius:8px; }
+  .causa h2 { margin-top:0; }
+  .dos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
   .pisos { display:flex; gap:8px; margin-bottom:8px; } .pisos button { flex:1; padding:10px; border-radius:10px; border:2px solid var(--line); background:#fff; font:inherit; font-weight:700; cursor:pointer; color:var(--tx); }
   .pisos button.sel { background:var(--gris); border-color:var(--gris); color:#fff; }
   .lista button { display:block; width:100%; text-align:left; background:#fff; border:2px solid var(--line); border-radius:12px; padding:12px 14px; margin:8px 0; cursor:pointer; font:inherit; color:var(--tx); }
@@ -62,6 +65,7 @@
     <li>Elegí tu nombre y escribí los <b>3 últimos números de tu DNI</b>. El teléfono te recuerda para la próxima.</li>
     <li>Elegí el <b>lugar</b> del recorrido (planta baja o alta). Si escaneaste el QR del depósito, ya aparece elegido.</li>
     <li>Marcá <b>qué viste</b> (podés marcar varias cosas) y qué residuo es.</li>
+    <li>Si marcaste <b>contenedor lleno</b> o <b>residuo fuera de contenedor</b>, contá <b>por qué</b>: si no había lugar en ningún contenedor, el problema es que faltan contenedores, no la gente del servicio.</li>
     <li>Sacá una <b>foto</b>. Que no aparezcan pacientes ni personas.</li>
     <li>Si alguien se lastimó, marcalo: llega como <b>URGENTE</b> a Higiene y Seguridad.</li>
     <li>Tocá <b>Enviar</b>. Si no hay señal, queda guardado en el teléfono y se manda solo cuando vuelve la conexión.</li>
@@ -80,6 +84,7 @@
 const API = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
 const RESIDUOS = ['Biopatogénico (bolsa roja)', 'Cortopunzante', 'Común / RSU (bolsa negra)', 'Reciclable (bolsa verde)', 'Químico / especial (bolsa amarilla)', 'Medicamentos / ampollas', 'No se puede saber'];
 const GRAV = ['Baja', 'Media', 'Alta', 'Crítica'];
+const CAUSAS = ['No había lugar: todos los contenedores estaban llenos', 'Había lugar en otro contenedor y no lo usaron', 'Contenedor roto, sin tapa o sin bolsa', 'Hacía mucho que no se retiraba', 'No sé'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('desv_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -117,9 +122,11 @@ function pantallaQuien(msg) {
 
 // ---------------- Paso 2: la carga
 function nuevo() {
-  F = { punto: QR || '', tipos: [], residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
+  F = { punto: QR || '', tipos: [], causa: '', contTotal: '', contLlenos: '', residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
   pantallaCarga();
 }
+// Desvíos que preguntan POR QUÉ pasó (columna PREGUNTA_CAUSA de la hoja TIPOS_DESVIO)
+function pideCausa() { return F.tipos.some(t => (L.tipos || []).some(x => x.tipo === t && x.causa)); }
 function puntoDe(cod) { return (L.puntos || []).find(p => p.cod === cod); }
 function pantallaCarga(err) {
   $('quienTop').textContent = YO.nombre + ' · ' + (YO.empresa || '');
@@ -135,6 +142,9 @@ function pantallaCarga(err) {
          '<div class="lista">' + lugares.map(x => '<button type="button" data-punto="' + esc(x.cod) + '"><b>' + esc(x.servicio) + '</b><span>' + esc(x.ubicacion) + '</span></button>').join('') + '</div>') +
     '<div class="field"><label class="lab" for="detalle">Más precisión del lugar (opcional)</label><input id="detalle" value="' + esc(F.detalle) + '" placeholder="Ej.: al lado del ascensor, tacho del fondo"></div>' +
     '<h2>2 · ¿Qué viste? <span class="mu">(podés marcar varias)</span></h2>' + chips('tipos', L.tipos || [], true) +
+    (pideCausa() ? '<div class="causa"><h2>¿Por qué quedó afuera o desbordado?</h2><p class="mu">Mirá todos los contenedores del lugar antes de responder.</p>' + chips('causa', (L.causas && L.causas.length ? L.causas : CAUSAS), false) +
+      '<div class="dos"><div class="field"><label class="lab" for="contTotal">¿Cuántos contenedores hay?</label><input id="contTotal" inputmode="numeric" maxlength="2" value="' + esc(F.contTotal) + '" placeholder="Ej.: 4"></div>' +
+      '<div class="field"><label class="lab" for="contLlenos">¿Cuántos estaban llenos?</label><input id="contLlenos" inputmode="numeric" maxlength="2" value="' + esc(F.contLlenos) + '" placeholder="Ej.: 4"></div></div></div>' : '') +
     '<h2>3 · ¿Qué residuo es?</h2>' + chips('residuos', RESIDUOS, true) +
     '<h2>¿Había residuos mezclados?</h2>' + chips('mezcla', ['Sí', 'No', 'No se puede ver'], false) +
     '<div class="field"><label class="lab" for="descripcion">4 · Contalo en pocas palabras</label><textarea id="descripcion" placeholder="Ej.: bolsa roja abierta en el piso del depósito, tacho vacío al lado">' + esc(F.descripcion) + '</textarea></div>' +
@@ -148,7 +158,7 @@ function pantallaCarga(err) {
     '<p class="mu">Carga: <b>' + esc(YO.nombre) + '</b> · <button class="link" id="otraPersona">No soy yo</button></p>' +
     '<footer><img src="logo-hysl.png" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas" onerror="this.remove()"></footer>';
   bar('<button class="btn pri" id="enviar">Enviar</button>');
-  const leer = () => ['detalle', 'descripcion', 'observaciones', 'detalleLesion'].forEach(k => { const e = $(k); if (e) F[k] = e.value; });
+  const leer = () => ['detalle', 'descripcion', 'observaciones', 'detalleLesion', 'contTotal', 'contLlenos'].forEach(k => { const e = $(k); if (e) F[k] = e.value; });
   document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { leer(); const k = b.dataset.k, v = b.dataset.v;
     if (b.dataset.m === '1') { const i = F[k].indexOf(v); i >= 0 ? F[k].splice(i, 1) : F[k].push(v); } else F[k] = F[k] === v ? '' : v;
     const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
@@ -171,9 +181,10 @@ function achicar(file) {
 async function enviar() {
   if (!F.punto) return pantallaCarga('Elegí el lugar donde lo viste.');
   if (!F.tipos.length) return pantallaCarga('Marcá qué viste.');
+  if (pideCausa() && !F.causa) return pantallaCarga('Marcá por qué quedó afuera o desbordado (si no sabés, marcá «No sé»).');
   if (String(F.descripcion).trim().length < 4) return pantallaCarga('Contá en pocas palabras qué viste.');
   if (F.lesion === 'Sí' && String(F.detalleLesion).trim().length < 4) return pantallaCarga('Contá qué pasó con la lesión.');
-  const datos = { accion: 'cargar', operario: YO.cod, dni3: YO.dni3, punto: F.punto, tipos: F.tipos, residuos: F.residuos, mezcla: F.mezcla || 's/d', gravedad: F.gravedad || 's/d',
+  const datos = { accion: 'cargar', operario: YO.cod, dni3: YO.dni3, punto: F.punto, tipos: F.tipos, causa: pideCausa() ? F.causa : '', contTotal: pideCausa() ? String(F.contTotal).replace(/\D/g, '') : '', contLlenos: pideCausa() ? String(F.contLlenos).replace(/\D/g, '') : '', residuos: F.residuos, mezcla: F.mezcla || 's/d', gravedad: F.gravedad || 's/d',
     lesion: F.lesion, detalleLesion: F.detalleLesion, detalle: F.detalle.trim(), descripcion: F.descripcion.trim(), observaciones: F.observaciones.trim(), fotos: F.fotos,
     fuente: 'Página de carga', creado: new Date().toISOString() };
   const b = $('enviar'); b.disabled = true; b.textContent = 'Enviando…';
