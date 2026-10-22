@@ -69,6 +69,7 @@
     <li>Marcá <b>qué viste</b> (podés marcar varias cosas) y qué residuo es.</li>
     <li>Si marcaste <b>contenedor lleno</b> o <b>residuo fuera de contenedor</b>, contá <b>por qué</b>: si no había lugar en ningún contenedor, el problema es que faltan contenedores, no la gente del servicio.</li>
     <li>Si marcaste <b>segregación incorrecta</b> o <b>bolsa incorrecta</b>, fijate si venía de una habitación con <b>aislamiento</b>: si es por una enfermedad infectocontagiosa, todo lo que sale de ahí, incluida la comida, va en bolsa roja (no es un error).</li>
+    <li>Si en ese lugar ya se había registrado algo, la página te lo muestra: marcá si <b>sigue igual</b> o si <b>ya está corregido</b>. Si no hay nada nuevo, tocá «Enviar solo la revisión».</li>
     <li>Sacá una <b>foto</b>. Que no aparezcan pacientes ni personas.</li>
     <li>Si alguien se lastimó, marcalo: llega como <b>URGENTE</b> a Higiene y Seguridad.</li>
     <li>Tocá <b>Enviar</b>. Si no hay señal, queda guardado en el teléfono y se manda solo cuando vuelve la conexión.</li>
@@ -127,13 +128,24 @@ function pantallaQuien(msg) {
 
 // ---------------- Paso 2: la carga
 function nuevo() {
-  F = { punto: QR || '', tipos: [], causa: '', contTotal: '', contLlenos: '', aislamiento: '', residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
+  F = { punto: QR || '', tipos: [], causa: '', contTotal: '', contLlenos: '', aislamiento: '', seg: {}, residuos: [], mezcla: '', gravedad: '', lesion: 'No', detalleLesion: '', detalle: '', descripcion: '', observaciones: '', fotos: [] };
   pantallaCarga();
 }
 // Desvíos que preguntan POR QUÉ pasó (columna PREGUNTA_CAUSA de la hoja TIPOS_DESVIO)
 function pideCausa() { return F.tipos.some(t => (L.tipos || []).some(x => x.tipo === t && x.causa)); }
 // Desvíos que muestran el aviso de aislamiento (columna AVISO_AISLAMIENTO de la hoja TIPOS_DESVIO)
 function pideAisl() { return F.tipos.some(t => (L.tipos || []).some(x => x.tipo === t && x.aisl)) || (!(L.tipos || []).some(x => 'aisl' in x) && F.tipos.some(t => /^(Segregación incorrecta|Bolsa incorrecta)$/.test(t))); }
+// Desvíos anteriores de este lugar que HyS tiene en seguimiento: el operario dice si siguen igual o ya se corrigieron
+const SEG_OP = { 'Sigue igual': 'Persiste', 'Ya está corregido': 'Corregido' };
+function seguirDe(cod) { return (L.seguir || []).filter(x => x.punto === cod); }
+function revisarAntes(cod) {
+  const S = seguirDe(cod); if (!S.length) return '';
+  return '<div class="causa"><h2>Antes se registró en este lugar</h2><p class="mu">Mirá si sigue igual o si ya se corrigió. Si no vas a registrar nada nuevo, tocá «Enviar solo la revisión».</p>' +
+    S.map(x => '<div style="margin:10px 0"><b>' + esc(x.tipos) + '</b> <span class="mu">· ' + esc(x.fecha) + '</span>' + (x.descripcion ? '<br><span class="mu">' + esc(x.descripcion) + '</span>' : '') +
+      '<div class="chips" style="margin-top:6px">' + Object.keys(SEG_OP).map(k => '<button type="button" class="' + (F.seg[x.id] === SEG_OP[k] ? 'sel' : '') + '" data-seg="' + esc(x.id) + '" data-segv="' + SEG_OP[k] + '">' + k + '</button>').join('') + '</div></div>').join('') +
+    (Object.keys(F.seg).length ? '<button type="button" class="btn" id="soloSeg" style="width:100%;margin:6px 0 10px">Enviar solo la revisión</button>' : '') + '</div>';
+}
+function datosSeg() { const it = Object.keys(F.seg).map(id => ({ id: id, resultado: F.seg[id] })); return it.length ? { accion: 'seguir', operario: YO.cod, dni3: YO.dni3, items: it } : null; }
 function puntoDe(cod) { return (L.puntos || []).find(p => p.cod === cod); }
 function pantallaCarga(err) {
   $('quienTop').textContent = YO.nombre + ' · ' + (YO.empresa || '');
@@ -147,6 +159,7 @@ function pantallaCarga(err) {
     (p ? '<div class="elegido"><div><b>' + esc(p.servicio) + '</b><br><span class="mu">' + esc(p.piso + ' · ' + p.ubicacion) + '</span></div><button class="link" id="cambiarP">Cambiar</button></div>'
        : '<div class="pisos">' + ['Planta baja', 'Planta alta', 'Otro'].map(x => '<button type="button" class="' + ((x === 'Otro' ? 's/d' : x) === PISO ? 'sel' : '') + '" data-piso="' + (x === 'Otro' ? 's/d' : x) + '">' + x + '</button>').join('') + '</div>' +
          '<div class="lista">' + lugares.map(x => '<button type="button" data-punto="' + esc(x.cod) + '"><b>' + esc(x.servicio) + '</b><span>' + esc(x.ubicacion) + '</span></button>').join('') + '</div>') +
+    (p ? revisarAntes(p.cod) : '') +
     '<div class="field"><label class="lab" for="detalle">Más precisión del lugar (opcional)</label><input id="detalle" value="' + esc(F.detalle) + '" placeholder="Ej.: al lado del ascensor, tacho del fondo"></div>' +
     '<h2>2 · ¿Qué viste? <span class="mu">(podés marcar varias)</span></h2>' + chips('tipos', L.tipos || [], true) +
     (pideCausa() ? '<div class="causa"><h2>¿Por qué quedó afuera o desbordado?</h2><p class="mu">Mirá todos los contenedores del lugar antes de responder.</p>' + chips('causa', (L.causas && L.causas.length ? L.causas : CAUSAS), false) +
@@ -175,6 +188,12 @@ function pantallaCarga(err) {
   document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { leer(); const k = b.dataset.k, v = b.dataset.v;
     if (b.dataset.m === '1') { const i = F[k].indexOf(v); i >= 0 ? F[k].splice(i, 1) : F[k].push(v); } else F[k] = F[k] === v ? '' : v;
     const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
+  document.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { leer(); const id = b.dataset.seg; F.seg[id] === b.dataset.segv ? delete F.seg[id] : F.seg[id] = b.dataset.segv; const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
+  const ss = $('soloSeg'); if (ss) ss.onclick = async () => { leer(); const d = datosSeg(); if (!d) return; ss.disabled = true; ss.textContent = 'Enviando…';
+    const r = await mandar(d);
+    if (r && r.ok) { (L.seguir || []).forEach(x => { if (F.seg[x.id]) x.punto = ''; }); F.seg = {}; bar(null); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Revisión enviada.</b><br>Higiene y Seguridad la va a confirmar. Gracias.</div>' + otraVez(); activarOtraVez(); window.scrollTo(0, 0); return; }
+    if (r && r.error && !r.red) { ss.disabled = false; ss.textContent = 'Enviar solo la revisión'; return pantallaCarga(r.error); }
+    const q = cola(); q.push(d); LS.set('cola', q); red(); F.seg = {}; bar(null); $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Quedó guardado en el teléfono.</b><br>No hay señal: se manda solo cuando vuelva la conexión.</div>' + otraVez(); activarOtraVez(); };
   document.querySelectorAll('[data-piso]').forEach(b => b.onclick = () => { leer(); PISO = b.dataset.piso; const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
   document.querySelectorAll('[data-punto]').forEach(b => b.onclick = () => { leer(); F.punto = b.dataset.punto; const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); });
   document.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => { leer(); F.fotos.splice(Number(b.dataset.quitar), 1); pantallaCarga(); });
@@ -201,10 +220,11 @@ async function enviar() {
     lesion: F.lesion, detalleLesion: F.detalleLesion, detalle: F.detalle.trim(), descripcion: F.descripcion.trim(), observaciones: F.observaciones.trim(), fotos: F.fotos,
     fuente: 'Página de carga', creado: new Date().toISOString() };
   const b = $('enviar'); b.disabled = true; b.textContent = 'Enviando…';
+  const seg = datosSeg();
   const r = await mandar(datos);
-  if (r && r.ok) return listo(r);
+  if (r && r.ok) { if (seg) { const r2 = await mandar(seg); if (!(r2 && r2.ok)) { const q = cola(); q.push(seg); LS.set('cola', q); red(); } else (L.seguir || []).forEach(x => { if (F.seg[x.id]) x.punto = ''; }); } return listo(r); }
   if (r && r.error && !r.red) { b.disabled = false; b.textContent = 'Enviar'; if (/DNI/.test(r.error)) { YO = null; LS.set('yo', null); return pantallaQuien(r.error); } return pantallaCarga(r.error); }
-  const q = cola(); q.push(datos); LS.set('cola', q); red();
+  const q = cola(); q.push(datos); if (seg) q.push(seg); LS.set('cola', q); red();
   bar(null); $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Quedó guardado en el teléfono.</b><br>No hay señal: se manda solo cuando vuelva la conexión. No lo cargues de nuevo.</div>' + otraVez();
   activarOtraVez();
 }

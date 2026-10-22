@@ -316,7 +316,7 @@ const TRAB_COLS = ['CUIL', 'DNI', 'APELLIDOS', 'NOMBRES', 'SITIO', 'FUNCION', 'F
 // guardado en este equipo y se actualizan solas por detrás; si llegó algo distinto, la pantalla se vuelve a dibujar. Cualquier carga o cambio borra lo guardado.
 const SWR_LEER = {   // acción de lectura → cómo olvidar la copia en memoria de la pantalla
   p_ficha: d => { delete FICHAS[d.cod]; }, p_mi: () => {}, p_rad_tablero: () => { RADT = null; }, p_rad_detalle: d => { delete RADD[d.cod]; },
-  p_inc_tablero: () => { INCT = null; }, p_inc_detalle: d => { delete INCD[d.cod]; }, p_inc_novedades: () => { INCNP = null; }, p_resnov_listar: () => { RNP = null; }, p_rgrl_datos: () => { RG = null; },
+  p_inc_tablero: () => { INCT = null; }, p_inc_detalle: d => { delete INCD[d.cod]; }, p_inc_novedades: () => { INCNP = null; }, p_resnov_listar: () => { RNP = null; }, p_desv_listar: () => { DAC = null; }, p_rgrl_datos: () => { RG = null; },
   p_coc_tablero: () => { COCT = null; }, p_coc_personas: () => { COCP.cargado = ''; }, p_mipyv: () => { MIPYV = null; }, p_acc_listar: () => { ACCPD = null; },
   p_docest_lista: () => { DE.L = null; }, p_notas: () => { NT.R = null; }, p_sin_lista: () => { SINP = null; }, p_dgm_tablero: d => { delete DGMT[d.m]; },
   p_bib_listar: () => { BIB = null; }, p_registro: () => {}, p_bj_listar: () => {}, p_sin_est: () => {}, p_diag_tablero: () => { TAB = null; }, p_trab: () => {}, p_nte_revisar: () => {}
@@ -399,7 +399,7 @@ function marco(activo, contenido) {
     it('#est', 'apartment', 'Establecimientos') +
     '<div class="titu mod">Módulos</div>' +
     // 14.54 · fase 1 del sistema de gestión: 10 módulos técnicos con las mismas pestañas (Estado · Datos · Evaluación · Documentos) y 11 · Gestión
-    grp('res', 'recycling', '1 · Residuos', pes('Estado') + it('#res', '', 'Tablero', 1) + it('#resinf', '', 'Informe de retiros', 1) + pes('Datos') + it('#resfrec', '', 'Frecuencias de retiro', 1) + it('#rescosto', '', 'Contrato y costos', 1) + pes('Evaluación') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#resnov', '', 'Novedades de residuos', 1)) +
+    grp('res', 'recycling', '1 · Residuos', pes('Estado') + it('#res', '', 'Tablero', 1) + it('#resinf', '', 'Informe de retiros', 1) + pes('Datos') + it('#resfrec', '', 'Frecuencias de retiro', 1) + it('#rescosto', '', 'Contrato y costos', 1) + pes('Evaluación') + it('#diag', '', 'Diagnóstico', 1) + it('#aud', '', 'Auditorías', 1) + it('#resnov', '', 'Novedades de residuos', 1) + it('#desvacc', '', 'Desvíos: acciones y seguimiento', 1)) +
     grp('agu', 'water_drop', '2 · Agua', pes('Estado') + it('#agua', '', 'Tablero', 1) + pes('Evaluación') + it('#aguadiag', '', 'Diagnóstico', 1)) +
     grp('plg', 'pest_control', '3 · Plagas', pes('Estado') + it('#plagas', '', 'Tablero', 1) + pes('Datos') + ext(API_URL + '?p=mipyv', 'Registro MIPyV') + pes('Evaluación') + it('#plgdiag', '', 'Diagnóstico', 1)) +
     grp('coc', 'soup_kitchen', '4 · Cocinas hospitalarias', pes('Estado') + it('#coc', '', 'Tablero', 1) + pes('Datos') + it('#cocper', '', 'Personas de cocina', 1) + pes('Evaluación') + it('#cocdiag', '', 'Relevamiento BPM / HACCP', 1)) +
@@ -505,6 +505,7 @@ const AYUDA = {
   '#m8rel': ['Relevamiento', ['Elegí el edificio (capa A, requisitos del RGRL) o el servicio (capa B, requisitos de su directriz): la lista de verificación se arma sola.', 'Tocá C, P, NC o NA en cada punto; tocá de nuevo para borrar la respuesta. ★ = crítico: si no cumple, pegá el enlace de la foto.', '«Guardar» escribe en la planilla. Después, «Generar hallazgos» pasa los P y NC al plan de acción con su prioridad y plazo.', '«Generar informe a la Dirección» arma un borrador en Google Docs (carpeta del módulo › INFORMES) con portada, índice, métodos, notas al pie, plan de acción y anexos. Lo que hay que revisar queda en celeste e itálica.', 'Para auditorías, elegí el tipo «Auditoría» y usá un ID nuevo (por ejemplo, con la fecha).']],
   '#m8plan': ['Plan de acción del módulo 6', ['Hallazgos ordenados por prioridad: Actuar ya (30 días), Resolver rápido (90) y Planificar (180).', 'Tocá una fila para cargar la respuesta de la Dirección, cambiar el estado, ajustar la propuesta o cerrar el hallazgo.']],
   '#inc': ['7 · Protección contra incendios · Extintores', ['Inventario de extintores de la red Trelew (HZT y sus sitios, HMH) y del HSST con sus CAPS, en el libro «PROTECCIÓN CONTRA INCENDIOS · Sistema HyS» (Drive › SISTEMA HyS › MÓDULO 10). La carga inicial salió de la planilla «Inventario de Extintores».', 'Por lugar: cuántos extintores hay, cuántos tienen la carga vencida o por vencer (aviso 30 días antes, también para la prueba hidráulica, en este tablero y en «Requiere atención»), cuántos tienen observación (sobrecarga, recargar, fuera de servicio) y el último control.', 'Control: mensual, con 3 fotos obligatorias por extintor (panorámica con el entorno, marbete y N.º de inventario). La alarma por falta de control aparece a los 3 meses; los nunca controlados avisan desde el 14/01/2027.', 'Controlan: HMH, Belén, Melani, SOMI y MAREM; red Trelew (HZT, sede ex ADOS, CAPS, dispositivos y ambulancias), Belén, Melani y Javier Tramaleo; HSST, a definir. Desde «Mi establecimiento» lo cargan las personas con el módulo Incendio en Accesos; Javier Tramaleo, desde MIPyV.', 'Agregar extintores: HyS desde acá, Melani, SOMI y MAREM desde «Mi establecimiento» y Javier Tramaleo desde MIPyV. Al agregar uno, todos los datos y las 3 fotos son obligatorios; en Observaciones queda quién y cuándo lo agregó.', 'Normativa: Ley 19.587; Dto. 351/79, cap. 18 y Anexo VII.']],
+  '#desvacc': ['1 · Desvíos: acciones y seguimiento', ['Lo que registran los operarios de Star Union en el recorrido de retiro del HMH. Cada desvío lleva una acción tuya y se cierra cuando se verifica en el lugar que se corrigió.', 'Arriba, las vistas: «Para actuar» (sin acción, primero los vencidos), «En seguimiento» (verificar en el lugar), «A confirmar» (los operarios dicen que se corrigió), «Evaluar escalar» (el lugar acumula desvíos o uno persiste) y «Cerrados».', 'Marcá uno o varios desvíos y tocá «Tomar acción»: nota al servicio, a Servicios Generales, a tu jefe, a Star Union, pedido de contenedores, capacitación al servicio, seguimiento en recorrida, solo registro u otra. Con varios desvíos se arma una sola nota (la nota al servicio, una por servicio).', 'Las notas se generan como BORRADOR con el modelo de nota interna (hechos con cada desvío y su foto, fundamento normativo y lo que se solicita) y quedan en «Notas enviadas y recibidas» como Borrador. Revisalas y envialas vos; nunca se envía nada solo.', '«Verificar»: Corregido cierra el desvío; Persiste lo deja en seguimiento con plazo nuevo y sugiere escalar. Melani verifica desde «Mi establecimiento» y los operarios en el próximo recorrido.', 'Los plazos dependen de la gravedad (hoja PLAZOS de la planilla de desvíos). Los tipos de acción, el destinatario sugerido y los textos de la nota se cambian en la hoja TIPOS_ACCION. Todo queda también en las hojas ACCIONES y SEGUIMIENTOS.']],
   '#resnov': ['1 · Novedades de residuos', ['Lo que se vio mal en las recorridas de residuos y se informó desde «Mi establecimiento» › 1 · Residuos › «Informar una novedad» (Melani en la red Trelew y el referente de residuos del HSST, con el módulo Residuos).', 'Primero aparecen las de residuos peligrosos (biopatogénicos, cortopunzantes, medicamentos, ampollas y químicos). Las abiertas entran en «Requiere atención» del Tablero general: en rojo si hay alguna de residuos peligrosos.', '«Resuelta» la marca con lo que se hizo. También la pueden marcar quienes tienen el módulo Residuos en ese establecimiento.', 'Cada novedad queda en el libro de manifiestos del establecimiento, hoja NOVEDADES_RES. Si falla la aplicación, se carga a mano desde la fila 6. No se envían correos.']],
   '#incnov': ['7 · Novedades y recorridas de seguridad', ['Lo que informan Seguridad (MAREM), SOMI y Melani desde «Mi establecimiento»: recorridas de seguridad contra incendios (12 puntos por sector; cada «No» con foto) y novedades (principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida, instalación dañada u otra).', 'Cada recorrida con problemas y cada novedad se avisa por correo solo a Higiene y Seguridad (SITIOS_INC › CORREOS_NOVEDADES) y queda en «Requiere atención» hasta que se marca «Resuelta» (SOMI, Melani o HyS).', 'Si se usó un extintor, además queda con el problema «Se usó» y va en el correo de extintores a SOMI y Mantenimiento.', 'Empresas (SOMI, MAREM): entran con la clave de la empresa, sin DNI (BASE COMÚN › ACCESOS, ROL = Servicio). Cada registro pide DNI, nombre y correo de quien lo hace, cruzados con la base de personal; las altas y cambios de datos van a la Bandeja (NÓMINA DE PERSONAL) y quedan en la hoja PERSONAL_SERVICIOS (ACTIVO = No bloquea a una persona).', 'Hojas: RECORRIDAS, NOVEDADES_INC y PERSONAL_SERVICIOS del libro de incendio. Normativa: Ley 19.587; Dto. 351/79, cap. 18.']],
   '#incest': ['7 · Extintores de un lugar', ['Lista de extintores con su ubicación, tipo, N.º de inventario, vencimiento de la carga y de la prueba hidráulica, estado y último control con sus fotos.', '«Control»: fecha, 5 verificaciones (en su lugar, acceso libre, manómetro, precinto y señalización) y las 3 fotos obligatorias. También pide el vencimiento de la carga (obligatorio, de la tarjeta) y el de la prueba hidráulica (si figura): si cambian, se actualiza el extintor y queda en CAMBIOS; si la carga está vencida o la tarjeta no se lee, queda como problema.', 'Verificar: Javier (MIPyV), Melani, SOMI y MAREM (aplicación) pueden agregar extintores y corregir el nombre o N.º y la ubicación (lugar, planta, sector, dónde está). Eso queda «Para verificar» (también en «Requiere atención»), con el cambio anotado en «Último cambio» y en la columna CAMBIOS de la planilla. «Verificar» lo da por bueno; «Editar» lo corrige y, al guardar desde acá, queda verificado. «Verificar los N pendientes» verifica todos los de la lista.', 'Aviso por correo (HMH): si en el control se marca un problema (no está, se usó, poca o demasiada presión, precinto roto, dañado, obstruido, etc.), alguna verificación da «No» o el estado pasa a Sobrecarga, Recargar o Fuera de servicio, queda como problema abierto y va en un solo correo por día con todos los extintores con problemas a SOMI (Ing. Erick Velázquez) y a Mantenimiento del HMH (Ing. Ezequiel Nieto): a las 6 h del día siguiente y, mientras no se marque resuelto, cada 3 días. El correo separa nuevos, los que siguen sin resolver (con los días) y los resueltos. El extintor muestra «Problema abierto» con el botón «Marcar resuelto» (también en la aplicación). En el tablero, «Mandar el correo ahora» lo manda en el momento. Filtro «Con problema abierto». Los problemas quedan en la hoja FALLAS. Los destinatarios se cambian en la planilla, hoja SITIOS_INC › CORREOS_FALLA; en CONTROLES › AVISO_CORREO queda si se envió.', '«Editar» corrige cualquier dato del extintor; para sacarlo, Estado = Baja (no se borra). «Agregar extintor» suma uno nuevo: todos los datos y las 3 fotos son obligatorios (si no tiene N.º de inventario, «s/d»; la prueba hidráulica, si no se sabe, queda «s/d (revisar)»). No deja cargar dos veces el mismo N.º de inventario en un establecimiento.', 'Lo que había que revisar de la planilla de origen (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes) está en Observaciones.']],
@@ -665,6 +666,7 @@ async function inicio(fresco) {
   atr.forEach(f => at.push([f.diasSinRetiro > 30 ? 'er' : 'wa', f.cod + ': ' + f.diasSinRetiro + ' días sin retiro', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), '#ficha/' + encodeURIComponent(f.cod)]));
   pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
   ((TB.incendio || {}).avisos || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ' · ' + x.sitio + ': ' + x.texto, 'Extintores · control mensual con 3 fotos', x.h || '#incest/' + encodeURIComponent(x.cod) + '/' + encodeURIComponent(x.sitio)]));   // 7 · Incendio
+  (TB.desvacc || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ': ' + x.texto, 'Residuos · desvíos del recorrido de Star Union (acciones y seguimiento)', '#desvacc']));   // 1 · Residuos › desvíos: acciones
   (TB.resnov || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ': ' + x.texto, 'Residuos · lo que se vio mal en las recorridas (Mi establecimiento)', '#resnov']));   // 1 · Residuos › novedades de residuos
   const RM = TB.remision || {};   // remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
   if (RM.activa) { const g = {}; (RM.avisos || []).filter(x => !x.silenciado && enA(x.cod)).forEach(x => (g[x.cod] = g[x.cod] || []).push(x));
@@ -5727,7 +5729,7 @@ async function resNovPortal(fresco) {
     '<td><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="chip er">Peligroso</span>' : '') + (n.ORIGEN ? ' <span class="chip">' + esc(n.ORIGEN) + ' · ' + esc(n.ID) + '</span>' : '') + '<div class="mu peq">' + esc(n.CORRIENTE || '') + '</div></td>' +
     '<td>' + esc(n.ESTABLECIMIENTO) + (n.SITIO && n.SITIO !== n.ESTABLECIMIENTO ? ' · ' + esc(n.SITIO) : '') + '<div class="mu peq">' + esc(n.SECTOR || '') + '</div></td>' +
     '<td class="peq" style="max-width:280px">' + esc(n.DETALLE || '') + (n.FOTO ? '<div>' + lk(n.FOTO, 'Foto') + '</div>' : '') + '</td><td class="peq">' + esc(n.QUIEN || '') + '</td>' +
-    '<td>' + (abierta ? '<button class="btn pri" data-rnres="' + esc(n.ID) + '">Resuelta</button>' : '<span class="chip ok">Resuelta</span><div class="mu peq">' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ' · ' + esc(n.RESOLUCION) : '') + (n.RESUELTO_POR ? ' · ' + esc(n.RESUELTO_POR) : '') + '</div>') + '</td></tr>';
+    '<td>' + (abierta && /^DR-/.test(n.ID) ? '<a class="btn pri" href="#desvacc">Gestionar</a><div class="mu peq">' + esc(n.GESTION || '') + '</div>' : abierta ? '<button class="btn pri" data-rnres="' + esc(n.ID) + '">Resuelta</button>' : '<span class="chip ok">Resuelta</span><div class="mu peq">' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ' · ' + esc(n.RESOLUCION) : '') + (n.RESUELTO_POR ? ' · ' + esc(n.RESUELTO_POR) : '') + '</div>') + '</td></tr>';
   const tabla = (L, abierta) => '<div style="overflow-x:auto"><table><thead><tr><th>Fecha</th><th>Qué</th><th>Dónde</th><th>Detalle</th><th>Quién</th><th></th></tr></thead><tbody>' + L.map(n => fila(n, abierta)).join('') + '</tbody></table></div>';
   marco('#resnov', '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos</a></span><h1>Novedades de residuos</h1>' +
     '<span class="mu peq">Lo que se vio mal en las recorridas: lo informado desde «Mi establecimiento» y los desvíos que registran los operarios de Star Union en el HMH. Primero, lo de residuos peligrosos. No se envían correos.</span></div>' +
@@ -5744,6 +5746,135 @@ async function resNovPortal(fresco) {
       const r = await api('p_resnov_resolver', { cod: n.ESTABLECIMIENTO, ID: n.ID, RESOLUCION: out.RESOLUCION || '' }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       const e = RNP && RNP._est; RNP = null; TB = null; toast('Novedad marcada como resuelta.'); await resNovPortal(true); if (RNP && e) { RNP._est = e; resNovPortal(); } return ''; },
       '<p class="mu peq" style="margin:0">' + esc(n.ESTABLECIMIENTO + ' · ' + (n.SECTOR || '') + ' · ' + (n.DETALLE || '')) + '</p>'); });
+}
+</script>
+<script>
+// ------------------------------------------------------------------ 1 · Residuos › Desvíos: acciones y seguimiento (DesviosAcciones.gs, versión 0, 22/10/2026)
+// Lo que registran los operarios de Star Union en el recorrido de retiro del HMH: cada desvío lleva una acción de HyS
+// (nota al servicio, a Servicios Generales, a la jefatura, a Star Union, pedido de contenedores, capacitación, seguimiento,
+// solo registro…) y se cierra cuando se verifica en el lugar que se corrigió. Las notas salen como BORRADOR en el registro de notas.
+let DAC = null, DACF = { vista: 'actuar', q: '', sel: {} };
+async function desvAcc(fresco) {
+  if (!DAC || fresco) { cargando('#desvacc', 'Leyendo los desvíos del recorrido…'); try { DAC = await api('p_desv_listar', fresco ? { fresco: true } : {}, 120000); } catch (e) { return; } }
+  const cab = '<div class="cab"><div><span class="mu peq"><a class="link" href="#res">1 · Residuos</a></span><h1>Desvíos: acciones y seguimiento</h1>' +
+    '<span class="mu peq">Lo que registran los operarios de Star Union en el recorrido del HMH. Cada desvío lleva una acción tuya y se cierra cuando se verifica en el lugar que se corrigió.</span></div>';
+  if (!DAC.ok) { const r = DAC; DAC = null; return marco('#desvacc', cab + '</div><div class="aviso error">' + esc((r && (r.mensaje || r.error)) || 'No se pudo leer.') + '</div>'); }
+  const E = DAC.estados, L = DAC.desvios, R = DAC.resumen, F = DACF, q = F.q.toLowerCase();
+  const enVista = d => F.vista === 'actuar' ? d.ESTADO === E.SIN : F.vista === 'seguimiento' ? d.ESTADO === E.SEG : F.vista === 'confirmar' ? d.ESTADO === E.OPER :
+    F.vista === 'escalar' ? !!d.escalar : F.vista === 'cerrados' ? /^Cerrado/.test(d.ESTADO) : true;
+  const vis = L.filter(d => enVista(d) && (!q || [d.ID, d.TIPOS, d.SERVICIO, d.UBICACION, d.DESCRIPCION, d.CAUSA, d.OPERARIO].join(' ').toLowerCase().indexOf(q) >= 0))
+    .sort((a, b) => (b.vencido - a.vencido) || String(a.VENCE || '9999').localeCompare(String(b.VENCE || '9999')) || String(b.FECHA).localeCompare(String(a.FECHA)));
+  Object.keys(F.sel).forEach(k => { if (!vis.some(d => d.ID === k)) delete F.sel[k]; });
+  const nSel = Object.keys(F.sel).length;
+  const kpi = (v, t, n, s, col) => '<a class="kpi2" href="#" data-dv="' + v + '"' + (F.vista === v ? ' style="outline:2px solid var(--az)"' : '') + '><span>' + t + '</span><b' + (col && n ? ' style="color:' + col + '"' : '') + '>' + n + '</b><small>' + s + '</small></a>';
+  const sugerida = d => /infectocontagiosa/i.test(d.AISLAMIENTO) ? 'Solo registro (no era un error)' : /^No había lugar/.test(d.CAUSA) ? 'Pedido de contenedores' : d.escalar ? 'Nota a mi jefe' : '';
+  const peligroso = d => /biopat|cortopun|químic|medicam|ampoll/i.test(d.RESIDUO) || /cortopun/i.test(d.TIPOS) || d.LESION === 'Sí';
+  const lk = (u, t) => '<a class="link" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + ' ↗</a>';
+  const fila = d => {
+    const abierto = !/^Cerrado/.test(d.ESTADO), sug = abierto && d.ESTADO === E.SIN ? sugerida(d) : '';
+    const estado = d.ESTADO === E.SIN ? (d.vencido ? '<span class="tag er">Sin acción · vencido</span>' : '<span class="tag wa">Sin acción</span>')
+      : d.ESTADO === E.SEG ? (d.vencido ? '<span class="tag er">Verificar · vencido</span>' : '<span class="tag">En seguimiento</span>')
+      : d.ESTADO === E.OPER ? '<span class="tag wa">Operario: corregido</span>' : '<span class="tag ok">' + esc(d.ESTADO) + '</span>';
+    return '<tr><td>' + (abierto ? '<input type="checkbox" data-sel="' + esc(d.ID) + '"' + (F.sel[d.ID] ? ' checked' : '') + ' aria-label="Marcar ' + esc(d.ID) + '">' : '') + '</td>' +
+      '<td style="white-space:nowrap"><b>' + esc(d.ID) + '</b><div class="mu peq">' + fechaTxt(d.FECHA) + (d.HORA ? ' · ' + esc(d.HORA) : '') + '</div></td>' +
+      '<td><b>' + esc(d.TIPOS) + '</b>' + (peligroso(d) ? ' <span class="tag er">Peligroso</span>' : '') + (/^No había lugar/.test(d.CAUSA) ? ' <span class="tag wa">Faltan contenedores</span>' : '') +
+        (/infectocontagiosa/i.test(d.AISLAMIENTO) ? ' <span class="tag wa">Aislamiento infectocontagioso</span>' : '') + (d.escalar ? ' <span class="tag er" title="' + esc(d.escalar) + '">Evaluar escalar</span>' : '') +
+        '<div class="mu peq">' + esc(d.RESIDUO || '') + ' · Gravedad: ' + esc(d.GRAVEDAD) + (d.GRAVEDAD_HYS ? ' (HyS)' : '') + '</div></td>' +
+      '<td class="peq">' + esc([d.PISO, d.SERVICIO].filter(Boolean).join(' · ')) + '<div class="mu">' + esc(d.UBICACION + (d.DETALLE_UBICACION ? ' · ' + d.DETALLE_UBICACION : '')) + '</div></td>' +
+      '<td class="peq" style="max-width:300px">' + esc(d.DESCRIPCION || '') + (d.CAUSA ? '<div><b>Por qué:</b> ' + esc(d.CAUSA) + (d.CONTENEDORES ? ' (' + esc(d.CONTENEDORES) + ')' : '') + '</div>' : '') +
+        (d.AISLAMIENTO ? '<div><b>¿Aislamiento?</b> ' + esc(d.AISLAMIENTO) + '</div>' : '') + (d.FOTOS.length ? '<div>' + d.FOTOS.map((u, i) => lk(u, 'Foto ' + (i + 1))).join(' · ') + '</div>' : '') +
+        '<div class="mu">' + esc(d.OPERARIO || '') + '</div></td>' +
+      '<td class="peq">' + estado + (d.VENCE ? '<div class="mu">Vence: ' + fechaTxt(d.VENCE) + '</div>' : '') +
+        d.ACCIONES.map(a => '<div>' + esc(fechaTxt(a.fecha) + ' · ' + a.tipo) + (a.destinatario && a.destinatario !== a.tipo ? ' · ' + esc(a.destinatario) : '') + (a.url ? ' · ' + lk(a.url, a.nota || 'Nota') : '') + '</div>').join('') +
+        (d.ULTIMO_SEGUIMIENTO ? '<div class="mu">Verificación: ' + esc(d.ULTIMO_SEGUIMIENTO) + '</div>' : '') + (sug ? '<div class="mu">Sugerido: ' + esc(sug) + '</div>' : '') + '</td>' +
+      '<td><div style="display:flex;flex-direction:column;gap:6px;min-width:96px">' + (d.ESTADO === E.OPER ? '<button class="btn pri peq" data-conf="' + esc(d.ID) + '">Confirmar</button> <button class="btn sec peq" data-noconf="' + esc(d.ID) + '">No</button>'
+        : abierto ? '<button class="btn sec peq" data-uno="' + esc(d.ID) + '">Acción</button> <button class="btn sec peq" data-ver="' + esc(d.ID) + '">Verificar</button>' : '') +
+        ' <button class="btn sec peq" data-cla="' + esc(d.ID) + '" title="Gravedad y origen según HyS">Clasificar</button></div></td></tr>';
+  };
+  marco('#desvacc', cab + '<div class="filtros"><a class="btn sec" href="' + esc(DAC.planilla) + '" target="_blank" rel="noopener">Planilla ↗</a><button class="btn sec" id="dvAct">Actualizar</button></div></div>' +
+    '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
+      kpi('actuar', 'PARA ACTUAR', R.sinAccion, 'sin acción tuya' + (R.vencidos ? ' · ' + R.vencidos + ' vencidos en total' : ''), '#B4361F') +
+      kpi('seguimiento', 'EN SEGUIMIENTO', R.seguimiento, 'verificar en el lugar') + kpi('confirmar', 'A CONFIRMAR', R.confirmar, 'los operarios dicen que se corrigió', '#8A5200') +
+      kpi('escalar', 'EVALUAR ESCALAR', R.escalar, 'se repiten o persisten', '#B4361F') + kpi('cerrados', 'CERRADOS', R.cerrados, 'corregidos o sin acción') + kpi('todos', 'TODOS', L.length, 'registrados') + '</div>' +
+    '<div class="filtros" style="margin:12px 0;align-items:flex-end"><label class="f">Buscar<input class="c" id="dvQ" value="' + esc(F.q) + '" placeholder="Código, servicio, palabra"></label>' +
+      '<button class="btn pri" id="dvAcc"' + (nSel ? '' : ' disabled') + '>Tomar acción con los marcados (' + nSel + ')</button>' +
+      '<button class="btn sec" id="dvVer"' + (nSel ? '' : ' disabled') + '>Verificar los marcados</button></div>' +
+    '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th><input type="checkbox" id="dvTodos" aria-label="Marcar todos"></th><th>Registro</th><th>Desvío</th><th>Lugar</th><th>Detalle</th><th>Gestión</th><th></th></tr></thead><tbody>' +
+      (vis.length ? vis.map(fila).join('') : '<tr><td colspan="7" class="mu">No hay desvíos en esta vista.</td></tr>') + '</tbody></table></div></section>' +
+    '<p class="mu peq">Plazos según la gravedad (hoja PLAZOS de la planilla): para tomar la acción, desde que se registró; para verificar, desde la acción. Las notas salen como <b>borrador</b> en «Notas enviadas y recibidas»: revisalas y envialas vos. ' +
+      'Melani y los operarios también verifican (lo de los operarios queda «A confirmar»). Si un lugar acumula desvíos o uno persiste, aparece «Evaluar escalar».</p>');
+  const re = () => { const y = window.scrollY; desvAcc(); window.scrollTo(0, y); };
+  $('dvAct').onclick = () => { DAC = null; desvAcc(true); };
+  document.querySelectorAll('[data-dv]').forEach(a => a.onclick = e => { e.preventDefault(); F.vista = a.dataset.dv; F.sel = {}; desvAcc(); });
+  $('dvQ').onchange = () => { F.q = $('dvQ').value.trim(); re(); };
+  document.querySelectorAll('[data-sel]').forEach(c => c.onchange = () => { if (c.checked) F.sel[c.dataset.sel] = 1; else delete F.sel[c.dataset.sel]; re(); });
+  $('dvTodos').onchange = () => { vis.filter(d => !/^Cerrado/.test(d.ESTADO)).forEach(d => { if ($('dvTodos').checked) F.sel[d.ID] = 1; else delete F.sel[d.ID]; }); re(); };
+  $('dvAcc').onclick = () => desvAccModal(Object.keys(F.sel));
+  $('dvVer').onclick = () => desvVerModal(Object.keys(F.sel));
+  document.querySelectorAll('[data-uno]').forEach(b => b.onclick = () => desvAccModal([b.dataset.uno]));
+  document.querySelectorAll('[data-ver]').forEach(b => b.onclick = () => desvVerModal([b.dataset.ver]));
+  document.querySelectorAll('[data-conf],[data-noconf]').forEach(b => b.onclick = async () => {
+    const si = !!b.dataset.conf, id = b.dataset.conf || b.dataset.noconf; b.disabled = true;
+    const r = await api('p_desv_confirmar', { id: id, confirmar: si }, 120000);
+    if (!r.ok) { b.disabled = false; return toast(r.mensaje || 'No se pudo guardar.'); }
+    toast(si ? 'Confirmado: desvío cerrado.' : 'Vuelve a seguimiento.'); DAC = null; TB = null; desvAcc(true); });
+  document.querySelectorAll('[data-cla]').forEach(b => b.onclick = () => { const d = L.find(x => x.ID === b.dataset.cla);
+    modal('Clasificar ' + d.ID, [['gravedad', 'Gravedad según HyS', ['Baja', 'Media', 'Alta', 'Crítica']], ['origen', 'Origen según HyS', { lista: ['Servicio generador', 'Circuito de retiro (Star Union)', 'Faltan contenedores (capacidad del punto)', 'Estado o reposición del contenedor', 'Frecuencia de retiro interno', 'Disposición en el servicio', 'No era un desvío'] }]],
+      { gravedad: d.GRAVEDAD_HYS, origen: d.ORIGEN_HYS || d.ORIGEN_SUGERIDO }, async out => {
+        const r = await api('p_desv_clasificar', { id: d.ID, gravedad: out.gravedad, origen: out.origen }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+        toast('Clasificación guardada.'); DAC = null; desvAcc(true); return ''; },
+      '<p class="mu peq" style="margin:0">La gravedad define los plazos. Si no la clasificás, se usa la del operario.</p>'); });
+}
+
+// Tomar una acción con uno o varios desvíos
+function desvAccModal(ids) {
+  if (!ids.length) return;
+  const L = DAC.desvios.filter(d => ids.indexOf(d.ID) >= 0), T = DAC.tipos, servicios = Array.from(new Set(L.map(d => d.SERVICIO)));
+  const m = modal('Acción · ' + ids.length + ' desvío(s)', [
+    ['tipo', 'Qué hacés', T.map(t => t.tipo)],
+    ['destinatario', 'Destinatario (de la lista de notas)', { lista: servicios.concat(DAC.destinatarios) }],
+    ['nro', 'N.º de nota («Próximo», «s/n» o un número)', { lista: ['Próximo', 's/n'] }],
+    ['asunto', 'Asunto (si queda vacío, lo arma el sistema)'],
+    ['fundamento', 'Fundamento normativo en la nota', ['Sí', 'No']],
+    ['motivo', '«Me dirijo a usted… a fin de…»', null, 1],
+    ['pedido', 'Qué se solicita (un punto por línea)', null, 1],
+    ['detalle', 'Detalle o fecha prevista (queda en ACCIONES)', null, 1]
+  ], { fundamento: 'Sí' }, async out => {
+    const t = T.find(x => x.tipo === out.tipo); if (!t) return 'Elegí qué hacés.';
+    const r = await api('p_desv_accion', { ids: ids, tipo: out.tipo, destinatario: out.destinatario, nro: out.nro, asunto: out.asunto, fundamento: out.fundamento !== 'No',
+      motivo: out.motivo, pedido: String(out.pedido || '').split('\n').map(s => s.trim()).filter(Boolean).join(' | '), detalle: out.detalle }, 240000);
+    if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    DAC = null; TB = null; DACF.sel = {};
+    const notas = r.hechas.filter(h => h.nota);
+    await desvAcc(true);
+    if (notas.length) setTimeout(() => { const v = modal('Listo', [], {}, async () => '', '<p>Se guardó la acción. ' + (notas.length > 1 ? 'Borradores' : 'Borrador') + ' de nota (revisalo y envialo vos):</p><ul>' +
+      notas.map(h => '<li><a class="link" href="' + esc(h.nota.url) + '" target="_blank" rel="noopener">' + esc(h.nota.codigo + ' · ' + h.destinatario) + ' ↗</a> <span class="mu peq">(' + esc(h.desvios.join(', ')) + ')</span></li>').join('') + '</ul>');
+      $('mOk').textContent = 'Cerrar'; $('mOk').onclick = v.cerrar; $('mCan').hidden = true; }, 50);
+    else toast('Acción guardada.');
+    return '';
+  }, '<p class="mu peq" style="margin:0">' + esc(L.map(d => d.ID + ' · ' + d.SERVICIO).join(' · ')) + '</p><div id="dvAyuda" class="mu peq"></div>');
+  const sel = document.querySelector('#ov [data-k="tipo"]'), set = (k, v) => { const e = document.querySelector('#ov [data-k="' + k + '"]'); if (e) e.value = v || ''; };
+  const caja = k => document.querySelector('#ov [data-k="' + k + '"]').closest('label');
+  const mostrar = () => { const t = T.find(x => x.tipo === sel.value) || {};
+    ['destinatario', 'nro', 'asunto', 'fundamento', 'motivo', 'pedido'].forEach(k => caja(k).hidden = !t.nota);
+    caja('destinatario').hidden = !t.nota && !/servicio/i.test(t.destinatario || '');
+    set('destinatario', /\(servicio del lugar\)/i.test(t.destinatario || '') ? (servicios.length === 1 ? servicios[0] : '') : t.destinatario);
+    set('nro', t.numero || 'Próximo'); set('motivo', t.motivo); set('pedido', String(t.pedido || '').split('|').map(s => s.trim()).filter(Boolean).join('\n'));
+    $('dvAyuda').textContent = (t.ayuda || '') + (/\(servicio del lugar\)/i.test(t.destinatario || '') && servicios.length > 1 ? ' Marcaste desvíos de ' + servicios.length + ' servicios: si dejás el destinatario vacío, se arma una nota por servicio.' : ''); };
+  sel.onchange = mostrar;
+  const sug = L.length === 1 ? (/infectocontagiosa/i.test(L[0].AISLAMIENTO) ? 'Solo registro (no era un error)' : /^No había lugar/.test(L[0].CAUSA) ? 'Pedido de contenedores' : L[0].escalar ? 'Nota a mi jefe' : '') : '';
+  if (sug && T.some(t => t.tipo === sug)) sel.value = sug;
+  mostrar();
+}
+
+// Verificación en el lugar: corregido (cierra) o persiste (sigue en seguimiento)
+function desvVerModal(ids) {
+  if (!ids.length) return;
+  modal('Verificación en el lugar · ' + ids.length + ' desvío(s)', [['resultado', '¿Cómo estaba?', ['Corregido', 'Persiste']], ['obs', 'Observaciones (opcional)', null, 1]], {}, async out => {
+    if (!out.resultado) return 'Elegí si se corrigió o si persiste.';
+    const r = await api('p_desv_seguimiento', { ids: ids, resultado: out.resultado, obs: out.obs }, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    DAC = null; TB = null; DACF.sel = {}; toast(out.resultado === 'Corregido' ? 'Cerrado como corregido.' : 'Sigue en seguimiento.'); desvAcc(true); return '';
+  }, '<p class="mu peq" style="margin:0">' + esc(ids.join(', ')) + '. «Corregido» cierra el desvío. «Persiste» lo deja en seguimiento con un plazo nuevo y sugiere escalar.</p>');
 }
 </script>
 <script>
@@ -6146,6 +6277,7 @@ function routerPantalla() {
   if (ruta === 'inc') return incTablero();
   if (ruta === 'incest') return incEst(location.hash.replace(/^#incest\/?/, ''));
   if (ruta === 'incnov') return incNovPortal();
+  if (ruta === 'desvacc') return desvAcc();   // 1 · Residuos › desvíos: acciones y seguimiento (modulos/desvios-acciones.js)
   if (ruta === 'resnov') return resNovPortal();   // 1 · Residuos › novedades de residuos (modulos/residuos-novedades.js)
   if (ruta === 'rad') return radTablero();
   if (ruta === 'radest') return radEst(location.hash.replace(/^#radest\/?/, ''));

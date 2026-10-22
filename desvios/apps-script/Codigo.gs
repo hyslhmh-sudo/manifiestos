@@ -36,7 +36,8 @@ var COLS = ['ID', 'FECHA_CARGA', 'FECHA_OBSERVACION', 'HORA', 'TURNO', 'ESTABLEC
   'GRAVEDAD_INFORMANTE', 'LESION', 'DETALLE_LESION', 'FOTOS', 'ORIGEN_SUGERIDO',
   'ORIGEN_HYS', 'GRAVEDAD_HYS', 'ACCION_INDIVIDUAL', 'OBS_HYS', 'REVISADO_POR',
   'FECHA_REVISION', 'AVISO_ENVIADO', 'FUENTE', 'OBS_INFORMANTE', 'REVISAR_UBICACION',
-  'REITERADO', 'CAUSA', 'CONTENEDORES', 'AISLAMIENTO'];
+  'REITERADO', 'CAUSA', 'CONTENEDORES', 'AISLAMIENTO',
+  'ESTADO_GESTION', 'VENCE', 'ACCIONES', 'ULTIMO_SEGUIMIENTO'];   // estas 4 las mantiene el Sistema HyS (DesviosAcciones.gs)
 
 // Causas (hoja CAUSAS). Si la hoja falta, se usan estas.
 var CAUSAS_BASE = [
@@ -104,6 +105,8 @@ function doPost(e) {
     var d = JSON.parse(e.postData.contents);
     if (d.accion === 'cargar') return json_(guardarCarga_(d));
     if (d.accion === 'registros') return json_(registros_(d));
+    if (d.accion === 'seguir') return json_(seguirOperario_(d));            // el operario verifica en el recorrido
+    if (d.accion === 'verificar') return json_(verificarPortal_(d));        // Melani verifica desde «Mi establecimiento»
     return json_({ ok: false, error: 'Acción desconocida' });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -128,7 +131,16 @@ function listas_() {
     return { tipo: t.TIPO, urgente: t.URGENTE === 'Sí', causa: t.PREGUNTA_CAUSA === 'Sí', aisl: t.AVISO_AISLAMIENTO === 'Sí' };
   });
   var cfg = config_();
-  return { ok: true, operarios: ope, puntos: pun, tipos: tip, causas: causas_().map(function (c) { return c.causa; }),
+  // Desvíos en seguimiento: la página de carga le pregunta al operario si siguen igual cuando elige ese lugar
+  var seguir = [];
+  try {
+    tabla_(HOJA_REG).forEach(function (o) {
+      if (o.ESTADO_GESTION !== 'En seguimiento') return;
+      var f = o.FECHA_CARGA instanceof Date ? Utilities.formatDate(o.FECHA_CARGA, ZONA, 'dd/MM/yyyy') : String(o.FECHA_OBSERVACION || '');
+      seguir.push({ id: o.ID, punto: o.PUNTO_COD, tipos: o.TIPOS_DESVIO, fecha: f, descripcion: String(o.DESCRIPCION || '').slice(0, 140) });
+    });
+  } catch (e) {}
+  return { ok: true, operarios: ope, puntos: pun, tipos: tip, seguir: seguir, causas: causas_().map(function (c) { return c.causa; }),
     establecimiento: cfg.ESTABLECIMIENTO, version: cfg.VERSION };
 }
 
@@ -395,7 +407,13 @@ function registros_(d) {
     return !lim || new Date(String(o.FECHA_CARGA).replace(' ', 'T')).getTime() >= lim;
   });
   // Lo que no hace falta mostrar en la pantalla de consulta (DNI nunca se manda)
-  out.forEach(function (o) { delete o.OPERARIO_COD; });
+  out.forEach(function (o) {
+    delete o.OPERARIO_COD;
+    // Melani no ve las acciones de HyS: solo si el desvío está para verificar en el lugar o ya se cerró
+    o.VERIFICAR = o.ESTADO_GESTION === 'En seguimiento' ? 'Sí' : 'No';
+    o.CERRADO = /^Cerrado/.test(String(o.ESTADO_GESTION || '')) ? 'Sí' : 'No';
+    delete o.ESTADO_GESTION; delete o.VENCE; delete o.ACCIONES;
+  });
   return { ok: true, registros: out, resumen: resumen_(out), actualizado: Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy HH:mm') };
 }
 
@@ -530,4 +548,62 @@ function actualizarGuia() {
   while (it.hasNext()) { var f = it.next(); if (f.getId() !== nueva.getId()) f.setTrashed(true); }
   Logger.log('Guía actualizada: ' + nueva.getUrl());
   return nueva.getUrl();
+}
+
+
+// ---------------------------------------------------------------
+// 8. Verificación en el lugar (seguimiento de los desvíos que ya tienen una acción de HyS)
+//    Las acciones y los plazos los maneja el Sistema HyS (DesviosAcciones.gs); acá solo se anota lo que se ve en el lugar.
+// ---------------------------------------------------------------
+
+function seguimientoAnotar_(ids, resultado, quien, origen, obs, confirmado) {
+  var ss = ss_(), sh = ss.getSheetByName('SEGUIMIENTOS'), hoja = ss.getSheetByName(HOJA_REG);
+  if (!sh) return { ok: false, error: 'Falta la hoja SEGUIMIENTOS.' };
+  var v = hoja.getDataRange().getValues(), enc = v[0].map(function (h) { return String(h).trim(); });
+  var iId = enc.indexOf('ID'), iE = enc.indexOf('ESTADO_GESTION'), iV = enc.indexOf('VENCE'), iU = enc.indexOf('ULTIMO_SEGUIMIENTO'), iG = enc.indexOf('GRAVEDAD_HYS'), iGo = enc.indexOf('GRAVEDAD_INFORMANTE');
+  var dias = {}; try { tabla_('PLAZOS').forEach(function (p) { dias[p.GRAVEDAD] = Number(p.DIAS_SEGUIMIENTO) || 7; }); } catch (e) {}
+  var ahora = new Date(), hechos = 0;
+  ids.forEach(function (id) {
+    for (var i = 1; i < v.length; i++) {
+      if (String(v[i][iId]) !== String(id)) continue;
+      var est = String(v[i][iE] || '');
+      if (est !== 'En seguimiento' && est !== 'Corregido según operario (confirmar)') break;   // solo lo que está para verificar
+      sh.appendRow([ahora, id, resultado, quien, origen, obs || '', confirmado ? 'Sí' : 'Pendiente', confirmado ? quien : '']);
+      var ult = Utilities.formatDate(ahora, ZONA, 'dd/MM/yyyy') + ' · ' + resultado + ' (' + origen + ')';
+      if (iU >= 0) hoja.getRange(i + 1, iU + 1).setValue(ult);
+      if (resultado === 'Corregido') { if (iE >= 0) hoja.getRange(i + 1, iE + 1).setValue(confirmado ? 'Cerrado · corregido' : 'Corregido según operario (confirmar)'); if (confirmado && iV >= 0) hoja.getRange(i + 1, iV + 1).setValue(''); }
+      else if (confirmado && iV >= 0) {
+        var g = String((iG >= 0 && v[i][iG]) || (iGo >= 0 && v[i][iGo]) || 's/d'), d = new Date(ahora.getTime()); d.setDate(d.getDate() + (dias[g] || dias['s/d'] || 7));
+        hoja.getRange(i + 1, iV + 1).setValue(d); if (iE >= 0) hoja.getRange(i + 1, iE + 1).setValue('En seguimiento');
+      }
+      hechos++; break;
+    }
+  });
+  return { ok: true, anotados: hechos };
+}
+
+/** El operario, en el recorrido: { operario, dni3, items: [{ id, resultado: 'Corregido'|'Persiste' }] }. Queda para que HyS confirme. */
+function seguirOperario_(d) {
+  var ope = tabla_(HOJA_OPE).filter(function (o) { return o.COD === d.operario; })[0];
+  if (!ope || ope.ACTIVO !== 'Sí') return { ok: false, error: 'Operario no habilitado.' };
+  if (ope.EMPRESA !== 'HySL' && String(ope.DNI || '').slice(-3) !== String(d.dni3 || '').trim()) return { ok: false, error: 'Los 3 números del DNI no coinciden. Revisá y volvé a intentar.' };
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    var n = 0;
+    (d.items || []).forEach(function (it) {
+      if (['Corregido', 'Persiste'].indexOf(it.resultado) < 0) return;
+      n += seguimientoAnotar_([it.id], it.resultado, ope.NOMBRE + ' ' + ope.APELLIDO, ope.EMPRESA === 'HySL' ? 'HyS' : 'Operario', '', ope.EMPRESA === 'HySL').anotados;
+    });
+    return { ok: true, anotados: n };
+  } finally { lock.releaseLock(); }
+}
+
+/** Melani (o quien tenga acceso) desde «Mi establecimiento»: { est, dni, clave, ids, resultado, obs, quien }. Cuenta como verificado. */
+function verificarPortal_(d) {
+  var cfg = config_();
+  if (!accesoValido_(String(d.est || ''), String(d.dni || ''), String(d.clave || ''), cfg)) return { ok: false, error: 'clave', mensaje: 'No se pudo comprobar tu acceso. Volvé a ingresar con tu DNI y tu clave.' };
+  if (['Corregido', 'Persiste'].indexOf(d.resultado) < 0) return { ok: false, mensaje: 'Elegí si se corrigió o si persiste.' };
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try { return seguimientoAnotar_(d.ids || [], d.resultado, String(d.quien || 'Mi establecimiento'), 'Mi establecimiento', String(d.obs || ''), true); }
+  finally { lock.releaseLock(); }
 }

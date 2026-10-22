@@ -182,7 +182,7 @@ function rdesvLeer_() {
     const t = h => o[h] instanceof Date ? o[h] : limpio_(o[h]), fc = o.FECHA_CARGA instanceof Date ? o.FECHA_CARGA : null;
     const resid = limpio_(o.TIPO_RESIDUO), tipos = limpio_(o.TIPOS_DESVIO);
     const pel = /biopat|cortopun|químic|quimic|medicam|ampoll/i.test(resid) || /cortopun/i.test(tipos) || o.LESION === 'Sí';
-    const revisado = limpio_(o.REVISADO_POR) || (o.FECHA_REVISION instanceof Date || limpio_(o.FECHA_REVISION));
+    const revisado = /^Cerrado/.test(limpio_(o.ESTADO_GESTION));   // estado de «Desvíos: acciones y seguimiento» (DesviosAcciones.gs)
     const det = [limpio_(o.DESCRIPCION), o.CAUSA ? 'Por qué: ' + limpio_(o.CAUSA) + (o.CONTENEDORES ? ' (' + limpio_(o.CONTENEDORES) + ')' : '') : '',
       o.AISLAMIENTO ? '¿Aislamiento?: ' + limpio_(o.AISLAMIENTO) : '', o.LESION === 'Sí' ? 'LESIÓN: ' + limpio_(o.DETALLE_LESION) : ''].filter(Boolean).join(' · ');
     L.push({ fila: i + 2, ID: limpio_(o.ID), ORIGEN: 'Recorrido Star Union',
@@ -191,18 +191,15 @@ function rdesvLeer_() {
       SECTOR: [o.PISO, o.SERVICIO, o.UBICACION].map(limpio_).filter(Boolean).join(' · ') + (limpio_(o.DETALLE_UBICACION) && limpio_(o.DETALLE_UBICACION) !== 's/d' ? ' · ' + limpio_(o.DETALLE_UBICACION) : ''),
       TIPO: tipos, CORRIENTE: resid, PELIGROSA: pel ? 'Sí' : 'No', DETALLE: det,
       FOTO: (String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/) || [''])[0], QUIEN: limpio_(o.OPERARIO) + (o.INFORMANTE ? ' (' + limpio_(o.INFORMANTE) + ')' : ''),
-      ESTADO: revisado ? 'Resuelta' : 'Abierta', RESUELTO: o.FECHA_REVISION instanceof Date ? Utilities.formatDate(o.FECHA_REVISION, TZ, 'yyyy-MM-dd') : limpio_(o.FECHA_REVISION),
-      RESUELTO_POR: limpio_(o.REVISADO_POR), RESOLUCION: [limpio_(o.ORIGEN_HYS), limpio_(o.ACCION_INDIVIDUAL), limpio_(o.OBS_HYS)].filter(Boolean).join(' · ') });
+      ESTADO: revisado ? 'Resuelta' : 'Abierta', GESTION: limpio_(o.ESTADO_GESTION) || 'Sin acción', RESUELTO: '', RESUELTO_POR: '',
+      RESOLUCION: [limpio_(o.ESTADO_GESTION), limpio_(o.ULTIMO_SEGUIMIENTO)].filter(Boolean).join(' · ') });
   });
   return { sh: sh, H: H, L: L };
 }
+// «Resuelta» sobre un desvío = verificación de HyS «Corregido» (lo cierra en «Desvíos: acciones y seguimiento»)
 function rdesvResolver_(x, quien) {
-  const D = rdesvLeer_(), n = D.L.find(z => z.ID === limpio_(x.ID)); if (!n) return { ok: false, mensaje: 'No encontré ese desvío.' };
-  if (n.ESTADO === 'Resuelta') return { ok: false, mensaje: 'Ese desvío ya estaba revisado.' };
-  const set = (k, v) => { const j = D.H.indexOf(k); if (j >= 0) D.sh.getRange(n.fila, j + 1).setValue(v); };
-  set('REVISADO_POR', quien); set('FECHA_REVISION', new Date());
-  const res = limpio_(x.RESOLUCION); if (res) { const j = D.H.indexOf('OBS_HYS'), prev = j >= 0 ? limpio_(D.sh.getRange(n.fila, j + 1).getValue()) : ''; set('OBS_HYS', prev ? prev + ' · ' + res : res); }
-  return { ok: true };
+  if (typeof dacSeguimiento_ !== 'function') return { ok: false, mensaje: 'Falta instalar DesviosAcciones.gs.' };
+  return dacSeguimiento_({ ids: [limpio_(x.ID)], resultado: 'Corregido', obs: limpio_(x.RESOLUCION) }, quien, 'HyS');
 }
 
 function rnovPortal_(accion, x, quien) {
