@@ -896,7 +896,7 @@ function inicio() {
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
-    (maudVe() ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las del establecimiento, agrupadas por tema: fecha, estado y % de cumplimiento', true) + '</div>' : '') +   // MiAuditorias.gs (23/10/2026)
+    (maudVe() ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las evaluaciones de HyS del establecimiento (Res. SRT 905/2015), por tema: fecha, estado y resultado', true) + '</div>' : '') +   // MiAuditorias.gs (23/10/2026)
     (puede('Residuos') || puede('Diagnóstico') || puede('Auditoría') || (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0) ? '<h2>1 · Residuos</h2><div class="menu">' +
       (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
@@ -919,14 +919,15 @@ function inicio() {
 // Cada persona ve los temas que tiene en ACCESOS; Higiene y Seguridad ve todos y los enlaces a los informes.
 // Se puede seguir desde acá lo que la persona completa (auditoría interna o diagnóstico en borrador); lo demás se corrige en el portal.
 let MAUD = null;
-const MAUD_MODS = ['Auditoría', 'Diagnóstico', 'Agua', 'Plagas', 'Relevamiento de cocina'];
+const MAUD_MODS = ['Auditoría', 'Diagnóstico', 'Agua', 'Plagas', 'Relevamiento de cocina', 'Radiaciones', 'Incendio', 'Accidentes'];   // versión 1: todo lo que la Res. SRT 905/2015 pone a cargo de HyS
 const maudHys = () => !!(CFG && CFG.acceso && CFG.acceso.maestra);
 const maudVe = () => !!SES && !SES.servicio && (maudHys() || !SES.modulos || SES.modulos.some(m => MAUD_MODS.indexOf(m) >= 0));
 const maudPct = v => v === '' || v == null ? '' : String(v).replace('.', ',') + ' %';
 const maudNivel = p => p === '' || p == null ? 'gr' : p >= 80 ? 'ok' : p >= 50 ? 'wa' : 'er';   // misma escala que el resto del sistema: 80 % o más, 50 a 79 %, menos de 50 %
+const maudTag = i => i.pct !== '' && i.pct != null ? '<span class="tag ' + maudNivel(i.pct) + '">' + maudPct(i.pct) + '</span>' : i.res ? '<span class="tag ' + esc(i.res.n || 'gr') + '">' + esc(i.res.t) + '</span>' : '<span class="tag gr">Sin %</span>';
 const maudEstNivel = e => /cerrad/i.test(e) ? 'ok' : /borrador|planificada|en curso|hallazgos|verificar|enviado/i.test(e) ? 'wa' : 'gr';
-const MAUD_AYUDA = 'Acá están juntas, por tema, las auditorías y los diagnósticos del establecimiento, de la más nueva a la más vieja. ' +
-  'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen (en las auditorías, las no conformidades mayores). ' +
+const MAUD_AYUDA = 'Acá están juntas, por tema, las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada persona ve los temas que tiene asignados. ' +
+  'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. En el control de extintores es la parte de los extintores controlados ese mes; en las investigaciones, la parte de las medidas ya verificadas. «Críticos» son los puntos críticos que no se cumplen (en las auditorías, las no conformidades mayores; en el RGRL, las condiciones en «No»; en extintores, los que tuvieron algún problema). ' +
   'Tocá una para ver el detalle. Las que todavía estás completando (auditoría interna o diagnóstico en borrador) se pueden seguir desde el detalle; las demás las corrige Higiene y Seguridad.';
 
 async function miAud(fresco) {
@@ -939,22 +940,23 @@ async function miAud(fresco) {
   else $('app').innerHTML = tit + '<p class="mu">' + (navigator.onLine ? 'Cargando… (lee varios módulos, puede tardar unos segundos)' : 'Para ver las auditorías la primera vez hace falta señal.') + '</p>';
   if (!MAUD) miVolver();
   if ((!MAUD || fresco) && navigator.onLine) {
-    try { const r = await api('m_auditorias', {}); if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); MAUD = r; LS.set(clave, r); }
-    catch (e) { if (MIV === yo && !MAUD) { $('app').innerHTML = tit + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' || e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.</div>'; miVolver(); } return; }
+    const antes = ESPERA_MS; ESPERA_MS = 120000;   // lee varios libros: puede tardar más que una carga común
+    try { const r = await api('m_auditorias', { fresco: !!fresco }); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); MAUD = r; LS.set(clave, r); }
+    catch (e) { ESPERA_MS = antes; if (MIV === yo && !MAUD) { $('app').innerHTML = tit + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' || e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.</div>'; miVolver(); } return; }
     if (MIV === yo) maudPintar(tit);   // si mientras tanto se fue a otra pantalla, no se dibuja encima 
   }
 }
 function maudPintar(tit) {
   const T = MAUD.temas || [];
   $('app').innerHTML = tit + (T.length ? T.map((t, ti) => {
-    const res = t.ultimo ? 'Último resultado: <b>' + maudPct(t.ultimo.pct) + '</b> (' + esc(t.ultimo.tipo) + ', ' + fechaTxt(t.ultimo.fecha) + ')' : 'Todavía sin resultados cerrados';
+    const res = t.ultimo ? 'Último resultado: <b>' + maudPct(t.ultimo.pct) + '</b> (' + esc(t.ultimo.tipo) + ', ' + fechaTxt(t.ultimo.fecha) + ')' : t.total ? t.total + ' registro(s)' : 'Todavía sin registros';
     return '<h2>' + esc(t.nombre) + '</h2>' +
       (t.error ? '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(t.error) + '</div>'
       : !t.instalado ? '<p class="mu">Este módulo todavía no está instalado en el sistema.</p>'
       : '<p class="mu" style="margin-top:-6px;font-size:14px">' + res + (t.ncAbiertas ? ' · <b style="color:var(--er)">' + t.ncAbiertas + ' no conformidad(es) abierta(s)</b>' : '') + (t.soloLectura ? ' · lo releva Higiene y Seguridad' : '') + '</p>' +
         (t.items.length ? '<div class="lista">' + t.items.map((i, ii) => '<button class="item" data-act="maudVer" data-arg="' + ti + '|' + ii + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(i.tipo) + '</b><small>' +
           fechaTxt(i.fecha) + ' · ' + esc(i.estado) + (i.criticos !== '' && i.criticos != null ? ' · ' + i.criticos + ' crítico(s)' : '') + (i.lugar ? ' · ' + esc(i.lugar) : '') + '</small></div>' +
-          '<span class="tag ' + maudNivel(i.pct) + '">' + (i.pct !== '' ? maudPct(i.pct) : 'Sin %') + '</span></button>').join('') + '</div>' +
+          maudTag(i) + '</button>').join('') + '</div>' +
           (t.total > t.items.length ? '<p class="mu" style="font-size:13px">Se muestran las ' + t.items.length + ' más nuevas de ' + t.total + '.</p>' : '')
         : '<p class="mu">Todavía no hay auditorías ni diagnósticos de este tema.</p>'));
   }).join('') : '<div class="notice">No tenés temas con auditorías o diagnósticos asignados. Consultá con Higiene y Seguridad.</div>') +
@@ -970,11 +972,12 @@ function maudVer(arg) {
   const seguir = i.abrir === 'aud' ? 'Seguir la auditoría interna' : i.abrir === 'diag' ? 'Seguir el diagnóstico' : i.abrir === 'cocina' ? 'Seguir el relevamiento de cocina' : '';
   $('app').innerHTML = miTit(i.tipo, esc(t.nombre) + ' · ' + fechaTxt(i.fecha)) +
     '<div class="lista">' + fila('Estado', '<span class="tag ' + maudEstNivel(i.estado) + '">' + esc(i.estado) + '</span>') +
-      fila('Cumplimiento', i.pct !== '' ? '<span class="tag ' + maudNivel(i.pct) + '">' + maudPct(i.pct) + '</span>' : '') +
-      fila(i.clase === 'aud' ? 'No conformidades mayores' : 'Puntos críticos que no se cumplen', i.criticos) + fila('No conformidades menores', i.ncMenor) +
+      fila(i.clase === 'ext' ? 'Extintores controlados' : i.clase === 'inv' ? 'Medidas verificadas' : 'Cumplimiento', i.pct !== '' && i.pct != null ? '<span class="tag ' + maudNivel(i.pct) + '">' + maudPct(i.pct) + '</span>' : '') +
+      fila('Resultado', i.res ? '<span class="tag ' + esc(i.res.n || 'gr') + '">' + esc(i.res.t) + '</span>' : '') +
+      fila(i.clase === 'aud' ? 'No conformidades mayores' : i.clase === 'rgrl' ? 'Condiciones en «No»' : i.clase === 'ext' ? 'Extintores con algún problema' : 'Puntos críticos que no se cumplen', i.criticos) + fila('No conformidades menores', i.ncMenor) +
       fila('No conformidades abiertas (sin resolver)', i.clase === 'aud' ? String(i.ncAbiertas || 0) + (i.ncMayoresAbiertas ? ' (' + i.ncMayoresAbiertas + ' mayor(es))' : '') : '') +
-      fila(i.clase === 'aud' ? 'Puntos respondidos' : 'Puntos evaluados', i.clase === 'aud' && i.puntos !== '' ? (i.respondidos || 0) + ' de ' + i.puntos : i.puntos) +
-      fila(i.clase === 'infra' ? 'Servicio' : i.clase === 'aud' ? 'Lugares' : 'Alcance', esc(i.lugar)) + fila('Quién', esc(i.quien)) + fila('Observaciones', esc(i.obs)) + fila('Informe', infTxt) + fila('Código', esc(i.id)) + '</div>' +
+      fila(i.clase === 'aud' ? 'Puntos respondidos' : i.clase === 'rgrl' ? 'Condiciones contestadas' : i.clase === 'ext' ? 'Extintores controlados en el mes' : i.clase === 'inv' ? 'Medidas' : 'Puntos evaluados', i.clase === 'aud' && i.puntos !== '' ? (i.respondidos || 0) + ' de ' + i.puntos : i.puntos) +
+      fila(i.clase === 'infra' ? 'Servicio' : i.clase === 'aud' ? 'Lugares' : i.clase === 'diag' ? 'Alcance' : 'Lugar', esc(i.lugar)) + (i.extra || []).map(x => fila(x[0], esc(x[1]))).join('') + fila('Quién', esc(i.quien)) + fila('Observaciones', esc(i.obs)) + fila('Informe', infTxt) + fila('Código', esc(i.id)) + '</div>' +
     (seguir ? '<div class="menu"><button class="big main" data-act="maudSeguir" data-arg="' + i.abrir + '"><b>' + seguir + '</b><span>Se abre en la página de relevamientos, con tu misma sesión</span></button></div>'
       : '<p class="mu" style="font-size:13px">' + (/borrador|planificada|en curso/i.test(i.estado) ? 'Lo está completando Higiene y Seguridad.' : 'Para corregir algo de esta ' + (i.clase === 'aud' ? 'auditoría' : 'carga') + ', consultá con Higiene y Seguridad.') + '</p>');
   bar('<button class="btn sec" data-act="maudVolver">Volver a las auditorías</button>'); window.scrollTo(0, 0);
@@ -2236,7 +2239,7 @@ const AYG = [
   { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Si falta un extintor en la lista: «Agregar un extintor» (todos los datos y 3 fotos). Si el nombre o el lugar están mal: «Corregir el nombre o la ubicación» (Higiene y Seguridad lo verifica).', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
-  { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las auditorías y diagnósticos del establecimiento, agrupados por tema (residuos, agua, plagas, cocinas e infraestructura), de la más nueva a la más vieja. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad.'] },
+  { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, agrupadas por tema (residuos, agua, plagas, cocinas, radiaciones, infraestructura, incendio y personal), de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
 ];
 function ayudaGeneral() {
