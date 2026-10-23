@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-23 · 5.6';
+const VERSION_CAP = '2026-10-23 · 5.7';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -39,6 +39,7 @@ function onOpen() {
     .addItem('Certificados: link y QR de «Mis certificados»', 'menuMisCertificados')
     .addItem('Certificados: rehacer los de 2026 (desde abril)', 'menuReemision2026')
     .addItem('Certificados: armar todos los PDF (segundo plano)', 'menuPdfsSegundoPlano')
+    .addItem('Certificados: enviar por correo los de un dictado', 'menuEnviarCertificados')
     .addSeparator()
     .addItem('Agenda: abrir horarios de las próximas 4 semanas', 'menuAbrirHorarios')
     .addItem('Agenda: completar filas cargadas a mano', 'menuCompletarAgenda')
@@ -2394,3 +2395,60 @@ function respuestaVideos_(x, est) {
   CacheService.getScriptCache().remove('tablero');
   return r;
 }
+
+
+// ------------------------------------------------------------------ Envío de certificados por correo (23/10/2026)
+// Solo se envía a mano, desde el menú, después de que Belén aprueba el texto. Sale desde belenpellegrini.hys@gmail.com,
+// un correo por persona con su PDF adjunto. Cada envío queda en _MENSAJES (TIPO Certificado, DETALLE = código del
+// certificado) y a quien ya lo recibió no se le vuelve a mandar.
+function certsParaEnviar_(filtro) {
+  filtro = String(filtro || '').trim();
+  const C = tabla_('CERTIFICADOS'), M = tabla_('_MENSAJES'), ya = {};
+  M.filas.forEach(r => { if (r[M.i('TIPO')] === 'Certificado' && r[M.i('ESTADO')] === 'Enviado') ya[String(r[M.i('DETALLE')]).trim()] = 1; });
+  const porCodigo = /^CAP-/i.test(filtro);
+  return C.filas.map(r => obj_(C, r)).filter(c => /^CHYS-/.test(c.ID_CERTIFICADO) && /^v[aá]lido/i.test(c.ESTADO) && !ya[c.ID_CERTIFICADO] &&
+    (porCodigo ? c.CODIGO === filtro.toUpperCase() : c.ID_DICTADO === filtro));
+}
+function textoCertMail_(c, nombreCap) {
+  const hizo = /asist/i.test(c.TIPO) ? 'a la que asististe el ' : 'que aprobaste el ';
+  const p = t => '<p style="margin:0 0 12px">' + t + '</p>';
+  const cuerpo = p('Hola, ' + c.NOMBRE + ':') +
+    p('Te envío adjunto el certificado de la capacitación «' + nombreCap + '», ' + hizo + c.FECHA + '.') +
+    p('El certificado tiene un código de verificación (' + c.ID_CERTIFICADO + ') y un QR. Con cualquiera de los dos se puede comprobar que es válido.') +
+    p('Gracias por participar. Quedo a disposición por cualquier consulta.') +
+    '<p style="margin:16px 0 0">Belén Pellegrini<br><span style="color:#5894A7">Servicio de Higiene y Seguridad Laboral · HZT / HMH</span><br>' + CORREO_HYS + '</p>';
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#3D4F58;font-size:15px;line-height:1.5">' + cuerpo +
+    '<div style="text-align:center;padding:18px 0 4px;border-top:1px solid #DCE5E9;margin-top:18px"><img src="' + LOGO_HYSL + '" alt="HySL · Hospitales más seguros para las personas" style="height:38px"></div></div>';
+  const texto = html.replace(/<br\s*\/?>/g, '\n').replace(/<\/p>/g, '\n\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  return { asunto: 'Certificado · ' + nombreCap, html: html, texto: texto };
+}
+function enviarCertificadosPorCorreo_(filtro) {
+  if (!puedeEnviar_()) throw new Error('Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de esta cuenta.');
+  const lista = certsParaEnviar_(filtro), M = tabla_('_MENSAJES'), t0 = Date.now(), nombres = {};
+  tabla_('CATALOGO').filas.forEach(r => { nombres[r[0]] = r[2]; });
+  let enviados = 0, errores = 0, sinCorreo = 0, quedan = 0;
+  lista.forEach(c => {
+    if (Date.now() - t0 > 300000) { quedan++; return; }   // límite de tiempo de Apps Script: el resto en otra corrida
+    const m = textoCertMail_(c, nombres[c.CODIGO] || c.CODIGO), correo = String(c.CORREO || '').trim();
+    const reg = (estado, det) => agregar_(M, [{ ID_MENSAJE: uid_('MSG', c.DNI), FECHA: ahoraTxt_(), TIPO: 'Certificado', CANAL: 'Correo', DESTINATARIOS: correo || 's/d', ID_DICTADO: c.ID_DICTADO, CODIGO: c.CODIGO, ASUNTO: m.asunto, ESTADO: estado, QUIEN: Session.getActiveUser().getEmail() || 'Sheets', ID_TURNO: '', DETALLE: c.ID_CERTIFICADO + (det ? ' · ' + det : '') }]);
+    if (!correoOk_(correo)) { sinCorreo++; reg('Sin correo'); return; }
+    try {
+      const pdf = DriveApp.getFileById(c.ARCHIVO_ID).getBlob();
+      GmailApp.sendEmail(correo, m.asunto, m.texto, { from: CORREO_HYS, name: 'Belén Pellegrini · Higiene y Seguridad Laboral', htmlBody: m.html, replyTo: CORREO_HYS, attachments: [pdf] });
+      reg('Enviado'); enviados++;
+    } catch (e) { reg('Error', e.message); errores++; }
+  });
+  return { total: lista.length, enviados: enviados, errores: errores, sinCorreo: sinCorreo, quedan: quedan };
+}
+function menuEnviarCertificados() {
+  const ui = SpreadsheetApp.getUi();
+  const r = ui.prompt('Enviar certificados por correo', 'Escribí el ID del dictado (p. ej. DIC-20261023-01) o el código de la capacitación (p. ej. CAP-HYS-020).\nSe manda un correo por persona, con su PDF, desde ' + CORREO_HYS + '. A quien ya lo recibió no se le repite.', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  const f = r.getResponseText().trim(), n = certsParaEnviar_(f).length;
+  if (!n) { ui.alert('No hay certificados válidos sin enviar para «' + f + '».'); return; }
+  if (ui.alert('Enviar certificados', 'Se van a enviar ' + n + ' correos. ¿Sigo?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const x = enviarCertificadosPorCorreo_(f);
+  ui.alert('Certificados enviados', 'Enviados: ' + x.enviados + ' · sin correo: ' + x.sinCorreo + ' · con error: ' + x.errores + (x.quedan ? ' · quedan ' + x.quedan + ' (volvé a correr esta opción)' : '') + '.\nEl detalle queda en _MENSAJES.', ui.ButtonSet.OK);
+}
+// Laboratorio 23/10/2026: tanda aprobada por Belén (se corre desde el editor)
+function enviarCertificadosLaboratorio() { Logger.log(JSON.stringify(enviarCertificadosPorCorreo_('DIC-20261023-01'))); }
