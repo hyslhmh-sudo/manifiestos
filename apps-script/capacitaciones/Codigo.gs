@@ -1802,16 +1802,13 @@ function plantillaDe_(cap, R, c) {
 }
 function modeloPropio_(cap) { return !!refPlantilla_(cap, null) || !!refPlantilla_(cap, { ID_DICTADO: VIDEO_DIC }); }
 // Texto del modelo propio (laboratorio): empieza en minúscula porque sigue al nombre («Certificado de Nombre Apellido»)
-function textoModeloPropio_(c, cap, dic, h) {
+function textoModeloPropio_(c, cap, dic, h) {   // texto de los modelos de laboratorio (23/10/2026), tal como los armó HyS
   const nom = '«' + String(cap.NOMBRE).trim() + '»', bold = [nom];
   if (h) bold.push(h);
-  if (c.ID_DICTADO === VIDEO_DIC)
-    return { texto: 'ha completado con éxito la capacitación ' + nom + ', en modalidad autoadministrada, aprobada el ' + fechaLarga_(c.FECHA) + (h ? ', con una duración de ' + h : '') + '.', negritas: bold.concat(['modalidad autoadministrada']) };
-  const mod = dic ? String(dic.MODALIDAD || '') : '', modal = /presencial/i.test(mod) && !/h[ií]brid/i.test(mod) ? 'presencial' : 'virtual sincrónica';
-  const lugar = dic ? String(dic.LUGAR || '') + ' ' + String(dic.ESTABLECIMIENTO || '') : '';
-  const sede = /HZT|Zonal/i.test(lugar) ? 'en el Hospital Zonal Trelew «Dr. Adolfo Margara», Trelew, Provincia del Chubut' : /HMH|Humphreys/i.test(lugar) ? 'en el Hospital María Humphreys, Trelew, Provincia del Chubut' : 'Trelew, Provincia del Chubut';
+  const video = c.ID_DICTADO === VIDEO_DIC, mod = dic ? String(dic.MODALIDAD || '') : '';
+  const modal = video ? 'autoasistida' : /presencial/i.test(mod) && !/h[ií]brid/i.test(mod) ? 'presencial' : 'virtual sincrónica';
   const verbo = c.TIPO === TIPO_CERT.asi ? 'ha asistido a la capacitación ' : 'ha completado con éxito la capacitación ';
-  return { texto: verbo + nom + ', impartida el ' + fechaLarga_(dic ? dic.FECHA : c.FECHA) + ', en modalidad ' + modal + (h ? ', con una duración de ' + h : '') + ', ' + sede + '.', negritas: bold };
+  return { texto: verbo + nom + ', en modalidad ' + modal + ', aprobada el ' + fechaLarga_(c.FECHA) + (h ? ', con una duración de ' + h : '') + '.', negritas: bold };
 }
 function subcarpeta_(padre, nombre) { const it = padre.getFoldersByName(nombre); return it.hasNext() ? it.next() : padre.createFolder(nombre); }
 function iconoBlob_(R, nombre) {
@@ -2012,7 +2009,7 @@ function prepararModelosLaboratorio() {
   historial_('Sistema', 'CATALOGO', 'CAP-HYS-020', 'PLANTILLA_CERT', '', a.id + ' / ' + b.id, 'Modelos de laboratorio (sincrónica y autoadministrada)');
   return [a, b];
 }
-function rehacerPdfsLaboratorio() { return rehacerPdfsCapacitacion_('CAP-HYS-020', '2026-10-23', 'v3'); }
+function rehacerPdfsLaboratorio() { return rehacerPdfsCapacitacion_('CAP-HYS-020', '2026-10-23', 'v4'); }
 
 // ------------------------------------------------------------------ Públicas: descargar al terminar, Mis certificados y verificar
 function certDeDoc_(codigo, d) {
