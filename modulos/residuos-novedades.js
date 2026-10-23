@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------ 1 · Residuos › Novedades de residuos (ResiduosNovedades.gs, versión 0, 22/10/2026)
 // Lo que se vio mal en las recorridas y se informó desde «Mi establecimiento» (Melani en la red Trelew, el referente del HSST).
-// Todas juntas (HZT, HMH, HSST): primero las abiertas de residuos peligrosos. HyS las marca resueltas desde acá. No envía correos.
+// Todas juntas (HZT, HMH, HSST): primero las abiertas de residuos peligrosos, después por gravedad (catálogo único TIPOS_DESVIO, 23/10/2026). HyS las marca resueltas desde acá. No envía correos.
 let RNP = null;
 async function resNovPortal(fresco) {
   if (!RNP || fresco) { cargando('#resnov', 'Leyendo las novedades de residuos…'); try { RNP = await api('p_resnov_listar', fresco ? { fresco: true } : {}, 120000); } catch (e) { return; } }
@@ -11,7 +11,7 @@ async function resNovPortal(fresco) {
   const ver = L => L.filter(n => !filtro || n.ESTABLECIMIENTO === filtro);
   const ab = ver(RNP.abiertas), pel = ab.filter(n => n.PELIGROSA === 'Sí').length;
   const fila = (n, abierta) => '<tr><td style="white-space:nowrap">' + fechaTxt(n.FECHA) + (n.HORA ? '<div class="mu peq">' + esc(n.HORA) + '</div>' : '') + '</td>' +
-    '<td><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="chip er">Peligroso</span>' : '') + (n.ORIGEN ? ' <span class="chip">' + esc(n.ORIGEN) + ' · ' + esc(n.ID) + '</span>' : '') + '<div class="mu peq">' + esc(n.CORRIENTE || '') + '</div></td>' +
+    '<td><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="chip er">Peligroso</span>' : '') + (n.GRAVEDAD && n.GRAVEDAD !== 's/d' ? ' <span class="chip ' + (/Alta|Cr/.test(n.GRAVEDAD) ? 'er' : 'wa') + '">' + esc(n.GRAVEDAD) + '</span>' : '') + (n.ORIGEN ? ' <span class="chip">' + esc(n.ORIGEN) + ' · ' + esc(n.ID) + '</span>' : '') + '<div class="mu peq">' + esc(n.CORRIENTE || '') + '</div></td>' +
     '<td>' + esc(n.ESTABLECIMIENTO) + (n.SITIO && n.SITIO !== n.ESTABLECIMIENTO ? ' · ' + esc(n.SITIO) : '') + '<div class="mu peq">' + esc(n.SECTOR || '') + '</div></td>' +
     '<td class="peq" style="max-width:280px">' + esc(n.DETALLE || '') + (n.FOTO ? '<div>' + lk(n.FOTO, 'Foto') + '</div>' : '') + '</td><td class="peq">' + esc(n.QUIEN || '') + '</td>' +
     '<td>' + (abierta && /^DR-/.test(n.ID) ? '<a class="btn pri" href="#desvacc">Gestionar</a><div class="mu peq">' + esc(n.GESTION || '') + '</div>' : abierta ? '<button class="btn pri" data-rnres="' + esc(n.ID) + '">Resuelta</button>' : '<span class="chip ok">Resuelta</span><div class="mu peq">' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ' · ' + esc(n.RESOLUCION) : '') + (n.RESUELTO_POR ? ' · ' + esc(n.RESUELTO_POR) : '') + '</div>') + '</td></tr>';

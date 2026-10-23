@@ -1879,25 +1879,49 @@ const RES_TIPOS_NOV = ['Residuo peligroso en la bolsa equivocada', 'Cortopunzant
   'Recipiente sin tapa, sin rótulo o sin bolsa', 'Bolsas fuera del recipiente o en lugar de paso', 'Carro sucio, roto o con corrientes mezcladas', 'Faltan bolsas, descartadores o recipientes', 'Manifiesto con errores o faltante', 'Otra'];
 const RES_CORR_NOV = ['Biopatogénicos (bolsa roja)', 'Cortopunzantes', 'Medicamentos (Y3)', 'Ampollas y frascos ampolla (Y3)', 'Químicos peligrosos', 'Comunes (bolsa negra)', 'Reciclables o compostables', 'Especiales (pilas, aceite, RAEE)', 'Varias o no corresponde'];
 let RNOVL = null;
-function resNov() { F = { _f: 'resNov', SITIO: (sitiosCfg()[0] || {}).sitio || SES.est, SECTOR: '', TIPO: '', CORRIENTE: '', DETALLE: '' }; MIV = { f: formResNov }; formResNov(); }
+// Catálogo único (desde el 23/10/2026): «¿Qué viste?» sale de la planilla de desvíos › TIPOS_DESVIO (la misma lista que usan los
+// operarios de Star Union). Se pueden marcar varias opciones; la gravedad la pone el sistema (la más alta de las marcadas).
+let RNOVCAT = null;
+async function resNov() {
+  F = { _f: 'resNov', SITIO: (sitiosCfg()[0] || {}).sitio || SES.est, SECTOR: '', TIPOS: '', CORRIENTE: '', DETALLE: '' }; MIV = { f: formResNov };
+  if (!RNOVCAT) {
+    if (RNOVL && RNOVL.catalogo) RNOVCAT = RNOVL.catalogo;
+    else { VISTA = 'mi'; vista('form'); $('app').innerHTML = miTit('Informar una novedad') + '<p class="mu">Cargando la lista…</p>'; bar(null);
+      try { const r = await api('m_res_novedades', {}); if (r.ok) { RNOVL = r; RNOVCAT = r.catalogo || null; } } catch (e) {} }
+    if (!RNOVCAT || !RNOVCAT.length) RNOVCAT = RES_TIPOS_NOV.map(t => ({ tipo: t, categoria: '', gravedad: '', ayuda: '' }));   // sin señal o sin catálogo: lista anterior
+  }
+  formResNov();
+}
+// «¿Qué viste?» agrupado por categoría, con la explicación de cada opción. Las marcadas quedan en F.TIPOS separadas por « · ».
+function resNovTipos() {
+  const sel = (F.TIPOS || '').split(' · ').filter(Boolean), grupos = [];
+  RNOVCAT.forEach(c => { let g = grupos.find(x => x.cat === c.categoria); if (!g) grupos.push(g = { cat: c.categoria, L: [] }); g.L.push(c); });
+  return '<div class="field">' + fLab('¿Qué viste?', 'Podés marcar varias. Si alguien se lastimó, marcá también «Lesión o exposición de una persona».') +
+    grupos.map(g => (g.cat ? '<h3 style="margin:14px 0 6px;font-size:15px">' + esc(g.cat.replace(/^\d+\s*·\s*/, '')) + '</h3>' : '') +
+      '<div class="lista" style="grid-template-columns:1fr">' + g.L.map(c => '<label class="item" style="cursor:pointer;align-items:flex-start;justify-content:flex-start;gap:10px">' +
+        '<input type="checkbox" data-fchk="TIPOS" value="' + esc(c.tipo) + '"' + (sel.indexOf(c.tipo) >= 0 ? ' checked' : '') + ' style="width:22px;height:22px;flex:none;margin-top:2px">' +
+        '<span><b style="font-weight:600">' + esc(c.tipo) + '</b>' + (c.ayuda ? '<small style="display:block" class="mu">' + esc(c.ayuda) + '</small>' : '') + '</span></label>').join('') + '</div>').join('') + '</div>';
+}
 function formResNov() {
   VISTA = 'mi'; vista('form'); const S = sitiosCfg().map(s => s.sitio);
-  $('app').innerHTML = miTit('Informar una novedad', 'Residuos. Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado), avisá también en el momento a Higiene y Seguridad.') + fErr +
+  $('app').innerHTML = miTit('Informar una novedad', 'Residuos. Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado, alguien se lastimó), avisá también en el momento a Higiene y Seguridad.') + fErr +
     (S.length > 1 ? fSel('SITIO', '¿En qué lugar?', S) : '') +
     fInp('SECTOR', '¿En qué sector?', 'text', 'Ej.: Guardia · office de enfermería') +
-    fSeg('TIPO', '¿Qué viste?', RES_TIPOS_NOV) +
+    resNovTipos() +
     fSeg('CORRIENTE', '¿Qué residuo es?', RES_CORR_NOV) +
     fTxt('DETALLE', 'Contalo brevemente', 'Ej.: cajas de cartón limpias dentro de la bolsa roja del office') +
     fFoto('FOTO', 'Foto (si se puede)', 'Opcional. Que no aparezcan pacientes ni datos personales.');
   bar('<button class="btn sec" data-act="resNovVolver">Cancelar</button><button class="btn pri" data-act="resNovGuardar">Informar</button>');
 }
 async function resNovGuardar() {
-  if (!String(F.SECTOR || '').trim()) return miErr('Escribí el sector (dónde lo viste).'); if (!F.TIPO) return miErr('Elegí qué viste.'); if (!F.CORRIENTE) return miErr('Elegí qué residuo es.');
+  const tipos = (F.TIPOS || '').split(' · ').filter(Boolean);
+  if (!String(F.SECTOR || '').trim()) return miErr('Escribí el sector (dónde lo viste).'); if (!tipos.length) return miErr('Marcá qué viste (podés marcar varias).'); if (!F.CORRIENTE) return miErr('Elegí qué residuo es.');
   if (String(F.DETALLE || '').trim().length < 4) return miErr('Contá brevemente qué viste.');
   if (F.FOTO && !/^data:image\//.test(F.FOTO)) return miErr('La foto tiene que ser una imagen (no PDF).');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { SITIO: F.SITIO || SES.est, SECTOR: F.SECTOR.trim(), TIPO: F.TIPO, CORRIENTE: F.CORRIENTE, DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', quien: SES.persona.nombre };
-  await resNovEnviar('m_res_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>' + (r.peligrosa ? 'Quedó marcada como de <b>residuos peligrosos</b>: aparece primero en la lista. ' : '') + 'Higiene y Seguridad la ve en el sistema.</div>');
+  const d = { SITIO: F.SITIO || SES.est, SECTOR: F.SECTOR.trim(), TIPOS: tipos, TIPO: tipos.join('; '), CORRIENTE: F.CORRIENTE, DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', quien: SES.persona.nombre };
+  await resNovEnviar('m_res_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>' + (r.gravedad && r.gravedad !== 's/d' ? 'Gravedad: <b>' + esc(r.gravedad) + '</b>. ' : '') + (r.peligrosa ? 'Quedó marcada como de <b>residuos peligrosos</b>: aparece primero en la lista. ' : '') + 'Higiene y Seguridad la ve en el sistema.</div>' +
+    (r.lesion ? '<div class="notice" style="background:var(--erbg);color:var(--er);margin-top:12px"><b>Alguien se lastimó:</b> que vaya a la guardia y avisá a Higiene y Seguridad. Además, cargalo en <b>Siniestros</b>.</div>' : ''));
 }
 async function resNovEnviar(accion, d, ok) {
   const b = document.querySelector('#bar .btn.pri'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
@@ -1909,9 +1933,9 @@ async function resNovEnviar(accion, d, ok) {
 async function resNovLista(fresco) {
   VISTA = 'mi'; MIV = { f: () => resNovLista() }; vista('wide');
   if (!RNOVL || fresco) { $('app').innerHTML = miTit('Novedades de residuos') + '<p class="mu">Cargando…</p>'; bar(null);
-    try { const r = await api('m_res_novedades', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RNOVL = r; }
+    try { const r = await api('m_res_novedades', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RNOVL = r; if (r.catalogo && r.catalogo.length) RNOVCAT = r.catalogo; }
     catch (e) { $('app').innerHTML = miTit('Novedades de residuos') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return; } }
-  const item = (n, abierta) => '<div class="item" style="align-items:flex-start"><div><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="tag er">Peligroso</span>' : '') +
+  const item = (n, abierta) => '<div class="item" style="align-items:flex-start"><div><b>' + esc(n.TIPO) + '</b>' + (n.PELIGROSA === 'Sí' ? ' <span class="tag er">Peligroso</span>' : '') + (n.GRAVEDAD && n.GRAVEDAD !== 's/d' ? ' <span class="tag ' + (/Alta|Cr/.test(n.GRAVEDAD) ? 'er' : 'wa') + '">' + esc(n.GRAVEDAD) + '</span>' : '') +
     '<small>' + esc([fechaTxt(n.FECHA) + (n.HORA ? ' ' + n.HORA : ''), n.SITIO !== n.ESTABLECIMIENTO ? n.SITIO : '', n.SECTOR, n.CORRIENTE].filter(Boolean).join(' · ')) + (n.DETALLE ? '<br>' + esc(n.DETALLE) : '') +
     (n.FOTO ? '<br><a href="' + esc(n.FOTO) + '" target="_blank" rel="noopener">Ver foto</a>' : '') + (n.QUIEN ? '<br>Informó: ' + esc(n.QUIEN) : '') +
     (abierta ? '' : '<br>Resuelta ' + fechaTxt(n.RESUELTO) + (n.RESOLUCION ? ': ' + esc(n.RESOLUCION) : '')) + '</small></div>' +
@@ -1934,7 +1958,7 @@ async function resNovResGuardar() {
   await resNovEnviar('m_res_nov_resolver', { ID: F.ID, RESOLUCION: F.RESOLUCION || '', quien: SES.persona.nombre }, () => '<div class="notice ok" style="margin-top:24px"><b>Novedad marcada como resuelta.</b></div>');
 }
 Object.assign(ACT, { resNov: () => resNov(), resNovGuardar: () => resNovGuardar(), resNovVolver: () => { F = null; inicio(); }, resNovLista: () => { F = null; resNovLista(); },
-  resNovAct: () => resNovLista(true), resNovRes: b => resNovRes(b.dataset.arg), resNovResGuardar: () => resNovResGuardar() });
+  resNovAct: () => { RNOVCAT = null; resNovLista(true); }, resNovRes: b => resNovRes(b.dataset.arg), resNovResGuardar: () => resNovResGuardar() });
 
 // ------------------------------------------------------------------ 1 · Residuos › Desvíos del recorrido (versión 0, 22/10/2026)
 // Lo que registran los operarios de Star Union en el recorrido de retiro del HMH (planilla «DESVÍOS RESIDUOS HMH · Registro (v0)»,
