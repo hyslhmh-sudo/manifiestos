@@ -23,7 +23,7 @@ function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Da
 // Clave de la caché: misma acción y mismos datos (sin «fresco», en orden) = misma respuesta.
 function pcClave_(accion, x) { const o = {}; Object.keys(x || {}).filter(k => k !== 'fresco').sort().forEach(k => o[k] = x[k]); return 'pc|' + pcGen_() + '|' + accion + '|' + JSON.stringify(o); }
 const PC_LEER = ['p_ficha', 'p_mi', 'p_res_tablero', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
-const PC_NO_CAMBIA = /^p_(ping|desv_listar|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op|dat_(libros|hojas|hoja|papelera|historial|props)|ges_(datos|alcance))$/;
+const PC_NO_CAMBIA = /^p_(ping|desv_listar|resumen|tablero|buscar|trab|caps|registros?|ficha|mi|rad_(tablero|detalle|dni)|inc_(tablero|detalle|novedades|resumen)|res_(tablero|frecuencias|costos|inf_opciones|informe)|bib_listar|plan_listar|plan_abrir|aud_(listar|opciones|abrir|resultado)|diag_(tablero|abrir)|dgm_(tablero|abrir)|coc_(tablero|personas|abrir|dni)|sin_(lista|est|persona|expo)|inv_abrir|nte_revisar|notas|docest_lista|bj_listar|acc_listar|mipyv|rgrl_(datos|lugares|detalle|med_correo)|informe_trim_op|dat_(libros|hojas|hoja|papelera|historial|props)|ges_(datos|alcance)|imp_(opciones|hoja))$/;
 function portal_(d) {
   if (!esMaestra_(d.clave)) return { ok: false, error: 'clave', mensaje: 'La clave de Higiene y Seguridad no es correcta.' };
   const x0 = d.datos || {}, usaCache = PC_LEER.indexOf(d.accion) >= 0 && !x0.fresco, kc = usaCache ? pcClave_(d.accion, x0) : '';
@@ -124,6 +124,7 @@ function portalAccion_(d) {
     case 'p_informe_trim': return informeTrim_(x);
     // Módulo 6 · Cocinas hospitalarias (Modulo6.gs): relevamiento BPM / HACCP y personas de cocina
     default: if (String(d.accion).indexOf('p_docest_') === 0) return typeof docEstPortal_ === 'function' ? docEstPortal_(d.accion, x) : { ok: false, mensaje: 'Falta actualizar Modulo2.gs.' };   // 2 · Documentos de los establecimientos
+      if (String(d.accion).indexOf('p_imp_') === 0) return typeof impPortal_ === 'function' ? impPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Imprimir.gs.' };   // hojas para imprimir (Imprimir.gs, 23/10/2026)
       if (String(d.accion).indexOf('p_acc_') === 0) return typeof accPortal_ === 'function' ? accPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // pantalla «Accesos» (Accesos.gs)
       if (String(d.accion).indexOf('p_dgm_') === 0) return typeof dgmPortal_ === 'function' ? dgmPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // diagnóstico de agua y plagas (DiagModulos.gs)
       if (String(d.accion).indexOf('p_coc_') === 0) return typeof cocPortal_ === 'function' ? cocPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Modulo6.gs.' };

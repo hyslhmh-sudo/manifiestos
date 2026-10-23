@@ -86,7 +86,7 @@ function doPost(e) {
   const acc = acceso_(d.est, d.clave, d.dni);
   if (!acc.ok) return json_(acc);
   if (!accPermite_(d.accion, acc)) return json_({ ok: false, error: 'permiso', mensaje: 'No tenés asignado este módulo. Consultá con Higiene y Seguridad.' });
-  if (!/^(config|m_tablero|m_registros|m_auditorias|m_plg_insp_datos|i_datos|i_novedades|i_persona|r_datos|r_dni|k_personas)$/.test(String(d.accion)) && typeof pcBump_ === 'function') pcBump_();   // una carga desde la aplicación renueva la caché del portal (Portal.gs, 14.50)
+  if (!/^(config|m_tablero|m_registros|m_auditorias|m_plg_insp_datos|m_imprimir|i_datos|i_novedades|i_persona|r_datos|r_dni|k_personas)$/.test(String(d.accion)) && typeof pcBump_ === 'function') pcBump_();   // una carga desde la aplicación renueva la caché del portal (Portal.gs, 14.50)
   if (acc.nombre && d.datos && typeof d.datos === 'object') {   // con clave personal, cada carga queda a nombre de quien ingresó
     d.datos.quien = acc.nombre; d.datos.persona = Object.assign({}, d.datos.persona || {}, { nombre: acc.nombre, dni: acc.dni, funcion: acc.rol || (d.datos.persona || {}).funcion || '' });
   }
@@ -99,6 +99,7 @@ function doPost(e) {
     if (String(d.accion).indexOf('q_') === 0) return json_(typeof qRed_ === 'function' ? qRed_(d, acc) : { ok: false, mensaje: 'El módulo de capacitaciones todavía no está instalado.' });   // 9 · Capacitaciones · carga de la secretaría (CapCarga.gs, 14.72)
     if (/^m_plg_insp_/.test(String(d.accion))) return json_(typeof plgInspRed_ === 'function' ? plgInspRed_(d, acc) : { ok: false, mensaje: 'Falta instalar PlagasInspeccion.gs.' });   // 3 · Plagas › inspección de HyS al trabajo de los operarios (PlagasInspeccion.gs, 23/10/2026)
     if (d.accion === 'm_auditorias') return json_(typeof miAuditorias_ === 'function' ? miAuditorias_(limpio_(d.est), acc, !!(d.datos && d.datos.fresco)) : { ok: false, mensaje: 'Falta instalar MiAuditorias.gs.' });   // «Mi establecimiento» › auditorías y diagnósticos por tema (MiAuditorias.gs, 23/10/2026)
+    if (d.accion === 'm_imprimir') return json_(typeof impRed_ === 'function' ? impRed_(d, acc) : { ok: false, mensaje: 'Falta instalar Imprimir.gs.' });   // hojas para imprimir: en blanco y completadas, y la hoja firmada (Imprimir.gs, 23/10/2026)
     if (String(d.accion).indexOf('m_') === 0) return json_(miRed_(d));    // «Mi establecimiento»: agua, plagas, documentos y pendientes
     if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun, servicio: acc.servicio || '' } }));
     // «No se recibieron manifiestos esta semana» (remisión semanal, PROT-RES-003 · ResiduosRemision.gs)

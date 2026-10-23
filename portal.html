@@ -321,7 +321,7 @@ const SWR_LEER = {   // acción de lectura → cómo olvidar la copia en memoria
   p_docest_lista: () => { DE.L = null; }, p_notas: () => { NT.R = null; }, p_sin_lista: () => { SINP = null; }, p_dgm_tablero: d => { delete DGMT[d.m]; },
   p_bib_listar: () => { BIB = null; }, p_registro: () => {}, p_bj_listar: () => {}, p_sin_est: () => {}, p_diag_tablero: () => { TAB = null; }, p_trab: () => {}, p_nte_revisar: () => {}
 };
-const SWR_SIN_BORRAR = /^p_(ping|resumen|tablero|buscar|plan_listar|aud_listar|aud_opciones|res_|informe_trim_op|rgrl_lugares|rgrl_detalle|plan_abrir|aud_abrir|aud_resultado|inv_abrir|caps|sin_persona|sin_expo|cv_(datos|cuenta|comparar)|cg_(buscar|persona$|participantes|contactos|mails_previa|informe_op|correos$|correo_ver)|.*_dni)/;
+const SWR_SIN_BORRAR = /^p_(ping|resumen|tablero|buscar|plan_listar|aud_listar|aud_opciones|res_|informe_trim_op|rgrl_lugares|rgrl_detalle|imp_(opciones|hoja)|plan_abrir|aud_abrir|aud_resultado|inv_abrir|caps|sin_persona|sin_expo|cv_(datos|cuenta|comparar)|cg_(buscar|persona$|participantes|contactos|mails_previa|informe_op|correos$|correo_ver)|.*_dni)/;
 const swrK = (a, d) => 'swr_' + a + '|' + JSON.stringify(d || {});
 function swrBorrar() { try { Object.keys(localStorage).filter(k => k.indexOf('portal_swr_') === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {} }
 function swrGuardar(k, v) { try { localStorage.setItem('portal_' + k, JSON.stringify({ t: Date.now(), v: v })); } catch (e) { swrBorrar(); } }
@@ -411,6 +411,7 @@ function marco(activo, contenido) {
     grp('doc', 'folder_open', '10 · Documentos', pes('Datos') + it('#notas', '', 'Notas enviadas y recibidas', 1) + it('#bib', '', 'Biblioteca HyS', 1) + it('#docest', '', 'Documentos de los establecimientos', 1) + it('#docs', '', 'Registro de informes', 1) + pes('Herramientas') + it('#modelos', '', 'Modelos para completar', 1) + it('#bandeja', '', 'Bandeja de entrada', 1) + ext(NOTA_URL, 'Nueva nota') + ext(SEG_URL, 'Envío y respuesta') + ext(REC_URL, 'Nota recibida') + ext(ANTE_URL, 'Antecedentes')) +
     grp('ges', 'insights', '11 · Gestión', pes('Seguimiento') + it('#ges', '', 'Plan de acción único', 1) + it('#ges/hallazgos', '', 'Hallazgos', 1) + it('#ges/bandeja', '', 'Bandeja de sugeridos', 1) + it('#ges/inversion', '', 'Necesidades de inversión', 1) + it('#tablero', '', 'Problemáticas', 1) + pes('Administración') + it('#ges/reglas', '', 'Reglas automáticas', 1) + it('#ges/alcance', '', 'Alcance (niveles A y B)', 1) + it('#accesos', '', 'Accesos (DNI y claves)', 1) + it('#datos', '', 'Datos · editar todo', 1)) +
     '<div class="titu mod">Más</div>' +
+    it('#imprimir', 'print', 'Hojas para imprimir') +   // en blanco y completadas (modulos/imprimir.js, 23/10/2026)
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
     grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') +
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
@@ -501,6 +502,7 @@ let TB = null, BIB = null, BIBF = { tipo: '', revisar: false, q: '' };
 const MANUAL_URL = 'https://docs.google.com/document/d/1IWO_DYeOJTqGnFcPQdOlSd9SeRp5aETA7psYlhjHBig/edit';   // Manual del Portal HyS v1 (14.61)
 const MANUAL_RESP_URL = 'https://docs.google.com/document/d/1erpAA8aofpX73ZBOg0BDPMwYUz-y-TXA4Ov4wMDIc60/edit';   // Manual de respaldo (sin GitHub)
 const AYUDA = {
+  '#imprimir': ['Hojas para imprimir', ['Elegí el establecimiento: aparecen todos los temas (residuos, agua, plagas, cocinas, infraestructura, RGRL, extintores y recorridas).', '«Imprimir en blanco»: elegí el tipo, el lugar o el servicio; la hoja se arma con los puntos que corresponden a ese establecimiento (categoría, módulos, lugares, servicios o extintores), con la ayuda y la referencia normativa de cada punto y los recuadros de firma.', '«Imprimir» en una completada: la misma hoja con las respuestas, el resultado y los hallazgos. Se ve en pantalla; desde ahí se imprime o se guarda como PDF (no crea archivos en Drive).', 'Lo completado en papel se carga en la pantalla de cada módulo y después, acá, «Adjuntar» la hoja firmada (hasta 5 fotos o un PDF). Queda en BASE COMÚN › HOJAS_FIRMADAS y en la carpeta del establecimiento › Hojas firmadas; si se adjunta otra, la anterior queda reemplazada.', 'Lo mismo está en «Mi establecimiento» › Hojas para imprimir: cada persona ve los temas de sus módulos en Accesos; infraestructura y RGRL, solo Higiene y Seguridad.']],
   '#m8': ['6 · Servicios e infraestructura', ['Estado de cada edificio y servicio según su último relevamiento: cumplimiento ponderado, críticos en «no cumple» y semáforo (rojo si hay un crítico en NC, aunque el porcentaje sea alto).', 'Tocá una fila para abrir el relevamiento, o para empezar uno si el servicio todavía no se relevó.', '«Requiere atención» muestra los hallazgos vencidos y los de 30 días.', 'Los datos viven en la planilla del módulo 6 (M8); si falta GitHub, todo se hace desde esa planilla (menú Módulo 8).']],
   '#m8rel': ['Relevamiento', ['Elegí el edificio (capa A, requisitos del RGRL) o el servicio (capa B, requisitos de su directriz): la lista de verificación se arma sola.', 'Tocá C, P, NC o NA en cada punto; tocá de nuevo para borrar la respuesta. ★ = crítico: si no cumple, pegá el enlace de la foto.', '«Guardar» escribe en la planilla. Después, «Generar hallazgos» pasa los P y NC al plan de acción con su prioridad y plazo.', '«Generar informe a la Dirección» arma un borrador en Google Docs (carpeta del módulo › INFORMES) con portada, índice, métodos, notas al pie, plan de acción y anexos. Lo que hay que revisar queda en celeste e itálica.', 'Para auditorías, elegí el tipo «Auditoría» y usá un ID nuevo (por ejemplo, con la fecha).']],
   '#m8plan': ['Plan de acción del módulo 6', ['Hallazgos ordenados por prioridad: Actuar ya (30 días), Resolver rápido (90) y Planificar (180).', 'Tocá una fila para cargar la respuesta de la Dirección, cambiar el estado, ajustar la propuesta o cerrar el hallazgo.']],
@@ -1095,6 +1097,7 @@ function fichaPunto(cod, R, p) {
 <script src="modulos/residuos-tablero.js?v=14.27"></script>
 <script src="modulos/residuos-contratos.js?v=14.30"></script>
 <script src="modulos/residuos-informe.js?v=14.34"></script>
+<script src="modulos/imprimir.js?v=14.88"></script>
 <script>
 // Cada cambio de pantalla deja anotada la anterior (ver NAV en marco)
 function router() {
@@ -1153,6 +1156,7 @@ function routerPantalla() {
   if (ruta === 'resnov') return resNovPortal();   // 1 · Residuos › novedades de residuos (modulos/residuos-novedades.js)
   if (ruta === 'rad') return radTablero();
   if (ruta === 'radest') return radEst(location.hash.replace(/^#radest\/?/, ''));
+  if (ruta === 'imprimir') return impPortalPantalla(a);   // hojas para imprimir: en blanco y completadas (modulos/imprimir.js, 23/10/2026)
   if (ruta === 'ayuda') return ayuda();
   if (ruta === 'ficha') return ficha(a);
   if (ruta === 'trab') return trabajadores(a || TRAB.cod || '');

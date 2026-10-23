@@ -896,7 +896,8 @@ function inicio() {
       : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
-    (maudVe() ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las evaluaciones de HyS del establecimiento (Res. SRT 905/2015), por tema: fecha, estado y resultado', true) + '</div>' : '') +   // MiAuditorias.gs (23/10/2026)
+    (maudVe() || impVe() ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + (maudVe() ? tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las evaluaciones de HyS del establecimiento (Res. SRT 905/2015), por tema: fecha, estado y resultado', true) : '') +   // MiAuditorias.gs (23/10/2026)
+      (impVe() ? tile('miImp', 'Hojas para imprimir', 'En blanco para completar en papel, o completadas · adjuntar la hoja firmada') : '') + '</div>' : '') +   // Imprimir.gs (23/10/2026)
     (puede('Residuos') || puede('Diagnóstico') || puede('Auditoría') || (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0) ? '<h2>1 · Residuos</h2><div class="menu">' +
       (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
@@ -980,7 +981,8 @@ function maudVer(arg) {
       fila(i.clase === 'infra' ? 'Servicio' : i.clase === 'aud' ? 'Lugares' : i.clase === 'diag' ? 'Alcance' : 'Lugar', esc(i.lugar)) + (i.extra || []).map(x => fila(x[0], esc(x[1]))).join('') + fila('Quién', esc(i.quien)) + fila('Observaciones', esc(i.obs)) + fila('Informe', infTxt) + fila('Código', esc(i.id)) + '</div>' +
     (seguir ? '<div class="menu"><button class="big main" data-act="maudSeguir" data-arg="' + i.abrir + '"><b>' + seguir + '</b><span>Se abre en la página de relevamientos, con tu misma sesión</span></button></div>'
       : '<p class="mu" style="font-size:13px">' + (/borrador|planificada|en curso/i.test(i.estado) ? 'Lo está completando Higiene y Seguridad.' : 'Para corregir algo de esta ' + (i.clase === 'aud' ? 'auditoría' : 'carga') + ', consultá con Higiene y Seguridad.') + '</p>');
-  bar('<button class="btn sec" data-act="maudVolver">Volver a las auditorías</button>'); window.scrollTo(0, 0);
+  const impT = impTemaMaud(t.k, i);   // hojas para imprimir (Imprimir.gs, 23/10/2026)
+  bar('<button class="btn sec" data-act="maudVolver">Volver a las auditorías</button>' + (impT ? '<button class="btn pri" data-act="impMaud" data-arg="' + esc(impT + '|' + i.id) + '">Imprimir</button>' : '')); window.scrollTo(0, 0);
 }
 Object.assign(ACT, { miAud: () => { MAUD = null; miAud(true); }, maudAct: () => miAud(true), maudVolver: () => miAud(), maudVer: b => maudVer(b.dataset.arg),
   maudSeguir: b => { const a = b.dataset.arg; if (a === 'aud') irDiag('#auditoria'); else if (a === 'diag') irDiag('#diagnostico'); else if (a === 'cocina') irCocina(); },
@@ -1044,6 +1046,107 @@ function plInspGuardar() {
   encolarMi('m_plg_insp_guardar', d, 'Inspección de plagas');
 }
 Object.assign(ACT, { plInsp: () => { F = null; plInsp(true); }, pinsVis: b => plInspVis(b.dataset.arg), pinsGuardar: () => plInspGuardar() });
+
+// ------------------------------------------------------------------ HOJAS PARA IMPRIMIR (Imprimir.gs · acción m_imprimir, 23/10/2026)
+// Pedido de Belén: todas las auditorías, diagnósticos, relevamientos, controles y recorridas se pueden imprimir en blanco (para completar en papel)
+// y completadas. La hoja en papel se transcribe en su pantalla de siempre y acá se adjunta la foto (hasta 5) o el PDF de la hoja firmada.
+// Cada persona ve los temas de sus módulos en ACCESOS; infraestructura y RGRL, solo Higiene y Seguridad. Se imprime desde el navegador (no crea archivos).
+let IMPO = null;
+const IMP_MODS = ['Auditoría', 'Diagnóstico', 'Agua', 'Plagas', 'Relevamiento de cocina', 'Incendio'];
+const impVe = () => !!SES && (maudHys() || !SES.modulos || SES.modulos.some(m => IMP_MODS.indexOf(m) >= 0));
+const IMP_AYUDA = ['En blanco: elegí el tipo, el lugar o el servicio y tocá «Imprimir en blanco». La hoja se arma con los puntos que corresponden a este establecimiento.',
+  'Completadas: tocá «Imprimir» en la que quieras. Se ve primero en pantalla; desde ahí se imprime o se guarda como PDF (en la ventana de impresión, elegí «Guardar como PDF»).',
+  'Si la completaste en papel: cargá las respuestas en su pantalla de siempre (por ejemplo, la auditoría interna o el control de extintores) y después volvé acá y tocá «Adjuntar hoja firmada» en esa auditoría o relevamiento: hasta 5 fotos o un PDF.',
+  'Si adjuntás otra hoja para lo mismo, la anterior queda reemplazada (no se borra).'];
+async function miImp(fresco) {
+  VISTA = 'mi'; F = null; vista('wide'); bar(null);
+  const yo = MIV = { f: () => miImp() }, clave = 'impo_' + SES.est + '|' + (SES.dni || SES.servicio || '');
+  if (!IMPO || IMPO.est !== SES.est) IMPO = LS.get(clave, null);
+  const tit = miTit('Hojas para imprimir', 'Auditorías, diagnósticos, relevamientos, controles y recorridas · <button class="link" data-act="impAyuda">¿Cómo funciona?</button>');
+  window.scrollTo(0, 0);
+  if (IMPO) impPintar(tit); else $('app').innerHTML = tit + '<p class="mu">' + (navigator.onLine ? 'Cargando… (lee varios módulos, puede tardar unos segundos)' : 'Para ver esta pantalla la primera vez hace falta señal.') + '</p>';
+  if (!IMPO) miVolver();
+  if ((!IMPO || fresco) && navigator.onLine) {
+    const antes = ESPERA_MS; ESPERA_MS = 60000;
+    try { const r = await api('m_imprimir', { op: 'opciones' }); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); IMPO = r; LS.set(clave, r); }
+    catch (e) { ESPERA_MS = antes; if (MIV === yo && !IMPO) { $('app').innerHTML = tit + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' || e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.</div>'; miVolver(); } return; }
+    if (MIV === yo) impPintar(tit);
+  }
+}
+function impPintar(tit) {
+  const T = IMPO.temas || [];
+  $('app').innerHTML = tit + (T.length ? T.map((t, ti) => '<h2>' + esc(t.nombre) + '</h2>' +
+    (t.error ? '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(t.error) + '</div>'
+    : !t.instalado ? '<p class="mu">Este módulo todavía no está instalado en el sistema.</p>'
+    : '<div class="lista" style="grid-template-columns:1fr"><div class="item" style="display:block"><b>En blanco, para completar en papel</b>' +
+        (t.campos || []).map(c => '<div class="field" style="margin:8px 0 0">' + fLab(esc(c.t)) + (c.ops.length ? '<select id="imp_' + ti + '_' + esc(c.k) + '">' + c.ops.map(o => '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>').join('') + '</select>' : '<p class="mu" style="margin:0">No hay opciones cargadas.</p>') + '</div>').join('') +
+        (t.nota ? '<p class="mu" style="font-size:13px;margin:6px 0 0">' + esc(t.nota) + '</p>' : '') +
+        ((t.campos || []).some(c => !c.ops.length) ? '' : '<button class="btn pri" style="margin-top:10px" data-act="impBlanco" data-arg="' + ti + '">Imprimir en blanco</button>') + '</div></div>' +
+      (t.hechas.length ? '<div class="lista">' + t.hechas.map((h, hi) => '<div class="item"><div><b>' + esc(h.t) + '</b><small>' + fechaTxt(h.fecha) + ' · ' + esc(h.estado) + (h.pct ? ' · ' + esc(h.pct) : '') + '<br>' +
+          (h.firmada ? '<span style="color:var(--ok)">✓ Hoja firmada adjunta (' + fechaTxt(h.firmada.fecha) + ')</span>' + (h.firmada.url ? ' · <a href="' + esc(h.firmada.url) + '" target="_blank" rel="noopener">Ver</a>' : '') : 'Sin hoja firmada adjunta') + '</small>' +
+          '<button class="link" data-act="impFirmar" data-arg="' + ti + '|' + hi + '">' + (h.firmada ? 'Cambiar la hoja firmada' : 'Adjuntar hoja firmada') + '</button></div>' +
+          '<button class="btn sec" style="flex:0 0 auto;padding:10px 14px" data-act="impHecha" data-arg="' + ti + '|' + hi + '">Imprimir</button></div>').join('') + '</div>' +
+        (t.total > t.hechas.length ? '<p class="mu" style="font-size:13px">Se muestran las ' + t.hechas.length + ' más nuevas de ' + t.total + '.</p>' : '')
+      : '<p class="mu" style="font-size:14px">Todavía no hay ninguna completada.</p>'))).join('')
+    : '<div class="notice">No tenés temas para imprimir asignados. Consultá con Higiene y Seguridad.</div>') +
+    '<p class="mu" style="font-size:13px">Datos al ' + fechaTxt(IMPO.hoy) + ' · <button class="link" data-act="impAct">Actualizar</button></p>';
+  miVolver();
+}
+// Pide la hoja y la muestra en pantalla completa, con «Imprimir» y «Abrir en otra pestaña» (para celulares que no imprimen el recuadro)
+async function impAbrir(datos, nombre) {
+  if (!navigator.onLine) return impPrev('<p>Para armar la hoja hace falta señal.</p>');
+  impPrev('<p><b>Armando la hoja…</b><br><span class="mu">' + esc(nombre || '') + '</span></p>');
+  const antes = ESPERA_MS; ESPERA_MS = 90000;
+  try {
+    const r = await api('m_imprimir', Object.assign({ op: 'hoja' }, datos)); ESPERA_MS = antes;
+    if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo armar la hoja.');
+    if (r.url) return impPrev('<p><b>' + esc(r.titulo || 'Formulario') + '</b><br>Es el formulario oficial: se abre aparte para descargarlo e imprimirlo.</p><a class="btn pri" style="display:block;text-align:center;text-decoration:none" href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir el formulario</a>');
+    impPrev(null, r.html, r.titulo);
+  } catch (e) { ESPERA_MS = antes; impPrev('<p style="color:var(--er)"><b>' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado.' : e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + '</b> Probá de nuevo.</p>'); }
+}
+function impPrev(msg, html, titulo) {
+  let d = $('impPrev'); if (!d) { d = document.createElement('div'); d.id = 'impPrev'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); document.body.appendChild(d); }
+  d.style.cssText = 'position:fixed;inset:0;z-index:40;background:#fff;display:flex;flex-direction:column';
+  if (impPrev.url) { try { URL.revokeObjectURL(impPrev.url); } catch (e) {} impPrev.url = ''; }
+  const cerrar = '<button class="btn sec" data-act="impCerrar">Cerrar</button>';
+  if (!html) { d.innerHTML = '<div style="padding:24px 18px;max-width:560px;margin:0 auto;width:100%">' + msg + '<div style="margin-top:16px">' + cerrar + '</div></div>'; return; }
+  impPrev.url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  d.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)"><b style="flex:1 1 200px;font-size:15px">' + esc(titulo || 'Hoja para imprimir') + '</b>' +
+    '<button class="btn pri" data-act="impPrint">Imprimir o guardar PDF</button><a class="btn sec" style="text-decoration:none" href="' + impPrev.url + '" target="_blank" rel="noopener">Abrir en otra pestaña</a>' + cerrar + '</div>' +
+    '<iframe id="impFr" title="Vista previa de la hoja" style="flex:1;border:0;width:100%"></iframe>';
+  $('impFr').srcdoc = html;
+}
+function impFirmar(arg) {
+  const [ti, hi] = String(arg).split('|').map(Number), t = IMPO && IMPO.temas[ti], h = t && t.hechas[hi]; if (!h) return miImp();
+  if (!F || F._f !== 'impfir' || F.id !== h.id) F = { _f: 'impfir', tema: t.k, id: h.id, detalle: h.t, obs: '' };
+  MIV = { f: () => impFirmar(arg) }; VISTA = 'mi'; vista('form');
+  $('app').innerHTML = miTit('Adjuntar hoja firmada', esc(t.nombre) + ' · ' + esc(h.t) + ' · ' + fechaTxt(h.fecha)) + fErr +
+    '<p class="mu" style="font-size:14px">Primero cargá las respuestas en su pantalla de siempre. Acá va la foto de la hoja en papel, firmada: hasta ' + FOTO_MAX + ' fotos (una por página) o un PDF.' + (h.firmada ? ' La hoja que ya estaba queda reemplazada.' : '') + '</p>' +
+    fFoto('hoja', 'Hoja firmada', 'Que se lean las respuestas y las firmas') + fTxt('obs', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="impVolver">Cancelar</button><button class="btn pri" data-act="impFirmarOk">Guardar la hoja firmada</button>');
+}
+async function impFirmarOk() {
+  if (!F || F._f !== 'impfir') return miImp(); if (!F.hoja) return miErr('Falta la foto o el PDF de la hoja firmada.');
+  if (!navigator.onLine) return miErr('Para adjuntar la hoja hace falta señal.');
+  const b = document.querySelector('[data-act="impFirmarOk"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  const antes = ESPERA_MS; ESPERA_MS = 180000;
+  try { const r = await api('m_imprimir', { op: 'firmada', tema: F.tema, id: F.id, detalle: F.detalle, obs: F.obs || '', archivo: miArch(F, 'hoja') }); ESPERA_MS = antes;
+    if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo guardar.');
+    F = null; vista('form'); $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Hoja firmada guardada.</b><br>Quedó en la carpeta del establecimiento › Hojas firmadas.</div><div class="menu"><button class="big main" data-act="impAct"><b>Volver a las hojas para imprimir</b></button></div>'; bar(null);
+  } catch (e) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar la hoja firmada'; } miErr((e.message === 'tiempo' ? 'El envío tardó demasiado.' : e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.'); }
+}
+// Desde «Auditorías y diagnósticos por tema»: el tema de impresión que corresponde a cada auditoría o diagnóstico
+// Solo los que tienen hoja: auditorías y diagnósticos, relevamiento de cocina, infraestructura, RGRL y recorridas de seguridad ('' = sin hoja)
+const impTemaMaud = (tk, i) => i.clase === 'aud' ? 'res_aud' : i.clase === 'diag' ? (tk === 'residuos' ? 'res_diag' : ['agua', 'plagas', 'cocina'].indexOf(tk) >= 0 ? tk : '')
+  : i.clase === 'infra' ? 'infra' : i.clase === 'rgrl' ? 'rgrl' : tk === 'incendio' && /^REC-/.test(i.id) ? 'inc_rec' : '';
+Object.assign(ACT, { miImp: () => { IMPO = null; miImp(true); }, impAct: () => { F = null; miImp(true); }, impVolver: () => { F = null; miImp(); },
+  impAyuda: () => { $('ov').innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Hojas para imprimir"><h3>Hojas para imprimir</h3>' + IMP_AYUDA.map(p => '<p>' + esc(p) + '</p>').join('') + '<button class="btn pri" style="width:100%;margin-top:16px" data-act="cerrarAyuda">Entendido</button></div>'; $('ov').hidden = false; },
+  impBlanco: b => { const ti = Number(b.dataset.arg), t = IMPO.temas[ti], bl = {}; (t.campos || []).forEach(c => { const s = $('imp_' + ti + '_' + c.k); if (s) bl[c.k] = s.value; }); impAbrir({ tema: t.k, blanco: bl }, t.nombre + ' · en blanco'); },
+  impHecha: b => { const [ti, hi] = String(b.dataset.arg).split('|').map(Number), t = IMPO.temas[ti], h = t.hechas[hi]; impAbrir({ tema: t.k, id: h.id }, h.t); },
+  impMaud: b => { const [tk, id] = String(b.dataset.arg).split('|'); impAbrir({ tema: tk, id: id }, 'Auditoría o diagnóstico ' + id); },
+  impPrint: () => { const fr = $('impFr'); try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { window.open(impPrev.url, '_blank'); } },
+  impCerrar: () => { const d = $('impPrev'); if (d) d.remove(); if (impPrev.url) { try { URL.revokeObjectURL(impPrev.url); } catch (e) {} impPrev.url = ''; } },
+  impFirmar: b => { F = null; impFirmar(b.dataset.arg); }, impFirmarOk: () => impFirmarOk() });
 
 // ------------------------------------------------------------------ Remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
 // Sitios sin manifiestos cargados de las últimas 2 semanas (CFG.remision, lo arma el sistema). Desaparece cuando se carga un manifiesto
@@ -2299,6 +2402,7 @@ const AYG = [
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
   { m: 'Plagas', t: 'Inspección del trabajo de los operarios (Higiene y Seguridad)', p: ['Solo con la clave de Higiene y Seguridad: Inicio › 3 · Plagas › «Inspección del trabajo de los operarios».', 'Elegí la visita de MIPyV que vas a controlar (o «Sin visita de MIPyV» si es otra empresa), completá sector y quién hizo el trabajo, y contestá cada punto con Sí, No o No aplica. Cada «No» lleva una nota; un «No» en un punto crítico deja la inspección «No conforme».', 'Queda en la BASE COMÚN (PLAGAS_REGISTROS y PLAGAS_INSP_RESP), se ve en el portal y en «Auditorías y diagnósticos por tema», y si elegiste una visita de MIPyV la marca como revisada. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.'] },
+  { m: '', t: 'Hojas para imprimir', p: ['Inicio › «Hojas para imprimir»: cada tema que tenés asignado (auditorías y diagnóstico de residuos, agua, plagas, cocina, extintores y recorridas; infraestructura y RGRL solo Higiene y Seguridad).', '«Imprimir en blanco»: elegí el tipo, el lugar o el servicio. La hoja se arma con los puntos de este establecimiento, con la ayuda y la referencia normativa de cada punto y lugar para las firmas.', '«Imprimir» en una completada: la misma hoja con las respuestas. Se ve en pantalla; desde ahí se imprime o se guarda como PDF. Si el celular no imprime, tocá «Abrir en otra pestaña».', 'Lo que se completó en papel se carga en su pantalla de siempre; después, acá, «Adjuntar hoja firmada»: hasta 5 fotos o un PDF. Si adjuntás otra, la anterior queda reemplazada.', 'También se imprime desde la ficha de cada auditoría o diagnóstico («Auditorías y diagnósticos por tema» › «Imprimir»).'] },
   { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, agrupadas por tema (residuos, agua, plagas, cocinas, radiaciones, infraestructura, incendio y personal), de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
 ];
