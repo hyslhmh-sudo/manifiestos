@@ -1971,14 +1971,7 @@ function modeloDesdePptx_(idPptx, nombre) {
     headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, payload: JSON.stringify({ name: nombre, mimeType: 'application/vnd.google-apps.presentation', parents: [carpeta.getId()] }) });
   if (r.getResponseCode() !== 200) throw new Error('No se pudo convertir ' + orig.getName() + ': ' + r.getContentText().slice(0, 200));
   const id = JSON.parse(r.getContentText()).id, pres = SlidesApp.openById(id), s = pres.getSlides()[0];
-  const hechos = [];
-  s.getShapes().forEach(sh => {
-    let t = ''; try { t = sh.getText().asString().trim(); } catch (e) { return; }
-    if (/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{4}$/.test(t)) { sh.getText().setText('{{MES}}'); hechos.push('MES'); }
-    else if (t === 'Carlos Méndez') { sh.getText().setText('{{NOMBRE}}'); hechos.push('NOMBRE'); }
-    else if (/^DNI:/.test(t)) { sh.getText().setText('DNI: {{DNI}} ({{LUGAR}})'); hechos.push('DNI'); }
-    else if (/completado con éxito/.test(t)) { sh.getText().setText('{{TEXTO}}'); hechos.push('TEXTO'); }
-  });
+  const hechos = camposEnModelo_(s);
   const W = pres.getPageWidth(), H = pres.getPageHeight(), q = 54;
   const qr = s.insertShape(SlidesApp.ShapeType.RECTANGLE, W - q - 14, H - q - 14, q, q); qr.getText().setText('{{QR}}'); qr.getFill().setTransparent(); qr.getBorder().setTransparent();
   const cod = s.insertTextBox('Código de verificación {{COD}} · {{VIG}}', W - q - 14 - 300, H - 14 - 14, 296, 14);
@@ -1986,6 +1979,23 @@ function modeloDesdePptx_(idPptx, nombre) {
   pres.saveAndClose();
   Logger.log(nombre + ': ' + hechos.join(', ') + ' · ' + id);
   return { id: id, campos: hechos };
+}
+// Recorre todas las formas (también dentro de grupos) y cambia los datos de ejemplo por los campos del sistema
+function camposEnModelo_(s) {
+  const hechos = [], formas = [];
+  const juntar = els => els.forEach(el => { const ty = el.getPageElementType(); if (ty === SlidesApp.PageElementType.GROUP) juntar(el.asGroup().getChildren()); else if (ty === SlidesApp.PageElementType.SHAPE) formas.push(el.asShape()); });
+  juntar(s.getPageElements());
+  formas.forEach(sh => {
+    let t = ''; try { t = sh.getText().asString().replace(/\s+/g, ' ').trim(); } catch (e) { return; }
+    if (/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{4}$/.test(t)) { sh.getText().setText('{{MES}}'); hechos.push('MES'); }
+    else if (t === 'Carlos Méndez') { sh.getText().setText('{{NOMBRE}}'); hechos.push('NOMBRE'); }
+    else if (/^DNI:/.test(t)) { sh.getText().setText('DNI: {{DNI}} ({{LUGAR}})'); hechos.push('DNI'); }
+    else if (/completado con éxito/.test(t)) { sh.getText().setText('{{TEXTO}}'); hechos.push('TEXTO'); }
+  });
+  return hechos;
+}
+function completarCamposModelosLaboratorio() {
+  return ['1uJlEl2neDohjTdxoAvIYkN5yED3E5JUDmhmCmrPsyWo', '1uduhCsW7mVGzp4rB_0ZfFkk8X3JdOn6i7ZGD5GtMpXI'].map(id => { const pres = SlidesApp.openById(id), h = camposEnModelo_(pres.getSlides()[0]); pres.saveAndClose(); Logger.log(id + ': ' + h.join(', ')); return h; });
 }
 function prepararModelosLaboratorio() {
   const a = modeloDesdePptx_('1g-7gH7l0T65oEdTYBegf3I-tmBzHK2qs', 'MODELO_CERT_LAB_SINCRONICA (sistema)');
