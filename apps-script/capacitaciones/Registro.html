@@ -93,6 +93,7 @@
         <div class="aviso" id="correoAct"></div>
         <label class="f" for="mail2"><span>Correo nuevo <em id="mailReq">solo si cambió</em></span><input class="c" id="mail2" type="email" autocomplete="email"></label>
         <label class="f" for="tel2"><span>Teléfono <em>optativo</em></span><input class="c" id="tel2" inputmode="tel" autocomplete="tel"></label>
+        <div id="faltaBox" hidden style="display:flex;flex-direction:column;gap:10px"></div>
         <div id="cambioBox" hidden><label class="f" for="cambio"><span>¿Qué hay que corregir? <em>lo revisa Higiene y Seguridad</em></span><textarea class="c" id="cambio" placeholder="Ej.: ahora trabajo en Guardia del HZT"></textarea></label></div>
         <button class="btn" type="button" id="b2a">Continuar</button>
         <button class="btn sec" type="button" id="cambiaPub">Hay un dato que no es correcto</button>
@@ -253,13 +254,20 @@
         $('correoAct').innerHTML = r.tieneCorreo ? 'Tu correo registrado es <b>' + esc(r.correo) + '</b>. Si no es el que usás, escribí el nuevo abajo.' : 'No tenemos tu correo: escribilo abajo.';
         $('mailReq').textContent = r.tieneCorreo ? 'solo si cambió' : 'obligatorio';
         $('cambioBox').hidden = true; buscado.desdeBase = r.desdeBase;
+        // 23/10/2026: si falta el vínculo, se pide acá
+        const fb = $('faltaBox'), falta = (r.faltan || []).indexOf('vinculo') >= 0;
+        fb.hidden = !falta; fb.innerHTML = falta ? '<span class="mu peq">Nos falta un dato tuyo:</span>' + lista('Vínculo', 'v2', L.vinculos, 'planta, contrato, tercerizado…', true) + '<div id="emp2Box" hidden>' + lista('Empresa', 'em2', L.empresas) + '</div>' : '';
+        if (falta) { $('v2').addEventListener('change', () => { $('emp2Box').hidden = $('v2').value !== 'Tercerizado'; }); $('em2').addEventListener('change', () => { $('em2Otra').hidden = $('em2').value !== 'Otra'; }); }
         ver('s2a');
       } else { modo = 'nuevo'; ver('s2b'); }
     }, $('b1'));
   };
   $('dni').onkeydown = e => { if (e.key === 'Enter') $('b1').click(); };
   $('cambiaPub').onclick = () => { if (buscado.desdeBase) { $('cambioBox').hidden = false; $('cambio').focus(); } else { modo = 'nuevo'; $('t2b').textContent = 'Actualizá tus datos: ¿desde dónde participás hoy?'; ver('s2b'); } };
-  $('b2a').onclick = () => guardar({ modo: 'conocido', correo: $('mail2').value.trim(), telefono: $('tel2').value.trim(), cambio: $('cambio').value.trim() }, $('b2a'));
+  $('b2a').onclick = () => {
+    if (!$('faltaBox').hidden && !$('v2').value) return error('Elegí tu vínculo (planta, contrato, tercerizado…).');
+    guardar({ modo: 'conocido', correo: $('mail2').value.trim(), telefono: $('tel2').value.trim(), cambio: $('cambio').value.trim(), vinculo: $('v2') ? $('v2').value : '', empresa: $('em2') ? valor('em2') : '' }, $('b2a'));
+  };
 
   // Formularios por público
   const op = (arr, val) => '<option value="">Elegí…</option>' + arr.map(o => Array.isArray(o) ? '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>' : '<option>' + esc(o) + '</option>').join('') + (val === false ? '' : '<option value="Otra">Otra</option>');
@@ -271,7 +279,7 @@
   const lugar = paisDefault => campo('Ciudad', 'ci', '', '', 'address-level2') + lista('País', 'pa', L.paises, '', true) + '<div id="provBox">' + lista('Provincia', 'pv', L.provincias, '', true) + '</div>';
   const FORM = {
     trelew: () => ['Red Trelew', comunes() + lista('Establecimiento o lugar', 'es', L.trelew) + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>'],
-    chubut: () => ['Red Chubut', comunes() + lista('Establecimiento', 'es', L.chubut, 'hospital, CAPS o puesto sanitario') + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + campo('Ciudad', 'ci', '', '', 'address-level2')],
+    chubut: () => ['Red Chubut', comunes() + lista('Establecimiento', 'es', L.chubut, 'hospital, CAPS o puesto sanitario') + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>' + campo('Ciudad', 'ci', 'si la dejás vacía, va la del establecimiento', '', 'address-level2')],
     est: () => ['Estudiante', comunes() + lista('Carrera', 'ca', L.carreras) + campo('Institución', 'in', 'donde estudiás') + lugar()],
     ext: () => ['Profesional externo', comunes() + lista('Profesión u ocupación', 'pf', L.profesiones) + campo('Institución o lugar de trabajo', 'in') + lugar()]
   };

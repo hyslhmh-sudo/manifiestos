@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-23 · 5.7';
+const VERSION_CAP = '2026-10-23 · 5.8';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -586,13 +586,30 @@ function regBuscar(q) {
   }
   const nombre = (b ? b.NOMBRES : p[i('NOMBRES')]) || '', ape = (b ? b.APELLIDOS : p[i('APELLIDOS')]) || '';
   const correo = (p && !vacio_(p[i('CORREO')])) ? p[i('CORREO')] : (b ? b.EMAIL : '');
-  return { ok: true, encontrado: true, desdeBase: !!b, saludo: String(nombre).trim().split(/\s+/).slice(0, 2).join(' '), ficha: ficha, correo: correoOk_(correo) ? correo : '', tieneCorreo: correoOk_(correo) };   // el correo se muestra completo para que la persona sepa si tiene que corregirlo
+  // 23/10/2026: lo que falta de la persona se pide en la misma pantalla (vínculo de la red)
+  const faltan = [];
+  if (/red/i.test(publico) && vacio_(b ? b.VINCULO : p[i('VINCULO')])) faltan.push('vinculo');
+  return { ok: true, encontrado: true, faltan: faltan, desdeBase: !!b, saludo: String(nombre).trim().split(/\s+/).slice(0, 2).join(' '), ficha: ficha, correo: correoOk_(correo) ? correo : '', tieneCorreo: correoOk_(correo) };   // el correo se muestra completo para que la persona sepa si tiene que corregirlo
 }
 function enBase_(dni) {
   const lib = MEMO_ON ? (MEMO_.libT = MEMO_.libT || SpreadsheetApp.openById(ID.trabajadores)) : SpreadsheetApp.openById(ID.trabajadores), T = tabla_('TODOS', lib);
   const r = T.filas.find(x => soloDni_(x[T.i('DNI')]) === dni && !/baja/i.test(x[T.i('ESTADO')]));
   if (!r) return null;
   const o = {}; T.H.forEach((h, k) => o[h] = r[k]); return o;
+}
+// 23/10/2026: ciudad de un establecimiento (LOCALIDAD de ESTABLECIMIENTOS, libro común)
+function ciudadEst_(cod) {
+  cod = String(cod || '').split('|')[0].trim(); if (vacio_(cod)) return '';
+  const cache = CacheService.getScriptCache(); let m = null; try { m = JSON.parse(cache.get('localidades') || 'null'); } catch (e) { m = null; }
+  if (!m) { m = {}; try { const E = tabla_('ESTABLECIMIENTOS', SpreadsheetApp.openById(ID_COMUN)); E.filas.forEach(r => { const c = r[E.i('CODIGO')], l = r[E.i('LOCALIDAD')]; if (c && !vacio_(l)) m[c] = l; }); cache.put('localidades', JSON.stringify(m), 21600); } catch (e) { /* sin el libro común */ } }
+  return m[cod] || '';
+}
+// 23/10/2026: un nombre único por función o profesión (hoja FUNCIONES_EQUIV: VALOR_ESCRITO → FUNCION). Lo que no está, queda igual.
+function funcionUnica_(v) {
+  const t = String(v == null ? '' : v).trim(); if (vacio_(t)) return t;
+  const cache = CacheService.getScriptCache(); let m = null; try { m = JSON.parse(cache.get('funcEquiv') || 'null'); } catch (e) { m = null; }
+  if (!m) { m = {}; try { const F = tabla_('FUNCIONES_EQUIV'); F.filas.forEach(r => { const a = norm_(r[F.i('VALOR_ESCRITO')]), b = String(r[F.i('FUNCION')] || '').trim(); if (a && b) m[a] = b; }); cache.put('funcEquiv', JSON.stringify(m), 3600); } catch (e) { /* sin la hoja */ } }
+  return m[norm_(t)] || t;
 }
 function nombreEst_(cod) {
   const l = listasRegistro_(); const e = l.trelew.concat(l.chubut).find(x => x[0] === cod); return e ? e[1] : cod;
@@ -615,13 +632,17 @@ function guardarPersona_(d) {
     if (correoNuevo && correoNuevo !== persona.CORREO) cambios.CORREO = correoNuevo;
     if (d.telefono && d.telefono !== persona.TELEFONO) cambios.TELEFONO = d.telefono;
     if (d.modo === 'nuevo' && !b) { const cp = camposPublico_(d); if (cp.error) return { error: cp.error }; Object.assign(cambios, cp); }
+    // 23/10/2026: completar lo que falte (vínculo que contesta la persona, ciudad del establecimiento) y unificar la función
+    if (vacio_(persona.VINCULO) && !vacio_(d.vinculo)) { cambios.VINCULO = String(d.vinculo).trim(); if (cambios.VINCULO === 'Tercerizado' && !vacio_(d.empresa)) cambios.EMPRESA = String(d.empresa).trim(); }
+    if (vacio_(persona.CIUDAD) && !vacio_(ciudadEst_(persona.ESTABLECIMIENTO))) cambios.CIUDAD = ciudadEst_(persona.ESTABLECIMIENTO);
+    ['FUNCION', 'PROFESION'].forEach(c => { const n = funcionUnica_(persona[c]); if (n !== persona[c] && cambios[c] === undefined) cambios[c] = n; });
     if (vacio_(persona.CORREO) && !correoNuevo) return { error: 'Necesitamos tu correo: es el canal para enviarte la constancia y avisos.' };
     Object.keys(cambios).forEach(c => { if (P.i(c) >= 0) { historial_('Registro', 'PERSONAS', doc, c, persona[c], cambios[c], 'Actualizado por la persona'); persona[c] = cambios[c]; } });
     if (Object.keys(cambios).length) { persona.ULTIMA_ACTUALIZACION = hoy; P.sh.getRange(fila + 6, 1, 1, P.H.length).setValues([filaDe_(P, persona)]); }
   } else {
     if (!correoNuevo) return { error: 'Necesitamos tu correo: es el canal para enviarte la constancia y avisos.' };
     persona = { DNI: doc, PAIS_DOCUMENTO: pais, CORREO: correoNuevo, TELEFONO: sd_(d.telefono), ULTIMA_ACTUALIZACION: hoy };
-    if (b) Object.assign(persona, { APELLIDOS: b.APELLIDOS, NOMBRES: b.NOMBRES, PUBLICO: RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut', ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(b.SERVICIO), FUNCION: sd_(b.FUNCION + (b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : '')), VINCULO: sd_(b.VINCULO), EMPRESA: b.EMPRESA, CIUDAD: 's/d', PROVINCIA: 'Chubut', PAIS: 'Argentina', PROFESION: sd_(b.FUNCION), INSTITUCION: nombreEst_(b.ESTABLECIMIENTO), ORIGEN_DE_DATOS: 'Base de trabajadores' });
+    if (b) Object.assign(persona, { APELLIDOS: b.APELLIDOS, NOMBRES: b.NOMBRES, PUBLICO: RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut', ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(b.SERVICIO), FUNCION: sd_(funcionUnica_(b.FUNCION + (b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : ''))), VINCULO: sd_(b.VINCULO || d.vinculo), EMPRESA: b.EMPRESA, CIUDAD: sd_(ciudadEst_(b.ESTABLECIMIENTO)), PROVINCIA: 'Chubut', PAIS: 'Argentina', PROFESION: sd_(funcionUnica_(b.FUNCION)), INSTITUCION: nombreEst_(b.ESTABLECIMIENTO), ORIGEN_DE_DATOS: 'Base de trabajadores' });
     else {
       const c = camposPublico_(d); if (c.error) return { error: c.error };
       Object.assign(persona, c, { ORIGEN_DE_DATOS: 'Registro' });
@@ -673,15 +694,15 @@ function camposPublico_(d) {
     const o = { PUBLICO: pub, APELLIDOS: req(d.apellidos, 'apellidos'), NOMBRES: req(d.nombres, 'nombres') };
     if (d.publico === 'trelew' || d.publico === 'chubut') {
       const est = req(d.establecimiento, 'establecimiento').split('|'); o.ESTABLECIMIENTO = est[0]; o.SERVICIO = req(d.servicio, 'servicio o sector');
-      o.FUNCION = req(d.funcion, 'función o puesto') + (d.detalle ? ' · ' + d.detalle : ''); o.PROFESION = o.FUNCION;
-      o.INSTITUCION = est[1] || nombreEst_(o.ESTABLECIMIENTO); o.PROVINCIA = 'Chubut'; o.PAIS = 'Argentina'; o.CIUDAD = sd_(d.ciudad);
-      if (d.publico === 'trelew') { o.VINCULO = req(d.vinculo, 'vínculo'); o.EMPRESA = o.VINCULO === 'Tercerizado' ? req(d.empresa, 'empresa') : ''; }
+      o.FUNCION = funcionUnica_(req(d.funcion, 'función o puesto') + (d.detalle ? ' · ' + d.detalle : '')); o.PROFESION = o.FUNCION;
+      o.INSTITUCION = est[1] || nombreEst_(o.ESTABLECIMIENTO); o.PROVINCIA = 'Chubut'; o.PAIS = 'Argentina'; o.CIUDAD = sd_(d.ciudad || ciudadEst_(o.ESTABLECIMIENTO));
+      o.VINCULO = req(d.vinculo, 'vínculo'); o.EMPRESA = o.VINCULO === 'Tercerizado' ? req(d.empresa, 'empresa') : '';   // 23/10/2026: también en la Red Chubut
       if (d.jefatura === 'Sí') o.REVISAR = 'Indica cargo de jefatura o conducción';
     } else if (d.publico === 'est') {
-      o.CARRERA = req(d.carrera, 'carrera'); o.INSTITUCION = req(d.institucion, 'institución'); o.PROFESION = 'Estudiante';
+      o.CARRERA = req(d.carrera, 'carrera'); o.INSTITUCION = req(d.institucion, 'institución'); o.PROFESION = 'Estudiante'; o.VINCULO = 'No corresponde';
       o.CIUDAD = req(d.ciudad, 'ciudad'); o.PAIS = req(d.pais2 || 'Argentina', 'país'); o.PROVINCIA = o.PAIS === 'Argentina' ? req(d.provincia, 'provincia') : 's/d';
     } else {
-      o.PROFESION = req(d.profesion, 'profesión u ocupación'); o.INSTITUCION = req(d.institucion, 'institución o lugar de trabajo');
+      o.PROFESION = funcionUnica_(req(d.profesion, 'profesión u ocupación')); o.VINCULO = 'No corresponde'; o.INSTITUCION = req(d.institucion, 'institución o lugar de trabajo');
       o.CIUDAD = req(d.ciudad, 'ciudad'); o.PAIS = req(d.pais2, 'país'); o.PROVINCIA = o.PAIS === 'Argentina' ? req(d.provincia, 'provincia') : 's/d';
     }
     ['ESTABLECIMIENTO', 'SERVICIO', 'VINCULO', 'EMPRESA', 'CARRERA'].forEach(c => { if (o[c] === undefined) o[c] = 's/d'; });

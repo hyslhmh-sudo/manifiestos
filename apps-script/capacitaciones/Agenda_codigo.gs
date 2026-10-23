@@ -398,7 +398,7 @@ function agAnotarme(d) {
       if (antes !== correo) { setCampos_(P, fila, { CORREO: correo, ULTIMA_ACTUALIZACION: ahoraTxt_() }); historial_('Agenda', 'PERSONAS', doc, 'CORREO', antes, correo, 'Actualizado por la persona al anotarse'); }
     } else if (b) {
       agregar_(P, [{ DNI: doc, PAIS_DOCUMENTO: 'Argentina', APELLIDOS: b.APELLIDOS, NOMBRES: b.NOMBRES, PUBLICO: RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut', CORREO: correo, TELEFONO: sd_(b.TELEFONO),
-        ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(b.SERVICIO), FUNCION: sd_(b.FUNCION), VINCULO: sd_(b.VINCULO), EMPRESA: b.EMPRESA, PROFESION: sd_(b.FUNCION), CIUDAD: 's/d', PROVINCIA: 'Chubut', PAIS: 'Argentina',
+        ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(b.SERVICIO), FUNCION: sd_(b.FUNCION), VINCULO: sd_(b.VINCULO), EMPRESA: b.EMPRESA, PROFESION: sd_(b.FUNCION), CIUDAD: sd_(ciudadEst_(b.ESTABLECIMIENTO)), PROVINCIA: 'Chubut', PAIS: 'Argentina',
         INSTITUCION: nombreEst_(b.ESTABLECIMIENTO), ORIGEN_DE_DATOS: 'Base de trabajadores', ULTIMA_ACTUALIZACION: ahoraTxt_() }]);
     } else {
       const ape = String(d.apellidos || '').trim(), nom = String(d.nombres || '').trim(), srv = String(d.servicio || '').trim(), lug = String(d.lugar || '').trim();
