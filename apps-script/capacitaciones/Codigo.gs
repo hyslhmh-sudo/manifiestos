@@ -1864,7 +1864,7 @@ function datosCert_(c) {
   const est = (p && /estud/i.test(p.PUBLICO)) || !!inst, norma = est ? NORMA_ESTUDIANTES : NORMA_PERSONAL;
   const aval = !vacio_(cap.AVAL_ORGANISMO) ? 'Con el aval de ' + cap.AVAL_ORGANISMO + (vacio_(cap.AVAL_NUMERO) ? '' : ' (' + cap.AVAL_NUMERO + ')') : '';
   const pais = p ? p.PAIS_DOCUMENTO : 'Argentina';
-  return { titulo: titulo, nombre: c.NOMBRE && c.NOMBRE !== 's/d' ? c.NOMBRE : nombrePersona_(p), dni: dniTxt_(c.DNI, pais), lugar: c.TIPO === TIPO_CERT.dis ? (det.detalle || '') : lugarPersona_(p),
+  return { titulo: titulo, nombre: c.NOMBRE && c.NOMBRE !== 's/d' ? c.NOMBRE : nombrePersona_(p), dni: modeloPropio_(cap) ? dniTxt_(c.DNI, pais).replace(/^DNI\s+/, '') : dniTxt_(c.DNI, pais), lugar: c.TIPO === TIPO_CERT.dis ? (det.detalle || '') : lugarPersona_(p),
     texto: texto, negritas: bold, aval: aval, fecha: 'Trelew, ' + fechaLarga_(c.FECHA), norma: norma, codigo: c.ID_CERTIFICADO,
     vig: /no vence/i.test(c.VENCE) ? 'Sin vencimiento' : 'Vigente hasta el ' + c.VENCE, icono: vacio_(cap.ICONO) ? 'health_and_safety' : cap.ICONO,
     firmantes: firmantesOrden_(String(c.FIRMANTES || FIRMA_HYS).split(/[,;]\s*/)), verificar: CERT_WEB + '?v=' + c.ID_CERTIFICADO };
@@ -1945,9 +1945,9 @@ function pdfLote_(codigos, nombre) {
 
 // Rehace los PDF de una capacitación con su modelo actual (p. ej. después de cargar PLANTILLA_CERT). Los PDF anteriores quedan como «ANTERIOR_».
 // Se corre desde el editor: rehacerPdfsLaboratorio(). Procesa de a 20 por vez para no pasar el límite de tiempo; correrla hasta que diga «0 pendientes».
-function rehacerPdfsCapacitacion_(codigo, desde) {
+function rehacerPdfsCapacitacion_(codigo, desde, tanda) {
   MEMO_ON = true;
-  const C = tabla_('CERTIFICADOS'), P = PropertiesService.getScriptProperties(), clave = 'rehacer_' + codigo + '_' + (desde || '');
+  const C = tabla_('CERTIFICADOS'), P = PropertiesService.getScriptProperties(), clave = 'rehacer_' + codigo + '_' + (desde || '') + (tanda || '');
   const hechos = JSON.parse(P.getProperty(clave) || '{}');
   const lista = C.filas.map(r => obj_(C, r)).filter(c => c.CODIGO === codigo && /^CHYS-/.test(c.ID_CERTIFICADO) && !/anulad/i.test(c.ESTADO) && (!desde || (isoDe_(c.FECHA) || '') >= desde) && !hechos[c.ID_CERTIFICADO]);
   let n = 0;
@@ -1957,7 +1957,7 @@ function rehacerPdfsCapacitacion_(codigo, desde) {
   const msj = n + ' PDF rehechos · ' + (lista.length - n) + ' pendientes';
   Logger.log(msj); return msj;
 }
-function rehacerPdfsLaboratorio() { return rehacerPdfsCapacitacion_('CAP-HYS-020', '2026-10-23'); }
+function rehacerPdfsLaboratorio() { return rehacerPdfsCapacitacion_('CAP-HYS-020', '2026-10-23', 'v2'); }
 
 // ------------------------------------------------------------------ Públicas: descargar al terminar, Mis certificados y verificar
 function certDeDoc_(codigo, d) {
