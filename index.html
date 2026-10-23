@@ -902,7 +902,7 @@ function inicio() {
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
       (puede('Residuos') ? tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') : '') + '</div>' : '') +
     (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + '</div>' : '') +
-    (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + '</div>' : '') +
+    (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + (maudHys() ? tile('plInsp', 'Inspección del trabajo de los operarios', 'Higiene y Seguridad: control en el lugar, con puntos críticos y fotos') : '') + '</div>' : '') +
     (puede('Cocina') || puede('Relevamiento de cocina') ? '<h2>4 · Cocina</h2><div class="menu">' + (puede('Cocina') ? tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') : '') + (puede('Relevamiento de cocina') ? tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') : '') + '</div>' : '') +   // 14.70: se habilitan aparte
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>5 · Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>7 · Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · «Todo OK» de un toque · agregar o corregir extintores', true) + tile('incRec', 'Recorrida de seguridad', 'Salidas, puertas, luces, carteles, hidrantes, alarma…') + tile('incNov', 'Informar una novedad', 'Principio de incendio, alarma, olor a quemado, uso de un extintor…') + tile('incNovLista', 'Novedades', 'Lo que está abierto y lo resuelto') + '</div>' : '') +
@@ -985,6 +985,65 @@ function maudVer(arg) {
 Object.assign(ACT, { miAud: () => { MAUD = null; miAud(true); }, maudAct: () => miAud(true), maudVolver: () => miAud(), maudVer: b => maudVer(b.dataset.arg),
   maudSeguir: b => { const a = b.dataset.arg; if (a === 'aud') irDiag('#auditoria'); else if (a === 'diag') irDiag('#diagnostico'); else if (a === 'cocina') irCocina(); },
   maudAyuda: () => { $('ov').innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="Auditorías y diagnósticos"><h3>Auditorías y diagnósticos</h3><p>' + esc(MAUD_AYUDA) + '</p><button class="btn pri" style="width:100%;margin-top:16px" data-act="cerrarAyuda">Entendido</button></div>'; $('ov').hidden = false; } });
+
+// ------------------------------------------------------------------ 3 · Plagas › Inspección de HyS al trabajo de los operarios (PlagasInspeccion.gs, 23/10/2026)
+// Solo con la clave de Higiene y Seguridad. Se guarda en las mismas planillas que lee el portal (BASE COMÚN › PLAGAS_REGISTROS, TIPO «Inspección HyS»)
+// y, si es sobre una visita de MIPyV, la marca «revisada» igual que desde el portal. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.
+let PINSD = null;
+async function plInsp(fresco) {
+  VISTA = 'mi'; vista('form'); bar(null);
+  const yo = MIV = { f: () => plInspForm() };
+  if (!PINSD || PINSD.est !== SES.est || fresco) {
+    if (!navigator.onLine) { $('app').innerHTML = miTit('Inspección del trabajo de los operarios') + '<p class="mu">Para empezar la inspección hace falta señal (trae la lista de puntos y las visitas de MIPyV). Después se guarda aunque se corte.</p>'; return miVolver(); }
+    $('app').innerHTML = miTit('Inspección del trabajo de los operarios') + '<p class="mu">Cargando los puntos y las visitas…</p>';
+    const antes = ESPERA_MS; ESPERA_MS = 90000;
+    try { const r = await api('m_plg_insp_datos', {}); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); PINSD = Object.assign(r, { est: SES.est }); }
+    catch (e) { ESPERA_MS = antes; if (MIV === yo) { $('app').innerHTML = miTit('Inspección del trabajo de los operarios') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' || e.message === 'red' ? 'No se pudo conectar con el sistema.' : e.message) + ' Probá de nuevo.</div>'; miVolver(); } return; }
+    if (MIV !== yo) return;
+  }
+  if (!F || F._f !== 'pins') F = { _f: 'pins', FECHA: hoyISO(), SITIO: (PINSD.sitios || [])[0] || '', SECTOR: '', OPERARIO: '', PRODUCTO: '', VISITA: '', OBSERVACIONES: '' };
+  plInspForm();
+}
+function plInspForm() {
+  const D = PINSD; if (!D || !F) return plInsp();
+  MIV = { f: plInspForm }; VISTA = 'mi'; vista('form');
+  const vis = D.visitas || [], v = vis.find(x => x.id === F.VISITA);
+  const nRes = D.items.filter(i => F['R_' + i.codigo]).length;
+  let h = miTit('Inspección del trabajo de los operarios', 'Higiene y Seguridad controla en el lugar cómo se hizo el trabajo de plagas. Cada «No» lleva una nota con lo que se vio.') + fErr +
+    (D.aviso ? '<div class="notice">' + esc(D.aviso) + '</div>' : '') +
+    '<h2>1 · ¿Qué trabajo inspeccionás?</h2>' +
+    (vis.length ? '<div class="lista">' + vis.slice(0, 12).map(x => '<button class="item' + (F.VISITA === x.id ? ' pend' : '') + '" data-act="pinsVis" data-arg="' + esc(x.id) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + fechaTxt(x.fecha) + ' · ' + esc(x.sector || x.lugar || 's/d') + '</b><small>' +
+      esc([x.operario, x.plaga, x.producto].filter(Boolean).join(' · ')) + '</small></div><span class="tag ' + (/^revisad/i.test(x.revisado) ? 'ok' : 'wa') + '">' + (F.VISITA === x.id ? 'Elegida' : /^revisad/i.test(x.revisado) ? 'Revisada' : 'Sin revisar') + '</span></button>').join('') + '</div>' : '<p class="mu">No hay visitas de MIPyV de este establecimiento en los últimos 120 días.</p>') +
+    '<div class="menu" style="margin-top:8px"><button class="big' + (!F.VISITA ? ' main' : '') + '" data-act="pinsVis" data-arg=""><b>' + (!F.VISITA ? '✓ ' : '') + 'Sin visita de MIPyV</b><span>Otra empresa (por ejemplo, la del HMH) o un trabajo que no está en el registro</span></button></div>' +
+    (v ? '<div class="notice">Visita elegida: ' + esc([fechaTxt(v.fecha), v.sector, v.operario, v.producto, v.dosis, v.epp ? 'EPP: ' + v.epp : ''].filter(Boolean).join(' · ')) + '</div>' : '') +
+    '<h2>2 · Datos</h2>' + fInp('FECHA', 'Fecha de la inspección', 'date') + ((D.sitios || []).length > 1 ? fSel('SITIO', 'Sitio', D.sitios) : '') +
+    fInp('SECTOR', 'Sector inspeccionado', 'text', 'Ej.: cocina, depósito de alimentos') + fInp('OPERARIO', 'Quién hizo el trabajo', 'text', 'Operario o empresa') +
+    fInp('PRODUCTO', 'Producto usado (si hubo)', 'text', 'Nombre comercial y principio activo') +
+    '<h2>3 · Puntos a controlar <span class="mu" style="font-size:14px;font-weight:400">(' + nRes + ' de ' + D.items.length + ')</span></h2>' +
+    D.items.map(i => fSeg('R_' + i.codigo, esc(i.punto) + (i.critico ? ' <span class="tag er" style="margin-left:4px">Crítico</span>' : '') + '<span class="mu" style="font-size:13px;display:block;font-weight:400">' + esc(i.ayuda || '') + (i.norma ? ' · ' + esc(i.norma) : '') + '</span>', ['Sí', 'No', 'No aplica']) +
+      (F['R_' + i.codigo] === 'No' ? fTxt('N_' + i.codigo, 'Qué se vio (obligatorio)', 'Ej.: aplicaba sin guantes') : '')).join('') +
+    '<h2>4 · Cierre</h2>' + fFoto('foto', 'Fotos de lo inspeccionado (opcional)', 'Del sector, del producto o de lo que no cumple') + fTxt('OBSERVACIONES', 'Observaciones generales (opcional)');
+  $('app').innerHTML = h;
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="pinsGuardar">Guardar inspección</button>');
+}
+function plInspVis(id) {
+  const v = (PINSD.visitas || []).find(x => x.id === id); F.VISITA = id || '';
+  if (v) { F.SECTOR = F.SECTOR || v.sector || ''; F.OPERARIO = F.OPERARIO || v.operario || ''; F.PRODUCTO = F.PRODUCTO || [v.producto, v.dosis].filter(Boolean).join(' · '); if (v.sitio && (PINSD.sitios || []).indexOf(v.sitio) >= 0) F.SITIO = v.sitio; }
+  plInspForm();
+}
+function plInspGuardar() {
+  const D = PINSD, falta = D.items.filter(i => !F['R_' + i.codigo]);
+  if (!F.SECTOR) return miErr('Falta el sector inspeccionado.'); if (!F.OPERARIO) return miErr('Falta quién hizo el trabajo.');
+  if (falta.length) return miErr('Falta contestar ' + falta.length + ' punto(s), por ejemplo: «' + falta[0].punto + '».');
+  const sinNota = D.items.filter(i => F['R_' + i.codigo] === 'No' && !String(F['N_' + i.codigo] || '').trim());
+  if (sinNota.length) return miErr('Cada «No» necesita una nota: falta en «' + sinNota[0].punto + '».');
+  const v = (D.visitas || []).find(x => x.id === F.VISITA);
+  const d = { FECHA: F.FECHA, SITIO: F.SITIO, SECTOR: F.SECTOR, OPERARIO: F.OPERARIO, PRODUCTO: F.PRODUCTO, VISITA: F.VISITA, CASO: v && v.protocolo || '', OBSERVACIONES: F.OBSERVACIONES,
+    respuestas: D.items.map(i => ({ codigo: i.codigo, respuesta: F['R_' + i.codigo], nota: F['N_' + i.codigo] || '' })), archivo: miArch(F, 'foto') };
+  PINSD = null; MAUD = null;
+  encolarMi('m_plg_insp_guardar', d, 'Inspección de plagas');
+}
+Object.assign(ACT, { plInsp: () => { F = null; plInsp(true); }, pinsVis: b => plInspVis(b.dataset.arg), pinsGuardar: () => plInspGuardar() });
 
 // ------------------------------------------------------------------ Remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
 // Sitios sin manifiestos cargados de las últimas 2 semanas (CFG.remision, lo arma el sistema). Desaparece cuando se carga un manifiesto
@@ -2239,6 +2298,7 @@ const AYG = [
   { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Si falta un extintor en la lista: «Agregar un extintor» (todos los datos y 3 fotos). Si el nombre o el lugar están mal: «Corregir el nombre o la ubicación» (Higiene y Seguridad lo verifica).', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
+  { m: 'Plagas', t: 'Inspección del trabajo de los operarios (Higiene y Seguridad)', p: ['Solo con la clave de Higiene y Seguridad: Inicio › 3 · Plagas › «Inspección del trabajo de los operarios».', 'Elegí la visita de MIPyV que vas a controlar (o «Sin visita de MIPyV» si es otra empresa), completá sector y quién hizo el trabajo, y contestá cada punto con Sí, No o No aplica. Cada «No» lleva una nota; un «No» en un punto crítico deja la inspección «No conforme».', 'Queda en la BASE COMÚN (PLAGAS_REGISTROS y PLAGAS_INSP_RESP), se ve en el portal y en «Auditorías y diagnósticos por tema», y si elegiste una visita de MIPyV la marca como revisada. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.'] },
   { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, agrupadas por tema (residuos, agua, plagas, cocinas, radiaciones, infraestructura, incendio y personal), de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
 ];

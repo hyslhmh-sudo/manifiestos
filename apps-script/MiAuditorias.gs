@@ -15,7 +15,8 @@
  *   7 · Protección contra incendios recorridas de seguridad (› RECORRIDAS) y control mensual de extintores (› CONTROLES, por mes) · Anexo II, ítems 2.2 y 3.2
  *   8 · Personal y RAR              investigaciones de siniestros (LIBRO ACCIDENTES › INVESTIGACIONES y MEDIDAS) · Anexo II, ítem 12
  * Sin datos personales ni de salud: de las dosis y los siniestros solo salen período, número, método, estado y medidas.
- * Plagas no figura en la Res. SRT 905/2015: queda su diagnóstico, sin las recorridas preventivas.
+ *   3 · Plagas: diagnóstico e inspecciones de HyS al trabajo de los operarios (PlagasInspeccion.gs; Dto. 351/79). Las recorridas preventivas
+ *   de los referentes no entran: no son evaluaciones de HyS.
  * Quién ve qué (BASE COMÚN › ACCESOS › MODULOS):
  *   auditorías de residuos → «Auditoría» · diagnóstico de residuos → «Diagnóstico» · agua → «Agua» · plagas → «Plagas» ·
  *   cocinas → «Relevamiento de cocina» · radiaciones → «Radiaciones» · incendio → «Incendio» · investigaciones de siniestros → «Accidentes» ·
@@ -119,6 +120,15 @@ function maudAguaAnalisis_(cod) {
       extra: [['Motivo', limpio_(a.MOTIVO)], ['Cloro (ppm)', limpio_(a.CLORO_PPM)], ['Fecha del resultado', maudF_(a.FECHA_RESULTADO)]] });
   });
 }
+// 3 · Plagas: inspecciones de HyS al trabajo de los operarios (PlagasInspeccion.gs › PLAGAS_REGISTROS, TIPO «Inspección HyS»)
+function maudPlagasInsp_(cod) {
+  return miLeer_('PLAGAS_REGISTROS').filter(r => limpio_(r.ESTABLECIMIENTO) === cod && r.TIPO === 'Inspección HyS' && regVivo_(r)).map(r => {
+    const m = /^(.*?)(?: · ([\d,.]+) %)?$/.exec(limpio_(r.RESULTADO)) || [], res = m[1] || 's/d', nc = /no conforme/i.test(res);
+    return maudItem_({ id: limpio_(r.ID), clase: 'pins', tipo: 'Inspección del trabajo de los operarios', fecha: maudF_(r.FECHA), estado: res, pct: m[2] ? maudPct_(m[2]) : '',
+      res: { t: res, n: nc ? 'er' : /observ/i.test(res) ? 'wa' : 'ok' }, criticos: limpio_(r.DECISION) ? limpio_(r.DECISION).split(',').length : 0, lugar: [limpio_(r.SITIO), limpio_(r.SECTOR)].filter(Boolean).join(' · '),
+      quien: limpio_(r.CARGO), obs: limpio_(r.OBSERVACIONES), informe: r.ARCHIVO ? { codigo: '', doc: limpio_(r.ARCHIVO), pdf: '', estado: '' } : null, extra: [['Qué se controló', limpio_(r.ACCIONES)]] });
+  });
+}
 // 5 · Radiaciones: controles mensuales y dosis a investigar, sin nombres ni DNI (Anexo II, ítems 5 y 6)
 function maudRadiaciones_(cod) {
   if (!maudProp_(RAD.P_LIBRO)) return null;
@@ -199,7 +209,7 @@ function miAuditorias_(cod, acc, fresco) {
   const junta = (...fs) => { let algo = false; const out = []; fs.forEach(f => { const L = f(); if (L) { algo = true; L.forEach(x => out.push(x)); } }); return algo ? out : null; };
   if (ver.aud || ver.diag) leer('residuos', () => maudResiduos_(cod, ver, inf));
   if (ver.agua) leer('agua', () => junta(() => maudModulo_('agua', cod, inf), () => maudAguaAnalisis_(cod)));
-  if (ver.plagas) leer('plagas', () => maudModulo_('plagas', cod, inf));
+  if (ver.plagas) leer('plagas', () => junta(() => maudModulo_('plagas', cod, inf), () => maudPlagasInsp_(cod)));
   if (ver.cocina) leer('cocina', () => maudCocina_(cod, inf));
   if (ver.radiaciones) leer('radiaciones', () => maudRadiaciones_(cod));
   if (ver.infra) leer('infra', () => maudInfra_(cod).concat(maudRgrl_(cod)));
