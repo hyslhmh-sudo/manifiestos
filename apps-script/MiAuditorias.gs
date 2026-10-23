@@ -61,7 +61,7 @@ function maudResiduos_(cod, ver, inf) {
     audLeer_(audHojaA_(), AUD_H).filter(a => a.ESTABLECIMIENTO === cod).forEach(a => {
       const h = H[a.ID_AUD] || { abiertas: 0, mayores: 0 }, i = a.CODIGO_INFORME ? inf.cod[a.CODIGO_INFORME] || { codigo: a.CODIGO_INFORME, doc: '', pdf: '', estado: '' } : null;
       const propia = a.ORIGEN === 'Referente' && !/para verificar|cerrada|hallazgos/i.test(a.ESTADO);
-      out.push({ id: a.ID_AUD, clase: 'aud', tipo: 'Auditoría ' + (a.TIPO || '').toLowerCase() + (a.MODALIDAD ? ' · ' + a.MODALIDAD : ''), fecha: a.FECHA || a.CREADA, estado: a.ESTADO || 's/d',
+      out.push({ id: a.ID_AUD, clase: 'aud', tipo: 'Auditoría ' + (a.TIPO || '').replace(/^\w/, c => c.toLowerCase()) + (a.MODALIDAD ? ' · ' + a.MODALIDAD : ''), fecha: a.FECHA || a.CREADA, estado: a.ESTADO || 's/d',
         pct: maudPct_(a.CUMPLIMIENTO), criticos: maudN_(a.NC_MAYOR), ncMenor: maudN_(a.NC_MENOR), puntos: maudN_(a.PUNTOS), respondidos: maudN_(a.RESPONDIDOS),
         lugar: (a.LUGARES || '').split(' | ').filter(Boolean).join(', '), quien: [a.AUDITOR, a.AUDITADOS ? 'auditados: ' + a.AUDITADOS : ''].filter(Boolean).join(' · '),
         obs: [a.RESULTADO, a.OBSERVACIONES].filter(Boolean).join(' · '), ncAbiertas: h.abiertas, ncMayoresAbiertas: h.mayores, informe: i, abrir: propia ? 'aud' : '' });
