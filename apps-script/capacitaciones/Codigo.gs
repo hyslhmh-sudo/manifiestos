@@ -1986,7 +1986,7 @@ function camposEnModelo_(s) {
   const juntar = els => els.forEach(el => {
     const ty = el.getPageElementType();
     if (ty === SlidesApp.PageElementType.GROUP) juntar(el.asGroup().getChildren());
-    else if (ty === SlidesApp.PageElementType.SHAPE) textos.push(el.asShape().getText());
+    else if (ty === SlidesApp.PageElementType.SHAPE) { try { textos.push(el.asShape().getText()); } catch (e) { /* forma sin texto */ } }
     else if (ty === SlidesApp.PageElementType.TABLE) { const tb = el.asTable(); for (let i = 0; i < tb.getNumRows(); i++) for (let j = 0; j < tb.getNumColumns(); j++) { try { textos.push(tb.getCell(i, j).getText()); } catch (e) { /* celda combinada */ } } }
   });
   juntar(s.getPageElements());
