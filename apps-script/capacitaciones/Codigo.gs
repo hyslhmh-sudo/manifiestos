@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-19 · 5.5';
+const VERSION_CAP = '2026-10-23 · 5.6';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -1786,6 +1786,28 @@ function recursosLeer_() {
   const ic = base.getFoldersByName(CARPETA_CERT), certs = ic.hasNext() ? ic.next() : base.createFolder(CARPETA_CERT);
   return { plantilla: plantilla, iconos: it.next(), certs: certs };
 }
+// Modelo propio de una capacitación (23/10/2026): CATALOGO › PLANTILLA_CERT con el link o el ID de una Presentación de Google.
+// Vacío o s/d → la plantilla general. Ej.: CAP-HYS-020 (laboratorio) usa el modelo con la Secretaría de Salud y la Abg. Laura Pizzi.
+function plantillaDe_(cap, R) {
+  const v = String((cap && cap.PLANTILLA_CERT) || '').trim();
+  if (!v || /^s\/d/i.test(v)) return R.plantilla;
+  const id = idDeLink_(v) || v;
+  try { const f = DriveApp.getFileById(id); if (!f.isTrashed()) return f; } catch (e) { /* abajo */ }
+  throw new Error('No se puede abrir el modelo de certificado de ' + cap.CODIGO + ' (CATALOGO › PLANTILLA_CERT).');
+}
+function modeloPropio_(cap) { const v = String((cap && cap.PLANTILLA_CERT) || '').trim(); return !!v && !/^s\/d/i.test(v); }
+// Texto del modelo propio (laboratorio): empieza en minúscula porque sigue al nombre («Certificado de Nombre Apellido»)
+function textoModeloPropio_(c, cap, dic, h) {
+  const nom = '«' + String(cap.NOMBRE).trim() + '»', bold = [nom];
+  if (h) bold.push(h);
+  if (c.ID_DICTADO === VIDEO_DIC)
+    return { texto: 'ha completado con éxito la capacitación ' + nom + ', en modalidad autoadministrada, aprobada el ' + fechaLarga_(c.FECHA) + (h ? ', con una duración de ' + h : '') + '.', negritas: bold.concat(['modalidad autoadministrada']) };
+  const mod = dic ? String(dic.MODALIDAD || '') : '', modal = /presencial/i.test(mod) && !/h[ií]brid/i.test(mod) ? 'presencial' : 'virtual sincrónica';
+  const lugar = dic ? String(dic.LUGAR || '') + ' ' + String(dic.ESTABLECIMIENTO || '') : '';
+  const sede = /HZT|Zonal/i.test(lugar) ? 'en el Hospital Zonal Trelew «Dr. Adolfo Margara», Trelew, Provincia del Chubut' : /HMH|Humphreys/i.test(lugar) ? 'en el Hospital María Humphreys, Trelew, Provincia del Chubut' : 'Trelew, Provincia del Chubut';
+  const verbo = c.TIPO === TIPO_CERT.asi ? 'ha asistido a la capacitación ' : 'ha completado con éxito la capacitación ';
+  return { texto: verbo + nom + ', impartida el ' + fechaLarga_(dic ? dic.FECHA : c.FECHA) + ', en modalidad ' + modal + (h ? ', con una duración de ' + h : '') + ', ' + sede + '.', negritas: bold };
+}
 function subcarpeta_(padre, nombre) { const it = padre.getFoldersByName(nombre); return it.hasNext() ? it.next() : padre.createFolder(nombre); }
 function iconoBlob_(R, nombre) {
   for (const n of [nombre, 'health_and_safety']) { const it = R.iconos.getFilesByName((n || '') + '.png'); if (it.hasNext()) return it.next().getBlob(); }
@@ -1838,6 +1860,7 @@ function datosCert_(c) {
     bold.push(rol); if (h) bold.push(h);
   }
   if (inst) bold.push(inst);
+  if (modeloPropio_(cap) && c.TIPO !== TIPO_CERT.dis) { const m = textoModeloPropio_(c, cap, dic, h); texto = m.texto; bold.length = 0; m.negritas.forEach(b => bold.push(b)); }
   const est = (p && /estud/i.test(p.PUBLICO)) || !!inst, norma = est ? NORMA_ESTUDIANTES : NORMA_PERSONAL;
   const aval = !vacio_(cap.AVAL_ORGANISMO) ? 'Con el aval de ' + cap.AVAL_ORGANISMO + (vacio_(cap.AVAL_NUMERO) ? '' : ' (' + cap.AVAL_NUMERO + ')') : '';
   const pais = p ? p.PAIS_DOCUMENTO : 'Argentina';
@@ -1885,7 +1908,7 @@ function generarPdf_(codigo, rehacer) {
     if (!/^CHYS-/.test(codigo) && !vacio_(c.LINK_PDF)) return c.LINK_PDF;   // certificados del sistema actual
   }
   const R = recursos_(), x = datosCert_(c);
-  const copia = R.plantilla.makeCopy('tmp_' + codigo, R.certs), pres = SlidesApp.openById(copia.getId());
+  const copia = plantillaDe_(capDe_(c.CODIGO), R).makeCopy('tmp_' + codigo, R.certs), pres = SlidesApp.openById(copia.getId());
   try { llenarDiapositiva_(pres.getSlides()[0], x, R); pres.saveAndClose(); }
   catch (e) { copia.setTrashed(true); throw e; }
   const anio = isoDe_(c.FECHA).slice(0, 4) || Utilities.formatDate(new Date(), ZONA, 'yyyy'), cap = capDe_(c.CODIGO) || {};
@@ -1893,7 +1916,8 @@ function generarPdf_(codigo, rehacer) {
   const f = dest.createFile(copia.getAs('application/pdf').setName(nombreArchivoCert_(c)));
   copia.setTrashed(true);
   f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  if (rehacer && c.ARCHIVO_ID) { try { DriveApp.getFileById(c.ARCHIVO_ID).setTrashed(true); } catch (e) { /* ya no estaba */ } }
+  // El PDF anterior no se borra: queda en la misma carpeta con «ANTERIOR_» adelante (23/10/2026)
+  if (rehacer && c.ARCHIVO_ID && c.ARCHIVO_ID !== f.getId()) { try { const v = DriveApp.getFileById(c.ARCHIVO_ID); if (v.getName().indexOf('ANTERIOR_') !== 0) v.setName('ANTERIOR_' + v.getName()); } catch (e) { /* ya no estaba */ } }
   setCampos_(C, k, { ARCHIVO_ID: f.getId(), LINK_PDF: f.getUrl() });
   return f.getUrl();
 }
@@ -1902,7 +1926,9 @@ function pdfLote_(codigos, nombre) {
   const C = tabla_('CERTIFICADOS'), R = recursos_(), filas = codigos.map(cd => C.filas.find(r => r[C.i('ID_CERTIFICADO')] === cd)).filter(Boolean).map(r => obj_(C, r)).filter(c => !/anulad/i.test(c.ESTADO) && /^CHYS-/.test(c.ID_CERTIFICADO));
   if (!filas.length) throw new Error('No hay certificados para juntar.');
   if (filas.length > 60) throw new Error('Son más de 60: por ahora descargá cada uno con «PDF».');
-  const copia = R.plantilla.makeCopy('tmp_lote', R.certs), pres = SlidesApp.openById(copia.getId()), base = pres.getSlides()[0];
+  const pls = filas.map(c => plantillaDe_(capDe_(c.CODIGO), R)), ids = pls.map(f => f.getId()).filter((v, i, a) => a.indexOf(v) === i);
+  if (ids.length > 1) throw new Error('Hay certificados con modelos distintos: armá un PDF por capacitación.');
+  const copia = pls[0].makeCopy('tmp_lote', R.certs), pres = SlidesApp.openById(copia.getId()), base = pres.getSlides()[0];
   try {
     for (let i = 1; i < filas.length; i++) base.duplicate();
     const slides = pres.getSlides();
@@ -1913,6 +1939,22 @@ function pdfLote_(codigos, nombre) {
   copia.setTrashed(true); f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return f.getUrl();
 }
+
+// Rehace los PDF de una capacitación con su modelo actual (p. ej. después de cargar PLANTILLA_CERT). Los PDF anteriores quedan como «ANTERIOR_».
+// Se corre desde el editor: rehacerPdfsLaboratorio(). Procesa de a 20 por vez para no pasar el límite de tiempo; correrla hasta que diga «0 pendientes».
+function rehacerPdfsCapacitacion_(codigo, desde) {
+  MEMO_ON = true;
+  const C = tabla_('CERTIFICADOS'), P = PropertiesService.getScriptProperties(), clave = 'rehacer_' + codigo + '_' + (desde || '');
+  const hechos = JSON.parse(P.getProperty(clave) || '{}');
+  const lista = C.filas.map(r => obj_(C, r)).filter(c => c.CODIGO === codigo && /^CHYS-/.test(c.ID_CERTIFICADO) && !/anulad/i.test(c.ESTADO) && (!desde || (isoDe_(c.FECHA) || '') >= desde) && !hechos[c.ID_CERTIFICADO]);
+  let n = 0;
+  for (const c of lista.slice(0, 20)) { generarPdf_(c.ID_CERTIFICADO, true); hechos[c.ID_CERTIFICADO] = 1; n++; }
+  P.setProperty(clave, JSON.stringify(hechos));
+  if (n) historial_('Sistema', 'CERTIFICADOS', codigo, 'PDF rehechos con el modelo de la capacitación', '', String(n), 'Modelo propio (PLANTILLA_CERT)');
+  const msj = n + ' PDF rehechos · ' + (lista.length - n) + ' pendientes';
+  Logger.log(msj); return msj;
+}
+function rehacerPdfsLaboratorio() { return rehacerPdfsCapacitacion_('CAP-HYS-020', '2026-10-23'); }
 
 // ------------------------------------------------------------------ Públicas: descargar al terminar, Mis certificados y verificar
 function certDeDoc_(codigo, d) {
