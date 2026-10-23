@@ -883,15 +883,17 @@ function selectorEst(sel, conExtra, conTodos) {
     optsEst(estActivos(sel), sel) +
     (conExtra ? CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('') : '');
 }
+// La ficha que se está pidiendo sigue siendo la de la pantalla actual (si se tocó otra cosa mientras cargaba, no se dibuja encima)
+const fichaVigente = c => location.hash.split('/')[0] === '#ficha' && decodeURIComponent(location.hash.split('/')[1] || '') === String(c || '');
 async function ficha(cod) {
-  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#ficha'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
+  if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#ficha'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } if (!fichaVigente(cod)) return; } }
   if (!cod) {
     marco('#ficha', '<div class="cab"><div><span class="mu peq">Establecimientos</span><h1>Ficha del establecimiento</h1></div></div><div class="card"><label class="f">Establecimiento<select class="c" id="selEst">' + selectorEst('', false) + '</select></label></div>');
     $('selEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
     return;
   }
   if (FICHAS[cod]) FICHA = FICHAS[cod];
-  else { cargando('#ficha', 'Abriendo la ficha…'); try { FICHA = await api('p_ficha', { cod: cod }); } catch (e) { return; } FICHAS[cod] = FICHA; }
+  else { cargando('#ficha', 'Abriendo la ficha…'); let f; try { f = await api('p_ficha', { cod: cod }); } catch (e) { return; } FICHAS[cod] = f; if (!fichaVigente(cod)) return; FICHA = f; }   // llegó tarde y ya se pasó a otra pantalla: queda guardada, pero no se dibuja
   if (!FICHA.ok) return marco('#ficha', '<div class="aviso error">' + esc(FICHA.mensaje) + '</div>');
   const d = FICHA.datos, R = FICHA.residuos;
   // Si se llegó desde Agua o Plagas, el menú sigue marcando ese módulo y «Volver» regresa ahí
