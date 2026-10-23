@@ -183,7 +183,7 @@ function pantallaCarga(err) {
     '<h2>¿Había residuos mezclados?</h2>' + chips('mezcla', ['Sí', 'No', 'No se puede ver'], false) +
     '<div class="field"><label class="lab" for="descripcion">4 · Contalo en pocas palabras</label><textarea id="descripcion" placeholder="Ej.: bolsa roja abierta en el piso del depósito, tacho vacío al lado">' + esc(F.descripcion) + '</textarea></div>' +
     '<h2>5 · Fotos <span class="mu">(hasta 5)</span></h2><div class="fotos">' + F.fotos.map((f, i) => '<div><img src="' + f.base64 + '" alt="Foto ' + (i + 1) + '"><button type="button" data-quitar="' + i + '" aria-label="Quitar foto">×</button></div>').join('') +
-    (F.fotos.length < 5 ? '<label class="camara">📷<br>Sacar foto<input type="file" accept="image/*" capture="environment" id="foto" hidden></label>' : '') + '</div>' +
+    (F.fotos.length < 5 ? '<label class="camara">📷<br>Sacar foto<input type="file" accept="image/*" capture="environment" id="foto" hidden></label><label class="camara">🖼️<br>Elegir del teléfono<input type="file" accept="image/*" multiple id="fotoG" hidden></label>' : '') + '</div>' +
     '<p class="mu">Que no aparezcan pacientes ni personas.</p>' +
     '<h2>6 · ¿Qué tan grave te parece?</h2>' + chips('gravedad', GRAV, false) +
     '<h2>7 · ¿Alguien se lastimó?</h2>' + chips('lesion', ['No', 'Sí'], false) +
@@ -208,7 +208,11 @@ function pantallaCarga(err) {
   const cp = $('cambiarP'); if (cp) cp.onclick = () => { leer(); F.punto = ''; pantallaCarga(); };
   $('otraPersona').onclick = () => { leer(); YO = null; LS.set('yo', null); pantallaQuien(); };
   const is = $('irSup'); if (is) is.onclick = () => { leer(); pantallaSupervision(); };
-  const fi = $('foto'); if (fi) fi.onchange = async () => { leer(); const f = fi.files[0]; if (!f) return; try { F.fotos.push({ base64: await achicar(f), tipo: 'image/jpeg' }); } catch (e) {} const y = window.scrollY; pantallaCarga(); window.scrollTo(0, y); };
+  // Fotos: sacarlas en el momento o elegirlas del teléfono (varias a la vez), hasta 5 en total (pedido de Belén, 23/10/2026)
+  const fotoCambio = async inp => { leer(); const fs = Array.from(inp.files || []); inp.value = ''; if (!fs.length) return; const antes = F.fotos.length;
+    for (const f of fs) { if (F.fotos.length >= 5) break; try { F.fotos.push({ base64: await achicar(f), tipo: 'image/jpeg' }); } catch (e) {} }
+    const y = window.scrollY; pantallaCarga(antes + fs.length > 5 ? 'Se cargaron 5 fotos, que es el máximo.' : undefined); window.scrollTo(0, y); };
+  ['foto', 'fotoG'].forEach(id => { const fi = $(id); if (fi) fi.onchange = () => fotoCambio(fi); });
   $('enviar').onclick = () => { leer(); enviar(); };
 }
 // Achica la foto (lado mayor 1280 px, JPEG) para que se mande rápido

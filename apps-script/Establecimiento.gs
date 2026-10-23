@@ -81,9 +81,8 @@ function miArchivo_(cod, tema, sub, a) {
     : tema === 'Plagas' && typeof plagCarpetaEst_ === 'function' ? plagCarpetaEst_(dueno) : null;
   const raiz = audCarpetaEst_(miGrupo_(cod).dueno) || audCarpetaEst_(cod); if (!raiz && !enModulo) throw new Error('El establecimiento no tiene carpeta en ESTABLECIMIENTOS › CARPETA.');
   let dir = enModulo || carpeta_(raiz, tema); if (sub) dir = carpeta_(dir, sub);
-  const tipo = a.tipo || 'image/jpeg', ext = /pdf/.test(tipo) ? '.pdf' : '.jpg';
-  const f = dir.createFile(Utilities.newBlob(Utilities.base64Decode(String(a.base64).replace(/^data:[^,]+,/, '')), tipo, (a.nombre || tema) .replace(/[^\w.\- ]+/g, '_').slice(0, 80) + '_' + Date.now() + ext));
-  return f.getUrl();
+  // Hasta 5 fotos por campo (23/10/2026): con varias, queda una carpeta con todas y se devuelve su enlace (Codigo.gs › guardarFotos_)
+  return guardarFotos_(dir, (a.nombre || tema).replace(/[^\w.\- ]+/g, '_').slice(0, 80) + '_' + Date.now(), a);
 }
 
 // ------------------------------------------------------------------ Entrada (acciones «m_…», ya con la clave validada)

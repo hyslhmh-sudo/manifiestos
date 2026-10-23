@@ -206,10 +206,9 @@ function radCarpetaEst_(cod, sub) {
 }
 // Archivo { base64: 'data:…;base64,…', nombre } → carpeta indicada. Devuelve el enlace.
 function radArchivo_(cod, a, sub, etiqueta) {
-  const src = a && (a.base64 || a.dataUrl || a); const m = /^data:([\w/.+-]+);base64,(.+)$/.exec(String(src || '')); if (!m) return '';
-  const ext = /pdf/.test(m[1]) ? '.pdf' : /png/.test(m[1]) ? '.png' : '.jpg';
-  const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_') + ext;
-  return radCarpetaEst_(cod, sub).createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], nombre)).getUrl();
+  if (!fotosDe_(a).length) return '';   // hasta 5 fotos o un PDF (23/10/2026; Codigo.gs › guardarFotos_)
+  const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_');
+  return guardarFotos_(radCarpetaEst_(cod, sub), nombre, a);
 }
 function radAgregar_(hoja, H, obj) { const sh = pRad_().getSheetByName(hoja); const v = H.map(h => obj[h] == null ? '' : obj[h]); sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, 1, v.length).setValues([v]); }
 function radActualizar_(hoja, H, fila, obj) { const sh = pRad_().getSheetByName(hoja); const v = H.map(h => obj[h] == null ? '' : obj[h]); sh.getRange(fila, 1, 1, v.length).setValues([v]); }

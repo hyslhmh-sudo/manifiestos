@@ -668,6 +668,38 @@ document.querySelectorAll('[data-resultado]').forEach(btn => {
 });
 
 // ============================================================
+// FOTOS: sacarla en el momento o elegirla del teléfono (pedido de Belén, 23/10/2026)
+// Hasta 5 fotos por pantalla (las 3 fotos de cada extintor, una por casillero).
+// ============================================================
+const galeriaInput = document.createElement("input");
+galeriaInput.type = "file"; galeriaInput.accept = "image/*"; galeriaInput.style.display = "none";
+document.body.appendChild(galeriaInput);
+let galeriaCb = null;
+galeriaInput.addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); galeriaInput.value = ""; if (fs.length && galeriaCb) galeriaCb(fs); });
+function elegirOrigenFoto(camInput, varias, cb) {
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9999";
+  ov.innerHTML = `<div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:18px 16px 22px;display:grid;gap:12px">
+    <button type="button" data-o="cam" style="font-size:20px;padding:18px;border-radius:12px;border:2px solid #0D313F;background:#0D313F;color:#fff">📷 Sacar foto ahora</button>
+    <button type="button" data-o="gal" style="font-size:20px;padding:18px;border-radius:12px;border:2px solid #0D313F;background:#fff;color:#0D313F">🖼️ Elegir del teléfono</button>
+    <button type="button" data-o="no" style="font-size:16px;padding:10px;border:0;background:none;color:#4F616B">Cancelar</button></div>`;
+  ov.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-o]"); if (!b && e.target !== ov) return; ov.remove(); if (!b) return;
+    if (b.dataset.o === "cam") camInput.click();
+    else if (b.dataset.o === "gal") { galeriaInput.multiple = !!varias; galeriaCb = cb; galeriaInput.click(); }
+  });
+  document.body.appendChild(ov);
+}
+// Agrega a la lista las fotos elegidas (comprimidas), sin pasar de 5
+async function agregarFotos(lista, files, render) {
+  let error = false, sobra = false;
+  for (const f of files) { if (lista.length >= 5) { sobra = true; break; } try { lista.push(await comprimirFoto(f)); } catch (err) { error = true; } }
+  render();
+  if (sobra) alert("Se cargaron 5 fotos, que es el máximo.");
+  else if (error) alert("No se pudo cargar alguna foto. Probá de nuevo.");
+}
+
+// ============================================================
 // MIPyV — m-foto (hasta 5 fotos)
 // ============================================================
 const fotoGrid = document.getElementById("fotoGrid");
@@ -685,7 +717,7 @@ function renderFotoGrid() {
     addBox.type = "button";
     addBox.className = "foto-slot add";
     addBox.innerHTML = `<span>+</span><small>${fotosDataUrls.length}/5</small>`;
-    addBox.onclick = () => photoInput.click();
+    addBox.onclick = () => elegirOrigenFoto(photoInput, true, fs => agregarFotos(fotosDataUrls, fs, renderFotoGrid));
     fotoGrid.appendChild(addBox);
   }
   fotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
@@ -696,16 +728,10 @@ function renderFotoGrid() {
     };
   });
 }
-photoInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
+photoInput.addEventListener("change", (e) => {
+  const fs = Array.from(e.target.files || []);
   photoInput.value = "";
-  if (!file) return;
-  try {
-    fotosDataUrls.push(await comprimirFoto(file));
-    renderFotoGrid();
-  } catch (err) {
-    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
-  }
+  if (fs.length) agregarFotos(fotosDataUrls, fs, renderFotoGrid);
 });
 
 // ============================================================
@@ -1024,7 +1050,7 @@ function renderSFotoGrid() {
     addBox.type = "button";
     addBox.className = "foto-slot add";
     addBox.innerHTML = `<span>+</span><small>${sFotosDataUrls.length}/5</small>`;
-    addBox.onclick = () => sPhotoInput.click();
+    addBox.onclick = () => elegirOrigenFoto(sPhotoInput, true, fs => agregarFotos(sFotosDataUrls, fs, renderSFotoGrid));
     sFotoGrid.appendChild(addBox);
   }
   sFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
@@ -1035,16 +1061,10 @@ function renderSFotoGrid() {
     };
   });
 }
-sPhotoInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
+sPhotoInput.addEventListener("change", (e) => {
+  const fs = Array.from(e.target.files || []);
   sPhotoInput.value = "";
-  if (!file) return;
-  try {
-    sFotosDataUrls.push(await comprimirFoto(file));
-    renderSFotoGrid();
-  } catch (err) {
-    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
-  }
+  if (fs.length) agregarFotos(sFotosDataUrls, fs, renderSFotoGrid);
 });
 
 const notasSaneamiento = document.getElementById("notasSaneamiento");
@@ -1439,8 +1459,8 @@ let extFotoDestino = null;  // [id, campo] de la foto que se está sacando
 const extFotoInput = document.createElement("input");
 extFotoInput.type = "file"; extFotoInput.accept = "image/*"; extFotoInput.setAttribute("capture", "environment"); extFotoInput.style.display = "none";
 document.body.appendChild(extFotoInput);
-extFotoInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0]; extFotoInput.value = "";
+extFotoInput.addEventListener("change", (e) => { const file = e.target.files[0]; extFotoInput.value = ""; extFotoPoner(file); });
+async function extFotoPoner(file) {
   if (!file || !extFotoDestino) return;
   try {
     const foto = await comprimirFoto(file);
@@ -1449,7 +1469,7 @@ extFotoInput.addEventListener("change", async (e) => {
     renderExtintores();
   }
   catch (err) { alert("No se pudo cargar la foto. Probá sacarla de nuevo."); }
-});
+}
 function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k] = null); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = "");
   const iso = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : "";
   return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false }; }
@@ -1550,7 +1570,7 @@ function panelControl(e, l) {
   panel.querySelectorAll(".sino").forEach(grupo => grupo.querySelectorAll("button").forEach(b => {
     b.onclick = () => { c.resp[grupo.dataset.campo] = b.dataset.valor; renderExtintores(); };
   }));
-  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = [e.id, b.dataset.foto]; extFotoInput.click(); }; });
+  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = [e.id, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   panel.querySelector(".ext-listo:not(.ext-ed-ok)").onclick = () => { if (controlCompleto(c)) { extAbierto = null; renderExtintores(); } };
   // Corrección del nombre y la ubicación (queda pendiente de verificar por Higiene y Seguridad)
   panel.querySelector(".ext-editar").onclick = () => { c.editando = !c.editando; c.borrador = null; renderExtintores(); };
@@ -1618,7 +1638,7 @@ function panelAlta(a) {
   panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
   panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
   panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
-  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; extFotoInput.click(); }; });
+  panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
   panel.querySelector(".ext-quitar").onclick = () => { if (confirm("¿Quitar este extintor nuevo? Se borra lo que cargaste.")) { tareaHys.altas = tareaHys.altas.filter(x => x !== a); altaAbierta = null; renderExtintores(); } };
   return panel;
@@ -1731,7 +1751,7 @@ function renderHFotoGrid() {
     addBox.type = "button";
     addBox.className = "foto-slot add";
     addBox.innerHTML = `<span>+</span><small>${hFotosDataUrls.length}/5</small>`;
-    addBox.onclick = () => hPhotoInput.click();
+    addBox.onclick = () => elegirOrigenFoto(hPhotoInput, true, fs => agregarFotos(hFotosDataUrls, fs, renderHFotoGrid));
     hFotoGrid.appendChild(addBox);
   }
   hFotoGrid.querySelectorAll(".foto-remove").forEach(btn => {
@@ -1742,16 +1762,10 @@ function renderHFotoGrid() {
     };
   });
 }
-hPhotoInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
+hPhotoInput.addEventListener("change", (e) => {
+  const fs = Array.from(e.target.files || []);
   hPhotoInput.value = "";
-  if (!file) return;
-  try {
-    hFotosDataUrls.push(await comprimirFoto(file));
-    renderHFotoGrid();
-  } catch (err) {
-    alert("No se pudo cargar la foto. Probá sacarla de nuevo.");
-  }
+  if (fs.length) agregarFotos(hFotosDataUrls, fs, renderHFotoGrid);
 });
 
 // --- h-hallazgos (problemas + observaciones, los dos opcionales)

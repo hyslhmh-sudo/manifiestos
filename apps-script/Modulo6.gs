@@ -216,11 +216,11 @@ function cocDniBase_(dni) {
 }
 // Archivo de carnet o libreta: { base64: 'data:…;base64,…', tipo, nombre } o dataUrl suelto → carpeta del establecimiento › Cocina › Carnets y libretas
 function cocArchivo_(cod, a, etiqueta) {
-  const src = a && (a.base64 || a.dataUrl || a); const m = /^data:([\w/.+-]+);base64,(.+)$/.exec(String(src || '')); if (!m) return '';
+  if (!fotosDe_(a).length) return '';   // hasta 5 fotos o un PDF (23/10/2026; Codigo.gs › guardarFotos_)
   const E = est_(cod); if (!E || !E.carpeta) throw new Error('El establecimiento no tiene carpeta en Drive.');
   const dir = carpeta_(carpeta_(DriveApp.getFolderById(E.carpeta), 'Cocina'), 'Carnets y libretas');
-  const ext = /pdf/.test(m[1]) ? '.pdf' : '.jpg', nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,]/g, '_') + ext;
-  return dir.createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], nombre)).getUrl();
+  const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,]/g, '_');
+  return guardarFotos_(dir, nombre, a);
 }
 // Alta o cambio de una persona. x: { ID?, ESTABLECIMIENTO, ORIGEN, DNI, APELLIDO_Y_NOMBRE, …, carnetArchivo?, libretaArchivo? }
 function cocPersonaGuardar_(x, quien, codFijo) {

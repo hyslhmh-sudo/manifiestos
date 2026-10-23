@@ -192,10 +192,11 @@ function incCarpetaEst_(cod, sub) {
   const E = pEstablecimientos_().filas.find(f => limpio_(f.v[0]) === cod), nombre = cod + (E ? ' · ' + limpio_(E.v[1]) : '');
   let d = carpeta_(carpeta_(dir, 'Establecimientos'), nombre); (sub || []).forEach(s => d = carpeta_(d, s)); return d;
 }
+// Una foto o varias (hasta 5 por campo desde el 23/10/2026; con varias, una carpeta con todas: Codigo.gs › guardarFotos_). Solo imágenes.
 function incFoto_(cod, a, sub, etiqueta) {
-  const m = /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(String((a && (a.base64 || a.dataUrl)) || a || '')); if (!m) return '';
-  const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_') + (/png/.test(m[1]) ? '.png' : '.jpg');
-  return incCarpetaEst_(cod, sub).createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], nombre)).getUrl();
+  const L = fotosDe_(a).filter(f => /^image\//.test(f.mime)); if (!L.length) return '';
+  const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_');
+  return guardarFotos_(incCarpetaEst_(cod, sub), nombre, L.map(f => 'data:' + f.mime + ';base64,' + f.b64));
 }
 const incHoy_ = () => Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 const incTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';

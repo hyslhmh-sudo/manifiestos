@@ -473,11 +473,37 @@ function agregar_(sh, filas, colsFormula, formulasR1C1) {
 }
 function carpeta_(padre, nombre) { const it = padre.getFoldersByName(nombre); return it.hasNext() ? it.next() : padre.createFolder(nombre); }
 function guardarFoto_(carpetaId, tipo, anio, nombre, dataUrl) {
-  const m = /^data:([\w.+-]+\/[\w.+-]+);base64,(.+)$/.exec(dataUrl); if (!m) return '';
-  const ext = m[1] === 'application/pdf' ? '.pdf' : m[1] === 'image/png' ? '.png' : '.jpg';
   const dest = carpeta_(carpeta_(DriveApp.getFolderById(carpetaId), tipo), anio);
-  const blob = Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], nombre.replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ]/g, '_') + ext);
-  return dest.createFile(blob).getUrl();
+  return guardarFotos_(dest, String(nombre).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ]/g, '_'), dataUrl);
+}
+// ------------------------------------------------------------------ VARIAS FOTOS POR CAMPO (pedido de Belén, 23/10/2026)
+// En todo el sistema, cada campo de foto admite sacar la foto en el momento o elegirla del dispositivo, hasta FOTOS_MAX fotos
+// (o un solo PDF donde se acepta PDF). Los extintores mantienen sus 3 fotos fijas (una por campo) y Siniestros sus 8 archivos.
+// v puede ser: un dataURL, una lista de dataURL, o un objeto { base64, tipo, nombre, mas: [dataURL…] } (miArch de la página).
+const FOTOS_MAX = 5;
+function fotosDe_(v) {
+  let L = [];
+  if (Array.isArray(v)) L = v;
+  else if (v && typeof v === 'object') {
+    const b = String(v.base64 || v.dataUrl || '');
+    L = [b && !/^data:/.test(b) ? 'data:' + (v.tipo || 'image/jpeg') + ';base64,' + b : b].concat(Array.isArray(v.mas) ? v.mas : []);
+  }
+  else if (v) L = [v];
+  const out = [];
+  L.forEach(x => { const m = /^data:([\w.+-]+\/[\w.+-]+);base64,(.+)$/.exec(String(x && (x.base64 || x.dataUrl) || x || '')); if (m && out.length < FOTOS_MAX) out.push({ mime: m[1], b64: m[2] }); });
+  if (out.length > 1) return out.filter(f => /^image\//.test(f.mime)).length ? out.filter(f => /^image\//.test(f.mime)) : out.slice(0, 1);   // varias: solo imágenes (un PDF va solo)
+  return out;
+}
+// Guarda en la carpeta dir. Con una foto devuelve el enlace del archivo; con varias crea la carpeta «nombre» con todas
+// (nombre - 1, nombre - 2…) y devuelve el enlace de esa carpeta, así cada registro sigue teniendo un solo enlace.
+function guardarFotos_(dir, nombre, v) {
+  const L = fotosDe_(v); if (!L.length) return '';
+  const ext = f => f.mime === 'application/pdf' ? '.pdf' : f.mime === 'image/png' ? '.png' : '.jpg';
+  const blob = (f, n) => Utilities.newBlob(Utilities.base64Decode(f.b64), f.mime, n + ext(f));
+  if (L.length === 1) return dir.createFile(blob(L[0], nombre)).getUrl();
+  const sub = dir.createFolder(nombre + ' (' + L.length + ' fotos)');
+  L.forEach((f, i) => sub.createFile(blob(f, nombre + ' - ' + (i + 1))));
+  return sub.getUrl();
 }
 function registrarError_(d, err) {
   try {

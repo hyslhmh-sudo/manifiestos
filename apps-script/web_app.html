@@ -591,7 +591,7 @@ function adelante() {
   const t = LS.get('tam_' + SES.est, {}); M.res.forEach(r => { if (r.tam) t[M.sitio + '|' + r.corriente] = r.tam; }); LS.set('tam_' + SES.est, t);
   if (!M.reemplaza) LS.set('ultman_' + SES.est, { sitio: M.sitio, fecha: M.fecha });
   COLA = COLA.filter(c => !(c.est === SES.est && c.estado === 'error' && c.tipo === 'manifiesto' && c.datos.nro === String(M.nro).trim() && c.datos.sitio === M.sitio)); guardarCola();
-  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: M.foto, fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
+  const datos = { lote: M.lote || '', idLocal: M.idLocal, sitio: M.sitio, nro: String(M.nro).trim(), fecha: M.fecha, firma: M.firma, original: M.original, obs: M.obs, foto: fotoVal(M, 'foto'), fotoUrl: M.foto ? '' : (M.fotoUrl || ''), reemplaza: M.reemplaza || '', persona: SES.persona,
     res: M.res.filter(tieneDatos).map(r => ({ corriente: r.corriente, contenedor: r.contenedor, cant: r.cant, tam: r.uni === 'dm³' ? r.tam : '', vol: r.vol, uni: r.uni, estado: r.estado })) };
   encolar('manifiesto', datos, 'Manifiesto ' + datos.nro);
 }
@@ -609,29 +609,44 @@ const OBLIG = () => (CFG && CFG.fotoObligatoriaDesde) || '2027-01-01';
 const loteDe = fecha => { const m = (fecha || '').slice(0, 7); return (CFG && CFG.lotes || []).find(l => l.tipo !== 'certificados' && m && m >= l.desde && m <= l.hasta); };
 const txtLote = l => l ? mesTxt(l.desde + '-01') + ' a ' + mesTxt(l.hasta + '-01') : '';
 // Bloque de foto/escaneo: sacar foto, elegir archivo (imagen o PDF) o indicar que está en un lote escaneado
+// ------------------------------------------------------------------ FOTOS (pedido de Belén, 23/10/2026)
+// En todos los campos de foto se puede sacar la foto en el momento o elegirla del dispositivo, hasta FOTO_MAX por campo
+// (o un PDF donde se acepta PDF). Se guardan en obj[k] (la primera) y obj[k + 'Mas'] (las demás); fotoVal arma lo que se envía.
+// Los extintores mantienen sus 3 fotos fijas (una por campo) y Siniestros sus 8 archivos (fArchivos).
+const FOTO_MAX = 5;
+const fotoVal = (o, k) => o && o[k] ? ((o[k + 'Mas'] || []).length ? [o[k]].concat(o[k + 'Mas']) : o[k]) : '';
+function achicarFoto(f, lado, q) {
+  return new Promise(ok => { const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => { const s = Math.min(1, lado / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', q)); };
+    img.onerror = () => { URL.revokeObjectURL(url); ok(''); }; img.src = url; });
+}
 function bloqueFoto(obj, k, fecha, chg, que) {
-  const oblig = fecha && fecha >= OBLIG(), lote = obj === M ? loteDe(fecha) : null, pdf = /^data:application\/pdf/.test(obj.foto || '');
+  // Hasta FOTO_MAX fotos (sacadas en el momento o elegidas del dispositivo) o un PDF (pedido de Belén, 23/10/2026)
+  const oblig = fecha && fecha >= OBLIG(), lote = obj === M ? loteDe(fecha) : null, pdf = /^data:application\/pdf/.test(obj.foto || ''), todas = obj.foto ? [obj.foto].concat(obj.fotoMas || []) : [];
   let h = '<div class="field"><div class="lab"><label>' + (que === 'cert' ? 'Foto o escaneo del certificado' + (oblig ? '' : ' (opcional antes de 2027)') : 'Foto o escaneo del manifiesto (si no la tenés ahora, la subís después)') + '</label>' + q(k) + '</div>';
-  if (obj.foto) h += '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(obj.fotoNombre || '') + '</span>' : '<img src="' + obj.foto + '" alt="Foto">') + '</div>';
-  h += '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'c">' + (obj.foto ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'a">Elegir archivo</label></div>' +
-    '<input id="f_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-chg="' + chg + '"><input id="f_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-chg="' + chg + '">';
-  if (obj.foto) h += '<button class="link" data-act="quitarFoto" data-arg="' + (obj === M ? 'M' : 'C') + '">Quitar</button>';
+  todas.forEach((v, i) => h += '<div class="photo" style="position:relative">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(obj.fotoNombre || '') + '</span>' : '<img src="' + v + '" alt="Foto ' + (i + 1) + '">') +
+    '<button class="link" data-act="quitarFoto" data-arg="' + (obj === M ? 'M' : 'C') + '" data-i="' + i + '">Quitar' + (todas.length > 1 ? ' la ' + (i + 1) : '') + '</button></div>');
+  if (!pdf && todas.length < FOTO_MAX) h += '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'c">' + (todas.length ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="f_' + k + 'a">' + (todas.length ? 'Agregar del teléfono' : 'Elegir del teléfono') + '</label></div>' +
+    '<input id="f_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-chg="' + chg + '"><input id="f_' + k + 'a" type="file" accept="image/*,application/pdf" multiple hidden data-chg="' + chg + '">' +
+    '<p class="mu" style="font-size:13px;margin:6px 0 0">Hasta ' + FOTO_MAX + ' fotos (si la hoja no entra en una) o un PDF.</p>';
   if (!obj.foto && lote && (obj === M || !oblig)) h += '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" data-chg="marcarLote"' + (obj.lote ? ' checked' : '') + ' style="width:22px;height:22px"> Está en el lote escaneado enviado (' + esc(txtLote(lote)) + ')</label>';
   return h + (ERR.foto ? '<div class="err">' + esc(ERR.foto) + '</div>' : '') + '</div>';
 }
 function foto(input, obj, repaint) {
-  const f = input.files && input.files[0]; if (!f) return;
-  if (f.type === 'application/pdf') {   // los PDF escaneados se guardan tal cual
-    if (f.size > 6 * 1024 * 1024) { ERR.foto = 'El PDF pesa más de 6 MB. Para archivos grandes usá «Enviar escaneados (lote)».'; return repaint(); }
-    const rd = new FileReader(); rd.onload = () => { if (obj === M) leer(); obj.foto = rd.result; obj.fotoNombre = f.name; obj.lote = ''; delete ERR.foto; repaint(); }; rd.readAsDataURL(f); return;
+  const fs = Array.from(input.files || []); input.value = ''; if (!fs.length) return;
+  const pdfs = fs.filter(f => f.type === 'application/pdf'), imgs = fs.filter(f => f.type !== 'application/pdf');
+  if (pdfs.length) {   // los PDF escaneados se guardan tal cual, solos
+    if (pdfs.length > 1 || imgs.length || (obj.foto && !/^data:application\/pdf/.test(obj.foto))) { ERR.foto = 'Un PDF va solo: elegí un único PDF o solo fotos.'; return repaint(); }
+    const f = pdfs[0]; if (f.size > 6 * 1024 * 1024) { ERR.foto = 'El PDF pesa más de 6 MB. Para archivos grandes usá «Enviar escaneados (lote)».'; return repaint(); }
+    const rd = new FileReader(); rd.onload = () => { if (obj === M) leer(); obj.foto = rd.result; obj.fotoMas = []; obj.fotoNombre = f.name; obj.lote = ''; delete ERR.foto; repaint(); }; rd.readAsDataURL(f); return;
   }
-  const img = new Image(), url = URL.createObjectURL(f);
-  img.onload = () => {   // se achica para que pese poco y se pueda enviar con mala señal
-    const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement('canvas');
-    c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    if (obj === M) leer(); obj.foto = c.toDataURL('image/jpeg', 0.65); obj.fotoNombre = ''; obj.lote = ''; delete ERR.foto; URL.revokeObjectURL(url); repaint();
-  };
-  img.src = url;
+  if (/^data:application\/pdf/.test(obj.foto || '')) { ERR.foto = 'Ya hay un PDF cargado: quitalo para cargar fotos.'; return repaint(); }
+  const lugar = FOTO_MAX - (obj.foto ? 1 + (obj.fotoMas || []).length : 0);
+  Promise.all(imgs.slice(0, lugar).map(f => achicarFoto(f, 1400, 0.65))).then(L => {   // se achican para que pesen poco y se puedan enviar con mala señal
+    if (obj === M) leer(); L = L.filter(Boolean); if (!L.length) return repaint();
+    if (!obj.foto) { obj.foto = L.shift(); obj.fotoMas = []; } obj.fotoMas = (obj.fotoMas || []).concat(L); obj.fotoNombre = ''; obj.lote = '';
+    if (imgs.length > lugar) ERR.foto = 'Se cargaron ' + FOTO_MAX + ' fotos, que es el máximo.'; else delete ERR.foto; repaint();
+  });
 }
 function listo(msg, tipo) {
   vista('form');
@@ -679,7 +694,7 @@ function guardarCert() {
     if (!(Number(v) > 0)) ERR['cvol' + i] = 'Escribí un número mayor que cero, o dejalo vacío.';
     else if (Number(v) > (r.uni === 'kg' ? 50000 : 300000)) ERR['cvol' + i] = 'Revisá la cantidad: parece demasiado para un mes.'; });
   if (Object.keys(ERR).length) return pasoCert();
-  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, res: C.res.filter(r => String(r.vol).trim() !== '').map(r => ({ corriente: r.corriente, vol: String(r.vol).trim(), uni: r.uni })), foto: C.foto, fotoUrl: C.foto ? '' : (C.fotoUrl || ''), reemplaza: C.reemplaza || '', persona: SES.persona }, 'Certificado ' + C.ncert.trim());
+  encolar('certificado', { idLocal: C.idLocal, empresa: C.empresa, mes: C.mes, ncert: C.ncert.trim(), ftrat: C.ftrat, res: C.res.filter(r => String(r.vol).trim() !== '').map(r => ({ corriente: r.corriente, vol: String(r.vol).trim(), uni: r.uni })), foto: fotoVal(C, 'foto'), fotoUrl: C.foto ? '' : (C.fotoUrl || ''), reemplaza: C.reemplaza || '', persona: SES.persona }, 'Certificado ' + C.ncert.trim());
 }
 
 // ------------------------------------------------------------------ Lote de escaneados
@@ -790,7 +805,7 @@ const ACT = {
   sino: b => { leer(); M[b.dataset.k2] = b.dataset.arg; delete ERR[b.dataset.k2]; pasoMan(); },
   guardarCert: () => guardarCert(),
   lote: () => { ERR = {}; lote(); }, enviarLote: () => enviarLote(),
-  quitarFoto: b => { const o = b.dataset.arg === 'M' ? M : C; if (o === M) leer(); o.foto = ''; o.fotoNombre = ''; o === M ? pasoMan() : pasoCert(); },
+  quitarFoto: b => { const o = b.dataset.arg === 'M' ? M : C; if (o === M) leer(); const i = Number(b.dataset.i || 0), mas = o.fotoMas || []; if (i === 0) { o.foto = mas.shift() || ''; o.fotoNombre = ''; } else mas.splice(i - 1, 1); o.fotoMas = mas; delete ERR.foto; o === M ? pasoMan() : pasoCert(); },
   cal: b => { if (b.dataset.obj === 'M' && M) leer(); const ob = b.dataset.obj === 'C' ? C : M, v = ob[b.dataset.arg] || hoyISO(); CAL = { k: b.dataset.arg, o: b.dataset.obj, y: Number(v.slice(0, 4)), m: Number(v.slice(5, 7)) - 1 }; calendario(); },
   calMes: b => { let m = CAL.m + Number(b.dataset.arg), y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } if (y < 2025 || y > new Date().getFullYear()) return; CAL.m = m; CAL.y = y; calendario(); },
   calDia: b => { const ob = objFecha(CAL.o); ob[CAL.k] = b.dataset.arg; ob['_' + CAL.k] = isoATxt(b.dataset.arg); cerrarAyuda(); delete ERR[CAL.k]; CAL.o === 'M' ? pasoMan() : pasoCert(); },
@@ -960,7 +975,7 @@ async function enviarDirecto(tipo, datos, texto) {
   } catch (e) { ESPERA_MS = antes; if (volver) volver(); miErr((e.message === 'tiempo' ? 'El envío tardó demasiado.' : e.message) + ' Probá de nuevo o con menos archivos.'); }
 }
 function miErr(m) { const e = $('miErr'); if (e) { e.textContent = m; e.hidden = !m; e.scrollIntoView({ block: 'center' }); } }
-const miArch = (o, k) => o[k] ? { base64: o[k], tipo: (o[k].match(/^data:([^;]+)/) || [])[1] || 'image/jpeg', nombre: o[k + 'Nombre'] || '' } : null;
+const miArch = (o, k) => o[k] ? Object.assign({ base64: o[k], tipo: (o[k].match(/^data:([^;]+)/) || [])[1] || 'image/jpeg', nombre: o[k + 'Nombre'] || '' }, (o[k + 'Mas'] || []).length ? { mas: o[k + 'Mas'] } : {}) : null;
 
 // Campos comunes
 const fLab = (t, ayuda) => '<div class="lab"><label>' + t + '</label>' + (ayuda ? '<span class="mu" style="font-size:13px;display:block">' + ayuda + '</span>' : '') + '</div>';
@@ -969,12 +984,16 @@ const fTxt = (k, t, ph) => '<div class="field">' + fLab(t) + '<textarea data-f="
 const fSel = (k, t, ops) => '<div class="field">' + fLab(t) + '<select data-f="' + k + '">' + ops.map(o => { const v = typeof o === 'string' ? o : o[0], n = typeof o === 'string' ? o : o[1]; return '<option value="' + esc(v) + '"' + (F[k] === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>';
 const fSeg = (k, t, ops) => '<div class="field">' + fLab(t) + '<div class="seg" style="flex-wrap:wrap">' + ops.map(v => '<button type="button" class="' + (F[k] === v ? 'sel' : '') + '" data-act="fset" data-k="' + k + '" data-arg="' + esc(v) + '" style="min-width:30%">' + esc(v) + '</button>').join('') + '</div></div>';
 const fChk = (k, t, ops) => { const sel = (F[k] || '').split(' · ').filter(Boolean); return '<div class="field">' + fLab(t) + '<div class="lista" style="grid-template-columns:1fr">' + ops.map(v => '<label class="item" style="cursor:pointer;align-items:center;justify-content:flex-start"><input type="checkbox" data-fchk="' + k + '" value="' + esc(v) + '"' + (sel.indexOf(v) >= 0 ? ' checked' : '') + ' style="width:22px;height:22px"> ' + esc(v) + '</label>').join('') + '</div></div>'; };
-function fFoto(k, t, ayuda) {
-  const v = F[k], pdf = /^data:application\/pdf/.test(v || ''), ya = !v && F[k + 'Url'];
-  return '<div class="field">' + fLab(t, ayuda) + (ya ? '<div class="photo"><b>Archivo ya cargado</b><br><a href="' + esc(F[k + 'Url']) + '" target="_blank" rel="noopener">Ver</a> · se mantiene si no elegís otro</div>' : '') + (v ? '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(F[k + 'Nombre'] || '') + '</span>' : '<img src="' + v + '" alt="Foto cargada">') + '</div>' : '') +
-    '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'c">' + (v ? 'Sacar otra foto' : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'a">Elegir archivo</label></div>' +
-    '<input id="mf_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfoto="' + k + '"><input id="mf_' + k + 'a" type="file" accept="image/*,application/pdf" hidden data-mfoto="' + k + '">' +
-    (v ? '<button class="link" data-act="fquitar" data-k="' + k + '">Quitar</button>' : '') + '</div>';
+function fFoto(k, t, ayuda, max) {
+  // max: cuántas fotos admite el campo (FOTO_MAX por defecto; 1 en las fotos fijas de los extintores)
+  max = max || FOTO_MAX;
+  const v = F[k], pdf = /^data:application\/pdf/.test(v || ''), ya = !v && F[k + 'Url'], todas = v ? [v].concat(F[k + 'Mas'] || []) : [], hay = todas.length < max && !pdf;
+  return '<div class="field">' + fLab(t, ayuda) + (ya ? '<div class="photo"><b>Archivo ya cargado</b><br><a href="' + esc(F[k + 'Url']) + '" target="_blank" rel="noopener">Ver</a> · se mantiene si no elegís otro</div>' : '') +
+    todas.map((x, i) => '<div class="photo">' + (pdf ? '<b>PDF cargado</b><br><span class="mu">' + esc(F[k + 'Nombre'] || '') + '</span>' : '<img src="' + x + '" alt="Foto ' + (i + 1) + '">') +
+      '<br><button class="link" data-act="fquitarF" data-k="' + k + '" data-arg="' + i + '">Quitar' + (todas.length > 1 ? ' la ' + (i + 1) : '') + '</button></div>').join('') +
+    (hay || max === 1 ? '<div class="grid2" style="margin-top:8px"><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'c">' + (v ? (max === 1 ? 'Sacar otra foto' : 'Sacar otra foto') : 'Sacar foto') + '</label><label class="btn sec" style="text-align:center;cursor:pointer" for="mf_' + k + 'a">' + (v && max > 1 ? 'Agregar del teléfono' : 'Elegir del teléfono') + '</label></div>' +
+      '<input id="mf_' + k + 'c" type="file" accept="image/*" capture="environment" hidden data-mfoto="' + k + '" data-max="' + max + '"><input id="mf_' + k + 'a" type="file" accept="image/*,application/pdf"' + (max > 1 ? ' multiple' : '') + ' hidden data-mfoto="' + k + '" data-max="' + max + '">' : '') +
+    (max > 1 ? '<p class="mu" style="font-size:13px;margin:6px 0 0">Hasta ' + max + ' fotos, sacadas en el momento o elegidas del teléfono' + (todas.length ? ' (' + todas.length + ' de ' + max + ')' : '') + '. Un PDF va solo.</p>' : '') + '</div>';
 }
 // Varios archivos (fotos y PDF): F[k] = [{ base64, tipo, nombre }]; F[k + 'Ya'] = los que ya están en el sistema
 const ARCH_MAX = 8;
@@ -1003,13 +1022,20 @@ function mFotos(input, k) {
 }
 const archPeso = L => (L || []).reduce((a, x) => a + String(x.base64 || '').length, 0);
 function mFoto(input, k) {
-  const f = input.files && input.files[0]; if (!f || !F) return;
-  if (input.dataset.pdf && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { input.value = ''; return miErr('Solo se puede subir un archivo PDF. Si el documento está en papel, escanealo como PDF (por ejemplo, con Google Drive › + › Escanear).'); }
-  if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) { if (f.size > 6 * 1024 * 1024) return miErr('El PDF pesa más de 6 MB.'); const rd = new FileReader(); rd.onload = () => { F[k] = rd.result; F[k + 'Nombre'] = f.name; MIV.f(); }; rd.readAsDataURL(f); return; }
-  const img = new Image(), url = URL.createObjectURL(f);
-  img.onload = () => { const s = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = img.width * s; c.height = img.height * s; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    F[k] = c.toDataURL('image/jpeg', 0.7); F[k + 'Nombre'] = ''; URL.revokeObjectURL(url); MIV.f(); };
-  img.src = url;
+  const fs = Array.from(input.files || []), max = Number(input.dataset.max || 1); input.value = ''; if (!fs.length || !F) return;
+  const esPdf = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  if (input.dataset.pdf && !esPdf(fs[0])) return miErr('Solo se puede subir un archivo PDF. Si el documento está en papel, escanealo como PDF (por ejemplo, con Google Drive › + › Escanear).');
+  const pdfs = fs.filter(esPdf), imgs = fs.filter(f => !esPdf(f));
+  if (pdfs.length) {   // un PDF va solo: reemplaza lo que hubiera
+    if (pdfs.length > 1 || imgs.length) return miErr('Un PDF va solo: elegí un único PDF o solo fotos.');
+    const f = pdfs[0]; if (f.size > 6 * 1024 * 1024) return miErr('El PDF pesa más de 6 MB.');
+    const rd = new FileReader(); rd.onload = () => { F[k] = rd.result; F[k + 'Mas'] = []; F[k + 'Nombre'] = f.name; MIV.f(); }; rd.readAsDataURL(f); return;
+  }
+  const previas = max === 1 || /^data:application\/pdf/.test(F[k] || '') ? [] : (F[k] ? [F[k]].concat(F[k + 'Mas'] || []) : []), lugar = max - previas.length;
+  Promise.all(imgs.slice(0, Math.max(lugar, 0)).map(f => achicarFoto(f, 1600, 0.7))).then(L => {
+    if (!F) return; const todas = previas.concat(L.filter(Boolean)); F[k] = todas[0] || ''; F[k + 'Mas'] = todas.slice(1); F[k + 'Nombre'] = '';
+    if (imgs.length > lugar) miErr('Se cargaron ' + max + ' fotos, que es el máximo.'); MIV.f();
+  });
 }
 // Solo PDF (documentos propios): un archivo, sin cámara
 function fPdf(k, t, ayuda) {
@@ -1101,7 +1127,7 @@ function guardarLimpieza() {
   if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario F-AGU-01 firmado.');
   if (F.PROCEDIMIENTO === 'POE propio' && !/https?:/.test(MI.poe.limpieza) && !F.poe) return miErr('Falta la copia del POE propio (es la primera vez).');
   if (F.HORAS_CERRADO && Number(F.HORAS_CERRADO) < 6) return miErr('El sistema tiene que quedar cerrado al menos 6 horas.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.poe; delete d.poeNombre; delete d._f;
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d.poe; delete d.poeNombre; delete d.poeMas; delete d._f;
   d.archivo = miArch(F, 'foto'); if (F.poe) d.poe = miArch(F, 'poe');
   encolarMi('m_limpieza', d, 'Limpieza de ' + F.CODIGO_TANQUE);
 }
@@ -1121,7 +1147,7 @@ function aguaAnalisis() {
 }
 function guardarAnalisis() {
   if (!F.FECHA_TOMA) return miErr('Falta la fecha de la toma.'); if (F.RESULTADO !== 'Pendiente' && !F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF del informe del laboratorio.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_analisis', d, 'Análisis de ' + F.CODIGO_PUNTO);
 }
 
@@ -1141,7 +1167,7 @@ function plagaAviso() {
 }
 function guardarAviso() {
   if (!F.SECTOR) return miErr('Falta el sector.'); if (!F.PLAGA) return miErr('Elegí qué plaga viste.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_plaga_aviso', d, 'Aviso de ' + F.PLAGA.toLowerCase());
 }
 function plagaReg(tipo) {
@@ -1168,7 +1194,7 @@ function plagaReg(tipo) {
 function guardarPlagaReg() {
   if (F.TIPO !== 'Recorrida' && !F.CASO) return miErr('Elegí el caso.'); if (F.CASO === 'NUEVO' && (!F.SECTOR || !F.PLAGA)) return miErr('Para el caso nuevo faltan el sector y la plaga.'); if (F.TIPO === 'Recorrida' && !F.SECTOR) return miErr('Falta el sector recorrido.');
   if (F.TIPO === 'Seguimiento' && (!F.RESULTADO || !F.DECISION)) return miErr('Falta el resultado o la decisión.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario firmado.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_plaga_registro', d, F.TIPO + (F.CASO ? ' de ' + F.CASO : ''));
 }
 
@@ -1212,7 +1238,7 @@ function docNuevo() {
 }
 function guardarDoc() {
   if (!F.TITULO) return miErr('Falta el nombre completo.'); if (F.FECHA_VIGENCIA && F.FECHA_VENCIMIENTO && F.FECHA_VENCIMIENTO < F.FECHA_VIGENCIA) return miErr('El vencimiento es anterior a la vigencia: revisá las fechas.'); if (!F.foto && !F.ID_EDITAR) return miErr('Falta el archivo PDF.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d._f; d.archivo = miArch(F, 'foto');
+  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d._f; d.archivo = miArch(F, 'foto');
   encolarMi('m_documento', d, (F.CODIGO || F.TIPO) + ' · ' + F.TITULO);
 }
 
@@ -1487,7 +1513,7 @@ async function kGuardar() {
   if (!F.APELLIDO_Y_NOMBRE) return miErr('Falta el apellido y nombre.');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   const b = document.querySelector('[data-act="kGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
-  const d = Object.assign({ quien: SES.persona.nombre }, F); ['carnet', 'carnetNombre', 'carnetUrl', 'libreta', 'libretaNombre', 'libretaUrl', 'matricula', 'matriculaNombre', 'matriculaUrl', '_f'].forEach(k => delete d[k]);
+  const d = Object.assign({ quien: SES.persona.nombre }, F); ['carnet', 'carnetNombre', 'carnetUrl', 'carnetMas', 'libreta', 'libretaNombre', 'libretaUrl', 'libretaMas', 'matricula', 'matriculaNombre', 'matriculaUrl', 'matriculaMas', '_f'].forEach(k => delete d[k]);
   if (F.carnet) d.carnetArchivo = miArch(F, 'carnet'); if (F.libreta) d.libretaArchivo = miArch(F, 'libreta'); if (F.matricula) d.matriculaArchivo = miArch(F, 'matricula');
   try { const r = await api('k_persona_guardar', d); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); F = null; KP = null; cocPers(true); }
   catch (e) { if (b) { b.disabled = false; b.textContent = 'Guardar'; } miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); }
@@ -1668,7 +1694,7 @@ function formIncAlta() {
     fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete)') +
     fInp('NRO_EXTINTOR', 'N.º del extintor (opcional)', 'text', 'Si tiene un número pintado o en un cartel') +
     fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica (opcional)', 'date') +
-    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Algo que convenga saber de este extintor');
+    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2], 1)).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Algo que convenga saber de este extintor');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incAltaGuardar">Agregar</button>');
 }
 async function incAltaGuardar() {
@@ -1704,7 +1730,7 @@ function formInc() {
     fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica', 'date', '', 'Está en la tarjeta o grabado en el cilindro. Si no figura, dejalo vacío.') +
     fChk('PROBLEMAS', '¿Tiene algún problema? Marcá todos los que veas (si no tiene ninguno, no marques nada)', (INCX.listas && INCX.listas.problemas) || []) +
     (e.ESTABLECIMIENTO === 'HMH' ? '<p class="mu" style="font-size:13px;margin-top:-6px">Si marcás un problema o alguna respuesta da «No», se avisa a SOMI y a Mantenimiento del HMH en un solo correo con todos los extintores con problemas (al día siguiente a las 6 h y cada 3 días hasta que se marque resuelto).</p>' : '') +
-    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2])).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
+    '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2], 1)).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Si algo dio «No», contá qué pasa');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incGuardar">Guardar</button>');
 }
 // «Todo OK» (19/10/2026): control rápido de un toque, sin fotos. Solo si la carga no está vencida. Con un problema abierto, solo lo hacen quienes pueden marcarlo resuelto
@@ -1805,7 +1831,7 @@ async function incRecGuardar() {
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   if (SES.servicio && !F._ident) return pedirIdentidad(incRecGuardar);
   const d = { SECTOR: F.SECTOR.trim(), OBSERVACIONES: F.OBSERVACIONES || '', puntos: {}, detalles: {}, fotos: {}, quien: SES.persona.nombre, identidad: F._ident || null };
-  INC_PUNTOS.forEach(p => { d.puntos[p[0]] = F['P_' + p[0]]; if (F['P_' + p[0]] === 'No') { d.fotos[p[0]] = F['F_' + p[0]]; d.detalles[p[0]] = F['D_' + p[0]] || ''; } });
+  INC_PUNTOS.forEach(p => { d.puntos[p[0]] = F['P_' + p[0]]; if (F['P_' + p[0]] === 'No') { d.fotos[p[0]] = fotoVal(F, 'F_' + p[0]); d.detalles[p[0]] = F['D_' + p[0]] || ''; } });
   await incSrvEnviar('i_recorrida', d, r => '<div class="notice ok" style="margin-top:24px"><b>Recorrida guardada.</b><br>' + (r.novedades ? r.novedades + (r.novedades > 1 ? ' puntos quedaron como novedades' : ' punto quedó como novedad') + ': Higiene y Seguridad ya está avisada.' : 'Sin novedades: todo en orden.') + '</div>');
 }
 // ------------------------------------------------------------------ Informar una novedad
@@ -1830,7 +1856,7 @@ async function incNovGuardar() {
   if (F.TIPO === 'Se usó un extintor' && L.length && !sel.length) return miErr('Elegí el extintor que se usó.');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   if (SES.servicio && !F._ident) return pedirIdentidad(incNovGuardar);
-  const d = { TIPO: F.TIPO, SECTOR: F.SECTOR.trim(), DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', extintores: sel, quien: SES.persona.nombre, identidad: F._ident || null };
+  const d = { TIPO: F.TIPO, SECTOR: F.SECTOR.trim(), DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? fotoVal(F, 'FOTO') : '', extintores: sel, quien: SES.persona.nombre, identidad: F._ident || null };
   await incSrvEnviar('i_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>Higiene y Seguridad ya está avisada.' + (sel.length ? ' El extintor queda como «Se usó» hasta que se recargue.' : '') + '</div>');
 }
 async function incSrvEnviar(accion, d, ok) {
@@ -1919,7 +1945,7 @@ async function resNovGuardar() {
   if (String(F.DETALLE || '').trim().length < 4) return miErr('Contá brevemente qué viste.');
   if (F.FOTO && !/^data:image\//.test(F.FOTO)) return miErr('La foto tiene que ser una imagen (no PDF).');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
-  const d = { SITIO: F.SITIO || SES.est, SECTOR: F.SECTOR.trim(), TIPOS: tipos, TIPO: tipos.join('; '), CORRIENTE: F.CORRIENTE, DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? F.FOTO : '', quien: SES.persona.nombre };
+  const d = { SITIO: F.SITIO || SES.est, SECTOR: F.SECTOR.trim(), TIPOS: tipos, TIPO: tipos.join('; '), CORRIENTE: F.CORRIENTE, DETALLE: F.DETALLE.trim(), foto: /^data:image\//.test(F.FOTO || '') ? fotoVal(F, 'FOTO') : '', quien: SES.persona.nombre };
   await resNovEnviar('m_res_novedad', d, r => '<div class="notice ok" style="margin-top:24px"><b>Novedad informada.</b><br>' + (r.gravedad && r.gravedad !== 's/d' ? 'Gravedad: <b>' + esc(r.gravedad) + '</b>. ' : '') + (r.peligrosa ? 'Quedó marcada como de <b>residuos peligrosos</b>: aparece primero en la lista. ' : '') + 'Higiene y Seguridad la ve en el sistema.</div>' +
     (r.lesion ? '<div class="notice" style="background:var(--erbg);color:var(--er);margin-top:12px"><b>Alguien se lastimó:</b> que vaya a la guardia y avisá a Higiene y Seguridad. Además, cargalo en <b>Siniestros</b>.</div>' : ''));
 }
@@ -2326,7 +2352,8 @@ Object.assign(ACT, {
   guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
   sinCorr: b => sinCorr(b.dataset.arg), sinVolverVer: () => { F = null; SIN_VER ? sinVer(SIN_VER) : siniestros(); }, sinNovCorr: b => sinNovCorr(b.dataset.arg), sinAnular: b => { F = null; sinAnular(b.dataset.arg); },
   sinAnularNov: b => { F = null; const s = SIN && SIN.lista.find(x => x.novedades.some(n => n.id === b.dataset.arg)); if (s) sinAnular(s.id, b.dataset.arg); }, sinAnularOk: () => sinAnularOk(), formularios: () => formularios(), contratos: () => contratos(), docs: () => { F = null; docs(); }, docNuevo: () => { F = null; docNuevo(); }, guardarDoc: () => guardarDoc(),
-  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.k === 'VTO_NOSE' && F.VTO_NOSE === b.dataset.arg ? '' : b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); }, fquitarN: b => { if (!F || !F[b.dataset.k]) return; F[b.dataset.k].splice(Number(b.dataset.arg), 1); MIV.f(); },
+  fset: b => { if (!F) return; F[b.dataset.k] = b.dataset.k === 'VTO_NOSE' && F.VTO_NOSE === b.dataset.arg ? '' : b.dataset.arg; MIV.f(); }, fquitar: b => { if (!F) return; F[b.dataset.k] = ''; F[b.dataset.k + 'Mas'] = []; F[b.dataset.k + 'Nombre'] = ''; MIV.f(); },
+  fquitarF: b => { if (!F) return; const k = b.dataset.k, i = Number(b.dataset.arg), mas = F[k + 'Mas'] || []; if (i === 0) { F[k] = mas.shift() || ''; F[k + 'Nombre'] = ''; } else mas.splice(i - 1, 1); F[k + 'Mas'] = mas; MIV.f(); }, fquitarN: b => { if (!F || !F[b.dataset.k]) return; F[b.dataset.k].splice(Number(b.dataset.arg), 1); MIV.f(); },
   soyRed: b => { const p = MI && MI.red[Number(b.dataset.arg)]; if (!p) return; SES.persona = { nombre: p.nombre, funcion: p.rol || 'Red HyS', ests: [SES.est], red: true }; LS.set('ses', SES); inicio(); }
 });
 document.addEventListener('input', e => { const t = e.target; if (t.dataset.f && F) F[t.dataset.f] = t.value; });
