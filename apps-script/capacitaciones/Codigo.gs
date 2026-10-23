@@ -1902,9 +1902,11 @@ function generarPdf_(codigo, rehacer) {
   const C = tabla_('CERTIFICADOS'), k = C.filas.findIndex(r => r[C.i('ID_CERTIFICADO')] === codigo); if (k < 0) throw new Error('No existe el certificado ' + codigo + '.');
   const c = obj_(C, C.filas[k]);
   if (/anulad/i.test(c.ESTADO)) throw new Error('El certificado ' + codigo + ' está anulado.');
+  const capC = capDe_(c.CODIGO) || {}, propio = modeloPropio_(capC) ? 'modelo:' + (idDeLink_(capC.PLANTILLA_CERT) || String(capC.PLANTILLA_CERT).trim()) : '';
   if (!rehacer) {
     const id = c.ARCHIVO_ID || (/^CHYS-/.test(codigo) ? '' : idDeLink_(c.LINK_PDF));
-    if (id) { try { const f = DriveApp.getFileById(id); if (!f.isTrashed()) return f.getUrl(); } catch (e) { /* se arma de nuevo */ } }
+    // Con modelo propio: si el PDF guardado se armó con otro modelo, se rehace solo (el anterior queda como «ANTERIOR_»)
+    if (id) { try { const f = DriveApp.getFileById(id); if (!f.isTrashed()) { if (!propio || f.getDescription() === propio) return f.getUrl(); rehacer = true; } } catch (e) { /* se arma de nuevo */ } }
     if (!/^CHYS-/.test(codigo) && !vacio_(c.LINK_PDF)) return c.LINK_PDF;   // certificados del sistema actual
   }
   const R = recursos_(), x = datosCert_(c);
@@ -1914,6 +1916,7 @@ function generarPdf_(codigo, rehacer) {
   const anio = isoDe_(c.FECHA).slice(0, 4) || Utilities.formatDate(new Date(), ZONA, 'yyyy'), cap = capDe_(c.CODIGO) || {};
   const dest = subcarpeta_(subcarpeta_(R.certs, anio), c.CODIGO + ' · ' + String(cap.NOMBRE || '').slice(0, 60));
   const f = dest.createFile(copia.getAs('application/pdf').setName(nombreArchivoCert_(c)));
+  if (propio) f.setDescription(propio);
   copia.setTrashed(true);
   f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   // El PDF anterior no se borra: queda en la misma carpeta con «ANTERIOR_» adelante (23/10/2026)
