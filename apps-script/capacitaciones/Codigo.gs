@@ -1982,15 +1982,22 @@ function modeloDesdePptx_(idPptx, nombre) {
 }
 // Recorre todas las formas (también dentro de grupos) y cambia los datos de ejemplo por los campos del sistema
 function camposEnModelo_(s) {
-  const hechos = [], formas = [];
-  const juntar = els => els.forEach(el => { const ty = el.getPageElementType(); if (ty === SlidesApp.PageElementType.GROUP) juntar(el.asGroup().getChildren()); else if (ty === SlidesApp.PageElementType.SHAPE) formas.push(el.asShape()); });
+  const hechos = [], textos = [];
+  const juntar = els => els.forEach(el => {
+    const ty = el.getPageElementType();
+    if (ty === SlidesApp.PageElementType.GROUP) juntar(el.asGroup().getChildren());
+    else if (ty === SlidesApp.PageElementType.SHAPE) textos.push(el.asShape().getText());
+    else if (ty === SlidesApp.PageElementType.TABLE) { const tb = el.asTable(); for (let i = 0; i < tb.getNumRows(); i++) for (let j = 0; j < tb.getNumColumns(); j++) { try { textos.push(tb.getCell(i, j).getText()); } catch (e) { /* celda combinada */ } } }
+  });
   juntar(s.getPageElements());
-  formas.forEach(sh => {
-    let t = ''; try { t = sh.getText().asString().replace(/\s+/g, ' ').trim(); } catch (e) { return; }
-    if (/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{4}$/.test(t)) { sh.getText().setText('{{MES}}'); hechos.push('MES'); }
-    else if (t === 'Carlos Méndez') { sh.getText().setText('{{NOMBRE}}'); hechos.push('NOMBRE'); }
-    else if (/^DNI:/.test(t)) { sh.getText().setText('DNI: {{DNI}} ({{LUGAR}})'); hechos.push('DNI'); }
-    else if (/completado con éxito/.test(t)) { sh.getText().setText('{{TEXTO}}'); hechos.push('TEXTO'); }
+  const cambiar = (tx, patron, nuevo, campo) => { const rs = tx.find(patron); rs.forEach(r => r.setText(nuevo)); if (rs.length) hechos.push(campo); };
+  textos.forEach(tx => {
+    const t = tx.asString().replace(/\s+/g, ' ').trim();
+    if (/^[A-ZÁÉÍÓÚ][a-záéíóú]+ \d{4}$/.test(t)) { tx.setText('{{MES}}'); hechos.push('MES'); return; }
+    if (/completado con éxito/.test(t)) { tx.setText('{{TEXTO}}'); hechos.push('TEXTO'); return; }
+    cambiar(tx, 'Carlos M[ée]ndez', '{{NOMBRE}}', 'NOMBRE');
+    cambiar(tx, '\\(Laboratorio Central[^)]*\\)', '({{LUGAR}})', 'LUGAR');
+    cambiar(tx, '\\d{1,2}\\.\\d{3}\\.\\d{3}', '{{DNI}}', 'DNI');
   });
   return hechos;
 }
