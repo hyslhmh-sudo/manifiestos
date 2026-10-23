@@ -368,7 +368,8 @@ function dacSupervision_() {
   const rep = {
     desde: dacTxtF_(dacMas_(hoy, -6)), hasta: dacTxtF_(hoy),
     cargas7: D.L.filter(d => { const f = fecha(d); return f && f >= lim7; }).length,
-    reportaron: adhesion.filter(a => a.d7 > 0).map(a => a.nombre), sinReportar: adhesion.filter(a => a.d7 === 0).map(a => a.nombre), totalOperarios: adhesion.length,
+    reportaron: adhesion.filter(a => a.d7 > 0).sort((a, b) => b.d7 - a.d7).map(a => ({ nombre: a.nombre, n: a.d7 })),
+    sinIdentificar: D.L.filter(d => { const f = fecha(d); return f && f >= lim7 && !ops.some(o => limpio_(o.COD) === d.OPERARIO_COD); }).length, sinReportar: adhesion.filter(a => a.d7 === 0).map(a => a.nombre), totalOperarios: adhesion.length,
     acciones7: acciones.filter(a => { const f = dacFecha_(a.fecha); return f && f >= lim7; }),
     paraLaEmpresa: acciones.filter(a => a.empresa && a.abierta),
     abiertos: D.L.filter(d => !/^Cerrado/.test(d.ESTADO)).map(d => ({ ID: d.ID, FECHA: d.FECHA, TIPOS: d.TIPOS, SERVICIO: d.SERVICIO, UBICACION: d.UBICACION, ESTADO: d.ESTADO, GRAVEDAD: d.GRAVEDAD, CAUSA: d.CAUSA })),
@@ -384,6 +385,8 @@ function dacReporteHtml_(R) {
   return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:680px">' +
     '<h2 style="color:#0D313F;margin:0 0 4px">Desvíos en el recorrido de residuos · HMH</h2><p style="color:#555;margin:0 0 14px">Reporte semanal para Star Union · del ' + f(R.desde) + ' al ' + f(R.hasta) + '</p>' +
     '<h3 style="color:#0D313F">1. Reportes de los operarios</h3><p><b>' + R.cargas7 + '</b> desvío(s) registrados en la semana. Reportaron <b>' + R.reportaron.length + ' de ' + R.totalOperarios + '</b> operarios.</p>' +
+    (R.reportaron.length ? '<p>Reportaron: ' + R.reportaron.map(x => '<b>' + e(x.nombre) + '</b> (' + x.n + ')').join(', ') + '.</p>' : '') +
+    (R.sinIdentificar ? '<p>Sin operario identificado (formulario anterior o carga de HyS): ' + R.sinIdentificar + '.</p>' : '') +
     (R.sinReportar.length ? '<p>Sin reportes en la semana: ' + e(R.sinReportar.join(', ')) + '.</p>' : '') +
     '<h3 style="color:#0D313F">2. Acciones iniciadas por Higiene y Seguridad en la semana</h3>' +
     li(R.acciones7.map(a => '<li>' + f(a.fecha) + ' · <b>' + e(a.tipo) + '</b>' + (a.destinatario && a.destinatario !== a.tipo ? ' · ' + e(a.destinatario) : '') + ' · ' + e(a.desvios.join(', ')) + ' · ' + e(a.estado) + '</li>')) +
