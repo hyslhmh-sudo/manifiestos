@@ -17,7 +17,7 @@ async function trabajadores(cod) {
         '<td class="peq">' + esc(f.v[4]) + '</td><td class="peq">' + esc(f.v[5]) + '</td><td class="peq">' + esc(f.v[7]) + '</td><td class="peq">' + esc(f.v[8]) + '</td><td><span class="chip ' + (!f.v[19] || f.v[19] === 'Activo' ? 'ok' : /^(Baja|Traslado)/.test(f.v[19]) ? 'gr' : 'wa') + '">' + esc(f.v[19] || 'Activo') + '</span></td></tr>').join('') +
       '</tbody></table>' + (D.filas.length ? '' : '<div class="vacio">Nadie coincide con la búsqueda.</div>') + '</section>'));
     $('tEst').onchange = e => { location.hash = '#trab/' + encodeURIComponent(e.target.value); };
-    const buscar = () => { TRAB.q = $('tQ').value.trim(); cargar(); };
+    const buscar = () => { let q = $('tQ').value.trim(); if (/^[\d.\s-]+$/.test(q)) q = q.replace(/\D/g, ''); TRAB.q = q; cargar(); };   // DNI con puntos: se busca sin puntos
     $('tBus').onclick = buscar; $('tQ').onkeydown = e => { if (e.key === 'Enter') buscar(); };
     if ($('tNuevo')) $('tNuevo').onclick = () => fichaTrab(null);
     document.querySelectorAll('tr.cl').forEach(tr => tr.onclick = () => fichaTrab(TRAB.datos.filas[tr.dataset.i]));
@@ -66,12 +66,12 @@ function fichaTrab(f) {
   }
   if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
     m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
-    $('tBaja').onclick = async () => { if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
-      const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+    $('tBaja').onclick = async ev => { const b = ev.currentTarget; if (b.disabled) return; if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
+      b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); } finally { b.disabled = false; } if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
     $('tTras').onclick = () => {
       m.extra.innerHTML = '<label class="f">Trasladar a<select class="c" id="tDest">' + selectorEst('', true) + '</select></label><button class="btn pri" id="tTrasOk" style="align-self:flex-end">Confirmar traslado</button>';
-      $('tTrasOk').onclick = async () => { const dest = $('tDest').value; if (!dest) return;
-        const r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+      $('tTrasOk').onclick = async ev => { const dest = $('tDest').value, b = ev.currentTarget; if (!dest || b.disabled) return;
+        b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); } finally { b.disabled = false; } if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
     };
   }
 }

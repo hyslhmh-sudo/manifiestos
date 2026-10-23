@@ -23,7 +23,7 @@ async function gestion(fresco) {
   const sub = (location.hash.split('/')[1] || 'plan');
   if (sub === 'alcance') return gesAlcance(fresco);
   if (sub === 'reglas') return gesReglas(fresco);
-  if (!GESD || fresco) { cargando('#ges', 'Leyendo el plan de acción único…'); try { GESD = await api('p_ges_datos', {}, 180000); } catch (e) { return; } }
+  if (!GESD || fresco) { cargando('#ges', 'Leyendo el plan de acción único…'); try { GESD = await api('p_ges_datos', {}, 180000); GES_T = Date.now(); } catch (e) { return; } }
   if (!GESD.ok) return marco('#ges', gesCab('Gestión', '') + '<div class="aviso error">' + esc(GESD.mensaje || GESD.error || 'No se pudo leer.') + (/instalar|desconocida/i.test(GESD.mensaje || GESD.error || '') ? ' Falta instalar Gestion.gs en el Sistema HyS.' : '') + '</div>');
   if (sub === 'hallazgos') return gesHallazgos();
   if (sub === 'bandeja') return gesBandeja();
@@ -219,7 +219,7 @@ const gesNomA = c => ((GESA && GESA.establecimientos.find(e => e.cod === c)) || 
 // ------------------------------------------------------------------ Elevar a la Dirección (14.63)
 // Elige establecimiento y acciones, las marca «Elevada» con la fecha y copia el correo para pegar. El sistema no envía nada.
 async function gesElevar(cod) {
-  if (!cod) { toast('Trayendo las recomendaciones de los informes nuevos…'); try { await api('p_ges_traer', { solo: 'plan' }, 180000); GESD = await api('p_ges_datos', {}, 180000); } catch (e) { return; } }
+  if (!cod) { toast('Trayendo las recomendaciones de los informes nuevos…'); try { await api('p_ges_traer', { solo: 'plan' }, 180000); GESD = await api('p_ges_datos', {}, 180000); GES_T = Date.now(); } catch (e) { return; } }
   const H = {}; GESD.hallazgos.forEach(h => H[h.ID] = h);
   const cand = GESD.acciones.filter(a => a.abierta && !a.FECHA_ELEVADA && a.ESTADO !== 'Pendiente de recursos');
   const cods = Array.from(new Set(cand.map(a => a.ESTABLECIMIENTO))).sort();

@@ -9,7 +9,6 @@ const SEG_URL = NOTA_URL + '?p=seguimiento';
 const REC_URL = NOTA_URL + '?p=recibida';
 const ANTE_URL = 'https://docs.google.com/spreadsheets/d/1OZmvW2-FypFH78tUMrxT_xSGGBtpCckGPAw8MkHyRuw/edit#gid=6';
 const CAP_LIBRO = 'https://docs.google.com/spreadsheets/d/1Cg8884XTihxQYRc7CE1JPqngTquMpNr5uqQPot4uhGI/edit';
-const CAP_PANEL = RESPALDO ? 'https://script.google.com/macros/s/AKfycbwKduTFNC4b6s5OLYcPNCjI1GbgQD2ymFN5yqBK7D1fh1pPRMzS_kpB4khnKqEhu4qYEA/exec' : 'https://hyslhmh-sudo.github.io/capacitaciones/panel.html';   // sin GitHub: la aplicación de Google directa (pide la clave del panel en el link privado)
 let CAPT = null, CAPRED = 'Red Trelew', CAPBANDA = '', CAPTODOS = false;
 async function capApi(accion, datos, ms) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 120000);

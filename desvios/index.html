@@ -99,7 +99,7 @@ const CAUSAS = ['No había lugar: todos los contenedores estaban llenos', 'Habí
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('desv_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set: (k, v) => { try { localStorage.setItem('desv_' + k, JSON.stringify(v)); } catch (e) {} } };
+  set: (k, v) => { try { localStorage.setItem('desv_' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };   // false = no hay lugar en el teléfono
 let L = LS.get('listas', null), YO = LS.get('yo', null), F = null, PISO = 'Planta baja';
 const QR = new URLSearchParams(location.search).get('p');   // ?p=PB-06 (QR pegado en el punto)
 
@@ -272,8 +272,15 @@ async function enviar() {
   const r = await mandar(datos);
   if (r && r.ok) { if (seg) { const r2 = await mandar(seg); if (!(r2 && r2.ok)) { const q = cola(); q.push(seg); LS.set('cola', q); red(); } else (L.seguir || []).forEach(x => { if (F.seg[x.id]) x.punto = ''; }); } return listo(r); }
   if (r && r.error && !r.red) { b.disabled = false; b.textContent = 'Enviar'; if (/DNI/.test(r.error)) { YO = null; LS.set('yo', null); return pantallaQuien(r.error); } return pantallaCarga(r.error); }
-  const q = cola(); q.push(datos); if (seg) q.push(seg); LS.set('cola', q); red();
-  bar(null); $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Quedó guardado en el teléfono.</b><br>No hay señal: se manda solo cuando vuelva la conexión. No lo cargues de nuevo.</div>' + otraVez();
+  // Sin señal: queda en la cola del teléfono. Si no entra (fotos muy pesadas), se guarda sin fotos y se avisa; si tampoco entra, no se borra la pantalla.
+  const q = cola(); q.push(datos); if (seg) q.push(seg);
+  let sinFotos = false;
+  if (!LS.set('cola', q)) {
+    if (datos.fotos && datos.fotos.length) { datos.fotos = []; sinFotos = LS.set('cola', q); }
+    if (!sinFotos) { b.disabled = false; b.textContent = 'Enviar'; return pantallaCarga('No hay señal y el teléfono no tiene lugar para guardar este registro. Esperá a tener señal y tocá «Enviar» de nuevo (no cierres esta pantalla).'); }
+  }
+  red();
+  bar(null); $('app').innerHTML = '<div class="notice" style="margin-top:24px"><b>Quedó guardado en el teléfono' + (sinFotos ? ', sin las fotos' : '') + '.</b><br>No hay señal: se manda solo cuando vuelva la conexión. No lo cargues de nuevo.' + (sinFotos ? '<br>Las fotos no entraban en la memoria del teléfono: si podés, mandalas después por otro medio a Higiene y Seguridad.' : '') + '</div>' + otraVez();
   activarOtraVez();
 }
 async function mandar(d) {
@@ -281,9 +288,14 @@ async function mandar(d) {
   catch (e) { return { ok: false, red: true }; }
 }
 async function vaciarCola() {
-  if (!navigator.onLine) return; let q = cola(); if (!q.length) return; const quedan = [];
-  for (const d of q) { const r = await mandar(d); if (!(r && r.ok) && (!r || r.red)) quedan.push(d); }
-  LS.set('cola', quedan); red();
+  // Una sola a la vez: al abrir y al volver la señal pueden dispararse dos juntas y mandar lo mismo dos veces
+  if (vaciarCola.ocupado || !navigator.onLine) return; let q = cola(); if (!q.length) return; const quedan = [];
+  vaciarCola.ocupado = true;
+  try { for (const d of q) { const r = await mandar(d); if (!(r && r.ok) && (!r || r.red)) quedan.push(d); } }
+  finally { vaciarCola.ocupado = false; }
+  // Lo que se agregó a la cola mientras se enviaba no se pierde
+  const nuevos = cola().slice(q.length);
+  LS.set('cola', quedan.concat(nuevos)); red();
 }
 function otraVez() { return '<div style="display:flex;flex-direction:column;gap:10px;margin-top:18px"><button class="btn pri" id="otro">Registrar otro desvío</button><button class="btn" id="mismo">Otro en el mismo lugar</button></div>'; }
 function activarOtraVez() { const pto = F.punto; $('otro').onclick = () => nuevo(); $('mismo').onclick = () => { nuevo(); F.punto = pto; pantallaCarga(); }; }
