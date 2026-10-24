@@ -2489,7 +2489,7 @@ function enviarCertificadosLaboratorio() { Logger.log(JSON.stringify(enviarCerti
 // =====================================================================
 const INV_TANDA = 90;   // correos por tanda (Gmail: conviene no pasar de 100 destinatarios por mensaje)
 function fechaNum_(v) { const i = isoDe_(v); return i ? Number(i.replace(/-/g, '')) : 0; }
-function nombresEst_() { const m = {}; try { const l = listasRegistro_(); l.trelew.concat(l.chubut).forEach(x => { m[String(x[0]).split('|')[0]] = x[1]; }); } catch (e) { /* sin listas */ } return m; }
+function nombresEst_() { const m = { SIN_ASIGNAR: 'Sin establecimiento asignado' }; try { const E = tabla_('ESTABLECIMIENTOS', SpreadsheetApp.openById(ID_COMUN)); E.filas.forEach(r => { const c = String(r[E.i('CODIGO')] || '').trim(); if (c) m[c] = r[E.i('NOMBRE_OFICIAL')] || c; }); } catch (e) { /* sin el libro común */ } return m; }
 function baseCorreos_() {
   const porDni = {}, nomEst = nombresEst_(), ok = v => !vacio_(v);
   const P = tabla_('PERSONAS'), pi = P.i;
