@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-24 · 5.9';
+const VERSION_CAP = '2026-10-24 · 5.10';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -2490,8 +2490,90 @@ function enviarCertificadosLaboratorio() { Logger.log(JSON.stringify(enviarCerti
 const INV_TANDA = 90;   // correos por tanda (Gmail: conviene no pasar de 100 destinatarios por mensaje)
 function fechaNum_(v) { const i = isoDe_(v); return i ? Number(i.replace(/-/g, '')) : 0; }
 function nombresEst_() { const m = { SIN_ASIGNAR: 'Sin establecimiento asignado' }; try { const E = tabla_('ESTABLECIMIENTOS', SpreadsheetApp.openById(ID_COMUN)); E.filas.forEach(r => { const c = String(r[E.i('CODIGO')] || '').trim(); if (c) m[c] = r[E.i('NOMBRE_OFICIAL')] || c; }); } catch (e) { /* sin el libro común */ } return m; }
+// ===== Grupos para invitar (servicio y función) =====
+const GRUPOS_FUNCION = [
+  ['Estudiantes', /estudiante|practicante/],
+  ['Higiene y Seguridad', /higiene y seguridad|seguridad e higiene/],
+  ['Instrumentación quirúrgica', /instrument|inst\.? quir|instr\.quir/],
+  ['Esterilización', /esteriliz/],
+  ['Farmacia', /farmac/],
+  ['Laboratorio y hemoterapia', /bioqu|laborat|microbi|citotecn|extraccion|analisis q|quimic|biotecn|an\. q|hemote|inmunohemat|hematolog|anatomia patol|anatomia$/],
+  ['Imágenes (técnicos y licenciados)', /^(tec|lic|tecnic|licenc|esp\. en diag)[^·]*(radiolog|rayos|imag|bioimag|radiodiag)|^radiolog|^tecnico\/a · rayos|rayos \/ imagenes/],
+  ['Médicos', /medic|^med\.|medco|meedico|cirujan|pediatra|neonatolog|psiquiatr|traumatolog|anestesi|tocogine|cardiolog|urolog|nefrolog|neurolog|neurociruj|oftalm|dermat|endocrin|gastroent|otorrin|neumon|reumat|diabet|^patolog|infectolog|epidemiolog|residente|ginecolog|mastol|generalista|^obstetra$|^clinico/],
+  ['Enfermería', /enferm|ayudante enf|asistente de enf/],
+  ['Obstétricas', /obstet|obtetr/],
+  ['Kinesiología y rehabilitación', /kines|knt|fisiot|fonoaud|fonodiol|terap(ista|ia) ocup|ter\. ocup|terapista ocupa|psicomotr|musicoter/],
+  ['Psicología y trabajo social', /psicolog|psicopedag|ninez|salud mental|adicc|trabaj(o|ador|adora) social|trab\.social|servicio social|servcio social|acomp/],
+  ['Nutrición', /nutri/],
+  ['Odontología', /odont|dental|protes/],
+  ['Agentes sanitarios (TCST)', /tcst|t\.c\.s\.t|tsct|comunitari|agente sanit/],
+  ['Lavadero y ropería', /lavader|lavand|planch|costur|roper/],
+  ['Cocina', /cocin|gastronom/],
+  ['Mantenimiento', /manten|electric|albanil|soldad|maestro mayor|constr|electromed|bioing|biomed/],
+  ['Choferes, camilleros y radio', /chofer|traslado|camiller|radio operador|operador radio/],
+  ['Portería y seguridad', /porter|seguridad|vigilan|sereno|peon/],
+  ['Limpieza y mucamas', /mucam|maestranza|limpieza|camarer|moza|mozo|operativ|operador\/a de apoyo|operadora? de apoyo|serv generales|mayordomo|eviscer/],
+  ['Administrativos', /administ|admistr|arministr|secretar|contad|asesor|legal|informat|estadist|despach|telefon|adscript|rendicion|rrhh|comunic|sociolog|comun\. social|cadete|azafata|jefatura/],
+  ['Docentes', /docente|profesor/]
+];
+const AREAS_SERVICIO = [
+  ['PROSATE', /prosate/],
+  ['Odontología', /odont/],
+  ['Salud mental', /salud mental|psiq|\bcit\b|c\.i\.t|psicolog|dispositiv|centro de dia/],
+  ['Primer nivel · Área Externa · CAPS', /caps|primer nivel|area externa|area ext|cesia|atencion comunitaria|centro perif|tcst|vacun|inmuniz|incluir salud/],
+  ['Terapia intensiva', /\buti|terapia|ucip|utip|utia|utbi|critico|ucin/],
+  ['Pediatría y neonatología', /neonat|pediatr|nino|lactario/],
+  ['Tocoginecología y obstetricia', /toco|ginec|obst|maternid|madres/],
+  ['Quirófano y cirugía', /quirof|quirurg|cirug|cirujia|anestes|instrument|c\. quir|centro quir/],
+  ['Guardia y emergencias (UMU, SEM 107)', /umu|sem 107|guardia|emergenc|\bdau|triage|fsurados/],
+  ['Laboratorio, hemoterapia y patología', /laborat|bioqu|bacter|hemoter|banco de sangre|anatom|patolog/],
+  ['Diagnóstico por imágenes', /imag|rayos|^radio|radiograf|bioim|radiolog/],
+  ['Rehabilitación y kinesiología', /rehabil|kines|fonoaud|medicina fisica|psicomotr/],
+  ['Farmacia y oxígeno', /farmac|oxigeno/],
+  ['Esterilización', /esteril/],
+  ['Alimentación y cocina', /aliment|cocina|nutri|dieto/],
+  ['Lavadero y ropería', /lavader|roper/],
+  ['Mantenimiento e infraestructura', /manten|edificio|recurso fisico|equipamiento|bioing|electromed/],
+  ['Limpieza y servicios generales', /limpieza|mucam|servicios? generales|serv\. generales|maestranza|tercerizada|sup\. de limp/],
+  ['Transporte y traslados', /transport|chofer|traslado|camiller|azafata|derivacion/],
+  ['Portería y seguridad', /porter|seguridad|vigilan/],
+  ['Higiene y Seguridad, infecciones y epidemiología', /higiene|epidemi|infeccion|salvaguarda|medicina del trabajo/],
+  ['Servicio social', /social/],
+  ['Docencia y residencias', /residen|capacitacion|escuela|docen/],
+  ['Clínica, internación y consultorios', /clinica|medicina interna|internac|prevalente|cuidados|hospital de dia|hospital modular|pasillo|cardiol|oncol|nefrol|neurol|endosc|gastro|urolog|oftalm|otorrino|traumat|trumat|infecto|dermat|consultorio|cons\.|hiperb|camara|cirugia|medic|departamento medico/],
+  ['Enfermería (supervisión y planta)', /enferm|enermeria|superv/],
+  ['Administración y gestión', /administ|admisi|arancel|archivo|compras|contab|contable|tesorer|personal|rrhh|recursos humanos|mesa de entrada|despacho|estadist|inform|sistemas|patrimonio|deposito|economato|uau|atencion usuario|direcc|director|dir\.|legal|auditor|calidad|gestion|coordinac|rendicion|comunicac|conmutador|registro de bienes|inventar|jefe|telesalud|bienes|operaciones|epidem/]
+];
+function normG_(v) { return String(v == null ? '' : v).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+function grupoFuncion_(f) {
+  const t = normG_(f); if (!t || t === 's/d') return 'Sin dato';
+  const partes = t.split(' · '), gen = /^(profesional de salud no medico|tecnico\/a|otra|administrativo\/a)$/;
+  const prueba = s => { for (let i = 0; i < GRUPOS_FUNCION.length; i++) if (GRUPOS_FUNCION[i][1].test(s)) return GRUPOS_FUNCION[i][0]; return ''; };
+  if (partes.length > 1 && gen.test(partes[0])) return prueba(partes.slice(1).join(' · ')) || prueba(partes[0]) || 'Otras funciones';
+  return prueba(partes[0]) || prueba(t) || 'Otras funciones';
+}
+function areaServicio_(s) {
+  const t = normG_(s); if (!t || t === 's/d') return 'Sin dato';
+  for (let i = 0; i < AREAS_SERVICIO.length; i++) if (AREAS_SERVICIO[i][1].test(t)) return AREAS_SERVICIO[i][0];
+  return 'Otros servicios';
+}
+// Establecimientos para invitar: nombre oficial y área programática; lo que no es de la red va como «Otras instituciones»
+function estInfo_() {
+  const I = { nom: { SIN_ASIGNAR: 'Sin establecimiento asignado' }, area: {}, idx: {} };
+  try { const E = tabla_('ESTABLECIMIENTOS', SpreadsheetApp.openById(ID_COMUN)); E.filas.forEach(r => { const c = String(r[E.i('CODIGO')] || '').trim(); if (!c) return;
+    I.nom[c] = r[E.i('NOMBRE_OFICIAL')] || c; I.area[c] = String(r[E.i('AREA_PROGRAMATICA')] || '').replace(/^\s*[ÁA]rea Program[áa]tica\s*/i, '').trim() || 's/d';
+    [c, r[E.i('NOMBRE_OFICIAL')], r[E.i('NOMBRE_CORTO')]].forEach(x => { if (x) I.idx[normG_(x)] = c; }); }); } catch (e) { /* sin el libro común */ }
+  return I;
+}
+function estResolver_(I, v) {
+  const t = String(v == null ? '' : v).replace(/^\s*otra:\s*/i, '').trim(), n = normG_(t);
+  if (!n || /^(s\/d|nc|n\/c|sin|no|ninguna|_|no aplica\.?|no pertenezco|sin establecimiento asignado|sin_asignar)$/.test(n) || t === 'SIN_ASIGNAR') return { estN: 'Sin establecimiento asignado', area: 'Sin establecimiento', estO: '' };
+  const c = I.nom[t] && t !== 'SIN_ASIGNAR' ? t : I.idx[n];
+  if (c) return { estN: I.nom[c], area: I.area[c] || 's/d', estO: '' };
+  return { estN: 'Otras instituciones', area: 'Otras instituciones', estO: t };
+}
 function baseCorreos_() {
-  const porDni = {}, nomEst = nombresEst_(), ok = v => !vacio_(v);
+  const porDni = {}, EI = estInfo_(), ok = v => !vacio_(v);
   const P = tabla_('PERSONAS'), pi = P.i;
   P.filas.forEach(r => {
     const raw = String(r[pi('DNI')] || '').trim(), dni = soloDni_(raw) || raw; if (!dni) return;
@@ -2529,7 +2611,8 @@ function baseCorreos_() {
   });
   return Object.keys(porDni).map(k => porDni[k])
     .filter(o => !(bajas[o.dni] && !activos[o.dni] && /^red/i.test(o.pub)))
-    .map(o => ({ dni: o.dni, nom: o.nom || 's/d', est: o.est || 's/d', estN: nomEst[o.est] || o.est || 's/d', serv: o.serv || 's/d', func: o.func || 's/d', pub: o.pub || 's/d', correo: o.correo, h: o.h || {} }))
+    .map(o => { const e = estResolver_(EI, o.est); return { dni: o.dni, nom: o.nom || 's/d', est: o.est || 's/d', estN: e.estN, estO: e.estO, area: e.area,
+      serv: o.serv || 's/d', func: o.func || 's/d', sg: areaServicio_(o.serv), fg: grupoFuncion_(o.func), pub: o.pub || 's/d', correo: o.correo, h: o.h || {} }; })
     .sort((a, b) => a.nom.localeCompare(b.nom, 'es'));
 }
 function hojaSistema_(nombre, titulo, nota, cab) {
@@ -2538,11 +2621,12 @@ function hojaSistema_(nombre, titulo, nota, cab) {
   return sh;
 }
 function escribirBaseCorreos_(L) {
-  const cab = ['DNI', 'APELLIDO_Y_NOMBRE', 'ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'PUBLICO', 'CORREO', 'HECHAS'];
+  const cab = ['DNI', 'APELLIDO_Y_NOMBRE', 'ESTABLECIMIENTO', 'SERVICIO_AREA', 'FUNCION_GRUPO', 'PUBLICO', 'CORREO', 'HECHAS'];
   const sh = hojaSistema_('_CORREOS_BASE', '_CORREOS_BASE · Personas y correos para invitar', 'Hoja de sistema: la arma el portal (9 · Capacitaciones › Invitar) o el menú «Correos: actualizar la hoja CORREOS». No se edita a mano.', cab);
+  sh.getRange(5, 1, 1, cab.length).setValues([cab]);
   const ult = sh.getLastRow(); if (ult >= 6) sh.getRange(6, 1, ult - 5, cab.length).clearContent();
   if (!L.length) return;
-  sh.getRange(6, 1, L.length, cab.length).setValues(L.map(o => [o.dni, o.nom, o.estN, o.serv, o.func, o.pub, o.correo || 's/d', Object.keys(o.h).map(c => c + '>' + o.h[c]).join('|')]));
+  sh.getRange(6, 1, L.length, cab.length).setValues(L.map(o => [o.dni, o.nom, o.estN, o.sg, o.fg, o.pub, o.correo || 's/d', Object.keys(o.h).map(c => c + '>' + o.h[c]).join('|')]));
   sh.getRange(3, 1).setValue('Actualizada: ' + ahoraTxt_() + ' · ' + L.length + ' personas · ' + L.filter(o => o.correo).length + ' con correo');
 }
 function invitacionesTabla_() {
