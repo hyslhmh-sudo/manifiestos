@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-23 · 5.8';
+const VERSION_CAP = '2026-10-24 · 5.9';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -40,6 +40,7 @@ function onOpen() {
     .addItem('Certificados: rehacer los de 2026 (desde abril)', 'menuReemision2026')
     .addItem('Certificados: armar todos los PDF (segundo plano)', 'menuPdfsSegundoPlano')
     .addItem('Certificados: enviar por correo los de un dictado', 'menuEnviarCertificados')
+    .addItem('Correos: actualizar la hoja CORREOS (para invitar)', 'menuActualizarCorreos')
     .addSeparator()
     .addItem('Agenda: abrir horarios de las próximas 4 semanas', 'menuAbrirHorarios')
     .addItem('Agenda: completar filas cargadas a mano', 'menuCompletarAgenda')
@@ -134,7 +135,9 @@ const ACCIONES = {
   c_disertante_guardar: d => disertanteGuardar_(d),
   c_disertante_emitir: d => disertanteEmitir_(d),
   c_lote_pdf: d => certLoteDictado_(d),
-  c_mis_cert_link: () => ({ ok: true, link: CERT_WEB, qr: qrDe_(CERT_WEB) })
+  c_mis_cert_link: () => ({ ok: true, link: CERT_WEB, qr: qrDe_(CERT_WEB) }),
+  c_invitar: d => invitarDatos_(d),
+  c_invitar_registrar: d => invitarRegistrar_(d)
 };
 
 function salida_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -2473,3 +2476,102 @@ function menuEnviarCertificados() {
 }
 // Laboratorio 23/10/2026: tanda aprobada por Belén (se corre desde el editor)
 function enviarCertificadosLaboratorio() { Logger.log(JSON.stringify(enviarCertificadosPorCorreo_('DIC-20261023-01'))); }
+
+
+// =====================================================================
+// Invitar a capacitaciones (24/10/2026, pedido de Belén)
+// Correos de todo el personal (base de trabajadores, sin bajas) y de las personas registradas (PERSONAS),
+// con filtros por establecimiento, servicio, función, público y por lo que cada uno hizo o se le vence.
+// Si una persona tiene dos correos, va el más nuevo. La misma base queda en la hoja oculta _CORREOS_BASE,
+// que usa la hoja CORREOS del libro (filtros con listas, sin código). Cada vez que se copian correos desde
+// el portal queda una fila en _INVITACIONES (fecha, capacitación, filtro y DNI invitados) para cruzarla
+// después con quienes se registraron.
+// =====================================================================
+const INV_TANDA = 90;   // correos por tanda (Gmail: conviene no pasar de 100 destinatarios por mensaje)
+function fechaNum_(v) { const i = isoDe_(v); return i ? Number(i.replace(/-/g, '')) : 0; }
+function nombresEst_() { const m = {}; try { const l = listasRegistro_(); l.trelew.concat(l.chubut).forEach(x => { m[String(x[0]).split('|')[0]] = x[1]; }); } catch (e) { /* sin listas */ } return m; }
+function baseCorreos_() {
+  const porDni = {}, nomEst = nombresEst_(), ok = v => !vacio_(v);
+  const P = tabla_('PERSONAS'), pi = P.i;
+  P.filas.forEach(r => {
+    const raw = String(r[pi('DNI')] || '').trim(), dni = soloDni_(raw) || raw; if (!dni) return;
+    const est = ok(r[pi('ESTABLECIMIENTO')]) ? String(r[pi('ESTABLECIMIENTO')]).split('|')[0].trim() : (ok(r[pi('INSTITUCION')]) ? String(r[pi('INSTITUCION')]).trim() : 's/d');
+    const fu = ok(r[pi('FUNCION')]) ? r[pi('FUNCION')] : ok(r[pi('CARRERA')]) ? 'Estudiante · ' + r[pi('CARRERA')] : ok(r[pi('PROFESION')]) ? r[pi('PROFESION')] : 's/d';
+    const c = String(r[pi('CORREO')] || '').trim().toLowerCase();
+    porDni[dni] = { dni: dni, nom: [r[pi('APELLIDOS')], r[pi('NOMBRES')]].map(x => String(x || '').trim()).filter(Boolean).join(', '),
+      est: est, serv: sd_(r[pi('SERVICIO')]), func: sd_(funcionUnica_(fu)), pub: sd_(r[pi('PUBLICO')]), correo: correoOk_(c) ? c : '', fc: fechaNum_(r[pi('ULTIMA_ACTUALIZACION')]) };
+  });
+  const bajas = {}, activos = {};
+  try {
+    const T = tabla_('TODOS', SpreadsheetApp.openById(ID.trabajadores)), ti = T.i;
+    T.filas.forEach(r => {
+      const dni = soloDni_(r[ti('DNI')]); if (!dni) return;
+      if (/baja/i.test(r[ti('ESTADO')])) { bajas[dni] = 1; return; }
+      activos[dni] = 1;
+      const est = String(r[ti('ESTABLECIMIENTO')] || '').trim() || 's/d', o = porDni[dni] || (porDni[dni] = { dni: dni, fc: 0, correo: '' });
+      o.nom = [r[ti('APELLIDOS')], r[ti('NOMBRES')]].map(x => String(x || '').trim()).filter(Boolean).join(', ') || o.nom;
+      o.est = est; o.pub = RED_TRELEW.indexOf(est) >= 0 ? 'Red Trelew' : 'Red Chubut';
+      if (ok(r[ti('SERVICIO')])) o.serv = String(r[ti('SERVICIO')]).trim(); else o.serv = o.serv || 's/d';
+      if (ok(r[ti('FUNCION')])) o.func = funcionUnica_(String(r[ti('FUNCION')]).trim() + (ok(r[ti('FUNCION_DETALLE')]) ? ' · ' + String(r[ti('FUNCION_DETALLE')]).trim() : '')); else o.func = o.func || 's/d';
+      const b = String(r[ti('EMAIL')] || '').trim().toLowerCase(), fb = fechaNum_(r[ti('EMAIL_FECHA')]);
+      if (correoOk_(b) && (!o.correo || (b !== o.correo && fb > o.fc))) o.correo = b;   // el correo más nuevo manda
+    });
+  } catch (e) { aviso_('No se pudo leer la base de trabajadores para invitar', 'TODOS', '', e.message); }
+  // Lo que hizo cada persona: vencimiento más lejano de cada capacitación (registros válidos; evaluaciones solo aprobadas)
+  const R = tabla_('REGISTROS'), ri = R.i;
+  R.filas.forEach(r => {
+    if (!/^v[aá]lido/i.test(r[ri('ESTADO')])) return;
+    if (/evaluaci/i.test(r[ri('TIPO')]) && !siNo_(r[ri('APROBADO')])) return;
+    const raw = String(r[ri('DNI')] || '').trim(), o = porDni[soloDni_(raw) || raw]; if (!o) return;
+    const c = String(r[ri('CODIGO')] || '').trim(); if (!/^CAP-/.test(c)) return;
+    const v = /no vence/i.test(r[ri('VENCE')]) ? '9999-12-31' : (isoDe_(r[ri('VENCE')]) || '');
+    o.h = o.h || {}; if (!o.h[c] || v > o.h[c]) o.h[c] = v;
+  });
+  return Object.keys(porDni).map(k => porDni[k])
+    .filter(o => !(bajas[o.dni] && !activos[o.dni] && /^red/i.test(o.pub)))
+    .map(o => ({ dni: o.dni, nom: o.nom || 's/d', est: o.est || 's/d', estN: nomEst[o.est] || o.est || 's/d', serv: o.serv || 's/d', func: o.func || 's/d', pub: o.pub || 's/d', correo: o.correo, h: o.h || {} }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'es'));
+}
+function hojaSistema_(nombre, titulo, nota, cab) {
+  const lib = SpreadsheetApp.getActive(); let sh = lib.getSheetByName(nombre);
+  if (!sh) { sh = lib.insertSheet(nombre); sh.getRange(1, 1).setValue(titulo); sh.getRange(2, 1).setValue(nota); sh.getRange(5, 1, 1, cab.length).setValues([cab]); sh.hideSheet(); }
+  return sh;
+}
+function escribirBaseCorreos_(L) {
+  const cab = ['DNI', 'APELLIDO_Y_NOMBRE', 'ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'PUBLICO', 'CORREO', 'HECHAS'];
+  const sh = hojaSistema_('_CORREOS_BASE', '_CORREOS_BASE · Personas y correos para invitar', 'Hoja de sistema: la arma el portal (9 · Capacitaciones › Invitar) o el menú «Correos: actualizar la hoja CORREOS». No se edita a mano.', cab);
+  const ult = sh.getLastRow(); if (ult >= 6) sh.getRange(6, 1, ult - 5, cab.length).clearContent();
+  if (!L.length) return;
+  sh.getRange(6, 1, L.length, cab.length).setValues(L.map(o => [o.dni, o.nom, o.estN, o.serv, o.func, o.pub, o.correo || 's/d', Object.keys(o.h).map(c => c + '>' + o.h[c]).join('|')]));
+  sh.getRange(3, 1).setValue('Actualizada: ' + ahoraTxt_() + ' · ' + L.length + ' personas · ' + L.filter(o => o.correo).length + ' con correo');
+}
+function invitacionesTabla_() {
+  return hojaSistema_('_INVITACIONES', '_INVITACIONES · A quiénes se invitó y cuándo', 'Hoja de sistema: una fila cada vez que se copian correos desde el portal (9 · Capacitaciones › Invitar). DNIS: los invitados, separados por coma. No se borran filas.',
+    ['ID_INVITACION', 'FECHA', 'CODIGO', 'CAPACITACION', 'FILTRO', 'TANDA', 'CANTIDAD', 'DNIS', 'QUIEN']);
+}
+function invitarDatos_(d) {
+  const L = baseCorreos_();
+  try { escribirBaseCorreos_(L); } catch (e) { /* la hoja se actualiza la próxima vez */ }
+  const C = tabla_('CATALOGO'), caps = C.filas.filter(r => r[C.i('CODIGO')]).map(r => ({ codigo: r[C.i('CODIGO')], nombre: r[C.i('NOMBRE')], estado: r[C.i('ESTADO')] }));
+  // Invitaciones anteriores, cruzadas con los registros posteriores a cada una
+  invitacionesTabla_();
+  const I = tabla_('_INVITACIONES'), R = tabla_('REGISTROS'), ri = R.i, reg = {};
+  R.filas.forEach(r => { if (/anulad/i.test(r[ri('ESTADO')])) return; const c = r[ri('CODIGO')], dni = soloDni_(r[ri('DNI')]) || String(r[ri('DNI')] || '').trim(), f = isoDe_(r[ri('FECHA')]);
+    if (!c || !dni || !f) return; reg[c] = reg[c] || {}; if (!reg[c][dni] || f > reg[c][dni]) reg[c][dni] = f; });
+  const invs = I.filas.filter(r => r[I.i('ID_INVITACION')]).map(r => { const o = obj_(I, r), f = isoDe_(o.FECHA), dnis = String(o.DNIS || '').split(',').map(x => x.trim()).filter(Boolean);
+    const m = reg[o.CODIGO] || {}; return { id: o.ID_INVITACION, fecha: o.FECHA, codigo: o.CODIGO, nombre: o.CAPACITACION, filtro: o.FILTRO, tanda: o.TANDA, cantidad: Number(o.CANTIDAD) || dnis.length,
+      registrados: dnis.filter(x => m[x] && m[x] >= f).length }; }).reverse().slice(0, 60);
+  return { ok: true, lista: L, caps: caps, invitaciones: invs, tanda: INV_TANDA, libro: SpreadsheetApp.getActive().getUrl() + '#gid=' + (SpreadsheetApp.getActive().getSheetByName('CORREOS') || { getSheetId: () => 0 }).getSheetId(), calculado: ahoraTxt_() };
+}
+function invitarRegistrar_(d) {
+  const dnis = (d.dnis || []).map(x => String(x).trim()).filter(Boolean);
+  if (!dnis.length) return { ok: false, error: 'No hay personas para anotar.' };
+  invitacionesTabla_();
+  agregar_(tabla_('_INVITACIONES'), [{ ID_INVITACION: uid_('INV', ''), FECHA: ahoraTxt_(), CODIGO: d.codigo || 's/d', CAPACITACION: d.nombre || 's/d', FILTRO: String(d.filtro || 'Todos').slice(0, 500),
+    TANDA: d.tanda || '', CANTIDAD: dnis.length, DNIS: dnis.join(',').slice(0, 49000), QUIEN: 'Portal' }]);
+  return { ok: true };
+}
+function menuActualizarCorreos() {
+  const L = baseCorreos_(); escribirBaseCorreos_(L);
+  SpreadsheetApp.getUi().alert('Correos', 'Listo: ' + L.length + ' personas, ' + L.filter(o => o.correo).length + ' con correo. Usá la hoja CORREOS para filtrar y copiar.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
