@@ -704,7 +704,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.25e";
+const APP_VERSION = "2026.10.25f";
 </script>
 <script>
 // ============================================================
@@ -3455,7 +3455,7 @@ const HERRAMIENTAS = ["Pala", "Pico", "Escalera", "Balde", "Espátula", "Rastril
 const TIPOS_SOL = [
   { id: "Biocidas", emoji: "🧪", t: "Biocidas", sub: "Qué producto y cuánto" },
   { id: "EPP", emoji: "🧤", t: "EPP", sub: "Guantes, barbijo, anteojos, ropa…" },
-  { id: "Herramientas", emoji: "🛠️", t: "Herramientas", sub: "Pala, pico, escalera, balde… con la justificación" },
+  { id: "Herramientas", emoji: "🛠️", t: "Herramientas", sub: "Pala, pico, escalera, balde…" },
   { id: "Aviso en un establecimiento", emoji: "📢", t: "Aviso en un lugar", sub: "Que se avise algo en un hospital, dependencia o CAPS" },
   { id: "Novedad", emoji: "📝", t: "Novedad", sub: "Algo que viste y querés dejar registrado" },
 ];
@@ -3627,8 +3627,8 @@ function avSolForm(yo, tipo) {
   avFotos(document.getElementById("avFot"), s.fotos);
   if (tipo.id === "Herramientas") {   // varias a la vez; el botón Enviar se habilita recién con la justificación
     const q = document.getElementById("avQue"), det = document.getElementById("avDet"), ok = document.getElementById("avOk");
-    det.placeholder = "Explicá para qué trabajo y dónde las vas a usar (sin esto no se puede enviar)";
-    const marcar = () => { ok.disabled = det.value.trim().length < 10; ok.textContent = ok.disabled ? "Escribí para qué las necesitás" : "Enviar a Belén"; };
+    det.placeholder = "Explicá para qué trabajo y dónde las vas a usar";
+    const marcar = () => { ok.disabled = det.value.trim().length < 10; ok.textContent = "Enviar a Belén"; };
     det.addEventListener("input", marcar); marcar();
     ov.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { b.classList.toggle("active"); const sel = Array.from(ov.querySelectorAll("[data-q].active")).map((x) => x.dataset.q).filter((x) => x !== "Otra");
       const extra = q.value.split(",").map((x) => x.trim()).filter((x) => x && HERRAMIENTAS.indexOf(x) < 0); q.value = sel.concat(extra).join(", "); if (b.dataset.q === "Otra" && b.classList.contains("active")) q.focus(); }));
@@ -3641,7 +3641,7 @@ function avSolForm(yo, tipo) {
     const lug = lugares.find((x) => x.id === idL);
     if ((tipo.id === "Biocidas" || tipo.id === "EPP" || tipo.id === "Herramientas") && !s.que) { alert("Indicá qué necesitás."); return; }
     if ((tipo.id === "Biocidas" || tipo.id === "EPP" || tipo.id === "Herramientas") && !s.cantidad) { alert("Indicá cuánto necesitás."); return; }
-    if (tipo.id === "Herramientas" && s.detalle.length < 10) { alert("Explicá para qué necesitás las herramientas. Sin eso no se puede enviar."); return; }
+    if (tipo.id === "Herramientas" && s.detalle.length < 10) { alert("Explicá para qué necesitás las herramientas."); return; }
     if (tipo.id === "Aviso en un establecimiento" && !lug) { alert("Elegí el lugar."); return; }
     if ((tipo.id === "Aviso en un establecimiento" || tipo.id === "Novedad") && s.detalle.length < 4) { alert("Contá qué pasó o qué hay que avisar."); return; }
     e.target.disabled = true;
