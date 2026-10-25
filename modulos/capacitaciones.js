@@ -1362,7 +1362,7 @@ async function capInvitar(fresco) {
 function capInvRes() {
   const box = $('ivRes'); if (!box) return;
   capInvFacetas();
-  const F = capInvFiltrar(), con = F.filter(p => p.correo), vistos = {}, unicos = con.filter(p => !vistos[p.correo] && (vistos[p.correo] = 1)), T = CAPINV.datos.tanda || 90, n = Math.ceil(unicos.length / T);
+  const F = capInvFiltrar(), con = F.filter(p => p.correo), vistos = {}, unicos = con.filter(p => !vistos[p.correo] && (vistos[p.correo] = 1)), T = Math.min(CAPINV.datos.tanda || 45, 45), n = Math.ceil(unicos.length / T);
   const cap = CAPINV.datos.caps.find(c => c.codigo === CAPINV.cod);
   const tandas = n > 1 ? Array.from({ length: n }, (_, k) => '<button class="btn sec" data-tanda="' + k + '">✉ Enviar tanda ' + (k + 1) + ' (' + (k * T + 1) + '–' + Math.min((k + 1) * T, unicos.length) + ')</button>').join('') : '';
   box.innerHTML = '<section class="card" style="display:flex;flex-direction:column;gap:10px">' +
