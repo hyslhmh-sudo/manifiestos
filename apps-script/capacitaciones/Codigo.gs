@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.11';
+const VERSION_CAP = '2026-10-25 · 5.12';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -576,12 +576,13 @@ function regBuscar(q) {
   if (!p && !b) return { ok: true, encontrado: false };
   const ficha = [], src = b || {};
   const val = (k, pk) => b ? src[k] : p[i(pk)];
+  const dato = k => !vacio_(b && b[k]) ? b[k] : (p && !vacio_(p[i(k)]) ? p[i(k)] : '');   // 25/10/2026: la base manda; si no lo tiene, lo de PERSONAS
   const publico = b ? (RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut') : p[i('PUBLICO')];
   ficha.push(['Público', sd_(publico)]);
   if (b || /red/i.test(publico)) {
     ficha.push(['Establecimiento', sd_(b ? nombreEst_(b.ESTABLECIMIENTO) : p[i('ESTABLECIMIENTO')])]);
-    ficha.push(['Servicio o sector', sd_(val('SERVICIO', 'SERVICIO'))]);
-    ficha.push(['Función o puesto', sd_(val('FUNCION', 'FUNCION')) + (b && b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : '')]);
+    ficha.push(['Servicio o sector', sd_(dato('SERVICIO'))]);
+    ficha.push(['Función o puesto', sd_(dato('FUNCION')) + (b && b.FUNCION_DETALLE && !vacio_(b.FUNCION) ? ' · ' + b.FUNCION_DETALLE : '')]);
   } else if (/estud/i.test(publico)) {
     ficha.push(['Carrera', sd_(p[i('CARRERA')])]); ficha.push(['Institución', sd_(p[i('INSTITUCION')])]);
   } else {
@@ -592,6 +593,8 @@ function regBuscar(q) {
   // 23/10/2026: lo que falta de la persona se pide en la misma pantalla (vínculo de la red)
   const faltan = [];
   if (/red/i.test(publico) && vacio_(b ? b.VINCULO : p[i('VINCULO')])) faltan.push('vinculo');
+  // 25/10/2026: personal de la red sin servicio o sin función (p. ej. quienes vienen solo de la planilla de sueldos): se piden y se guardan en la base
+  if (b || /red/i.test(publico)) { if (vacio_(dato('SERVICIO'))) faltan.unshift('servicio'); if (vacio_(dato('FUNCION'))) faltan.splice(faltan.indexOf('servicio') + 1, 0, 'funcion'); }
   return { ok: true, encontrado: true, faltan: faltan, desdeBase: !!b, saludo: String(nombre).trim().split(/\s+/).slice(0, 2).join(' '), ficha: ficha, correo: correoOk_(correo) ? correo : '', tieneCorreo: correoOk_(correo) };   // el correo se muestra completo para que la persona sepa si tiene que corregirlo
 }
 function enBase_(dni) {
@@ -638,6 +641,10 @@ function guardarPersona_(d) {
     // 23/10/2026: completar lo que falte (vínculo que contesta la persona, ciudad del establecimiento) y unificar la función
     if (vacio_(persona.VINCULO) && !vacio_(d.vinculo)) { cambios.VINCULO = String(d.vinculo).trim(); if (cambios.VINCULO === 'Tercerizado' && !vacio_(d.empresa)) cambios.EMPRESA = String(d.empresa).trim(); }
     if (vacio_(persona.CIUDAD) && !vacio_(ciudadEst_(persona.ESTABLECIMIENTO))) cambios.CIUDAD = ciudadEst_(persona.ESTABLECIMIENTO);
+    // 25/10/2026: servicio y función que faltaban (los elige la persona); la base de trabajadores, si los tiene, manda
+    const srvB = b && !vacio_(b.SERVICIO) ? b.SERVICIO : '', funB = b && !vacio_(b.FUNCION) ? funcionUnica_(b.FUNCION + (b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : '')) : '';
+    if (vacio_(persona.SERVICIO)) { const v = srvB || String(d.servicio || '').trim(); if (!vacio_(v)) cambios.SERVICIO = v; }
+    if (vacio_(persona.FUNCION)) { const v = funB || (vacio_(d.funcion) ? '' : funcionUnica_(String(d.funcion).trim() + (vacio_(d.detalle) ? '' : ' · ' + String(d.detalle).trim()))); if (!vacio_(v)) { cambios.FUNCION = v; if (vacio_(persona.PROFESION)) cambios.PROFESION = v; } }
     ['FUNCION', 'PROFESION'].forEach(c => { const n = funcionUnica_(persona[c]); if (n !== persona[c] && cambios[c] === undefined) cambios[c] = n; });
     if (vacio_(persona.CORREO) && !correoNuevo) return { error: 'Necesitamos tu correo: es el canal para enviarte la constancia y avisos.' };
     Object.keys(cambios).forEach(c => { if (P.i(c) >= 0) { historial_('Registro', 'PERSONAS', doc, c, persona[c], cambios[c], 'Actualizado por la persona'); persona[c] = cambios[c]; } });
@@ -645,7 +652,7 @@ function guardarPersona_(d) {
   } else {
     if (!correoNuevo) return { error: 'Necesitamos tu correo: es el canal para enviarte la constancia y avisos.' };
     persona = { DNI: doc, PAIS_DOCUMENTO: pais, CORREO: correoNuevo, TELEFONO: sd_(d.telefono), ULTIMA_ACTUALIZACION: hoy };
-    if (b) Object.assign(persona, { APELLIDOS: b.APELLIDOS, NOMBRES: b.NOMBRES, PUBLICO: RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut', ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(b.SERVICIO), FUNCION: sd_(funcionUnica_(b.FUNCION + (b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : ''))), VINCULO: sd_(b.VINCULO || d.vinculo), EMPRESA: b.EMPRESA, CIUDAD: sd_(ciudadEst_(b.ESTABLECIMIENTO)), PROVINCIA: 'Chubut', PAIS: 'Argentina', PROFESION: sd_(funcionUnica_(b.FUNCION)), INSTITUCION: nombreEst_(b.ESTABLECIMIENTO), ORIGEN_DE_DATOS: 'Base de trabajadores' });
+    if (b) Object.assign(persona, { APELLIDOS: b.APELLIDOS, NOMBRES: b.NOMBRES, PUBLICO: RED_TRELEW.indexOf(b.ESTABLECIMIENTO) >= 0 ? 'Red Trelew' : 'Red Chubut', ESTABLECIMIENTO: b.ESTABLECIMIENTO, SERVICIO: sd_(vacio_(b.SERVICIO) ? d.servicio : b.SERVICIO), FUNCION: sd_(vacio_(b.FUNCION) ? (vacio_(d.funcion) ? '' : funcionUnica_(String(d.funcion).trim() + (vacio_(d.detalle) ? '' : ' · ' + String(d.detalle).trim()))) : funcionUnica_(b.FUNCION + (b.FUNCION_DETALLE ? ' · ' + b.FUNCION_DETALLE : ''))), VINCULO: sd_(b.VINCULO || d.vinculo), EMPRESA: b.EMPRESA, CIUDAD: sd_(ciudadEst_(b.ESTABLECIMIENTO)), PROVINCIA: 'Chubut', PAIS: 'Argentina', PROFESION: sd_(vacio_(b.FUNCION) ? (vacio_(d.funcion) ? '' : funcionUnica_(String(d.funcion).trim())) : funcionUnica_(b.FUNCION)), INSTITUCION: nombreEst_(b.ESTABLECIMIENTO), ORIGEN_DE_DATOS: 'Base de trabajadores' });
     else {
       const c = camposPublico_(d); if (c.error) return { error: c.error };
       Object.assign(persona, c, { ORIGEN_DE_DATOS: 'Registro' });
@@ -654,6 +661,7 @@ function guardarPersona_(d) {
   }
   // Contacto también en la base de trabajadores (el dato más nuevo manda)
   if (b && (correoNuevo || d.telefono)) actualizarBase_(b, correoNuevo, d.telefono);
+  if (b && ((vacio_(b.SERVICIO) && !vacio_(d.servicio)) || (vacio_(b.FUNCION) && !vacio_(d.funcion)) || (vacio_(b.VINCULO) && !vacio_(d.vinculo)))) completarBase_(b, d);
   if (d.cambio) aviso_('Cambio informado por la persona', b ? 'Base de trabajadores' : 'PERSONAS', doc + ' · ' + (persona.APELLIDOS || ''), String(d.cambio).slice(0, 500));
   ['ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'PROFESION', 'CARRERA', 'INSTITUCION'].forEach(c => { if (/^otr[oa]:/i.test(persona[c] || '')) aviso_('Valor fuera de lista', 'PERSONAS', doc, c + ' = ' + persona[c]); });
   return { doc: doc, persona: persona };
@@ -720,6 +728,21 @@ function actualizarBase_(b, correo, tel) {
     if (correo && correo !== b.EMAIL && T.i('EMAIL') >= 0) { T.sh.getRange(fila, T.i('EMAIL') + 1).setValue(correo); if (T.i('EMAIL_FECHA') >= 0) T.sh.getRange(fila, T.i('EMAIL_FECHA') + 1).setValue(hoy); historial_('Registro', 'Base de trabajadores · ' + b.ESTABLECIMIENTO, b.DNI, 'EMAIL', b.EMAIL, correo, 'Correo actualizado por la persona al registrarse'); }
     if (tel && tel !== b.TELEFONO && T.i('TELEFONO') >= 0) { T.sh.getRange(fila, T.i('TELEFONO') + 1).setValue(tel); historial_('Registro', 'Base de trabajadores · ' + b.ESTABLECIMIENTO, b.DNI, 'TELEFONO', b.TELEFONO, tel, 'Teléfono actualizado por la persona al registrarse'); }
   } catch (e) { aviso_('No se pudo actualizar la base de trabajadores', 'Base de trabajadores', b.DNI, e.message); }
+}
+
+// 25/10/2026: lo que faltaba en la base de trabajadores (servicio, función, vínculo) lo completa la persona al registrarse o inscribirse.
+// Solo se escriben celdas vacías o «s/d»: lo que ya tiene la base no se pisa. Queda en _HISTORIAL.
+function completarBase_(b, d) {
+  try {
+    const lib = SpreadsheetApp.openById(ID.trabajadores), T = tabla_(b.ESTABLECIMIENTO, lib);
+    const k = T.filas.findIndex(r => soloDni_(r[T.i('DNI')]) === soloDni_(b.DNI)); if (k < 0) return;
+    const fila = k + 6, cambios = {};
+    if (vacio_(b.SERVICIO) && !vacio_(d.servicio)) cambios.SERVICIO = String(d.servicio).trim();
+    if (vacio_(b.FUNCION) && !vacio_(d.funcion)) { cambios.FUNCION = String(d.funcion).trim(); if (!vacio_(d.detalle) && vacio_(b.FUNCION_DETALLE)) cambios.FUNCION_DETALLE = String(d.detalle).trim(); }
+    if (vacio_(b.VINCULO) && !vacio_(d.vinculo)) { cambios.VINCULO = String(d.vinculo).trim(); if (cambios.VINCULO === 'Tercerizado' && !vacio_(d.empresa) && vacio_(b.EMPRESA)) cambios.EMPRESA = String(d.empresa).trim(); }
+    Object.keys(cambios).forEach(c => { const j = T.i(c); if (j < 0) return; T.sh.getRange(fila, j + 1).setValue(cambios[c]);
+      historial_('Registro', 'Base de trabajadores · ' + b.ESTABLECIMIENTO, b.DNI, c, b[c] || '', cambios[c], 'Completado por la persona al registrarse (faltaba en la base)'); });
+  } catch (e) { aviso_('No se pudo completar la base de trabajadores', 'Base de trabajadores', b.DNI, e.message); }
 }
 
 // ------------------------------------------------------------------ Migración (se corre una sola vez, desde el menú)

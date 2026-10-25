@@ -255,8 +255,15 @@
         $('mailReq').textContent = r.tieneCorreo ? 'solo si cambió' : 'obligatorio';
         $('cambioBox').hidden = true; buscado.desdeBase = r.desdeBase;
         // 23/10/2026: si falta el vínculo, se pide acá
-        const fb = $('faltaBox'), falta = (r.faltan || []).indexOf('vinculo') >= 0;
-        fb.hidden = !falta; fb.innerHTML = falta ? '<span class="mu peq">Nos falta un dato tuyo:</span>' + lista('Vínculo', 'v2', L.vinculos, 'planta, contrato, tercerizado…', true) + '<div id="emp2Box" hidden>' + lista('Empresa', 'em2', L.empresas) + '</div>' : '';
+        // 25/10/2026: lo que falta de la persona (servicio, función, vínculo) se pide acá y queda guardado en la base
+        const fl = r.faltan || [], fb = $('faltaBox'), fS = fl.indexOf('servicio') >= 0, fF = fl.indexOf('funcion') >= 0, falta = fl.indexOf('vinculo') >= 0;
+        fb.hidden = !fl.length;
+        fb.innerHTML = fl.length ? '<span class="mu peq">' + (fl.length > 1 ? 'Nos faltan algunos datos tuyos. Completalos una sola vez:' : 'Nos falta un dato tuyo. Completalo una sola vez:') + '</span>' +
+          (fS ? lista('Servicio o sector', 'se2', L.servicios, 'dónde trabajás') : '') +
+          (fF ? lista('Función o puesto', 'fu2', L.funciones, 'qué tarea hacés') + '<div id="det2"></div>' : '') +
+          (falta ? lista('Vínculo', 'v2', L.vinculos, 'planta, contrato, tercerizado…', true) + '<div id="emp2Box" hidden>' + lista('Empresa', 'em2', L.empresas) + '</div>' : '') : '';
+        if (fS) $('se2').addEventListener('change', () => { $('se2Otra').hidden = $('se2').value !== 'Otra'; });
+        if (fF) $('fu2').addEventListener('change', () => { $('fu2Otra').hidden = $('fu2').value !== 'Otra'; const dd = L.detalle[$('fu2').value]; $('det2').innerHTML = dd && dd.length ? lista('Detalle', 'de2', dd.filter(x => x !== 'Otra')) : ''; if ($('de2')) $('de2').addEventListener('change', () => { $('de2Otra').hidden = $('de2').value !== 'Otra'; }); });
         if (falta) { $('v2').addEventListener('change', () => { $('emp2Box').hidden = $('v2').value !== 'Tercerizado'; }); $('em2').addEventListener('change', () => { $('em2Otra').hidden = $('em2').value !== 'Otra'; }); }
         ver('s2a');
       } else { modo = 'nuevo'; ver('s2b'); }
@@ -265,8 +272,11 @@
   $('dni').onkeydown = e => { if (e.key === 'Enter') $('b1').click(); };
   $('cambiaPub').onclick = () => { if (buscado.desdeBase) { $('cambioBox').hidden = false; $('cambio').focus(); } else { modo = 'nuevo'; $('t2b').textContent = 'Actualizá tus datos: ¿desde dónde participás hoy?'; ver('s2b'); } };
   $('b2a').onclick = () => {
-    if (!$('faltaBox').hidden && !$('v2').value) return error('Elegí tu vínculo (planta, contrato, tercerizado…).');
-    guardar({ modo: 'conocido', correo: $('mail2').value.trim(), telefono: $('tel2').value.trim(), cambio: $('cambio').value.trim(), vinculo: $('v2') ? $('v2').value : '', empresa: $('em2') ? valor('em2') : '' }, $('b2a'));
+    if ($('se2') && !valor('se2')) return error('Elegí tu servicio o sector (si no está en la lista, elegí «Otra» y escribilo).');
+    if ($('fu2') && !valor('fu2')) return error('Elegí tu función o puesto (si no está en la lista, elegí «Otra» y escribila).');
+    if ($('v2') && !$('v2').value) return error('Elegí tu vínculo (planta, contrato, tercerizado…).');
+    guardar({ modo: 'conocido', correo: $('mail2').value.trim(), telefono: $('tel2').value.trim(), cambio: $('cambio').value.trim(), vinculo: $('v2') ? $('v2').value : '', empresa: $('em2') ? valor('em2') : '',
+      servicio: $('se2') ? valor('se2') : '', funcion: $('fu2') ? valor('fu2') : '', detalle: $('de2') ? valor('de2') : '' }, $('b2a'));
   };
 
   // Formularios por público
