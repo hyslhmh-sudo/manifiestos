@@ -10,7 +10,8 @@
  *  - Recibe cada carga desde la página de GitHub (o desde la planilla).
  *  - Guarda las fotos en Drive (FOTOS / año-mes).
  *  - Agrega la fila en REGISTROS.
- *  - Manda un aviso inmediato a la secretaría HyS.
+ *  - Manda un aviso inmediato a la secretaría HyS y, si CONFIG › AVISO_SUPERVISORES = Sí,
+ *    a los supervisores de Star Union (CORREO_SUPERVISOR), sin la evaluación de HyS (25/10/2026).
  *  - Entrega al portal la lista de registros (con clave de lectura).
  *
  * Todo lo que se puede cambiar está en la hoja CONFIG
@@ -241,6 +242,9 @@ function guardarCarga_(d) {
 
   // 3.6 Aviso inmediato a la secretaría
   var estado = enviarAviso_(fila, urgente, cfg);
+  // 3.7 Aviso inmediato a los supervisores de Star Union (Belén, 25/10/2026): CONFIG › CORREO_SUPERVISOR y AVISO_SUPERVISORES = Sí.
+  //     Va sin la evaluación de HyS (gravedad según reglas y origen sugerido).
+  if (cfg.AVISO_SUPERVISORES === 'Sí') estado += ' · Supervisores: ' + enviarAviso_(fila, urgente, cfg, true);
   hoja.getRange(nFila, COLS.indexOf('AVISO_ENVIADO') + 1).setValue(estado);
 
   return { ok: true, id: id, urgente: urgente };
@@ -306,8 +310,8 @@ function guardarFoto_(f, id, n, cfg) {
 // 4. Aviso por correo a la secretaría HyS
 // ---------------------------------------------------------------
 
-function enviarAviso_(f, urgente, cfg) {
-  var para = cfg.CORREO_AVISO;
+function enviarAviso_(f, urgente, cfg, empresa) {
+  var para = empresa ? cfg.CORREO_SUPERVISOR : cfg.CORREO_AVISO;   // empresa = copia para los supervisores de Star Union
   if (!para || para === 's/d') return 'Sin correo configurado';
   var asunto = (urgente ? 'URGENTE · ' : '') + 'Desvío en residuos ' + f.ID + ' · ' +
     f.SERVICIO + ' · ' + f.HORA + ' h';
@@ -330,6 +334,7 @@ function enviarAviso_(f, urgente, cfg) {
     ['Origen sugerido', f.ORIGEN_SUGERIDO],
     ['Fotos', f.FOTOS]
   ];
+  if (empresa) filas = filas.filter(function (r) { return ['Gravedad según reglas de HyS', 'Origen sugerido'].indexOf(r[0]) < 0; });
   filas = filas.filter(function (r) { return ['¿Por qué?', 'Contenedores', '¿Venía de un aislamiento?', 'Gravedad según reglas de HyS', '¿Qué estaba mal?'].indexOf(r[0]) < 0 || r[1]; });
   var html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
     (urgente ? '<p style="color:#b00020;font-weight:bold">Requiere atención prioritaria (cortopunzante o lesión).</p>' : '') +
