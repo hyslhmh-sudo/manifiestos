@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.15';
+const VERSION_CAP = '2026-10-25 · 5.16';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -2693,9 +2693,36 @@ function invitacionesTabla_() {
   return hojaSistema_('_INVITACIONES', '_INVITACIONES · A quiénes se invitó y cuándo', 'Hoja de sistema: una fila cada vez que se copian correos desde el portal (9 · Capacitaciones › Invitar). DNIS: los invitados, separados por coma. No se borran filas.',
     ['ID_INVITACION', 'FECHA', 'CODIGO', 'CAPACITACION', 'FILTRO', 'TANDA', 'CANTIDAD', 'DNIS', 'QUIEN']);
 }
+// 25/10/2026: la lista de personas y correos se guarda armada (archivo JSON en Drive, junto al libro) y la pantalla
+// Invitar la abre en segundos. Se vuelve a armar desde la base de trabajadores solo con «Actualizar» o si tiene más de 7 días.
+const INV_CACHE_PROP = 'INV_CACHE_ID', INV_CACHE_DIAS = 7;
+function invitarCacheLeer_() {
+  try {
+    const id = PropertiesService.getScriptProperties().getProperty(INV_CACHE_PROP); if (!id) return null;
+    const o = JSON.parse(DriveApp.getFileById(id).getBlob().getDataAsString('UTF-8'));
+    if (!o || !o.lista || Date.now() - (o.t || 0) > INV_CACHE_DIAS * 864e5) return null;
+    return o;
+  } catch (e) { return null; }
+}
+function invitarCacheGuardar_(L) {
+  const o = { t: Date.now(), calculado: ahoraTxt_(), lista: L }, txt = JSON.stringify(o), P = PropertiesService.getScriptProperties();
+  try {
+    const id = P.getProperty(INV_CACHE_PROP);
+    if (id) { try { DriveApp.getFileById(id).setContent(txt); return o; } catch (e) { /* se crea de nuevo */ } }
+    const lib = DriveApp.getFileById(SpreadsheetApp.getActive().getId()), carpeta = lib.getParents().hasNext() ? lib.getParents().next() : DriveApp.getRootFolder();
+    const f = carpeta.createFile('_SISTEMA · lista para invitar (no borrar).json', txt, 'application/json');
+    P.setProperty(INV_CACHE_PROP, f.getId());
+  } catch (e) { aviso_('No se pudo guardar la lista para invitar', '_CORREOS_BASE', '', e.message); }
+  return o;
+}
 function invitarDatos_(d) {
-  const L = baseCorreos_();
-  try { escribirBaseCorreos_(L); } catch (e) { /* la hoja se actualiza la próxima vez */ }
+  let cache = d && d.fresco ? null : invitarCacheLeer_(), L;
+  if (cache) L = cache.lista;
+  else {
+    L = baseCorreos_();
+    try { escribirBaseCorreos_(L); } catch (e) { /* la hoja se actualiza la próxima vez */ }
+    cache = invitarCacheGuardar_(L);
+  }
   const C = tabla_('CATALOGO'), evs = evaluaciones_(), prox = proxDictados_();
   const caps = C.filas.filter(r => r[C.i('CODIGO')]).map(r => { const cod = r[C.i('CODIGO')]; return { codigo: cod, nombre: r[C.i('NOMBRE')], estado: r[C.i('ESTADO')], eval: !!evalDe_(cod, '', evs), prox: prox[cod] || null }; });
   // Invitaciones anteriores, cruzadas con los registros posteriores a cada una
@@ -2712,7 +2739,7 @@ function invitarDatos_(d) {
   const invs = I.filas.filter(r => r[I.i('ID_INVITACION')]).map(r => { const o = obj_(I, r), f = isoDe_(o.FECHA), dnis = String(o.DNIS || '').split(',').map(x => x.trim()).filter(Boolean);
     const m = reg[o.CODIGO] || {}, a = ins[o.CODIGO] || {}; return { id: o.ID_INVITACION, fecha: o.FECHA, codigo: o.CODIGO, nombre: o.CAPACITACION, filtro: o.FILTRO, tanda: o.TANDA, cantidad: Number(o.CANTIDAD) || dnis.length,
       registrados: dnis.filter(x => m[x] && m[x] >= f).length, anotados: dnis.filter(x => a[x] && a[x] >= f).length, como: como(o.QUIEN) }; }).reverse().slice(0, 60);
-  return { ok: true, lista: L, caps: caps, invitaciones: invs, tanda: INV_TANDA, libro: SpreadsheetApp.getActive().getUrl() + '#gid=' + (SpreadsheetApp.getActive().getSheetByName('CORREOS') || { getSheetId: () => 0 }).getSheetId(), calculado: ahoraTxt_() };
+  return { ok: true, lista: L, caps: caps, invitaciones: invs, tanda: INV_TANDA, libro: SpreadsheetApp.getActive().getUrl() + '#gid=' + (SpreadsheetApp.getActive().getSheetByName('CORREOS') || { getSheetId: () => 0 }).getSheetId(), calculado: cache && cache.calculado ? cache.calculado : ahoraTxt_() };
 }
 function invitarRegistrar_(d) {
   const dnis = (d.dnis || []).map(x => String(x).trim()).filter(Boolean);

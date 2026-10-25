@@ -1332,8 +1332,8 @@ function capInvFacetas() {
 }
 async function capInvitar(fresco) {
   if (!CAPINV.datos || fresco) {
-    cargando('#capinv', 'Juntando el personal y sus correos… (tarda alrededor de un minuto)');
-    try { const r = await capApi('c_invitar', {}, 240000); if (!r.ok) throw new Error(r.error || 'No se pudo leer la base.'); CAPINV.datos = r; } catch (e) { return capFalla('#capinv', 'Invitar a capacitaciones', e); }
+    cargando('#capinv', fresco ? 'Armando de nuevo la lista desde la base de trabajadores… (tarda alrededor de un minuto)' : 'Abriendo la lista de personas y correos…');
+    try { const r = await capApi('c_invitar', { fresco: !!fresco }, 240000); if (!r.ok) throw new Error(r.error || 'No se pudo leer la base.'); CAPINV.datos = r; } catch (e) { return capFalla('#capinv', 'Invitar a capacitaciones', e); }
   }
   if (location.hash.split('/')[0] !== '#capinv') return;
   const D = CAPINV.datos;
@@ -1341,7 +1341,7 @@ async function capInvitar(fresco) {
   marco('#capinv', '<style>.ivf{display:flex;flex-direction:column;gap:6px}.ivt{font-weight:700;font-size:13px}.ivo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}' +
       '.ivc{border:1px solid #C9D9DF;background:#fff;color:#0D313F;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer;line-height:1.2;text-align:left}.ivc span{color:#5894A7;font-weight:700;margin-left:2px}' +
       '.ivc:hover{border-color:#5894A7}.ivc.on{background:#0D313F;border-color:#0D313F;color:#fff}.ivc.on span{color:#BFD9E2}</style>' +
-    capTit('Invitar a capacitaciones', 'Base al ' + esc(D.calculado) + ' · ' + D.lista.length + ' personas · ' + D.lista.filter(p => p.correo).length + ' con correo. Tocá los botones para filtrar (podés marcar varios); el número es la cantidad de personas. Después elegí la capacitación y mandá la invitación por correo: revisás el texto antes de enviarlo.',
+    capTit('Invitar a capacitaciones', 'Lista armada el ' + esc(D.calculado) + ' (para traer los cambios de la base, tocá «Actualizar») · ' + D.lista.length + ' personas · ' + D.lista.filter(p => p.correo).length + ' con correo. Tocá los botones para filtrar (podés marcar varios); el número es la cantidad de personas. Después elegí la capacitación y mandá la invitación por correo: revisás el texto antes de enviarlo.',
       '<a class="btn sec" href="' + esc(D.libro) + '" target="_blank" rel="noopener">Abrir en el libro ↗</a><button class="btn sec" id="ivAct">Actualizar</button>') +
     '<section class="card" style="display:flex;flex-direction:column;gap:14px">' +
       '<div class="filtros" style="align-items:flex-end">' +
