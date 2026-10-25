@@ -14,12 +14,12 @@
  * 2) SOLICITUDES A HyS: desde la app, los operarios reiteran pedidos de biocidas (cuál y cuánto), EPP,
  *    piden que se gestione un aviso en un establecimiento (hospital, dependencia o CAPS) o dejan registro de una
  *    novedad, con hasta 5 fotos. No son urgencias: quedan registradas para que HyS las gestione.
- *    Quedan en la hoja «solicitudes» (estado Pendiente). Belén responde desde el Portal HyS y la respuesta
- *    les aparece en la app.
+ *    Quedan en la hoja «solicitudes» (estado Pendiente). Belén las evalúa y responde desde el Portal HyS;
+ *    la evaluación NO vuelve a la app (ni se publica en doGet).
  * No manda correos.
  *
- * Enganches en Código.gs: doPost (tipos «cierre_caso» y «solicitud»), doGet (out.casos, out.solicitudes,
- * out.cierres) e intervencionesMipyv (un caso cerrado no figura abierto).
+ * Enganches en Código.gs: doPost (tipos «cierre_caso» y «solicitud»), doGet (solo out.casos)
+ * e intervencionesMipyv (un caso cerrado no figura abierto).
  */
 
 const SHEET_CIERRES = "cierres_casos";

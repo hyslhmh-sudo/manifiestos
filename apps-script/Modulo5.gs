@@ -97,8 +97,18 @@ function plagMipyv_(dias) {
   let casos = null, solicitudes = null, cierres = null; const api = plagMipyvApi_();
   if (api && Array.isArray(api.casos)) {
     casos = api.casos.map(c => { const l = lug(c.id_establecimiento); return Object.assign({}, c, { cod: l.cod, sitio: l.sitio }); });
-    solicitudes = api.solicitudes || []; cierres = api.cierres || [];
   }
+  // Solicitudes y cierres: se leen directo del libro (no los publica el Apps Script de MIPyV; los operarios no ven la evaluación)
+  const fotos_ = u => String(u || '').split(/[\s,|]+/).filter(x => /^https?:/.test(x));
+  const hace = d => Utilities.formatDate(new Date(Date.now() - d * 864e5), TZ, 'yyyy-MM-dd');
+  solicitudes = plagTabla_(ss, 'solicitudes').filter(x => x.id_solicitud && (String(x.fecha).slice(0, 10) >= hace(120) || x.estado === 'Pendiente' || x.estado === 'En gestión'))
+    .map(x => ({ id: x.id_solicitud, fecha: x.fecha, operario: x.operario, tipo: x.tipo, establecimiento: x.establecimiento, que: x.que, cantidad: x.cantidad, detalle: x.detalle, justificacion: x.justificacion,
+      fotos: fotos_(x.foto_url), estado: x.estado || 'Pendiente', respuesta: x.respuesta_hys, fecha_respuesta: x.fecha_respuesta }))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+  cierres = plagTabla_(ss, 'cierres_casos').filter(x => x.id_cierre && String(x.fecha).slice(0, 10) >= hace(60))
+    .map(x => ({ id: x.id_cierre, fecha: x.fecha, operario: x.operario, protocolo: x.protocolo, establecimiento: x.establecimiento, tipo_plaga: x.tipo_plaga, resultado: x.resultado_cierre, motivo: x.motivo,
+      detalle: x.detalle, fotos: fotos_(x.foto_url), origen: x.origen, revisado: x.revisado_hys }))
+    .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
   const out = { ok: true, visitas: visitas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}

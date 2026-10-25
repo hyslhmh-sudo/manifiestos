@@ -3,7 +3,7 @@
 // - Casos: cuando una intervención está por vencer (3 días o menos) o ya venció, la pantalla de inicio
 //   lo muestra en rojo y pide indicar el cierre: Resuelto o No resuelto (el biocida no hizo efecto,
 //   faltan herramientas o insumos, u otro motivo que hay que explicar).
-// - Solicitudes a Belén: reiterar pedidos de biocidas (cuál y cuánto) o EPP, pedir que se gestione un
+// - Solicitudes a Belén (la app solo las envía; el estado y la respuesta los ve solo HyS en el portal): reiterar pedidos de biocidas (cuál y cuánto) o EPP, pedir que se gestione un
 //   aviso en un establecimiento (hospital, dependencia o CAPS) o dejar registro de una novedad, con hasta 5 fotos.
 //   No son urgencias: quedan registradas para que Belén las gestione.
 // Todo pasa por la misma cola que las visitas: si no hay señal, se guarda y se envía después.
@@ -35,7 +35,7 @@ const avFecha = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "
 // Lo llama actualizarCatalogosDesdePlanilla (app.js) con lo que devolvió la planilla
 function avisosDatos(datos) {
   if (!datos || !Array.isArray(datos.casos)) return;
-  avGuardar(AVISOS_KEY, { fecha: new Date().toISOString(), casos: datos.casos, solicitudes: Array.isArray(datos.solicitudes) ? datos.solicitudes : [] });
+  avGuardar(AVISOS_KEY, { fecha: new Date().toISOString(), casos: datos.casos });   // las solicitudes no vuelven a la app: su evaluación la ve solo HyS
   // los cierres que la planilla ya registró no hace falta seguir ocultándolos a mano
   const abiertos = {}; datos.casos.forEach((c) => (c.alias || [c.protocolo]).forEach((a) => (abiertos[a] = 1)));
   const cer = avLeer(AVISOS_CERRADOS_KEY, {}); Object.keys(cer).forEach((k) => { if (!abiertos[k] || Date.now() - cer[k] > 3 * 864e5) delete cer[k]; }); avGuardar(AVISOS_CERRADOS_KEY, cer);
@@ -45,18 +45,16 @@ function avisosCasos() {
   const d = avLeer(AVISOS_KEY, { casos: [] }), cer = avLeer(AVISOS_CERRADOS_KEY, {});
   return (d.casos || []).filter((c) => !cer[c.protocolo]);
 }
-function avisosSolicitudes() { return (avLeer(AVISOS_KEY, { solicitudes: [] }).solicitudes || []); }
 
 // ---------- Pantalla de inicio ----------
 function avisosPintar() {
   const box = document.getElementById("avisosHome"); if (!box) return;
   const casos = avisosCasos(), urg = casos.filter((c) => c.urgente);
-  const resp = avisosSolicitudes().filter((s) => s.respuesta && s.estado !== "Pendiente").length;
   box.innerHTML = (urg.length
     ? `<button type="button" class="av-urgente" data-av="casos"><span class="av-emo">⚠️</span><span><b>Revisar urgente: ${urg.length} caso${urg.length > 1 ? "s" : ""}</b><small>Tocá para indicar si quedó resuelto</small></span></button>`
     : casos.length ? `<button type="button" class="av-suave" data-av="casos"><span class="av-emo">📋</span><span><b>${casos.length} caso${casos.length > 1 ? "s" : ""} abierto${casos.length > 1 ? "s" : ""}</b><small>Al día. Tocá para verlos o cerrarlos</small></span></button>` : "");
   const sol = document.getElementById("goSolicitudes");
-  if (sol) sol.querySelector(".mc-sub").textContent = resp ? "Belén respondió " + resp + " · tocá para ver" : "Biocidas, EPP, herramientas, avisos, novedades";
+  if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
   box.querySelectorAll("[data-av=casos]").forEach((b) => (b.onclick = () => avCasosLista()));
 }
 
@@ -162,11 +160,8 @@ function avCaso(c) {
 
 // ---------- SOLICITUDES A BELÉN ----------
 function avSolicitudes() {
-  const mias = avisosSolicitudes();
-  const est = (s) => s.estado === "Pendiente" ? `<span class="av-chip amarillo">Pendiente</span>` : s.estado === "Atendida" ? `<span class="av-chip verde">Atendida</span>` : `<span class="av-chip gris">${avEsc(s.estado)}</span>`;
-  const html = `<p class="av-gris" style="margin-top:0">Lo que mandes acá queda registrado para que Belén lo gestione. Si es algo urgente, además llamala.</p><button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, herramientas, avisos o novedades</small></span></button>` +
-    (mias.length ? `<div class="av-pregunta" style="margin-top:18px">Las últimas solicitudes</div>` + mias.slice(0, 25).map((s) => `<div class="av-caso"><b>${avEsc(TIPOS_SOL.find((t) => t.id === s.tipo)?.emoji || "✉️")} ${avEsc(s.tipo)}${s.que ? " · " + avEsc(s.que) : ""}${s.cantidad ? " · " + avEsc(s.cantidad) : ""}</b>${est(s)}<small>${avFecha(s.fecha)} · ${avEsc(s.operario || "")}${s.establecimiento ? " · " + avEsc(s.establecimiento) : ""}</small>${s.respuesta ? `<p class="av-resp">💬 Belén: ${avEsc(s.respuesta)}</p>` : ""}</div>`).join("") : "");
-  const ov = avVentana("Solicitudes a Belén", html, "#5B4A8A");
+  const html = `<p class="av-gris" style="margin-top:0">Lo que mandes acá queda registrado para que Belén lo gestione. Si es algo urgente, además llamala.</p><button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, herramientas, avisos o novedades</small></span></button>`;
+  avVentana("Solicitudes a Belén", html, "#5B4A8A");
   document.getElementById("avNueva").onclick = () => { const yo = avQuien(); yo ? avSolTipo(yo) : avElegirQuien(avSolTipo); };
 }
 function avSolTipo(yo) {

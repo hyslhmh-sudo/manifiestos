@@ -74,7 +74,7 @@ function mpSolHtml(S) {
   const pend = S.filter(x => x.estado === 'Pendiente' || x.estado === 'En gestión'), resto = S.filter(x => pend.indexOf(x) < 0).slice(0, 10);
   const fila = x => '<div class="at" style="align-items:flex-start"><span><b>' + esc(x.tipo) + (x.que ? ' · ' + esc(x.que) : '') + (x.cantidad ? ' · ' + esc(x.cantidad) : '') + '</b> <span class="chip ' + (x.estado === 'Pendiente' ? 'er' : x.estado === 'En gestión' ? 'wa' : 'ok') + ' mini">' + esc(x.estado) + '</span>' +
     '<small style="display:block">' + fechaTxt(String(x.fecha || '').slice(0, 10)) + ' · ' + esc(x.operario || '') + (x.establecimiento ? ' · ' + esc(x.establecimiento) : '') + '</small>' + (x.detalle ? '<small style="display:block">' + (x.tipo === 'Herramientas' ? '<b>Para qué:</b> ' : '') + esc(x.detalle) + '</small>' : '') +
-    (x.fotos && x.fotos.length ? '<small style="display:block">' + x.fotos.map(mpLink).join(' · ') + '</small>' : '') + (x.respuesta ? '<small class="mu" style="display:block">Respuesta: ' + esc(x.respuesta) + '</small>' : '') + '</span><button class="btn sec" style="flex:0 0 auto" data-mps="' + esc(x.id) + '">Responder</button></div>';
+    (x.fotos && x.fotos.length ? '<small style="display:block">' + x.fotos.map(mpLink).join(' · ') + '</small>' : '') + (x.respuesta ? '<small class="mu" style="display:block">Nota de gestión: ' + esc(x.respuesta) + '</small>' : '') + '</span><button class="btn sec" style="flex:0 0 auto" data-mps="' + esc(x.id) + '">Responder</button></div>';
   return '<h3 style="margin:14px 0 6px;font-size:14px">Solicitudes de los operarios' + (pend.length ? ' (' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + ')' : '') + '</h3>' +
     (S.length ? pend.map(fila).join('') + (resto.length ? '<details style="margin-top:4px"><summary class="mu peq">Ver las ya respondidas (' + resto.length + ')</summary>' + resto.map(fila).join('') + '</details>' : '') : '<div class="mu">Todavía no mandaron solicitudes desde la app.</div>');
 }
@@ -114,7 +114,7 @@ function mpResponder(x) {
   mpModal('Solicitud · ' + x.tipo, '<p style="margin-top:0"><b>' + esc([x.que, x.cantidad].filter(Boolean).join(' · ') || x.tipo) + '</b><br><span class="mu peq">' + fechaTxt(String(x.fecha || '').slice(0, 10)) + ' · ' + esc(x.operario || '') + (x.establecimiento ? ' · ' + esc(x.establecimiento) : '') + '</span></p>' + (x.detalle ? '<p>' + esc(x.detalle) + '</p>' : '') +
     (x.fotos && x.fotos.length ? '<p class="peq">' + x.fotos.map(mpLink).join(' · ') + '</p>' : '') +
     '<label class="f">Estado<select class="c" id="mpEst">' + ['Pendiente', 'En gestión', 'Atendida', 'No corresponde'].map(e => '<option' + (e === (x.estado === 'Pendiente' ? 'En gestión' : x.estado) ? ' selected' : '') + '>' + e + '</option>').join('') + '</select></label>' +
-    '<label class="f">Respuesta para los operarios (la ven en la app)<textarea class="c" id="mpResp" rows="3" placeholder="Ej.: pedido a Compras, llega el lunes">' + esc(x.respuesta || '') + '</textarea></label>', 'Guardar',
+    '<label class="f">Nota de gestión (solo la ve HyS; los operarios no la ven)<textarea class="c" id="mpResp" rows="3" placeholder="Ej.: pedido a Compras, llega el lunes">' + esc(x.respuesta || '') + '</textarea></label>', 'Guardar',
     () => api('p_mipyv_solicitud', { id: x.id, estado: $('mpEst').value, respuesta: $('mpResp').value }, 120000));
 }
 function mipyvVer(v) {
