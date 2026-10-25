@@ -1765,8 +1765,9 @@ async function rxCargar(fresco, titulo) {
   if (RX && !fresco) return true;
   if (!navigator.onLine) { $('app').innerHTML = miTit(titulo) + '<p class="mu">Para ver y cargar radiaciones hace falta señal.</p>'; miVolver(); return false; }
   $('app').innerHTML = miTit(titulo) + '<p class="mu">Cargando…</p>'; bar(null);
-  try { const r = await api('r_datos', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RX = r; return true; }
-  catch (e) { $('app').innerHTML = miTit(titulo) + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return false; }
+  const antes = ESPERA_MS; ESPERA_MS = 90000;   // trae los datos personales de la base única: la primera vez puede tardar
+  try { const r = await api('r_datos', {}); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); RX = r; return true; }
+  catch (e) { ESPERA_MS = antes; $('app').innerHTML = miTit(titulo) + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return false; }
 }
 async function rxPers(fresco) {
   VISTA = 'mi'; MIV = { f: () => rxPers() }; vista('wide');
@@ -1842,7 +1843,7 @@ async function rxForms(fresco) {
   if (!(await rxCargar(fresco, 'Formularios del dosímetro'))) return;
   if (!F || F._f !== 'rxf') F = { _f: 'rxf', FORM: 'alta' };
   const t = F.FORM, L = (RX.personalUnidad || RX.personal).filter(p => !RX_BAJA.test(p.ESTADO_DOSIMETRO)), per = L.slice().sort((a, b) => String(a.APELLIDO_Y_NOMBRE).localeCompare(String(b.APELLIDO_Y_NOMBRE), 'es'));
-  $('app').innerHTML = miTit('Formularios del dosímetro', 'Elegí el formulario y el trabajador: los datos se completan solos y los podés corregir antes de imprimir. Sale en dos copias (Personal y Higiene y Seguridad).') +
+  $('app').innerHTML = miTit('Formularios del dosímetro', 'Elegí el formulario y el trabajador: los datos se completan solos y los podés corregir antes de imprimir. Sale en dos copias (Personal y Higiene y Seguridad).') + fErr +
     '<div class="field"><div class="lab"><label>Formulario</label></div><div class="seg" style="flex-wrap:wrap">' + Object.keys(RX_FORMS).map(k => '<button type="button" class="' + (t === k ? 'sel' : '') + '" data-act="rxfForm" data-arg="' + k + '" style="min-width:30%">' + RX_FORMS[k][0] + ' · ' + RX_FORMS[k][1] + '</button>').join('') + '</div></div>' +
     '<div class="field"><div class="lab"><label for="rxfPer">Trabajador</label></div><select id="rxfPer"><option value="">Persona nueva o que no está en la lista</option>' + per.map(p => '<option value="' + esc(p.ID) + '"' + (F.ID === p.ID ? ' selected' : '') + '>' + esc(p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d') + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (p.EN_BASE === 'No' ? ' (no está en la base de personal)' : /baja|traslado|renuncia|jubil|fallec/i.test(p.BASE_ESTADO || '') ? ' (de baja en la base de personal)' : '')) + '</option>').join('') + '</select></div>' +
     (per.length ? '' : '<div class="notice">Todavía no hay personas con dosímetro activo en este establecimiento. Escribí el DNI abajo y tocá «Buscar el DNI en la base de personal», o completá los datos a mano.</div>') +
@@ -1855,6 +1856,8 @@ async function rxForms(fresco) {
       : t === 'baja' ? '<h2>Baja</h2>' + fSel('MOTIVO_TIPO', 'Motivo', [['', 'Elegí…']].concat(RX_MOTIVOS_BAJA)) + fInp('BAJA_DOSIMETRO', 'Fecha a partir de la cual se pide la baja', 'date') + fSeg('ENTREGA', '¿Entrega el dosímetro?', ['Sí', 'No']) + fTxt('MOTIVO_BAJA', 'Detalle del motivo')
       : '<h2>Novedad</h2>' + fSel('NOVEDAD', 'Qué pasó', [['', 'Elegí…']].concat(RX_NOVEDADES)) + '<div class="grid2">' + fInp('FECHA_HECHO', 'Fecha en que cree que ocurrió', 'date') + fInp('HORA_HECHO', 'Hora aproximada', 'text') + '</div>' + fInp('LUGAR_HECHO', 'Dónde cree que ocurrió', 'text') +
         fSeg('DENUNCIA', 'En caso de robo, ¿hizo la denuncia policial?', ['Sí', 'No', 'No corresponde']) + fInp('DENUNCIA_NRO', 'N.º de denuncia y dependencia', 'text') + fTxt('DESCRIPCION', 'Descripción', 'Qué pasó, cómo y cuándo se dio cuenta')) +
+    '<div class="menu"><button class="big" data-act="rxfMks"><b>Preparar correo a MKS</b><span>Borrador en el Gmail de Higiene y Seguridad (dosimetria@mksargentina.com), con el formulario en PDF adjunto. No se envía solo: se revisa y se envía desde Gmail.</span></button></div>' +
+    (F.MKS_RES ? '<div class="notice ok">' + F.MKS_RES + '</div>' : '') +
     '<div class="menu"><button class="big main" data-act="rxImprimir" data-arg="' + t + '"><b>Imprimir con estos datos</b><span>' + RX_FORMS[t][0] + ' en dos copias, listo para firmar</span></button><button class="big" data-act="rxFormBlanco" data-arg="' + t + '"><b>Imprimir en blanco</b><span>Para completar a mano</span></button></div>' +
     '<p class="mu" style="font-size:13px">Los datos personales salen de la base de personal (base única). Lo que cambies acá sirve solo para imprimir; para corregirlos en la base usá «Personal con dosímetro» › «Actualizar datos». Firmado el formulario, se adjunta en el alta, la baja o el evento.</p>';
   $('rxfPer').onchange = e => { const p = L.find(x => x.ID === e.target.value), n = { _f: 'rxf', FORM: F.FORM };
@@ -1866,9 +1869,9 @@ const rxSd = v => /^s\/?d$/i.test(String(v || '').trim()) ? '' : (v == null ? ''
 // Completa lo que falta (CUIL, correo, teléfono, función, servicio) con la BASE DE TRABAJADORES por DNI
 async function rxfBase(p) {
   const dni = String(p.DNI || '').replace(/\D/g, ''); if (dni.length < 7 || !navigator.onLine) return;
-  try { const r = await api('r_dni', { dni: dni }); const b = r && r.ok && r.persona; if (!b || !F || F._f !== 'rxf' || F.ID !== p.ID) return;
+  const an = ESPERA_MS; ESPERA_MS = 60000; try { const r = await api('r_dni', { dni: dni }); ESPERA_MS = an; const b = r && r.ok && r.persona; if (!b || !F || F._f !== 'rxf' || F.ID !== p.ID) return;
     [['APELLIDO_Y_NOMBRE', b.nombre], ['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIOS', b.servicios || b.servicio], ['TITULO', b.titulo], ['MATRICULA', b.matricula]].forEach(x => { if (rxSd(x[1])) F[x[0]] = x[1]; });   // la base manda
-    rxForms(); } catch (e) {}
+    rxForms(); } catch (e) { ESPERA_MS = an; }
 }
 function rxImprimir(tipo) {
   if (!F) return; const D = {};
@@ -2397,9 +2400,10 @@ function rxListo(aviso, volver) {
 }
 async function rxDni() {
   const dni = String(F.DNI || '').replace(/\D/g, ''); if (dni.length < 7) return miErr('Escribí el DNI completo.');
-  try { const r = await api('r_dni', { dni: dni }); if (!r.ok || !r.persona) return miErr('No está en la base de personal: completá los datos a mano.');
+  const an = ESPERA_MS; ESPERA_MS = 60000;
+  try { const r = await api('r_dni', { dni: dni }); ESPERA_MS = an; if (!r.ok || !r.persona) return miErr('No está en la base de personal: completá los datos a mano.');
     const P = r.persona; F.APELLIDO_Y_NOMBRE = F.APELLIDO_Y_NOMBRE || P.nombre; F.CUIL = P.cuil; F.SERVICIO = P.servicio; F.SERVICIOS = F.SERVICIOS || P.servicio; F.FUNCION = F.FUNCION || P.funcion; if (F._f === 'rxf') { if (!F.ID) { const p = (RX.personalUnidad || RX.personal).find(x => String(x.DNI).replace(/\D/g, '') === dni); if (p) { F.ID = p.ID; RXF_PER.forEach(k => { if (!F[k] && p[k]) F[k] = p[k]; }); } } rxForms(); } else formRX(); }
-  catch (e) { miErr('No se pudo buscar. Probá de nuevo.'); }
+  catch (e) { ESPERA_MS = an; miErr('No se pudo buscar. Probá de nuevo.'); }
 }
 // Eventos
 async function rxEve(fresco) {
@@ -2437,7 +2441,13 @@ async function rxEveGuardar() {
   F = null; RX = null; rxListo(r.aviso, 'rxEve');
 }
 Object.assign(ACT, { rxPers: () => { F = null; rxPers(); }, rxAct: () => rxPers(true), rxVolver: () => { F = null; rxPers(); }, rxEditar: b => rxEditar(b.dataset.arg), rxGuardar: () => rxGuardar(), rxDni: () => rxDni(),
-  rxImprimir: b => rxImprimir(b.dataset.arg), rxForms: () => { F = null; rxForms(); }, rxfForm: b => { F.FORM = b.dataset.arg; if (F.FORM === 'baja' && F.ID && !F.BAJA_DOSIMETRO) F.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); rxForms(); }, rxFormBlanco: b => impAbrir({ tema: 'rad_form', blanco: { form: b.dataset.arg, persona: '*' }, datos: {} }, RX_FORMS[b.dataset.arg][0] + ' · en blanco'),
+  rxImprimir: b => rxImprimir(b.dataset.arg), rxForms: () => { F = null; rxForms(); }, rxfMks: async b => { if (!F.APELLIDO_Y_NOMBRE || !F.DNI) return miErr('Faltan el apellido y nombre o el DNI.'); if (!navigator.onLine) return miErr('Para preparar el correo hace falta señal.');
+    const D = {}; RXF_PER.concat(['INICIO_EXPOSICION', 'BAJA_DOSIMETRO', 'MOTIVO_BAJA', 'MOTIVO_TIPO', 'ENTREGA', 'NOVEDAD', 'FECHA_HECHO', 'HORA_HECHO', 'LUGAR_HECHO', 'DENUNCIA', 'DENUNCIA_NRO', 'DESCRIPCION']).forEach(k => { if (rxSd(F[k])) D[k] = String(F[k]); });
+    if (F.FORM === 'alta') delete D.DOSIMETRO_NRO; if (F.FORM === 'novedad') D.FECHA_FORM = new Date().toISOString().slice(0, 10);
+    b.disabled = true; b.querySelector('b').textContent = 'Armando el borrador…'; const an = ESPERA_MS; ESPERA_MS = 120000;
+    try { const r = await api('r_mail_mks', { form: F.FORM, persona: F.ID || '', datos: D, quien: (SES.persona && SES.persona.nombre) || '' }); ESPERA_MS = an; if (!r.ok) throw new Error(r.mensaje || 'No se pudo armar el borrador.');
+      F.MKS_RES = '<b>Borrador listo en Gmail</b> (no se envió): «' + esc(r.asunto) + '». ' + '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">Abrir el borrador en Gmail</a> (solo desde la cuenta de Higiene y Seguridad)' + (r.aviso ? '<br>' + esc(r.aviso) : ''); rxForms(); }
+    catch (e) { ESPERA_MS = an; b.disabled = false; b.querySelector('b').textContent = 'Preparar correo a MKS'; miErr(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message); } }, rxfForm: b => { F.FORM = b.dataset.arg; F.MKS_RES = ''; if (F.FORM === 'baja' && F.ID && !F.BAJA_DOSIMETRO) F.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); rxForms(); }, rxFormBlanco: b => impAbrir({ tema: 'rad_form', blanco: { form: b.dataset.arg, persona: '*' }, datos: {} }, RX_FORMS[b.dataset.arg][0] + ' · en blanco'),
   rxSug: b => { const s = RX.sugeridas[Number(b.dataset.arg)]; rxEditar('', { DNI: s.dni, CUIL: s.cuil, APELLIDO_Y_NOMBRE: s.nombre, FUNCION: s.funcion, SERVICIO: s.servicio }); },
   rxBaja: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxb', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, TIPO_BAJA: 'Baja a pedido del trabajador', BAJA_DOSIMETRO: new Date().toISOString().slice(0, 10) }; MIV = { f: formRXBaja }; formRXBaja(); },
   rxReact: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxr', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, BAJA_ANT: p.BAJA_DOSIMETRO, ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10), DOSIMETRO_NRO: p.DOSIMETRO_NRO, SITIO: p.SITIO, SECTOR_EXPOSICION: p.SECTOR_EXPOSICION }; MIV = { f: formRXReact }; formRXReact(); },

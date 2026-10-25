@@ -241,15 +241,23 @@ function radBaseDe_(x) {
   return { dni: x.dni, nombre: [v('APELLIDOS'), v('NOMBRES')].filter(Boolean).join(', '), cuil: v('CUIL'), email: v('EMAIL'), telefono: v('TELEFONO'), funcion: v('FUNCION') || v('FUNCION_DETALLE'),
     servicio: v('SERVICIO'), servicios: v('SERVICIOS'), titulo: v('TITULO'), matricula: v('MATRICULA'), est: x.hoja, estado: v('ESTADO') };
 }
+// Índice liviano para leer (DNI › datos), en caché 10 minutos: leer todas las hojas de la base en cada pantalla es lento
+let RAD_BIX_ = null;
+function radBaseIx_() {
+  if (RAD_BIX_) return RAD_BIX_; const k = 'rad_base_ix', c = cacheGet_(k); if (c) return RAD_BIX_ = c;
+  const ix = {}, P = radPersIx_(); Object.keys(P).forEach(d => { const b = radBaseDe_(P[d]); Object.keys(b).forEach(f => { if (!b[f]) delete b[f]; }); ix[d] = b; });
+  cachePut_(k, ix, 600); return RAD_BIX_ = ix;
+}
+function radBaseOlvidar_() { RAD_PIX_ = null; RAD_BIX_ = null; try { CacheService.getScriptCache().remove('rad_base_ix'); } catch (e) {} }
 function radDniBase_(dni) {
   dni = String(dni || '').replace(/\D/g, ''); if (dni.length < 6) return null;
-  const x = radPersIx_()[dni]; return x ? radBaseDe_(x) : null;
+  const b = radBaseIx_()[dni]; return b ? Object.assign({ dni: dni, nombre: '', cuil: '', email: '', telefono: '', funcion: '', servicio: '', servicios: '', titulo: '', matricula: '', est: '', estado: '' }, b) : null;
 }
 // Pone sobre cada persona expuesta los datos de la base (la base manda; lo de la planilla de radiaciones queda solo si la base no lo tiene)
 function radConBase_(per) {
-  let ix = {}; try { ix = radPersIx_(); } catch (e) { return per; }
-  return per.map(p => { const x = ix[String(p.DNI || '').replace(/\D/g, '')]; if (!x) return Object.assign({}, p, { EN_BASE: 'No' });
-    const b = radBaseDe_(x), o = Object.assign({}, p, { EN_BASE: 'Sí', BASE_ESTADO: b.estado, BASE_EST: b.est });
+  let ix = {}; try { ix = radBaseIx_(); } catch (e) { return per; }
+  return per.map(p => { const b0 = ix[String(p.DNI || '').replace(/\D/g, '')]; if (!b0) return Object.assign({}, p, { EN_BASE: 'No' });
+    const b = Object.assign({ nombre: '', cuil: '', email: '', telefono: '', funcion: '', servicio: '', servicios: '', titulo: '', matricula: '', est: '', estado: '' }, b0), o = Object.assign({}, p, { EN_BASE: 'Sí', BASE_ESTADO: b.estado, BASE_EST: b.est });
     [['APELLIDO_Y_NOMBRE', b.nombre], ['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIO', b.servicio], ['SERVICIOS', b.servicios || b.servicio], ['TITULO', b.titulo], ['MATRICULA', b.matricula]]
       .forEach(c => { if (c[1]) o[c[0]] = c[1]; else if (bjVacio_(o[c[0]])) o[c[0]] = ''; });
     return o; });
@@ -263,10 +271,10 @@ function radBaseEscribir_(cod, x, dni, nom, quien) {
   if (!b) {
     const pz = nom.split(','), nueva = Object.assign({ DNI: dni, APELLIDOS: pz[0].trim(), NOMBRES: pz.slice(1).join(',').trim() }, val);
     if (val.SERVICIOS) nueva.SERVICIO = val.SERVICIOS.split(',')[0].trim();
-    bjAplicarTrab_(cod, [{ clave: 'DNI ' + dni, nueva: nueva, despues: nom }], origen); RAD_PIX_ = null; return { alta: true };
+    bjAplicarTrab_(cod, [{ clave: 'DNI ' + dni, nueva: nueva, despues: nom }], origen); radBaseOlvidar_(); return { alta: true };
   }
   const C = []; Object.keys(val).forEach(k => { const antes = persVal_(b, k); if (norm(k, antes) !== norm(k, val[k])) C.push({ clave: 'DNI ' + dni, campo: k, antes: antes, despues: val[k] }); });
-  if (C.length) { bjAplicarTrab_(b.hoja, C, origen); RAD_PIX_ = null; }
+  if (C.length) { bjAplicarTrab_(b.hoja, C, origen); radBaseOlvidar_(); }
   return { cambios: C.length };
 }
 // Índice de la BASE DE TRABAJADORES (hoja TODOS) por DNI, leído una sola vez
@@ -644,6 +652,7 @@ function radRed_(d) {
         personalUnidad: (cod === 'HZT' || cod === 'HMH') ? radConBase_(D.per.filter(o => o.ESTABLECIMIENTO === 'HZT' || o.ESTABLECIMIENTO === 'HMH')) : null };
     }
     case 'r_dni': return { ok: true, persona: radDniBase_(x.dni) };
+    case 'r_mail_mks': return radMailMks_(Object.assign({}, x, { cod: cod }), quien);   // borrador en el Gmail de HyS (no se envía solo)
     case 'r_persona_guardar': {
       if (x.ID) { const p = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(o => o.ID === x.ID); if (!p || limpio_(p.ESTABLECIMIENTO) !== cod) return { ok: false, mensaje: 'Esa persona no es de este establecimiento.' }; }
       x.ESTABLECIMIENTO = cod; return conLock_(() => radPersonaGuardar_(x, quien));

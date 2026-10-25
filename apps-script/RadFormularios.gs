@@ -126,7 +126,7 @@ function radfOpciones_(cod) {
 // Arma un BORRADOR en Gmail (no lo envía: se revisa y se envía desde Gmail) con texto formal y el formulario en PDF adjunto
 // (y, si ya está cargado, el formulario firmado). Sale de belenpellegrini.hys@gmail.com si Gmail tiene ese «Enviar como».
 const RADM = { REMITENTE: 'belenpellegrini.hys@gmail.com', NOMBRE: 'Belén Pellegrini · Higiene y Seguridad Laboral', P_PARA: 'RAD_MKS_CORREO' };
-function radMksCorreo_() { return PropertiesService.getScriptProperties().getProperty(RADM.P_PARA) || ''; }
+function radMksCorreo_() { return PropertiesService.getScriptProperties().getProperty(RADM.P_PARA) || 'dosimetria@mksargentina.com'; }   // dirección de MKS para altas, bajas y novedades (dato de Belén, 25/10/2026)
 function radMailMks_(x, quien) {
   const cod = limpio_(x.cod), tipo = x.form, F = RADF.FORMS[tipo]; if (!cod || !F) return { ok: false, mensaje: 'Elegí el formulario.' };
   const para = limpio_(x.para || radMksCorreo_()); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return { ok: false, mensaje: 'Escribí el correo de MKS.' };
