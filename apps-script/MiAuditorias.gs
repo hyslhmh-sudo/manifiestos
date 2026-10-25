@@ -9,7 +9,7 @@
  *   6 · Servicios e infraestructura relevamientos (M8 › RELEVAMIENTOS e INDICADORES)
  * Versión 1 (23/10/2026): se suma todo lo que la Res. SRT 905/2015 pone a cargo del Servicio de HyS y el sistema ya registra:
  *   2 · Agua                        análisis de agua, apta / NO APTA (BASE COMÚN › AGUA_ANALISIS) · Anexo I, ítem 12
- *   5 · Radiaciones                 controles mensuales de dosimetría y dosis a investigar (RADIACIONES › CONTROLES, INVESTIGACIONES) · Anexo II, ítems 5 y 6
+ *   5 · Radiaciones                 informes bimestrales de dosimetría y dosis a investigar (RADIACIONES › CONTROLES, INVESTIGACIONES) · Anexo II, ítems 5 y 6
  *   6 · Servicios e infraestructura RGRL (M8 · RGRL y mediciones › RGRL, RGRL_RESPUESTAS) · Anexo I, ítem 2 · Anexo II, ítem 1
  *                                   mediciones (› MEDICIONES: puesta a tierra, iluminación, ruido…) · Anexo II, ítems 5 y 6
  *   7 · Protección contra incendios recorridas de seguridad (› RECORRIDAS) y control mensual de extintores (› CONTROLES, por mes) · Anexo II, ítems 2.2 y 3.2
@@ -129,13 +129,13 @@ function maudPlagasInsp_(cod) {
       quien: limpio_(r.CARGO), obs: limpio_(r.OBSERVACIONES), informe: r.ARCHIVO ? { codigo: '', doc: limpio_(r.ARCHIVO), pdf: '', estado: '' } : null, extra: [['Qué se controló', limpio_(r.ACCIONES)]] });
   });
 }
-// 5 · Radiaciones: controles mensuales y dosis a investigar, sin nombres ni DNI (Anexo II, ítems 5 y 6)
+// 5 · Radiaciones: informes bimestrales de dosimetría y dosis a investigar, sin nombres ni DNI (Anexo II, ítems 5 y 6)
 function maudRadiaciones_(cod) {
   if (!maudProp_(RAD.P_LIBRO)) return null;
   const C = radLeer_('CONTROLES', RAD.H_CON).filter(c => limpio_(c.ESTABLECIMIENTO) === cod && c.ESTADO !== 'Anulado').map(c => {
     const an = c.CON_ANORMALES === 'Sí', per = limpio_(c.PERIODO);
-    return maudItem_({ id: limpio_(c.ID), tipo: 'Control mensual de dosimetría', fecha: /^\d{4}-\d{2}$/.test(per) ? per + '-01' : maudF_(c.FECHA_RECEPCION), estado: limpio_(c.ESTADO) || 'Vigente',
-      res: { t: an ? 'Valores anormales' : 'Sin anormales', n: an ? 'er' : 'ok' }, lugar: limpio_(c.SITIO), quien: limpio_(c.PROVEEDOR), obs: limpio_(c.OBSERVACIONES), extra: [['Período', per]] });
+    return maudItem_({ id: limpio_(c.ID), tipo: 'Informe bimestral de dosimetría', fecha: /^\d{4}-\d{2}$/.test(per) ? per + '-01' : maudF_(c.FECHA_RECEPCION), estado: limpio_(c.ESTADO) || 'Vigente',
+      res: { t: an ? 'Valores anormales' : 'Sin anormales', n: an ? 'er' : 'ok' }, lugar: limpio_(c.SITIO), quien: limpio_(c.PROVEEDOR), obs: limpio_(c.OBSERVACIONES), extra: [['Bimestre', typeof radBimTxt_ === 'function' ? radBimTxt_(per) : per]] });
   });
   let I = []; try { I = radInvLeer_(); } catch (e) {}
   I.filter(i => i.ESTABLECIMIENTO === cod && i.ESTADO !== 'Anulado').forEach(i => C.push(maudItem_({ id: limpio_(i.ID), tipo: 'Dosis a investigar', fecha: maudF_(i.FECHA_DETECCION), estado: limpio_(i.ESTADO) || 'Abierto',

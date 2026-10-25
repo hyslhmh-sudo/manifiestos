@@ -7,7 +7,7 @@
  *   PERSONAL_EXPUESTO  una fila por persona expuesta: datos de la BASE DE TRABAJADORES + dosímetro, estado y autorización
  *   MOVIMIENTOS        historial: alta de exposición, alta/baja de dosímetro (a pedido o por fin de exposición), reactivación,
  *                      cambio de dosímetro, extravío. Nada se pisa
- *   CONTROLES          un control mensual por fila (PDF del servicio de dosimetría, guardado en Drive). El sistema no lee el PDF
+ *   CONTROLES          un informe bimestral por fila (PDF del servicio de dosimetría, guardado en Drive; PERIODO = último mes del bimestre). El sistema no lee el PDF
  *   EVENTOS            registros anormales, extravíos, dosímetros dañados o no devueltos, exposiciones accidentales, con seguimiento
  *   SALAS_EQUIPOS      salas y equipos: habilitación, responsables, plano y memoria de blindaje, levantamiento radiométrico,
  *                      control de calidad, señalización y elementos de protección plomados
@@ -178,7 +178,7 @@ const RAD_REQ = [
 ];
 const RAD_AYUDA = [
   ['Ayuda · Módulo 9 · Radiaciones ionizantes', ''],
-  ['Qué es', 'El registro de rayos X de toda la red: personal expuesto y sus dosímetros, controles mensuales, eventos, salas y equipos, documentos y requisitos legales. Versión 0.'],
+  ['Qué es', 'El registro de rayos X de toda la red: personal expuesto y sus dosímetros, informes de dosimetría bimestrales (MKS), eventos, salas y equipos, documentos y requisitos legales. Versión 0.'],
   ['Desde dónde se carga', 'Portal HyS › 9 · Radiaciones ionizantes. Todo se puede cargar y corregir también acá, en cada hoja (las filas empiezan en la 6).'],
   ['Alcance: quién va en cada establecimiento', 'El personal del Servicio de Radiología (técnicos y profesionales de diagnóstico por imágenes; no incluye PROSATE, quirófano, traumatología, cirugía ni odontología) rota entre el HZT y el HMH: se gestiona como una sola unidad HZT/HMH y se carga en el HZT (sitio HZT Central), con un único informe de dosimetría. PROSATE es la ex ADOS y depende del HZT. Odontología depende del HZT (consultorios en los CAPS y en la sede ex ADOS). El personal de quirófano, traumatología y cirugía que use rayos X (arco en C) se carga en el establecimiento donde trabaja.'],
   ['SITIOS_RX', 'Un renglón por sitio de cada establecimiento (edificio, CAPS, sede ex ADOS, dispositivos), copiado de BASE COMÚN › SITIOS. RAYOS_X = Sí, No o A confirmar, y qué equipos hay. Red Trelew: HZT Central, sede ex ADOS, CAPS y HMH cargados con Sí; el resto de la provincia, A confirmar. Las personas, los equipos, los eventos y los documentos llevan su SITIO.'],
@@ -351,9 +351,9 @@ function radPersonaGuardar_(x, quien) {
 
 // ------------------------------------------------------------------ CONTROLES MENSUALES (PDF)
 function radControlGuardar_(x, quien) {
-  const cod = limpio_(x.ESTABLECIMIENTO), per = limpio_(x.PERIODO);
+  const cod = limpio_(x.ESTABLECIMIENTO), per = radBimDe_(x.PERIODO);   // informes bimestrales: se guarda el último mes del bimestre
   if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
-  if (!/^\d{4}-\d{2}$/.test(per)) return { ok: false, mensaje: 'Elegí el mes del control.' };
+  if (!/^\d{4}-\d{2}$/.test(per)) return { ok: false, mensaje: 'Elegí el bimestre del control.' };
   if (!x.archivo && !x.ID) return { ok: false, mensaje: 'Falta el PDF del control.' };
   const L = radLeer_('CONTROLES', RAD.H_CON); let antes = x.ID ? L.find(c => c.ID === x.ID) : null;
   const sit = limpio_(x.SITIO);
@@ -459,7 +459,7 @@ function radDosisGuardar_(x, quien) {
   const bien = filas.map(f => { const o = {}; RAD.H_DOS.forEach(h => o[h] = f[h] != null ? f[h] : ''); o.DNI = String(o.DNI || '').replace(/\D/g, ''); o.APELLIDO_Y_NOMBRE = limpio_(o.APELLIDO_Y_NOMBRE);
     ['PERIODO_DESDE', 'PERIODO_HASTA'].forEach(k => o[k] = /^\d{4}-\d{2}$/.test(limpio_(o[k])) ? limpio_(o[k]) : ''); ['DOSIS_MSV', 'ANUAL_C', 'ANUAL_12'].forEach(k => { const n = radNum_(o[k]); o[k] = n == null ? '' : n; }); return o; });
   const medidos = bien.filter(f => f.PERIODO_HASTA && (f.DOSIS_MSV !== '' || /LIM|NR/i.test(f.OBSERVACION)));
-  const per = (medidos.length ? medidos : bien).map(f => f.PERIODO_HASTA).filter(Boolean).sort().pop() || Utilities.formatDate(radFecha_(x.FECHA_EMISION) || new Date(), TZ, 'yyyy-MM');
+  const per = radBimDe_((medidos.length ? medidos : bien).map(f => f.PERIODO_HASTA).filter(Boolean).sort().pop() || Utilities.formatDate(radFecha_(x.FECHA_EMISION) || new Date(), TZ, 'yyyy-MM'));   // bimestre
   const anormales = bien.filter(radDosisAnormal_);
   // Archivo: carpeta del establecimiento › Dosimetría › año
   const url = x.archivo ? radArchivo_(cod, x.archivo, ['Dosimetría', per.slice(0, 4)], 'Informe de dosis ' + (limpio_(x.PROVEEDOR) || '') + ' ' + (rep || '') + ' ' + cod + (sit ? ' ' + sit : '') + ' ' + per) : limpio_(x.ARCHIVO);
@@ -578,11 +578,22 @@ function radDocGuardar_(x, quien) {
 
 // ------------------------------------------------------------------ TABLERO Y DETALLE
 function radEstadoFecha_(vence, hoyISO) { if (!vence) return 'sd'; if (vence < hoyISO) return 'vencido'; const l = new Date(hoyISO + 'T12:00:00'); l.setDate(l.getDate() + RAD.AVISO_DIAS); return vence <= Utilities.formatDate(l, TZ, 'yyyy-MM-dd') ? 'porvencer' : 'vigente'; }
+// Los informes de MKS son BIMESTRALES (ene-feb, mar-abr, may-jun, jul-ago, sep-oct, nov-dic; dato de Belén, 25/10/2026).
+// Un bimestre se identifica por su último mes (aaaa-02, -04, -06, -08, -10, -12), como ya figuraba en CONTROLES.
+function radBimDe_(p) { const m = /^(\d{4})-(\d{2})/.exec(limpio_(p));   // acepta «2026-08 · jul–ago 2026»
+  if (!m) return limpio_(p); const mm = +m[2]; return m[1] + '-' + String(mm % 2 ? mm + 1 : mm).padStart(2, '0'); }
+// Últimos n bimestres terminados; «atraso» = meses que se dan para que llegue el informe (2: el de jul-ago se espera desde octubre)
+function radBims_(n, atraso) {
+  const d = new Date(); let y = d.getFullYear(), m = d.getMonth() + 1 - (atraso || 0); while (m < 1) { m += 12; y--; } if (m % 2) m--; if (m < 1) { m += 12; y--; }
+  const out = []; for (let i = 0; i < n; i++) { out.push(y + '-' + String(m).padStart(2, '0')); m -= 2; if (m < 1) { m += 12; y--; } } return out;
+}
+const radBimTxt_ = p => { const b = radBimDe_(p), m = /^(\d{4})-(\d{2})$/.exec(b); if (!m) return b; const M = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return M[+m[2] - 2] + '–' + M[+m[2] - 1] + ' ' + m[1]; };
+const radBimAnt_ = b => { const [y, m] = b.split('-').map(Number); return m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); };
 function radMeses_(n) { const out = [], d = new Date(); d.setDate(1); for (let i = 1; i <= n; i++) { const x = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push(Utilities.formatDate(x, TZ, 'yyyy-MM')); } return out; }
 function radResumenEst_(cod, D, hoy) {
   const per = D.per.filter(p => p.ESTABLECIMIENTO === cod), act = per.filter(p => p.ESTADO_DOSIMETRO === 'Activo');
-  const con = D.con.filter(c => c.ESTABLECIMIENTO === cod && c.ESTADO !== 'Anulado'), meses = radMeses_(3);
-  const cub = radMesesCubiertos_(D.dos || [], cod), faltan = act.length ? meses.filter(m => !con.some(c => c.PERIODO === m) && !cub[m]) : [];
+  const con = D.con.filter(c => c.ESTABLECIMIENTO === cod && c.ESTADO !== 'Anulado'), meses = radBims_(2, 2);   // últimos 2 bimestres que ya deberían estar informados
+  const cub = radMesesCubiertos_(D.dos || [], cod), faltan = act.length ? meses.filter(m => !con.some(c => c.PERIODO === m) && !cub[m] && !cub[radBimAnt_(m)]) : [];
   const eve = D.eve.filter(e => e.ESTABLECIMIENTO === cod && !/Cerrado|Anulado/.test(e.ESTADO));
   const sal = D.sal.filter(s => s.ESTABLECIMIENTO === cod && s.ESTADO !== 'Baja');
   const hab = sal.map(s => radEstadoFecha_(s.HABILITACION_VENCE, hoy));
@@ -597,7 +608,7 @@ function radResumenEst_(cod, D, hoy) {
 }
 function radDatos_() {
   return { per: radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).map(p => Object.assign(p, { ESTABLECIMIENTO: limpio_(p.ESTABLECIMIENTO), DNI: String(p.DNI || '').replace(/\D/g, '') })),
-    con: radLeer_('CONTROLES', RAD.H_CON).map(c => Object.assign(c, { ESTABLECIMIENTO: limpio_(c.ESTABLECIMIENTO), PERIODO: limpio_(c.PERIODO) })),
+    con: radLeer_('CONTROLES', RAD.H_CON).map(c => Object.assign(c, { ESTABLECIMIENTO: limpio_(c.ESTABLECIMIENTO), PERIODO: radBimDe_(c.PERIODO) })),
     eve: radLeer_('EVENTOS', RAD.H_EVE).map(e => Object.assign(e, { ESTABLECIMIENTO: limpio_(e.ESTABLECIMIENTO) })),
     sal: radLeer_('SALAS_EQUIPOS', RAD.H_SAL).map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO) })),
     doc: radLeer_('DOCUMENTOS', RAD.H_DOC).map(d => Object.assign(d, { ESTABLECIMIENTO: limpio_(d.ESTABLECIMIENTO) })),
@@ -626,7 +637,7 @@ function radDetalle_(cod) {
     docs: r.DOC_TIPO ? docs.filter(d => d.TIPO === r.DOC_TIPO && d.ESTADO === 'Vigente').map(d => ({ titulo: d.TITULO, archivo: d.ARCHIVO, vence: d.VENCE })) : null }));
   const mov = radLeer_('MOVIMIENTOS', RAD.H_MOV).filter(m => limpio_(m.ESTABLECIMIENTO) === cod).slice(-200).reverse();
   return { ok: true, cod: cod, hoy: hoy, resumen: radResumenEst_(cod, D, hoy), personal: radConBase_(de(D.per)), movimientos: mov,
-    controles: de(D.con).sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))), meses: radMeses_(12),
+    controles: de(D.con).sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))), meses: radBims_(6, 1),   // últimos 6 bimestres (un año)
     eventos: de(D.eve).reverse(), salas: de(D.sal).map(s => Object.assign(s, { hab: radEstadoFecha_(s.HABILITACION_VENCE, hoy), lev: radEstadoFecha_(s.LEVANTAMIENTO_PROXIMO, hoy), cc: radEstadoFecha_(s.CONTROL_CALIDAD_PROXIMO, hoy) })),
     documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), cruce: radCruce_(cod, de(D.per)), sitios: radSitiosEst_(cod, D.sit),
     listas: { rxSitio: RAD.RX_SITIO, sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, estadosDosi: RAD.ESTADOS_DOSI, tiposEve: RAD.TIPOS_EVE, equipos: RAD.EQUIPOS, tiposDoc: RAD.TIPOS_DOC, estadosInv: RAD.ESTADOS_INV, causasInv: RAD.CAUSAS_INV },
