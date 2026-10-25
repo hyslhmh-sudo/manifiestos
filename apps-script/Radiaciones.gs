@@ -271,11 +271,12 @@ function radPersonaGuardar_(x, quien) {
   const cod = limpio_(x.ESTABLECIMIENTO); if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
   radCabeceras_('PERSONAL_EXPUESTO', RAD.H_PER); radCabeceras_('EVENTOS', RAD.H_EVE);
   if (x.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(limpio_(x.EMAIL))) return { ok: false, mensaje: 'El correo no parece válido.' };
-  const dni = String(x.DNI || '').replace(/\D/g, ''), nom = limpio_(x.APELLIDO_Y_NOMBRE);
-  if (!nom) return { ok: false, mensaje: 'Falta el apellido y nombre.' };
-  if (dni && (dni.length < 7 || dni.length > 8)) return { ok: false, mensaje: 'El DNI tiene que tener 7 u 8 números.' };
   const L = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER); let antes = null;
   if (x.ID) { antes = L.find(p => p.ID === x.ID); if (!antes) return { ok: false, mensaje: 'No se encontró la persona: actualizá la lista.' }; }
+  // 25/10/2026: si una corrección no trae nombre o DNI (p. ej. «Tomar los datos de la base»), se conservan los que ya tenía
+  const dni = String(x.DNI != null && x.DNI !== '' ? x.DNI : antes ? antes.DNI : '').replace(/\D/g, ''), nom = limpio_(x.APELLIDO_Y_NOMBRE) || (antes ? limpio_(antes.APELLIDO_Y_NOMBRE) : '');
+  if (!nom) return { ok: false, mensaje: 'Falta el apellido y nombre.' };
+  if (dni && (dni.length < 7 || dni.length > 8)) return { ok: false, mensaje: 'El DNI tiene que tener 7 u 8 números.' };
   else if (dni && L.some(p => String(p.DNI).replace(/\D/g, '') === dni && limpio_(p.ESTABLECIMIENTO) === cod)) return { ok: false, mensaje: 'Esa persona ya está cargada en este establecimiento: abrila y usá «Reactivar» si había pedido la baja.' };
   const hoy = new Date(), p = {};
   RAD.H_PER.forEach(h => p[h] = x[h] != null ? x[h] : antes ? antes[h] : '');

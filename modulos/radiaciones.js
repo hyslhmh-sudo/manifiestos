@@ -164,7 +164,8 @@ function radCruceHtml(D) {
 }
 function radPerEv(D) {
   document.querySelectorAll('[data-cru]').forEach(b => b.onclick = async () => { const c = (D.cruce || []).find(x => x.id === b.dataset.cru); if (!c) return;
-    const datos = { ID: c.id, ESTABLECIMIENTO: D.cod, movimiento: { tipo: 'Corrección de datos', detalle: 'Datos tomados de la base de trabajadores: ' + c.dif.map(d => d[0]).join(', ') } }; c.dif.forEach(d => datos[d[0]] = d[2]);
+    const pe = D.personal.find(x => x.ID === c.id) || {};   // el servidor pide nombre y DNI: van los de la persona y encima lo que se toma de la base (25/10/2026)
+    const datos = { ID: c.id, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: pe.APELLIDO_Y_NOMBRE || c.nombre, DNI: pe.DNI || c.dni, movimiento: { tipo: 'Corrección de datos', detalle: 'Datos tomados de la base de trabajadores: ' + c.dif.map(d => d[0]).join(', ') } }; c.dif.forEach(d => datos[d[0]] = d[2]);
     b.disabled = true; b.textContent = 'Guardando…';
     try { const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) { b.disabled = false; b.textContent = 'Tomar los datos de la base'; return toast(r.mensaje || 'No se pudo guardar.'); } radRecargar(D, 'Datos actualizados con la base de trabajadores.'); } catch (e) { b.disabled = false; b.textContent = 'Tomar los datos de la base'; } });
   $('rpVer').onchange = e => { RADF.ver = e.target.value; radEst(encodeURIComponent(D.cod) + '/per'); };
