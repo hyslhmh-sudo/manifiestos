@@ -13,6 +13,7 @@ const FILES_TO_CACHE = [
   "./index.html",
   "./version.js",
   "./app.js",
+  "./avisos.js",
   "./data.js",
   "./icons.js",
   "./manifest.json",

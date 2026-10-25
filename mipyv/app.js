@@ -78,6 +78,7 @@ function goHome() {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.querySelector('.screen[data-step="home"]').classList.add("active");
   screensEl.scrollTop = 0;
+  if (typeof avisosPintar === "function") avisosPintar();
 }
 homeBtn.addEventListener("click", goHome);
 
@@ -2117,6 +2118,7 @@ async function actualizarCatalogosDesdePlanilla() {
     if (Array.isArray(datos.trabajos_abiertos)) guardarCopia(TRABAJOS_PLANILLA_KEY, datos.trabajos_abiertos);
     if (Array.isArray(datos.intervenciones_abiertas)) guardarCopia(INTERV_PLANILLA_KEY, datos.intervenciones_abiertas);
     if (!currentModule) aplicarCatalogos(catalogos);
+    if (typeof avisosDatos === "function") avisosDatos(datos);   // casos por vencer y solicitudes (avisos.js)
   } catch (err) {
     console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);
   }

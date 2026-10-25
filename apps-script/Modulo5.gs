@@ -22,7 +22,9 @@ const MOD5 = {
   NOMBRE: 'MÓDULO 5 · PLAGAS',
   PROP_EST: 'PLAGAS_EST_CARPETA',                   // carpeta «Establecimientos» del módulo
   PROP_MIPYV: 'MIPYV_LIBRO',                        // libro del registro MIPyV
-  MIPYV: '1JFNEftNebLDw0hWRRw1H_Dy7IcJ8RuC8Dpuv9HWeebk'
+  MIPYV: '1JFNEftNebLDw0hWRRw1H_Dy7IcJ8RuC8Dpuv9HWeebk',
+  // Apps Script del libro MIPyV (el mismo que usa la app de los operarios): calcula los casos abiertos y recibe los cierres (25/10/2026)
+  MIPYV_API: 'https://script.google.com/macros/s/AKfycbzLLhU4Zgb7EsqmkBTfHc_oLxd6rJRNzfy33IRmRbrHuvJo9FD7EWqaaahROhr_Jucwrg/exec'
 };
 
 // Carpeta de plagas de un establecimiento dentro del módulo (la usa Establecimiento.gs). null si el módulo no está armado.
@@ -91,11 +93,65 @@ function plagMipyv_(dias) {
     return { id: t.id_trabajo, cod: l.cod, sitio: l.sitio, lugar: t.establecimiento, desde: plagFecha_(t.fecha_inicio), estado: t.estado, operario: t.operario_inicio }; });
   const vencidos = plagTabla_(ss, 'seguimientos_vencidos').filter(s => s.establecimiento).map(s => ({ fecha: plagFecha_(s.fecha_ultima_visita), lugar: s.establecimiento, sector: s.sector, plaga: s.tipo_plaga, operario: s.operario, protocolo: s.protocolo, vencia: plagFecha_(s.vencia), dias: s.dias_vencido }));
   const sinLugar = Object.keys(lugares).filter(id => !lugares[id].cod).map(id => lugares[id].nombre);
-  const out = { ok: true, visitas: visitas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
+  // Casos, solicitudes y cierres: los calcula el Apps Script del libro MIPyV, con la misma regla que ve la app de los operarios
+  let casos = null, solicitudes = null, cierres = null; const api = plagMipyvApi_();
+  if (api && Array.isArray(api.casos)) {
+    casos = api.casos.map(c => { const l = lug(c.id_establecimiento); return Object.assign({}, c, { cod: l.cod, sitio: l.sitio }); });
+    solicitudes = api.solicitudes || []; cierres = api.cierres || [];
+  }
+  const out = { ok: true, visitas: visitas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
+// ------------------------------------------------------------------ Casos y solicitudes de MIPyV (25/10/2026)
+function plagMipyvApi_(datos) {
+  try {
+    const op = datos ? { method: 'post', contentType: 'text/plain;charset=utf-8', payload: JSON.stringify(datos), muteHttpExceptions: true, followRedirects: true } : { muteHttpExceptions: true, followRedirects: true };
+    const r = UrlFetchApp.fetch(MOD5.MIPYV_API + (datos ? '' : '?para=portal'), op), t = r.getContentText();
+    try { return JSON.parse(t); } catch (e) { return { ok: false, error: 'Respuesta no válida del Apps Script de MIPyV (código ' + r.getResponseCode() + ').' }; }
+  } catch (e) { return { ok: false, error: 'No se pudo consultar el Apps Script de MIPyV: ' + e.message }; }
+}
+// Cierre de un caso desde el portal (Resuelto / No resuelto con motivo): lo registra el Apps Script de MIPyV en «cierres_casos»
+function plagCerrarCaso_(x, quien) {
+  if (!/^(Resuelto|No resuelto)$/.test(x.resultado_cierre)) return { ok: false, mensaje: 'Indicá si quedó resuelto.' };
+  if (x.resultado_cierre === 'No resuelto' && !x.motivo) return { ok: false, mensaje: 'Elegí el motivo.' };
+  if (x.motivo === 'Otro' && !String(x.detalle || '').trim()) return { ok: false, mensaje: 'Explicá el motivo.' };
+  const data = { id_cierre: 'C-' + Date.now(), fecha: new Date().toISOString(), operario: 'Belén Pellegrini (HyS)', protocolo: x.protocolo, alias: x.alias || [x.protocolo], id_ultima_visita: x.id_ultima_visita,
+    establecimiento: x.establecimiento, tipo_plaga: x.tipo_plaga, resultado_cierre: x.resultado_cierre, motivo: x.resultado_cierre === 'Resuelto' ? '' : x.motivo, detalle: String(x.detalle || '').trim(), origen: 'Portal HyS (' + (quien || 'HyS') + ')' };
+  const r = plagMipyvApi_({ tipo: 'cierre_caso', data: data });
+  CacheService.getScriptCache().remove('mipyv');
+  return r && r.ok ? { ok: true } : { ok: false, mensaje: (r && (r.error || r.mensaje)) || 'No se pudo registrar el cierre.' };
+}
+// Asigna un número de protocolo a visitas (une las visitas de un mismo caso). Escribe la columna protocolo de «visitas»
+function plagProtocolo_(x) {
+  const prot = String(x.protocolo || '').trim(), ids = (x.ids || []).map(String);
+  if (!/^\d{1,4}\/\d{4}$/.test(prot)) return { ok: false, mensaje: 'El protocolo va como número/año, por ejemplo 141/2026.' };
+  if (!ids.length) return { ok: false, mensaje: 'Elegí al menos una visita.' };
+  const ss = plagMipyvLibro_(), sh = ss.getSheetByName('visitas'), H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
+  const jI = H.indexOf('id_visita'), jP = H.indexOf('protocolo'), jE = H.indexOf('establecimiento'); if (jI < 0 || jP < 0) return { ok: false, mensaje: 'El libro MIPyV no tiene la columna protocolo.' };
+  const v = sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), H.length).getValues();
+  const otros = v.filter(r => String(r[jP]).trim() === prot && ids.indexOf(String(r[jI])) < 0).map(r => String(r[jE]));
+  const lugares = Array.from(new Set(v.filter(r => ids.indexOf(String(r[jI])) >= 0).map(r => String(r[jE]))));
+  if (otros.length && otros.some(e => lugares.indexOf(e) < 0)) return { ok: false, mensaje: 'El protocolo ' + prot + ' ya se usa en otro lugar (' + Array.from(new Set(otros)).join(', ') + ').' };
+  let n = 0; v.forEach((r, i) => { if (ids.indexOf(String(r[jI])) >= 0) { sh.getRange(i + 2, jP + 1).setValue(prot); n++; } });
+  CacheService.getScriptCache().remove('mipyv');
+  return { ok: true, visitas: n };
+}
+// Respuesta de HyS a una solicitud de los operarios (la ven en la app)
+function plagSolicitudResponder_(x) {
+  const estados = ['Pendiente', 'En gestión', 'Atendida', 'No corresponde'];
+  if (estados.indexOf(x.estado) < 0) return { ok: false, mensaje: 'Elegí el estado.' };
+  const ss = plagMipyvLibro_(), sh = ss.getSheetByName('solicitudes'); if (!sh) return { ok: false, mensaje: 'Todavía no hay solicitudes en el libro MIPyV.' };
+  const H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim()), jI = H.indexOf('id_solicitud');
+  const c = sh.getRange(2, jI + 1, Math.max(1, sh.getLastRow() - 1), 1).createTextFinder(String(x.id || '')).matchEntireCell(true).findNext();
+  if (!c) return { ok: false, mensaje: 'No se encontró la solicitud.' };
+  const poner = (col, val) => { const j = H.indexOf(col); if (j >= 0) sh.getRange(c.getRow(), j + 1).setValue(val); };
+  poner('estado', x.estado); poner('respuesta_hys', String(x.respuesta || '').trim()); poner('fecha_respuesta', Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm'));
+  CacheService.getScriptCache().remove('mipyv');
+  return { ok: true };
+}
+
 // Marca una visita como revisada por Higiene y Seguridad (única escritura en el libro MIPyV)
 function plagRevisar_(x) {
   const ss = plagMipyvLibro_(), sh = ss.getSheetByName('visitas'), H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());

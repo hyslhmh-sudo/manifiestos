@@ -106,6 +106,9 @@ function portalAccion_(d) {
     // Módulo 5 · Plagas (Modulo5.gs): registro MIPyV de los operarios
     case 'p_mipyv': return typeof plagMipyv_ === 'function' ? (x.fresco ? (CacheService.getScriptCache().remove('mipyv'), plagMipyv_()) : plagMipyv_()) : { ok: false, mensaje: 'Falta instalar Modulo5.gs.' };
     case 'p_mipyv_revisar': return conLock_(() => plagRevisar_(x));
+    case 'p_mipyv_cerrar': return plagCerrarCaso_(x, x.quien);   // casos y solicitudes de MIPyV (Modulo5.gs, 25/10/2026)
+    case 'p_mipyv_protocolo': return conLock_(() => plagProtocolo_(x));
+    case 'p_mipyv_solicitud': return conLock_(() => plagSolicitudResponder_(x));
     // Auditorías de residuos (Auditoria.gs)
     case 'p_aud_listar': return audListar_(x);
     case 'p_aud_opciones': return audOpciones_(x);
