@@ -27,7 +27,7 @@
 
 const IMP = {
   LOGO_PIE: '1DnztPPclcsCNA23DDlAF-90Uchf6QdzN',       // logo de HySL («Hospitales más seguros para las personas»)
-  LOGO_HZT: '1xuFHOjKMz2f5mLhFVEc7ZOhnjH8-8_Uy',       // LOGO HYSL HMH.png (encabezado HZT/HMH)
+  LOGO_HZT: '1T4r3P94oXwq-JDz6QOg3fSoEm_FMUBzp',       // logo institucional HMH + HZT (encabezado de la red Trelew; 25/10/2026, antes iba el de HySL)
   AZULES: ['HZT', 'HMH'],                               // paleta azul; el resto, naranja (Secretaría de Salud)
   MAX: 40,                                              // completados por tema en la lista (los más nuevos)
   H_FIR: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'TEMA', 'ID_REGISTRO', 'DETALLE', 'ARCHIVO', 'CARGO', 'CARGADO', 'ESTADO', 'OBSERVACIONES'],
@@ -209,7 +209,7 @@ function impDoc_(o) {
   const azul = IMP.AZULES.indexOf(o.cod) >= 0, c1 = azul ? '#0D313F' : '#C24E1C', c2 = azul ? '#5894A7' : '#FF682C', cl = azul ? '#EAF3F6' : '#FFF1EA';
   const logo = azul ? impImg_(IMP.LOGO_HZT) : '', pie = impImg_(IMP.LOGO_PIE), t = impTema_(o.tema) || { n: '', normas: '' };
   const est = impNombreEst_(o.cod), ahora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm');
-  const enc = '<div class="enc">' + (logo ? '<img class="lg" src="' + logo + '" alt="HZT · HMH">' : '<div class="inst">Secretaría de Salud del Chubut<br><b>' + impE_(est) + '</b></div>') +
+  const enc = (logo ? '<div class="logoi"><img class="lg" src="' + logo + '" alt="Hospital María Humphreys · Hospital Zonal de Trelew"></div>' : '') + '<div class="enc">' + (logo ? '' : '<div class="inst">Secretaría de Salud del Chubut<br><b>' + impE_(est) + '</b></div>') +
     '<div class="tit"><div class="k">' + impE_(t.n) + '</div><div class="h">' + impE_(o.titulo) + '</div><div class="s">' + impE_(est) + (o.subtitulo ? ' · ' + impE_(o.subtitulo) : '') + '</div></div>' +
     '<div class="cd"><div>' + (o.etiqueta || (o.completada ? 'Hoja completada' : 'Hoja en blanco')) + '</div><b>' + impE_(String(o.codigo || '—').replace(/^En blanco( · )?/, '') || '—') + '</b></div></div>';
   const css = '@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap");' +
@@ -220,7 +220,7 @@ function impDoc_(o) {
     '.bar button{font:inherit;font-weight:700;background:var(--c1);color:#fff;border:0;border-radius:8px;padding:9px 16px;cursor:pointer}.bar span{color:#5F6B73}' +
     '.hoja{max-width:' + (o.apaisada ? '277mm' : '190mm') + ';margin:0 auto;padding:6mm 0}@media screen{.hoja{padding:16px}}' +
     'table.pag{width:100%;border-collapse:collapse}table.pag>thead>tr>td,table.pag>tfoot>tr>td,table.pag>tbody>tr>td{padding:0;border:0}' +
-    '.enc{display:flex;align-items:center;gap:10px;border-bottom:2.2pt solid var(--c1);padding:0 0 5px;margin-bottom:7px}.enc .lg{height:13mm;width:auto}' +
+    '.logoi{margin:0 0 4px}.logoi .lg{height:7.5mm;width:auto;display:block}.enc{display:flex;align-items:center;gap:10px;border-bottom:2.2pt solid var(--c1);padding:0 0 5px;margin-bottom:7px}' +
     '.enc .inst{font-size:7.5pt;color:#5F6B73;line-height:1.25;min-width:34mm}.enc .inst b{color:var(--c1);font-size:8.5pt}' +
     '.enc .tit{flex:1}.enc .k{font-size:7pt;font-weight:700;letter-spacing:.6pt;text-transform:uppercase;color:var(--c2)}.enc .h{font-size:12pt;font-weight:700;color:var(--c1);line-height:1.15}.enc .s{font-size:8pt;color:#5F6B73}' +
     '.enc .cd{text-align:right;font-size:7pt;color:#5F6B73;border-left:1px solid #D1D1D1;padding-left:8px}.enc .cd b{display:block;font-size:8pt;color:#343A40;max-width:46mm;word-break:break-all}' +
