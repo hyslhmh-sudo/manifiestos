@@ -10,7 +10,7 @@
 // antes y aviso si HyS suspende un horario), siempre desde belenpellegrini.hys@gmail.com («Enviar como»).
 // Si ese remitente no está configurado no se envía nada y queda el aviso en _AVISOS.
 // =====================================================================
-const VERSION_F7 = '2026-10-11 · 7.0';
+const VERSION_F7 = '2026-10-25 · 7.1';
 const AGENDA_WEB = 'https://hyslhmh-sudo.github.io/capacitaciones/agenda.html';
 const CORREO_HYS = 'belenpellegrini.hys@gmail.com';
 const REMITENTE = 'Higiene y Seguridad Laboral · HZT / HMH';
@@ -360,9 +360,10 @@ function agInicio() {
   const ahora = new Date(), caps = capsMapa_(), I = tabla_('INSCRIPCIONES'), hasta = new Date(ahora.getTime() + 35 * 864e5);
   const T = turnos_();
   const clases = T.filter(t => t.ESTADO === 'Clase abierta' && t.inicio > ahora).sort((a, b) => a.inicio - b.inicio).map(t => {
-    const cupo = num_(t.CUPO), usados = inscriptosTurno_(t, I).length, virtual = /^virtual/i.test(t.MODALIDAD);
+    const k = cupoModalidad_(t.ID_DICTADO, t.CUPO, t.MODALIDAD, I);
     return { id: t.ID_TURNO, codigo: t.CODIGO, nombre: caps[t.CODIGO] ? caps[t.CODIGO].nombre : t.CODIGO, icono: caps[t.CODIGO] ? caps[t.CODIGO].icono : '', fecha: diaCorto_(isoDe_(t.FECHA)), iso: isoDe_(t.FECHA),
-      hora: hhmm_(t.HORA_INICIO), horaFin: hhmm_(t.HORA_FIN), lugar: t.LUGAR, modalidad: t.MODALIDAD, quedan: virtual || !cupo ? null : Math.max(0, cupo - usados), lleno: !virtual && cupo > 0 && usados >= cupo };
+      hora: hhmm_(t.HORA_INICIO), horaFin: hhmm_(t.HORA_FIN), lugar: t.LUGAR, modalidad: t.MODALIDAD,
+      hibrida: k.hibrida, virtual: k.virtual, cupo: k.cupo, quedan: k.quedan, presLleno: k.presLleno, lleno: k.todoLleno };   // lleno: ya no hay ninguna modalidad disponible
   });
   const libres = T.filter(t => t.ESTADO === 'Libre' && /servicio/i.test(t.TIPO_TURNO) && t.inicio > new Date(ahora.getTime() + 2 * 3600e3) && t.inicio < hasta).sort((a, b) => a.inicio - b.inicio)
     .map(t => ({ id: t.ID_TURNO, fecha: diaCorto_(isoDe_(t.FECHA)), iso: isoDe_(t.FECHA), hora: hhmm_(t.HORA_INICIO), horaFin: hhmm_(t.HORA_FIN), lugar: t.LUGAR, confirmaHyS: (t.inicio - ahora) < HS_CONFIRMA * 3600e3 }));
@@ -389,8 +390,11 @@ function agAnotarme(d) {
     const t = x.o, ini = inicioDe_(t.FECHA, t.HORA_INICIO); if (ini < new Date()) return { ok: false, error: 'Esa clase ya empezó.' };
     const I = tabla_('INSCRIPCIONES');
     if (inscripcionDe_(I, t.ID_DICTADO, doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas anotada/o en esta clase.' };
-    const virtual = /^virtual/i.test(t.MODALIDAD), cupo = num_(t.CUPO);
-    if (!virtual && cupo > 0 && cupoUsado_(I, t.ID_DICTADO) >= cupo) return { ok: false, error: 'Se completó el cupo de esta clase. Elegí otra fecha.' };
+    // Modalidad: en las híbridas la persona elige; el cupo es solo presencial y la virtual sigue abierta
+    const k = cupoModalidad_(t.ID_DICTADO, t.CUPO, t.MODALIDAD, I);
+    const mod = k.virtual ? 'Virtual' : k.hibrida ? String(d.modalidad || '') : 'Presencial';
+    if (k.hibrida && ['Presencial', 'Virtual'].indexOf(mod) < 0) return { ok: false, error: 'Elegí cómo vas a participar: presencial o virtual.' };
+    if (mod === 'Presencial' && k.presLleno) return { ok: false, error: k.hibrida ? 'Se completó el cupo presencial (' + k.cupo + ' lugares). Podés anotarte para participar en forma virtual, por Zoom.' : 'Se completó el cupo de esta clase. Elegí otra fecha.' };
     // Persona: si no está en PERSONAS se toma de la base de trabajadores; si no está en ningún lado, con los datos que escribió
     const P = tabla_('PERSONAS'), fila = P.filas.findIndex(r => r[P.i('DNI')] === doc), b = enBase_(doc);
     if (fila >= 0) {
@@ -412,11 +416,12 @@ function agAnotarme(d) {
     }
     if (b && correo !== String(b.EMAIL || '').trim()) actualizarBase_(b, correo, '');
     const token = tokenAg_();
-    agregar_(I, [{ ID_INSCRIPCION: uid_('INS', doc), FECHA: ahoraTxt_(), ID_DICTADO: t.ID_DICTADO, DNI: doc, MODALIDAD_ELEGIDA: virtual ? 'Virtual' : 'Presencial', CONSULTA_PREVIA: 's/d', ESTADO_CONSULTA: 'No aplica',
+    agregar_(I, [{ ID_INSCRIPCION: uid_('INS', doc), FECHA: ahoraTxt_(), ID_DICTADO: t.ID_DICTADO, DNI: doc, MODALIDAD_ELEGIDA: mod, CONSULTA_PREVIA: 's/d', ESTADO_CONSULTA: 'No aplica',
       ESTADO: 'Inscripta', ASISTIO: '', CANAL: 'Agenda', FECHA_ANULACION: '', ANULADA_POR: '', MOTIVO: '', CORREO: correo, TOKEN_CANCELAR: token, RECORDATORIOS: '', ID_TURNO: t.ID_TURNO }]);
     const cap = capDe_(t.CODIGO) || { NOMBRE: t.CODIGO };
-    enviar_(correo, 'Quedaste anotada/o: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, token, 'confirmacion'), 'Confirmación', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
-    return { ok: true, mensaje: '¡Listo, quedaste anotada/o!', clase: { nombre: cap.NOMBRE, fecha: diaCorto_(isoDe_(t.FECHA)), hora: hhmm_(t.HORA_INICIO), lugar: t.LUGAR } };
+    if (mod === 'Presencial') cupoCambio_(t.ID_DICTADO, t.MODALIDAD, t.CUPO, k.presLleno);
+    enviar_(correo, 'Quedaste anotada/o (' + mod.toLowerCase() + '): ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, token, 'confirmacion', 0, mod), 'Confirmación', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
+    return { ok: true, mensaje: '¡Listo, quedaste anotada/o!', clase: { nombre: cap.NOMBRE, fecha: diaCorto_(isoDe_(t.FECHA)), hora: hhmm_(t.HORA_INICIO), lugar: t.LUGAR, modalidad: mod, modalidadTxt: modalidadTxt_(mod, t.LUGAR) } };
   });
 }
 // «Anoto a mi servicio»: reconoce a la jefatura por DNI y propone qué conviene dictar
@@ -558,12 +563,35 @@ function marcoMail_(titulo, cuerpo) {
 }
 function cajaDato_(filas) { return '<table style="width:100%;border-collapse:collapse;margin:10px 0;background:#F1F6F8;border-radius:10px">' + filas.map(f => '<tr><td style="padding:6px 12px;color:#5894A7;font-size:12px;width:34%">' + f[0] + '</td><td style="padding:6px 12px;font-weight:bold;color:#0D313F">' + f[1] + '</td></tr>').join('') + '</table>'; }
 function boton_(txt, url, gris) { return '<a href="' + url + '" style="display:inline-block;margin:6px 6px 0 0;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:bold;' + (gris ? 'background:#fff;color:#0D313F;border:1px solid #0D313F' : 'background:#5894A7;color:#fff') + '">' + txt + '</a>'; }
-function mailClase_(cap, t, token, tipo, dias) {
+// Link de Zoom de una clase: se toma de OBSERVACIONES del horario (AGENDA) o del dictado (DICTADOS)
+function zoomDe_(t) {
+  const re = /https?:\/\/[^\s·]*zoom[^\s·]*/i, a = String(t.OBSERVACIONES || '').match(re); if (a) return a[0];
+  if (!t.ID_DICTADO) return '';
+  const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === t.ID_DICTADO), b = r ? String(r[D.i('OBSERVACIONES')] || '').match(re) : null;
+  return b ? b[0] : '';
+}
+// Confirmación por correo de la inscripción hecha en el formulario del dictado (?i=): mismo correo que la agenda
+function confirmarInscripcion_(idDic, correo, token, mod, programa) {
+  let t = turnos_().filter(y => y.ID_DICTADO === idDic && y.ESTADO === 'Clase abierta')[0];
+  if (!t) { const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === idDic); if (!r) return false; t = obj_(D, r); }
+  const cap = capDe_(t.CODIGO) || { NOMBRE: t.CODIGO, CODIGO: t.CODIGO };
+  return enviar_(correo, 'Quedaste inscripta/o (' + String(mod).toLowerCase() + '): ' + cap.NOMBRE + (programa ? ' · programa completo' : '') + ' · ' + diaCorto_(isoDe_(t.FECHA)),
+    mailClase_(cap, t, token, 'confirmacion', 0, mod, programa), 'Confirmación', t.ID_TURNO || '', idDic, t.CODIGO);
+}
+function mailClase_(cap, t, token, tipo, dias, mod, programa) {
+  mod = /virtual/i.test(mod || (/^virtual/i.test(t.MODALIDAD || '') ? 'Virtual' : '')) ? 'Virtual' : 'Presencial';
+  const zoom = mod === 'Virtual' && tipo !== 'suspension' ? zoomDe_(t) : '';
   const cuando = DIAS_SEMANA[diaSemana_(isoDe_(t.FECHA))] + ' ' + dma_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h';
   const intro = tipo === 'recordatorio' ? (dias === 1 ? 'Te recordamos que <b>mañana</b> tenés esta capacitación.' : 'Te recordamos que en <b>' + dias + ' días</b> tenés esta capacitación.') :
-    tipo === 'suspension' ? 'Te avisamos que esta clase <b>se suspendió</b>. Disculpá las molestias: podés anotarte en otra fecha desde la agenda.' : 'Quedaste anotada/o en esta capacitación.';
-  const pie = tipo === 'suspension' ? boton_('Ver otras fechas', AGENDA_WEB) : '<p>El día de la clase registrás tu asistencia con el QR o el link que se muestra en el aula.</p>' + boton_('Ver la agenda', AGENDA_WEB) + boton_('No puedo ir: cancelar', AGENDA_WEB + '?c=' + token, true);
-  return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Dónde', sd_(t.LUGAR) + (t.MODALIDAD && !/presencial/i.test(t.MODALIDAD) ? ' · ' + t.MODALIDAD : '')], ['Capacitación', cap.CODIGO + ' · ' + cap.NOMBRE]]) + pie);
+    tipo === 'suspension' ? 'Te avisamos que esta clase <b>se suspendió</b>. Disculpá las molestias: podés anotarte en otra fecha desde la agenda.' :
+    programa ? 'Quedaste inscripta/o en el <b>programa completo</b> (' + programa + ' encuentros), en forma <b>' + mod.toLowerCase() + '</b>. Antes de cada encuentro te llega un recordatorio.' :
+    'Quedaste anotada/o en esta capacitación, en forma <b>' + mod.toLowerCase() + '</b>.';
+  const asis = 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(t.ID_DICTADO || '');
+  const como = mod === 'Virtual'
+    ? (zoom ? boton_('Entrar al Zoom', zoom) : '<p>El link de Zoom te llega en el recordatorio antes de la clase.</p>') + '<p>El día de la clase registrás tu asistencia con este link (se abre a la hora de la clase):</p>' + (t.ID_DICTADO ? boton_('Registrar asistencia', asis) : '')
+    : '<p>El día de la clase registrás tu asistencia con el QR o el link que se muestra en el aula.</p>';
+  const pie = tipo === 'suspension' ? boton_('Ver otras fechas', AGENDA_WEB) : como + '<p>' + boton_('Ver la agenda', AGENDA_WEB, true) + (token ? boton_('No puedo ir: cancelar', AGENDA_WEB + '?c=' + token, true) : '') + '</p>';
+  return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', (programa ? 'Empieza el ' : '') + cuando], ['Modalidad', modalidadTxt_(mod, t.LUGAR)], ['Capacitación', cap.CODIGO + ' · ' + cap.NOMBRE]]) + pie);
 }
 function mailReserva_(cap, t, tipo, dias) {
   const cuando = DIAS_SEMANA[diaSemana_(isoDe_(t.FECHA))] + ' ' + dma_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h';
@@ -603,7 +631,7 @@ function agRecordatorios() {
         inscriptosTurno_(t, I).forEach(x => {
           if (String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0)) return;
           const para = correoOk_(x.CORREO) ? x.CORREO : correoDe[x.DNI];
-          enviar_(para, 'Recordatorio: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, x.TOKEN_CANCELAR, 'recordatorio', dias), 'Recordatorio ' + dias + ' día(s)', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
+          enviar_(para, 'Recordatorio: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, x.TOKEN_CANCELAR, 'recordatorio', dias, x.MODALIDAD_ELEGIDA), 'Recordatorio ' + dias + ' día(s)', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
           setCampos_(I, x._k, { RECORDATORIOS: [x.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(y => !vacio_(y)).join(' · ') }); n++;
         });
         if (n) setCampos_(A, t._k, { RECORDATORIOS: [t.RECORDATORIOS, marca + ' ' + n + ' persona(s) ' + Utilities.formatDate(ahora, ZONA, 'dd/MM')].filter(x => !vacio_(x)).join(' · ') });
@@ -620,7 +648,7 @@ function agRecordatorios() {
         ins.forEach(x => {
           if (String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0)) return;
           const para = correoOk_(x.CORREO) ? x.CORREO : correoDe[x.DNI]; if (!correoOk_(para)) return;
-          enviar_(para, 'Recordatorio: ' + p.cap.NOMBRE + ' · encuentro ' + n + ' de ' + p.total + ' · ' + diaCorto_(f), mailPrograma_(p.cap, o, n, p.total, dias), 'Recordatorio programa · encuentro ' + n + ' · ' + dias + ' día(s)', '', o.ID_DICTADO, o.CODIGO);
+          enviar_(para, 'Recordatorio: ' + p.cap.NOMBRE + ' · encuentro ' + n + ' de ' + p.total + ' · ' + diaCorto_(f), mailPrograma_(p.cap, o, n, p.total, dias, x.MODALIDAD_ELEGIDA), 'Recordatorio programa · encuentro ' + n + ' · ' + dias + ' día(s)', '', o.ID_DICTADO, o.CODIGO);
           x.RECORDATORIOS = [x.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(y => !vacio_(y)).join(' · ');
           setCampos_(I, x._k, { RECORDATORIOS: x.RECORDATORIOS });
         });
@@ -744,12 +772,12 @@ function programasConInscripcion_() {
   });
   return out;
 }
-function mailPrograma_(cap, o, n, total, dias) {
+function mailPrograma_(cap, o, n, total, dias, mod) {
   const f = isoDe_(o.FECHA), cuando = DIAS_SEMANA[diaSemana_(f)] + ' ' + dma_(f) + ' · ' + hhmm_(o.HORA_INICIO) + (o.HORA_FIN ? ' a ' + hhmm_(o.HORA_FIN) : '') + ' h';
   const intro = n === 1 && dias > 1 ? 'Te recordamos que en <b>' + dias + ' días</b> empieza el programa en el que te inscribiste.' :
     'Te recordamos que <b>mañana</b> tenés el <b>encuentro ' + n + ' de ' + total + '</b> del programa.';
   const zoom = (String(o.OBSERVACIONES || '').match(/https?:\/\/[^\s·]*zoom[^\s·]*/i) || [''])[0];
-  return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Dónde', /virtual/i.test(o.LUGAR + ' ' + o.MODALIDAD) && !/h[ií]brida/i.test(o.MODALIDAD) ? 'Virtual' : sd_(o.LUGAR) + (/h[ií]brida/i.test(o.MODALIDAD) ? ' · Híbrida' : '')], ['Encuentro', n + ' de ' + total]]) +
+  return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Modalidad', modalidadTxt_(/virtual/i.test(mod || '') || (/virtual/i.test(o.LUGAR + ' ' + o.MODALIDAD) && !/h[ií]brida/i.test(o.MODALIDAD)) ? 'Virtual' : 'Presencial', o.LUGAR)], ['Encuentro', n + ' de ' + total]]) +
     (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con este link (se abre a la hora de la clase):</p>' + boton_('Registrar asistencia', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)));
 }
 // Cambiar el estado de un horario (siempre con motivo; nunca se borra)
@@ -764,7 +792,7 @@ function agEstado_(d) {
     if (['Suspendido', 'Anulado', 'Cancelado'].indexOf(nuevo) >= 0 && t.ID_DICTADO) suspenderDictado_(t.ID_DICTADO, nuevo + ': ' + motivo);
     const cap = capDe_(t.CODIGO) || { NOMBRE: t.CODIGO, CODIGO: t.CODIGO }, tt = Object.assign({}, t, { inicio: inicioDe_(t.FECHA, t.HORA_INICIO) });
     if (nuevo === 'Suspendido' && d.avisar !== false && tt.inicio > new Date()) {
-      if (t.ESTADO === 'Clase abierta') inscriptosTurno_(t).forEach(i => { if (enviar_(i.CORREO, 'Clase suspendida: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, i.TOKEN_CANCELAR, 'suspension'), 'Suspensión', t.ID_TURNO, t.ID_DICTADO, t.CODIGO)) avisados++; });
+      if (t.ESTADO === 'Clase abierta') inscriptosTurno_(t).forEach(i => { if (enviar_(i.CORREO, 'Clase suspendida: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, i.TOKEN_CANCELAR, 'suspension', 0, i.MODALIDAD_ELEGIDA), 'Suspensión', t.ID_TURNO, t.ID_DICTADO, t.CODIGO)) avisados++; });
       else if (t.CORREO_AVISOS && enviar_(t.CORREO_AVISOS, 'Horario suspendido: ' + cap.NOMBRE + ' · ' + t.JEFATURA, mailReserva_(cap, t, 'suspension'), 'Suspensión', t.ID_TURNO, t.ID_DICTADO, t.CODIGO)) avisados++;
       if (d.liberar) liberarHorario_(tt);
     }
@@ -914,7 +942,7 @@ function publicarClases_() {
   if (H.indexOf('ORIGEN') < 0) { const c = H.filter(Boolean).length + 1; sh.getRange(1, c).setValue('ORIGEN'); H = sh.getRange(1, 1, 1, c).getDisplayValues()[0].map(x => String(x).trim()); }
   const ult = sh.getLastRow(), v = ult > 1 ? sh.getRange(2, 1, ult - 1, H.length).getDisplayValues() : [], io = H.indexOf('ORIGEN');
   const manuales = v.filter(r => !/^(AGENDA|PROGRAMA):/.test(r[io]) && r.some(x => String(x).trim()));
-  const caps = capsMapa_(), ahora = new Date();
+  const caps = capsMapa_(), ahora = new Date(), I = tabla_('INSCRIPCIONES');
   const D = tabla_('DICTADOS'), inscDic = {};   // clases híbridas con inscripción previa: se anotan en el formulario del dictado (eligen presencial o virtual y dejan su consulta)
   D.filas.forEach(r => { const l = String(r[D.i('LINK_INSCRIPCION')] || ''); if (/^http/.test(l)) inscDic[r[D.i('ID_DICTADO')]] = 'https://hyslhmh-sudo.github.io/capacitaciones/?i=' + encodeURIComponent(r[D.i('ID_DICTADO')]); });   // página de GitHub (no la dirección de Apps Script)
   const clases = turnos_().filter(t => t.ESTADO === 'Clase abierta' && t.inicio > ahora && !/^no/i.test(t.PUBLICADO)).sort((a, b) => a.inicio - b.inicio).map((t, i) => {
@@ -922,7 +950,7 @@ function publicarClases_() {
       VISIBLE: 'Sí', CAPACITACION: c.nombre, INICIO: dma_(isoDe_(t.FECHA)), CIERRE_INSCRIPCION: dma_(isoDe_(t.FECHA)),
       DIAS_Y_HORARIO: diaCorto_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h', MODALIDAD: t.MODALIDAD + (vacio_(t.LUGAR) || /virtual/i.test(t.LUGAR) ? '' : ' · ' + t.LUGAR),
       DESTINATARIOS: vacio_(c.destinatarios) ? 'Todo el personal' : c.destinatarios, ENLACE_INSCRIPCION: /^h[ií]brida/i.test(t.MODALIDAD || '') && inscDic[t.ID_DICTADO] ? inscDic[t.ID_DICTADO] : AGENDA_WEB + '?t=' + encodeURIComponent(t.ID_TURNO),
-      DETALLE: t.CODIGO + ' · clase abierta · anotate con tu DNI' + (num_(t.CUPO) ? ' · cupo ' + num_(t.CUPO) : ''), ORDEN: String(i + 1), ORIGEN: 'AGENDA:' + t.ID_TURNO };
+      DETALLE: t.CODIGO + ' · clase abierta · anotate con tu DNI' + ((ct => ct ? ' · ' + ct : '')(cupoTexto_(cupoModalidad_(t.ID_DICTADO, t.CUPO, t.MODALIDAD, I)))), ORDEN: String(i + 1), ORIGEN: 'AGENDA:' + t.ID_TURNO };
     return H.map(h => o[h] === undefined ? '' : o[h]);
   });
   // Programas con inscripción: UNA publicación por programa (programa completo, una sola inscripción), visible hasta que cierra la inscripción
@@ -948,8 +976,8 @@ function textoSemana_(desde) {
   const ic = c => SECUENCIA_INCENDIO.indexOf(c) >= 0 || c === 'CAP-HYS-019' ? '🔥' : /residu/i.test((caps[c] || {}).nombre) ? '♻️' : /bioseg|biol/i.test((caps[c] || {}).nombre) ? '🧤' : '📘';
   const l = ['📅 *Capacitaciones de Higiene y Seguridad* · semana del ' + Utilities.formatDate(ahora, ZONA, 'dd/MM'), ''];
   if (!cl.length) l.push('Esta semana no hay clases abiertas.', '');
-  cl.forEach(t => { const cupo = num_(t.CUPO), quedan = cupo ? Math.max(0, cupo - inscriptosTurno_(t, I).length) : null;
-    l.push(ic(t.CODIGO) + ' *' + ((caps[t.CODIGO] || {}).nombre || t.CODIGO) + '*', diaCorto_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + ' h · ' + sd_(t.LUGAR) + (quedan === null ? '' : quedan ? ' · quedan ' + quedan + ' lugares' : ' · cupo completo'), ''); });
+  cl.forEach(t => { const k = cupoModalidad_(t.ID_DICTADO, t.CUPO, t.MODALIDAD, I), ct = cupoTexto_(k);
+    l.push(ic(t.CODIGO) + ' *' + ((caps[t.CODIGO] || {}).nombre || t.CODIGO) + '*', diaCorto_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + ' h · ' + (k.hibrida ? 'híbrida: ' + sd_(t.LUGAR) + ' o por Zoom' : sd_(t.LUGAR)) + (ct ? ' · ' + ct : ''), ''); });
   l.push('Anotate con tu DNI:', AGENDA_WEB, '', 'Jefaturas, coordinaciones y A/C: desde el mismo link pueden reservar un horario para todo el servicio.');
   return l.join('\n');
 }

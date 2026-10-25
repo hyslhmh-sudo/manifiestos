@@ -328,14 +328,18 @@
   let modElegida = '';
   function pasoInscripcion() {
     const ops = INS.opciones || [];
-    modElegida = ops[0] || '';
-    $('modBox').hidden = ops.length < 2;
-    $('mod').innerHTML = ops.map((o, j) => '<button type="button" data-v="' + esc(o) + '"' + (j === 0 ? ' class="on"' : '') + '>' + esc(o) + '</button>').join('');
-    $('mod').querySelectorAll('button').forEach(b => b.onclick = () => { $('mod').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); modElegida = b.dataset.v; });
-    if (INS.cupoLleno && ops.length === 1 && /virtual/i.test(ops[0])) error('El cupo presencial se completó: podés inscribirte para participar en forma virtual.');
+    // Híbrida: la persona elige (sin opción marcada de antemano). El cupo es solo presencial: si se completa, queda la virtual.
+    const lugar = INS.dictado.lugar && INS.dictado.lugar !== 's/d' && !/virtual/i.test(INS.dictado.lugar) ? INS.dictado.lugar : '';
+    const etiqueta = o => /virtual/i.test(o) ? 'Virtual · por Zoom' : 'Presencial' + (lugar ? ' · ' + lugar : '') + (INS.quedan != null && INS.hibrida ? ' (quedan ' + INS.quedan + ')' : '');
+    modElegida = ops.length === 1 ? ops[0] : '';
+    $('modBox').hidden = !INS.hibrida;
+    $('mod').innerHTML = ops.map(o => '<button type="button" data-v="' + esc(o) + '"' + (ops.length === 1 ? ' class="on"' : '') + '>' + esc(etiqueta(o)) + '</button>').join('') +
+      (INS.hibrida && INS.cupoLleno ? '<button type="button" disabled style="opacity:.55">Presencial · cupo completo</button>' : '');
+    $('mod').querySelectorAll('button:not([disabled])').forEach(b => b.onclick = () => { $('mod').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); modElegida = b.dataset.v; error(''); });
+    if (INS.cupoLleno && ops.length === 1 && /virtual/i.test(ops[0])) error('Se completó el cupo presencial' + (INS.cupo ? ' (' + INS.cupo + ' lugares)' : '') + ': la inscripción sigue abierta para participar en forma virtual, por Zoom.');
     pasos(3); ver('sIns');
   }
-  $('bIns').onclick = () => llamar('inscGuardar', Object.assign({}, datos, { modalidad: modElegida, consulta: $('consulta').value.trim() }), r => { $('fin').textContent = r.mensaje; $('bEval').hidden = true; ver('s3'); }, $('bIns'));
+  $('bIns').onclick = () => !modElegida ? error('Elegí cómo vas a participar: presencial o virtual.') : llamar('inscGuardar', Object.assign({}, datos, { modalidad: modElegida, consulta: $('consulta').value.trim() }), r => { $('fin').textContent = r.mensaje; $('bEval').hidden = true; ver('s3'); }, $('bIns'));
   $('bInsVolver').onclick = () => ver(modo === 'conocido' ? 's2a' : 's2c');
   $('bAnular').onclick = () => {
     if (!confirm('¿Anulamos tu inscripción? El lugar queda libre para otra persona.')) return;

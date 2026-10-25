@@ -1257,6 +1257,31 @@ function dictadoEstado_(d) {
 
 // ------------------------------------------------------------------ Inscripciones
 function cupoUsado_(I, idDic) { return I.filas.filter(r => r[I.i('ID_DICTADO')] === idDic && !/anulad/i.test(r[I.i('ESTADO')]) && !/virtual/i.test(r[I.i('MODALIDAD_ELEGIDA')])).length; }
+// Cupo por modalidad (rige para todas las capacitaciones): el cupo es solo presencial. En una clase híbrida, cuando se
+// completa el cupo presencial se cierra SOLO esa opción; la virtual sigue abierta hasta el cierre de la inscripción.
+function cupoModalidad_(idDic, cupo, modalidad, I) {
+  I = I || tabla_('INSCRIPCIONES');
+  const act = I.filas.filter(r => r[I.i('ID_DICTADO')] === idDic && !/anulad/i.test(r[I.i('ESTADO')]));
+  const pres = act.filter(r => !/virtual/i.test(r[I.i('MODALIDAD_ELEGIDA')])).length, virt = /^virtual/i.test(modalidad || ''), c = virt ? 0 : num_(cupo);
+  const hib = /h[ií]brida/i.test(modalidad || ''), lleno = c > 0 && pres >= c;
+  return { hibrida: hib, virtual: virt, cupo: c, presenciales: pres, virtuales: act.length - pres, total: act.length, quedan: c ? Math.max(0, c - pres) : null, presLleno: lleno, todoLleno: lleno && !hib };
+}
+// Texto del cupo para las publicaciones (agenda, portal, WhatsApp)
+function cupoTexto_(k) {
+  if (k.virtual) return 'virtual · inscripción abierta';
+  const p = k.presLleno ? 'cupo presencial completo' : k.quedan === null ? '' : 'quedan ' + k.quedan + (k.quedan === 1 ? ' lugar' : ' lugares') + (k.hibrida ? ' presenciales' : '');
+  return k.hibrida ? [p, 'virtual: inscripción abierta'].filter(Boolean).join(' · ') : (k.presLleno ? 'cupo completo' : p);
+}
+function modalidadTxt_(mod, lugar) { return /virtual/i.test(mod || '') ? 'Virtual (por Zoom)' : 'Presencial' + (vacio_(lugar) || /virtual/i.test(lugar) || lugar === 's/d' ? '' : ' · ' + lugar); }
+// Si una inscripción o una baja presencial completa o libera el cupo: aviso para HyS y publicación actualizada
+function cupoCambio_(idDic, modalidad, cupo, antesLleno) {
+  const k = cupoModalidad_(idDic, cupo, modalidad);
+  if (k.presLleno === antesLleno || !k.cupo) return;
+  aviso_(k.presLleno ? 'Cupo presencial completo' : 'Se liberó un lugar presencial', 'INSCRIPCIONES', idDic,
+    k.presLleno ? (k.hibrida ? 'Se completaron los ' + k.cupo + ' lugares presenciales. La opción presencial se cerró; la inscripción virtual sigue abierta.' : 'Se completaron los ' + k.cupo + ' lugares. La inscripción se cerró.')
+      : 'Hay ' + k.quedan + ' lugar(es) presencial(es) libre(s): la opción presencial se volvió a abrir.');
+  try { publicarClases_(); } catch (e) { /* se actualiza en la próxima publicación */ }
+}
 function inscripcionDe_(I, idDic, doc) { return I.filas.findIndex(r => r[I.i('ID_DICTADO')] === idDic && r[I.i('DNI')] === doc && !/anulad/i.test(r[I.i('ESTADO')])); }
 function inscInicio(i) {
   preparar_();
@@ -1264,16 +1289,17 @@ function inscInicio(i) {
   if (!r) return { ok: false, error: 'No encontramos esta inscripción. Revisá el link.' };
   const o = obj_(D, r), cap = capDe_(o.CODIGO) || {};
   if (vacio_(o.LINK_INSCRIPCION)) return { ok: false, error: 'Este dictado no tiene inscripción previa: el día de la clase vas a poder registrar tu asistencia.' };
-  const I = tabla_('INSCRIPCIONES'), cupo = num_(o.CUPO_PRESENCIAL), usado = cupoUsado_(I, o.ID_DICTADO), v = ventana_(o);
+  const I = tabla_('INSCRIPCIONES'), k = cupoModalidad_(o.ID_DICTADO, o.CUPO_PRESENCIAL, o.MODALIDAD, I), cupo = k.cupo, v = ventana_(o);
   const cierre = !vacio_(o.CIERRE_INSCRIPCION) ? fechaHora_(o.CIERRE_INSCRIPCION) : v.abre;
-  const lleno = cupo > 0 && usado >= cupo, hib = /h[ií]brida/i.test(o.MODALIDAD), virt = /^virtual/i.test(o.MODALIDAD);
+  const lleno = k.presLleno, hib = k.hibrida, virt = k.virtual;
   let abierta = true, texto = '';
   if (/cancel|suspend/i.test(o.ESTADO)) { abierta = false; texto = 'Este dictado fue ' + String(o.ESTADO).toLowerCase() + '.'; }
   else if (new Date() > cierre) { abierta = false; texto = 'La inscripción cerró el ' + fmt_(cierre) + '.'; }
   else if (lleno && !hib && !virt) { abierta = false; texto = 'Se completó el cupo de ' + cupo + ' lugares.'; }
+  else if (lleno && hib) texto = 'Se completaron los ' + cupo + ' lugares presenciales: la inscripción sigue abierta para participar en forma virtual (por Zoom).';
   const opciones = hib ? (lleno ? ['Virtual'] : ['Presencial', 'Virtual']) : [virt ? 'Virtual' : 'Presencial'];
   const programa = num_(cap.ENCUENTROS) > 1 && num_(o.ENCUENTRO_N) === 1 ? num_(cap.ENCUENTROS) : 0;   // inscripción al encuentro 1 = inscripción a todo el programa
-  return { ok: true, abierta: abierta, texto: texto, opciones: opciones, cupoLleno: lleno, programa: programa,
+  return { ok: true, abierta: abierta, texto: texto, opciones: opciones, cupoLleno: lleno, programa: programa, cupo: cupo, quedan: k.quedan, hibrida: hib,
     dictado: { id: o.ID_DICTADO, nombre: cap.NOMBRE || o.CODIGO, programa: programa, encuentro: num_(cap.ENCUENTROS) > 1 ? o.ENCUENTRO_N + ' de ' + cap.ENCUENTROS : '', fecha: dma_(isoDe_(o.FECHA)), hora: hhmm_(o.HORA_INICIO), modalidad: o.MODALIDAD, lugar: o.LUGAR, cierre: fmt_(cierre) },
     listas: listasRegistro_() };
 }
@@ -1291,13 +1317,19 @@ function inscGuardar(d) {
     const I = tabla_('INSCRIPCIONES');
     if (inscripcionDe_(I, d.i, per.doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas inscripta/o en este dictado.' };
     const mod = ini.opciones.indexOf(d.modalidad) >= 0 ? d.modalidad : ini.opciones[0];
-    if (mod === 'Presencial' && ini.cupoLleno) return { ok: false, error: 'Se completó el cupo presencial.' };
-    const consulta = String(d.consulta || '').trim().slice(0, 1500);
+    if (ini.hibrida && ini.opciones.length > 1 && ini.opciones.indexOf(d.modalidad) < 0) return { ok: false, error: 'Elegí cómo vas a participar: presencial o virtual.' };
+    if (mod === 'Presencial' && ini.cupoLleno) return { ok: false, error: 'Se completó el cupo presencial: podés inscribirte en forma virtual.' };
+    const consulta = String(d.consulta || '').trim().slice(0, 1500), token = tokenAg_();
+    let correo = String(d.correo || '').trim();
+    if (!correoOk_(correo)) { const P = tabla_('PERSONAS'), rp = P.filas.find(x => x[P.i('DNI')] === per.doc); correo = rp ? String(rp[P.i('CORREO')] || '').trim() : ''; }   // la persona ya registrada deja su correo vacío
     agregar_(I, [{ ID_INSCRIPCION: uid_('INS', per.doc), FECHA: ahoraTxt_(), ID_DICTADO: d.i, DNI: per.doc, MODALIDAD_ELEGIDA: mod, CONSULTA_PREVIA: consulta || 's/d',
       ESTADO_CONSULTA: consulta ? 'Pendiente' : 'No aplica', ESTADO: 'Inscripta', ASISTIO: '', CANAL: d.origen === 'qr' ? 'QR' : 'Link', FECHA_ANULACION: '', ANULADA_POR: '', MOTIVO: '',
-      CORREO: String(d.correo || '').trim(), TOKEN_CANCELAR: tokenAg_(), RECORDATORIOS: '' }]);   // correo y token: para los recordatorios y para cancelar
-    if (ini.programa) return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') en el programa completo: ' + ini.programa + ' encuentros, desde el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. Antes de cada encuentro te llega un recordatorio por correo; el día de cada clase registrás tu asistencia con el link o el QR.' };
-    return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') para el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. El día de la clase registrás tu asistencia con el link o el QR.' };
+      CORREO: correo, TOKEN_CANCELAR: token, RECORDATORIOS: '' }]);   // correo y token: para los recordatorios y para cancelar
+    if (mod === 'Presencial') cupoCambio_(d.i, ini.dictado.modalidad, ini.cupo, ini.cupoLleno);
+    let aviso = '';
+    if (correoOk_(correo)) { try { if (confirmarInscripcion_(d.i, correo, token, mod, ini.programa)) aviso = ' Te mandamos la confirmación a ' + correo + '.'; } catch (e) { /* la inscripción ya quedó guardada */ } }
+    if (ini.programa) return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') en el programa completo: ' + ini.programa + ' encuentros, desde el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. Antes de cada encuentro te llega un recordatorio por correo; el día de cada clase registrás tu asistencia con el link o el QR.' + aviso };
+    return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') para el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. ' + (mod === 'Virtual' ? 'Participás por Zoom' : 'Te esperamos en ' + (ini.dictado.lugar || 'el aula')) + '; el día de la clase registrás tu asistencia con el link o el QR.' + aviso };
   });
 }
 function inscAnular_(d, por) {
@@ -1308,8 +1340,12 @@ function inscAnular_(d, por) {
     if (/anulad/i.test(I.filas[k][I.i('ESTADO')])) return { ok: true, mensaje: 'Ya estaba anulada.' };
     const motivo = String(d.motivo || '').trim().slice(0, 300) || (por === 'HyS' ? '' : 'Avisó que no puede asistir');
     if (!motivo) return { ok: false, error: 'Escribí el motivo.' };
+    const idDic = I.filas[k][I.i('ID_DICTADO')], presencial = !/virtual/i.test(I.filas[k][I.i('MODALIDAD_ELEGIDA')]);
+    const D = tabla_('DICTADOS'), rd = D.filas.find(x => x[D.i('ID_DICTADO')] === idDic), od = rd ? obj_(D, rd) : {};
+    const antesLleno = presencial && rd ? cupoModalidad_(idDic, od.CUPO_PRESENCIAL, od.MODALIDAD, I).presLleno : false;
     setCampos_(I, k, { ESTADO: 'Anulada', FECHA_ANULACION: ahoraTxt_(), ANULADA_POR: por === 'HyS' ? 'HyS' : 'La persona', MOTIVO: motivo });
     historial_(por === 'HyS' ? 'HyS (portal)' : 'Inscripción', 'INSCRIPCIONES', I.filas[k][I.i('ID_INSCRIPCION')], 'ESTADO', I.filas[k][I.i('ESTADO')], 'Anulada', motivo);
+    if (antesLleno) cupoCambio_(idDic, od.MODALIDAD, od.CUPO_PRESENCIAL, true);
     return { ok: true, mensaje: por === 'HyS' ? 'Inscripción anulada. El lugar quedó libre.' : 'Listo, anulamos tu inscripción y el lugar quedó libre para otra persona. ¡Gracias por avisar!' };
   });
 }

@@ -104,19 +104,35 @@
   }
 
   // ---------------------------------------------------------------- Me anoto yo
+  // Cupo por modalidad: el cupo es presencial; en las híbridas la opción virtual sigue abierta aunque se llene el aula
+  const lug = n => n + (n === 1 ? ' lugar' : ' lugares');
+  function cupoTxt(x) {
+    if (x.lleno) return ' · <b style="display:inline;color:var(--er)">cupo completo</b>';
+    if (x.virtual) return ' · virtual, por Zoom';
+    if (x.hibrida) return x.presLleno ? ' · <b style="display:inline;color:var(--er)">presencial completo</b> · podés anotarte virtual' : ' · presencial' + (x.quedan != null ? ' (quedan ' + lug(x.quedan) + ')' : '') + ' o virtual por Zoom';
+    return x.quedan != null ? ' · quedan ' + lug(x.quedan) : '';
+  }
+  let modal = '';
   function clases() {
     const l = INI.clases;
     vista('<h3>Clases abiertas</h3>' + (l.length ? '<span class="mu peq">Elegí la clase a la que querés ir.</span>' + l.map((x, i) =>
-      opc('data-i="' + i + '"' + (x.lleno ? ' disabled' : ''), ICONOS[x.codigo] || 'school', esc(x.nombre), esc(x.fecha + ' · ' + x.hora + (x.horaFin ? ' a ' + x.horaFin : '') + ' h · ' + x.lugar) + (x.lleno ? ' · <b style="display:inline;color:var(--er)">cupo completo</b>' : x.quedan != null ? ' · quedan ' + x.quedan + ' lugares' : ''))).join('')
+      opc('data-i="' + i + '"' + (x.lleno ? ' disabled' : ''), ICONOS[x.codigo] || 'school', esc(x.nombre), esc(x.fecha + ' · ' + x.hora + (x.horaFin ? ' a ' + x.horaFin : '') + ' h · ' + x.lugar) + cupoTxt(x))).join('')
       : '<div class="aviso">Por ahora no hay clases abiertas. Volvé a mirar en unos días: se publican también en el portal de Higiene y Seguridad y en el de residuos.</div>') +
       '<button class="btn link" id="bVol">Volver</button>', 1);
     $('vista').querySelectorAll('[data-i]').forEach(b => b.onclick = () => { clase = l[Number(b.dataset.i)]; datosYo(); });
     $('bVol').onclick = inicio;
   }
   function datosYo() {
-    vista('<div class="quien"><span class="mu peq">Clase elegida</span><br><b>' + esc(clase.nombre) + '</b><br><span class="peq">' + esc(clase.fecha + ' · ' + clase.hora + ' h · ' + clase.lugar) + '</span></div>' +
+    modal = clase.virtual ? 'Virtual' : clase.hibrida ? (clase.presLleno ? 'Virtual' : '') : 'Presencial';
+    const elegir = !clase.hibrida ? '' : '<span style="font-size:14px;font-weight:700">¿Cómo vas a participar? <b style="color:var(--er)">*</b></span>' +
+      (clase.presLleno ? '<div class="aviso">Se completó el cupo presencial' + (clase.cupo ? ' (' + clase.cupo + ' lugares)' : '') + '. La inscripción sigue abierta para participar en forma virtual, por Zoom.</div>' : '') +
+      opc('data-m="Presencial"' + (clase.presLleno ? ' disabled' : ''), 'meeting_room', 'Presencial', esc(clase.lugar) + (clase.presLleno ? ' · <b style="display:inline;color:var(--er)">cupo completo</b>' : clase.quedan != null ? ' · quedan ' + lug(clase.quedan) : '')) +
+      opc('data-m="Virtual"', 'videocam', 'Virtual', 'Por Zoom, desde donde estés');
+    vista('<div class="quien"><span class="mu peq">Clase elegida</span><br><b>' + esc(clase.nombre) + '</b><br><span class="peq">' + esc(clase.fecha + ' · ' + clase.hora + ' h · ' + clase.lugar) + (clase.virtual ? ' · virtual' : clase.hibrida ? ' · híbrida (presencial o por Zoom)' : '') + '</span></div>' + elegir +
       '<label class="f" for="dni"><span>Tu DNI <b>*</b> <em>sin puntos</em></span><input class="c" id="dni" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30123456"></label>' +
       '<button class="btn sec" id="bBus">Continuar</button><div id="yoMas" class="col" hidden></div><button class="btn link" id="bVol">Elegir otra clase</button>', 2);
+    $('vista').querySelectorAll('[data-m]').forEach(b => { if (b.dataset.m === modal) b.classList.add('on'); });
+    $('vista').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { $('vista').querySelectorAll('[data-m]').forEach(y => y.classList.remove('on')); b.classList.add('on'); modal = b.dataset.m; error(''); });
     $('bBus').onclick = buscarYo; $('dni').addEventListener('keydown', e => { if (e.key === 'Enter') buscarYo(); });
     $('bVol').onclick = clases; $('dni').focus();
   }
@@ -143,14 +159,15 @@
   function anotarme() {
     const correo = $('mail').value.trim();
     if (!okCorreo(correo)) return error('Escribí tu correo completo: es obligatorio.');
-    const d = { dni: dni, id: clase.id, correo: correo };
+    if (!modal) return error('Elegí cómo vas a participar: presencial o virtual.');
+    const d = { dni: dni, id: clase.id, correo: correo, modalidad: modal };
     if ($('ape')) {
       Object.assign(d, { apellidos: $('ape').value.trim(), nombres: $('nom').value.trim(), servicio: $('srvY').value.trim(), lugar: $('lug').value === 'Otro' ? $('lugOtro').value.trim() : $('lug').value });
       if (!d.apellidos || !d.nombres || !d.servicio || !d.lugar) return error('Completá apellido, nombre, dónde trabajás y servicio.');
     }
     llamar('agAnotarme', d, r => {
-      vista('<div class="listo"><b>' + (r.ya ? 'Ya estabas anotada/o' : '¡Listo, quedaste anotada/o!') + '</b>' + esc(clase.nombre) + '<br>' + esc(clase.fecha + ' · ' + clase.hora + ' h · ' + clase.lugar) + '</div>' +
-        '<span class="peq">Te mandamos la confirmación a <b>' + esc(correo) + '</b>. Te vamos a recordar por correo 7, 2 y 1 día antes. El día de la clase registrás tu asistencia con el QR del aula.</span>' +
+      vista('<div class="listo"><b>' + (r.ya ? 'Ya estabas anotada/o' : '¡Listo, quedaste anotada/o!') + '</b>' + esc(clase.nombre) + '<br>' + esc(clase.fecha + ' · ' + clase.hora + ' h') + '<br><b>' + esc((r.clase && r.clase.modalidadTxt) || modal) + '</b></div>' +
+        '<span class="peq">Te mandamos la confirmación a <b>' + esc(correo) + '</b>. Te vamos a recordar por correo 7, 2 y 1 día antes. ' + (((r.clase && r.clase.modalidad) || modal) === 'Virtual' ? 'Participás por Zoom: el link y el de asistencia van en los correos.' : 'El día de la clase registrás tu asistencia con el QR del aula.') + '</span>' +
         '<span class="peq mu">Si no podés ir, cancelá desde el link del correo así el lugar queda para otra persona.</span><button class="btn sec" id="bIni">Volver al inicio</button>', 3);
       $('bIni').onclick = recargar;
     }, $('bAnot'), 'Anotando…');
