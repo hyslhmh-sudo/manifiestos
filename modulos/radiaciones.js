@@ -5,7 +5,7 @@
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let RADT = null, RADD = {}, RADF = { cod: '', tab: 'sit', ver: 'act', q: '', sitio: '', vista: (function () { try { return localStorage.getItem('radVista') || 'res'; } catch (e) { return 'res'; } })() };
 const RADV = { est: '', grupo: '', estado: 'uso', q: '', solo: '', ev: 'abiertos' };
-const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['inv', 'Investigaciones'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
+const RAD_TABS = [['sit', 'Sitios'], ['per', 'Personal y dosímetros'], ['form', 'Formularios (F-RAD)'], ['con', 'Controles mensuales'], ['dos', 'Dosis por persona'], ['inv', 'Investigaciones'], ['eve', 'Eventos'], ['sal', 'Salas y equipos'], ['doc', 'Documentos'], ['req', 'Requisitos legales'], ['mov', 'Movimientos']];
 const RAD_FECHA = { vigente: ['Vigente', 'ok'], porvencer: ['Vence pronto', 'wa'], vencido: ['Vencido', 'er'], sd: ['Sin dato', 'gr'] };
 const radChipF = (e, f) => { const x = RAD_FECHA[e] || RAD_FECHA.sd; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (f ? '<div class="mu peq">' + (e === 'vencido' ? 'venció ' : 'vence ') + fechaTxt(f) + '</div>' : ''); };
 const radChipD = e => { const c = e === 'Activo' ? 'ok' : e === 'Extraviado' ? 'er' : /^Baja/.test(e) ? 'gr' : 'wa'; return '<span class="chip ' + c + '">' + esc(e || 's/d (revisar)') + '</span>'; };
@@ -82,7 +82,7 @@ async function radEst(a, fresco) {
   const D = RADD[cod]; if (!D.ok) { delete RADD[cod]; return radNoInstalado('#radest', D); }
   const R = D.resumen, sf = RADF.sitio, de = (l, todos) => !sf ? l : l.filter(x => (x.SITIO || '') === sf || (todos && !x.SITIO));
   const Df = Object.assign({}, D, { personal: de(D.personal), eventos: de(D.eventos), salas: de(D.salas), documentos: de(D.documentos, true), controles: de(D.controles, true), dosis: de(D.dosis || [], true), investigaciones: de(D.investigaciones || [], true), movimientos: sf ? D.movimientos.filter(m => D.personal.some(p => p.ID === m.ID_PERSONA && p.SITIO === sf)) : D.movimientos });
-  const cuerpo = { sit: radSit, per: radPer, con: radCon, dos: radDos, inv: radInv, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
+  const cuerpo = { sit: radSit, per: radPer, form: radForm, con: radCon, dos: radDos, inv: radInv, eve: radEve, sal: radSal, doc: radDoc, req: radReq, mov: radMov }[RADF.tab](Df);
   marco('#radest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#rad">5 · Radiaciones ionizantes</a> › ' + esc(cod) + '</span><h1>' + esc(radNom(cod)) + '</h1><span class="mu peq">' +
     R.activos + ' dosímetro(s) activo(s) · último control ' + (R.ultimoControl ? radMes(R.ultimoControl) : 'sin cargar') + ' · ' + R.eventosAbiertos + ' evento(s) abierto(s) · ' + (R.invAbiertas ? R.invAbiertas + ' investigación(es) de dosis abierta(s) · ' : '') + R.equipos + ' equipo(s) · ' + R.requisitosConDoc + ' de ' + R.requisitos + ' requisitos con documento · ' + R.sitiosRx + ' sitio(s) con rayos X' + (R.sitiosConfirmar ? ', ' + R.sitiosConfirmar + ' a confirmar' : '') + '</span></div>' +
     '<div class="filtros"><label class="f">Sitio<select class="c" id="rdSit"><option value="">Todos los sitios</option>' + D.sitios.map(x => '<option' + (x.SITIO === sf ? ' selected' : '') + '>' + esc(x.SITIO) + '</option>').join('') + '</select></label><label class="f">Otro establecimiento<select class="c" id="rdOtro">' + selectorEst(cod, false) + '</select></label>' + radLink(D.carpeta, 'Carpeta del establecimiento') + ' ' + radLink(D.carpetaDosimetria, 'Carpeta de dosimetría') + ' ' + radLink(D.libro, 'Planilla') + '<button class="btn sec" id="rdAct">Actualizar</button></div></div>' +
@@ -90,7 +90,7 @@ async function radEst(a, fresco) {
   $('rdOtro').onchange = e => { if (e.target.value) location.hash = '#radest/' + encodeURIComponent(e.target.value) + '/' + RADF.tab; };
   $('rdAct').onclick = () => radEst(encodeURIComponent(cod) + '/' + RADF.tab, true);
   $('rdSit').onchange = e => { RADF.sitio = e.target.value; radEst(encodeURIComponent(cod) + '/' + RADF.tab); };
-  ({ sit: radSitEv, per: radPerEv, con: radConEv, dos: radDosEv, inv: radInvEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
+  ({ sit: radSitEv, per: radPerEv, form: radFormEv, con: radConEv, dos: radDosEv, inv: radInvEv, eve: radEveEv, sal: radSalEv, doc: radDocEv, req: radReqEv, mov: () => {} })[RADF.tab](Df);
 }
 function radRecargar(D, msg) { if (msg) toast(msg); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/' + RADF.tab); }
 // Lee un archivo (PDF ≤ 6 MB o imagen achicada) para mandarlo como dataUrl
@@ -239,6 +239,55 @@ function radFormBtn(D, m, tipo, p, per) {
     let id = p ? p.ID : ''; if (tipo === 'novedad') { const i = (per || []).indexOf(o.PERSONA); id = i >= 0 ? D.personal[i].ID : ''; delete o.PERSONA; delete o.SITIO; o.FECHA_FORM = new Date().toISOString().slice(0, 10); }
     if (tipo === 'baja') o.TIPO_BAJA = o.TIPO; delete o.TIPO;
     impPAbrir({ cod: D.cod, tema: 'rad_form', blanco: { form: tipo, persona: id || '*' }, datos: o }, cod + ' · ' + (o.APELLIDO_Y_NOMBRE || (p && p.APELLIDO_Y_NOMBRE) || 'en blanco')); };
+}
+
+// ---------- Pestaña «Formularios (F-RAD)» (25/10/2026, pedido de Belén): elegir el formulario y el trabajador, completar en la PC e imprimir
+// Los datos salen de la persona cargada y se pueden completar o corregir antes de imprimir (y, si se quiere, guardar en su ficha). «Imprimir en blanco» sigue disponible.
+const RADFF = { tipo: 'alta', id: '', v: {} };
+const RADF_CAMPOS = [['APELLIDO_Y_NOMBRE', 'Apellido y nombres'], ['DNI', 'DNI'], ['CUIL', 'CUIL'], ['TELEFONO', 'Teléfono'], ['EMAIL', 'Correo electrónico'], ['SERVICIOS', 'Servicio o servicios en que se desempeña'],
+  ['FUNCION', 'Función'], ['TITULO', 'Título'], ['MATRICULA', 'Matrícula'], ['SITIO', 'Sitio'], ['SECTOR_EXPOSICION', 'Sector donde se expone'], ['TIPO_DOSIMETRO', 'Tipo de dosímetro'], ['DOSIMETRO_NRO', 'N.º de dosímetro']];
+const RADF_EXTRA = { alta: [['INICIO_EXPOSICION', 'Fecha de inicio de la exposición', 'date']],
+  baja: [['MOTIVO_TIPO', 'Motivo', RAD_MOTIVOS_BAJA], ['BAJA_DOSIMETRO', 'Fecha a partir de la cual se pide la baja', 'date'], ['ENTREGA', '¿Entrega el dosímetro?', ['Sí', 'No']], ['MOTIVO_BAJA', 'Detalle del motivo']],
+  novedad: [['NOVEDAD', 'Qué pasó', RAD_NOVEDADES], ['FECHA_HECHO', 'Fecha en que cree que ocurrió', 'date'], ['HORA_HECHO', 'Hora aproximada'], ['LUGAR_HECHO', 'Dónde cree que ocurrió'], ['DENUNCIA', 'En caso de robo, ¿hizo la denuncia policial?', ['Sí', 'No', 'No corresponde']], ['DENUNCIA_NRO', 'N.º de denuncia y dependencia'], ['DESCRIPCION', 'Descripción', 'area']] };
+const RADF_NOM = { alta: ['F-RAD-01', 'Solicitud de alta de dosímetro personal (con el anexo de compromiso de uso)'], baja: ['F-RAD-02', 'Solicitud de baja de dosímetro personal'], novedad: ['F-RAD-03', 'Informe de novedad de dosímetro (pérdida, extravío, robo, daño)'] };
+const radFormPer = p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d') + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (/^Baja/.test(p.ESTADO_DOSIMETRO) ? ' (de baja)' : '');
+function radForm(D) {
+  const v = RADFF.v, p = RADFF.id ? D.personal.find(x => x.ID === RADFF.id) : null;
+  const ctl = (k, l, op) => { const val = v[k] == null ? '' : v[k];
+    const c = Array.isArray(op) ? '<select class="c" data-rf="' + k + '"><option value=""></option>' + op.map(o => '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+      : op === 'date' ? '<input class="c" type="date" data-rf="' + k + '" value="' + esc(String(val).slice(0, 10)) + '">' : op === 'area' ? '<textarea class="c" data-rf="' + k + '">' + esc(val) + '</textarea>'
+      : '<input class="c" data-rf="' + k + '" value="' + esc(val) + '"' + (k === 'SITIO' ? ' list="rfSit"' : k === 'SECTOR_EXPOSICION' ? ' list="rfSec"' : k === 'TIPO_DOSIMETRO' ? ' list="rfTip"' : '') + '>';
+    return '<label class="f' + (op === 'area' ? ' ancho' : '') + '">' + esc(l) + c + '</label>'; };
+  return '<section class="card"><h2>Formularios del dosímetro personal</h2><p class="mu peq" style="margin-top:0">Elegí el formulario y el trabajador: los datos se completan solos y los podés corregir o completar acá antes de imprimir. Se imprimen dos copias (original para Personal y duplicado para Higiene y Seguridad). También se pueden imprimir en blanco para completar a mano.</p>' +
+    '<div class="tabs" style="margin-bottom:10px">' + Object.keys(RADF_NOM).map(k => '<button class="btn ' + (k === RADFF.tipo ? 'pri' : 'sec') + '" data-rft="' + k + '">' + RADF_NOM[k][0] + '</button>').join('') + '</div>' +
+    '<p style="margin:0 0 10px"><b>' + esc(RADF_NOM[RADFF.tipo][0]) + '</b> · ' + esc(RADF_NOM[RADFF.tipo][1]) + '</p>' +
+    '<div class="filtros" style="align-items:flex-end"><label class="f" style="flex:1 1 380px">Trabajador (escribí el apellido o el DNI)<input class="c" id="rfPer" list="rfPers" value="' + esc(p ? radFormPer(p) : '') + '" placeholder="Elegí de la lista o dejalo vacío para una persona nueva" autocomplete="off"></label>' +
+    '<datalist id="rfPers">' + D.personal.map(x => '<option value="' + esc(radFormPer(x)) + '">').join('') + '</datalist>' + (p || Object.keys(v).length ? '<button class="btn sec" id="rfLimpiar">Limpiar</button>' : '') + '</div>' +
+    '<datalist id="rfSit">' + D.sitios.map(x => '<option value="' + esc(x.SITIO) + '">').join('') + '</datalist><datalist id="rfSec">' + D.listas.sectores.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist><datalist id="rfTip">' + D.listas.tiposDosi.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
+    '<h3 style="margin:14px 0 6px">Datos del trabajador</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_CAMPOS.map(c => ctl(c[0], c[1])).join('') + '</div>' +
+    '<h3 style="margin:14px 0 6px">' + (RADFF.tipo === 'alta' ? 'Alta' : RADFF.tipo === 'baja' ? 'Baja' : 'Novedad') + '</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_EXTRA[RADFF.tipo].map(c => ctl(c[0], c[1], c[2])).join('') + '</div>' +
+    '<div class="filtros" style="margin-top:14px"><button class="btn pri" id="rfImp">Imprimir con estos datos</button><button class="btn sec" id="rfBlanco">Imprimir en blanco</button>' +
+    (p ? '<button class="btn sec" id="rfGuardar">Guardar los datos de contacto en la ficha</button>' : '') + '</div>' +
+    '<p class="mu peq" style="margin:8px 0 0">«Guardar los datos de contacto» pasa a la ficha de la persona el CUIL, teléfono, correo, servicios, función, título y matrícula, para que la próxima vez salgan solos. Firmado el formulario, se adjunta en el alta, la baja o el evento (pestañas Personal y Eventos).</p></section>';
+}
+function radFormEv(D) {
+  const leer = () => document.querySelectorAll('[data-rf]').forEach(el => { RADFF.v[el.dataset.rf] = el.value; });
+  document.querySelectorAll('[data-rft]').forEach(b => b.onclick = () => { leer(); RADFF.tipo = b.dataset.rft; if (RADFF.tipo === 'baja' && RADFF.id && !RADFF.v.BAJA_DOSIMETRO) RADFF.v.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); radEst(encodeURIComponent(D.cod) + '/form'); });
+  const per = $('rfPer'); if (per) per.onchange = () => { const p = D.personal.find(x => radFormPer(x) === per.value); leer();
+    if (p) { RADFF.id = p.ID; const v = {}; RADF_CAMPOS.forEach(c => { v[c[0]] = p[c[0]] || ''; }); if (!v.SERVICIOS) v.SERVICIOS = p.SERVICIO || '';
+      Object.keys(RADFF.v).forEach(k => { if (!(k in v)) v[k] = RADFF.v[k]; }); if (RADFF.tipo === 'baja' && !v.BAJA_DOSIMETRO) v.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); RADFF.v = v; }
+    else RADFF.id = ''; radEst(encodeURIComponent(D.cod) + '/form'); };
+  const lim = $('rfLimpiar'); if (lim) lim.onclick = () => { RADFF.id = ''; RADFF.v = {}; radEst(encodeURIComponent(D.cod) + '/form'); };
+  const nom = () => RADF_NOM[RADFF.tipo][0];
+  $('rfImp').onclick = () => { leer(); const o = {}; Object.keys(RADFF.v).forEach(k => { if (RADFF.v[k]) o[k] = RADFF.v[k]; }); if (RADFF.tipo === 'novedad') o.FECHA_FORM = new Date().toISOString().slice(0, 10);
+    impPAbrir({ cod: D.cod, tema: 'rad_form', blanco: { form: RADFF.tipo, persona: RADFF.id || '*' }, datos: o }, nom() + ' · ' + (o.APELLIDO_Y_NOMBRE || 'sin nombre')); };
+  $('rfBlanco').onclick = () => impPAbrir({ cod: D.cod, tema: 'rad_form', blanco: { form: RADFF.tipo, persona: '*' }, datos: {} }, nom() + ' · en blanco');
+  const g = $('rfGuardar'); if (g) g.onclick = async () => { leer(); const p = D.personal.find(x => x.ID === RADFF.id); if (!p) return;
+    const datos = { ID: p.ID, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI }; ['CUIL', 'TELEFONO', 'EMAIL', 'SERVICIOS', 'FUNCION', 'TITULO', 'MATRICULA'].forEach(k => { if (RADFF.v[k] != null) datos[k] = RADFF.v[k]; });
+    if (datos.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(datos.EMAIL.trim())) return toast('El correo no parece válido.');
+    g.disabled = true; g.textContent = 'Guardando…';
+    try { const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) { g.disabled = false; g.textContent = 'Guardar los datos de contacto en la ficha'; return toast(r.mensaje || 'No se pudo guardar.'); }
+      toast('Datos guardados en la ficha de ' + p.APELLIDO_Y_NOMBRE + '.'); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/form', true); } catch (e) { g.disabled = false; g.textContent = 'Guardar los datos de contacto en la ficha'; } };
 }
 
 // ---------- Controles mensuales
