@@ -625,7 +625,7 @@ function radDetalle_(cod) {
     investigaciones: de(D.inv).reverse(),
     dosis: de(D.dos).filter(d => d.ESTADO !== 'Anulado').sort((a, b) => String(b.PERIODO_HASTA).localeCompare(String(a.PERIODO_HASTA)) || String(a.APELLIDO_Y_NOMBRE).localeCompare(String(b.APELLIDO_Y_NOMBRE))),
     cubiertos: radMesesCubiertos_(D.dos, cod), limites: { anual: RAD.LIM_ANUAL, periodo: RAD.LIM_PERIODO },
-    carpeta: radCarpetaEst_(cod).getUrl(), carpetaDosimetria: radCarpetaEst_(cod, ['Dosimetría']).getUrl(), libro: pRad_().getUrl() };
+    mksCorreo: typeof radMksCorreo_ === 'function' ? radMksCorreo_() : '', carpeta: radCarpetaEst_(cod).getUrl(), carpetaDosimetria: radCarpetaEst_(cod, ['Dosimetría']).getUrl(), libro: pRad_().getUrl() };
 }
 
 // ------------------------------------------------------------------ «MI ESTABLECIMIENTO» (DNI y clave personal, módulo «Radiaciones» en ACCESOS): acciones «r_…»
@@ -665,6 +665,7 @@ function radPortal_(accion, x) {
     case 'p_rad_detalle': return radDetalle_(x.cod);
     case 'p_rad_dni': return { ok: true, persona: radDniBase_(x.dni) };
     case 'p_rad_persona_guardar': return conLock_(() => radPersonaGuardar_(x, quien));
+    case 'p_rad_mail_mks': return radMailMks_(x, quien);   // borrador de correo a MKS con el formulario adjunto (RadFormularios.gs)
     case 'p_rad_control_guardar': return conLock_(() => radControlGuardar_(x, quien));
     case 'p_rad_dosis_guardar': return conLock_(() => radDosisGuardar_(x, quien));
     case 'p_rad_inv_guardar': return conLock_(() => radInvGuardar_(x, quien));

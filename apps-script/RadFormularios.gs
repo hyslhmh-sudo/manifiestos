@@ -71,7 +71,7 @@ function radfAlta_(cod, o) {
   const sol = radfTrabajador_(cod, o) + impH2_('Dosímetro que se solicita') +
     impDatos_([['Sector donde se expone', radfV_(o.SECTOR_EXPOSICION)], ['Fecha de inicio de la exposición', radfF_(o.INICIO_EXPOSICION)]]) +
     '<p class="nota" style="margin:4px 0 2px">Tipo de dosímetro:</p>' + radfOps_(RAD.TIPOS_DOSI.filter(t => t !== 'Otro').concat(['Otro']), radfV_(o.TIPO_DOSIMETRO)) +
-    impH2_('Para completar por Higiene y Seguridad') + impDatos_([['N.º de dosímetro asignado', radfV_(o.DOSIMETRO_NRO)], ['Servicio de dosimetría', radfV_(o.PROVEEDOR) || 'MKS'], ['Fecha de alta del dosímetro', radfF_(o.ALTA_DOSIMETRO)]]) +
+    impH2_('Para completar cuando el servicio de dosimetría asigne el dosímetro') + impDatos_([['N.º de dosímetro asignado por MKS', radfV_(o.DOSIMETRO_NRO)], ['Servicio de dosimetría', radfV_(o.PROVEEDOR) || 'MKS'], ['Fecha de alta del dosímetro', radfF_(o.ALTA_DOSIMETRO)]]) +
     '<p class="nota">El trabajador firma también el anexo «Compromiso de uso del dosímetro personal», que forma parte de esta solicitud.</p>' + radfFirmas_();
   const anexo = '<h2>Anexo · Compromiso de uso del dosímetro personal</h2>' +
     impDatos_([['Trabajador', radfV_(o.APELLIDO_Y_NOMBRE)], ['DNI', radfV_(o.DNI)], ['N.º de dosímetro', radfV_(o.DOSIMETRO_NRO)]]) +
@@ -120,4 +120,61 @@ function radfOpciones_(cod) {
   return { campos: [{ k: 'form', t: 'Formulario', ops: Object.keys(RADF.FORMS).map(k => [k, RADF.FORMS[k].cod + ' · ' + RADF.FORMS[k].t]) },
     { k: 'persona', t: 'Trabajador', ops: [['*', 'En blanco (para completar a mano)']].concat(P.map(p => [p.ID, p.APELLIDO_Y_NOMBRE + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (/^Baja/.test(p.ESTADO_DOSIMETRO) ? ' (de baja)' : '')])) }],
     nota: 'Con un trabajador elegido, el formulario sale con sus datos ya cargados. Se imprimen dos copias: original para Personal y duplicado para Higiene y Seguridad.', hechas: [] };
+}
+
+// ------------------------------------------------------------------ CORREO A MKS (25/10/2026, pedido de Belén)
+// Arma un BORRADOR en Gmail (no lo envía: se revisa y se envía desde Gmail) con texto formal y el formulario en PDF adjunto
+// (y, si ya está cargado, el formulario firmado). Sale de belenpellegrini.hys@gmail.com si Gmail tiene ese «Enviar como».
+const RADM = { REMITENTE: 'belenpellegrini.hys@gmail.com', NOMBRE: 'Belén Pellegrini · Higiene y Seguridad Laboral', P_PARA: 'RAD_MKS_CORREO' };
+function radMksCorreo_() { return PropertiesService.getScriptProperties().getProperty(RADM.P_PARA) || ''; }
+function radMailMks_(x, quien) {
+  const cod = limpio_(x.cod), tipo = x.form, F = RADF.FORMS[tipo]; if (!cod || !F) return { ok: false, mensaje: 'Elegí el formulario.' };
+  const para = limpio_(x.para || radMksCorreo_()); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return { ok: false, mensaje: 'Escribí el correo de MKS.' };
+  const persona = x.persona && x.persona !== '*' ? x.persona : '';
+  const o = radfDatos_(cod, Object.assign({}, x.datos || {}, persona ? { ID: persona } : {}));
+  if (!o.APELLIDO_Y_NOMBRE || !o.DNI) return { ok: false, mensaje: 'Faltan el apellido y nombre o el DNI del trabajador.' };
+  const H = radfHoja_(cod, { form: tipo, persona: persona || '*' }, x.datos || {}); if (!H.ok) return H;
+  const nom = radfV_(o.APELLIDO_Y_NOMBRE), est = impNombreEst_(cod), archivoNom = F.cod + ' ' + nom.replace(/[\\/:*?"<>|]/g, '') + '.pdf';
+  const pdf = HtmlService.createHtmlOutput(H.html).getBlob().getAs('application/pdf').setName(archivoNom);
+  if (x.prueba) return { ok: true, prueba: true, pdf: Utilities.base64Encode(pdf.getBytes()), asunto: radMksAsunto_(tipo, o, est), texto: radMksTexto_(tipo, o, est) };
+  const adj = [pdf]; let firmado = '';
+  const fid = u => (/[-\w]{25,}/.exec(String(u || '')) || [])[0];
+  try { const url = tipo === 'alta' ? o.FORM_ALTA : tipo === 'baja' ? o.FORM_BAJA : (x.evento ? (radLeer_('EVENTOS', RAD.H_EVE).find(e => e.ID === x.evento) || {}).FORM_NOVEDAD : '');
+    if (fid(url)) { const f = DriveApp.getFileById(fid(url)); adj.push(f.getBlob().setName(F.cod + ' firmado ' + nom + (/\.\w+$/.exec(f.getName()) || [''])[0])); firmado = f.getName(); } } catch (e) {}
+  const asunto = radMksAsunto_(tipo, o, est), html = radMksTexto_(tipo, o, est, !!firmado);
+  let desde = ''; try { const al = GmailApp.getAliases().map(a => a.toLowerCase()); if (al.indexOf(RADM.REMITENTE) >= 0 || Session.getEffectiveUser().getEmail().toLowerCase() === RADM.REMITENTE) desde = RADM.REMITENTE; } catch (e) {}
+  const op = { htmlBody: html, name: RADM.NOMBRE, attachments: adj }; if (desde) op.from = desde; else op.replyTo = RADM.REMITENTE;
+  if (x.cc && /@/.test(x.cc)) op.cc = limpio_(x.cc);
+  const texto = html.replace(/<br\s*\/?>/g, '\n').replace(/<\/(p|li|tr)>/g, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n');
+  const dr = GmailApp.createDraft(para, asunto, texto, op);
+  if (x.para) PropertiesService.getScriptProperties().setProperty(RADM.P_PARA, para);   // se recuerda para la próxima
+  if (persona) try { const p = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(r => r.ID === persona); if (p) radMov_(p, 'Comunicación a MKS', 'Borrador de correo a ' + para + ': ' + asunto, '', quien); } catch (e) {}
+  const yo = Session.getEffectiveUser().getEmail();
+  return { ok: true, asunto: asunto, para: para, desde: desde || yo, firmado: firmado, url: 'https://mail.google.com/mail/?authuser=' + encodeURIComponent(yo) + '#drafts?compose=' + dr.getMessage().getId(),
+    aviso: desde ? '' : 'Gmail no tiene configurado «Enviar como» ' + RADM.REMITENTE + ': el borrador sale de ' + yo + ', con respuesta a ' + RADM.REMITENTE + '.' };
+}
+function radMksAsunto_(tipo, o, est) {
+  return (tipo === 'alta' ? 'Solicitud de alta de dosímetro personal' : tipo === 'baja' ? 'Solicitud de baja de dosímetro personal' : 'Informe de novedad de dosímetro personal' + (o.NOVEDAD ? ' (' + String(o.NOVEDAD).toLowerCase() + ')' : '')) +
+    ' · ' + radfV_(o.APELLIDO_Y_NOMBRE) + ' · DNI ' + radfV_(o.DNI) + (tipo !== 'alta' && o.DOSIMETRO_NRO ? ' · Dosímetro ' + radfV_(o.DOSIMETRO_NRO) : '') + ' · ' + est;
+}
+function radMksTexto_(tipo, o, est, firmado) {
+  const e = impE_, v = k => radfV_(o[k]), f = k => radfF_(o[k]);
+  const fila = (l, val) => val ? '<tr><td style="padding:2px 12px 2px 0;color:#555">' + e(l) + '</td><td style="padding:2px 0"><b>' + e(val) + '</b></td></tr>' : '';
+  const trab = '<table style="border-collapse:collapse;margin:8px 0 12px">' + fila('Apellido y nombres', v('APELLIDO_Y_NOMBRE')) + fila('DNI', v('DNI')) + fila('CUIL', v('CUIL')) +
+    fila('Establecimiento', est + (o.SITIO ? ' · ' + v('SITIO') : '')) + fila('Servicio(s)', v('SERVICIOS') || v('SERVICIO')) + fila('Función', v('FUNCION')) + fila('Sector donde se expone', v('SECTOR_EXPOSICION')) +
+    (tipo === 'alta' ? fila('Tipo de dosímetro solicitado', v('TIPO_DOSIMETRO') || 'Cuerpo entero') + fila('Fecha de inicio de la exposición', f('INICIO_EXPOSICION'))
+      : fila('N.º de dosímetro', v('DOSIMETRO_NRO')) + fila('Tipo de dosímetro', v('TIPO_DOSIMETRO'))) +
+    (tipo === 'baja' ? fila('Baja a partir del', f('BAJA_DOSIMETRO')) + fila('Motivo', [v('MOTIVO_TIPO'), v('MOTIVO_BAJA')].filter(Boolean).join(' · ')) + fila('Entrega del dosímetro', o.ENTREGA === 'Sí' ? 'Se devuelve el dosímetro' : o.ENTREGA === 'No' ? 'No se devuelve el dosímetro' : '') : '') +
+    (tipo === 'novedad' ? fila('Novedad', v('NOVEDAD')) + fila('Fecha en que se estima que ocurrió', f('FECHA_HECHO') + (o.HORA_HECHO ? ' ' + v('HORA_HECHO') : '')) + fila('Lugar', v('LUGAR_HECHO')) + fila('Descripción', v('DESCRIPCION')) +
+      (o.DENUNCIA ? fila('Denuncia policial', v('DENUNCIA') + (o.DENUNCIA_NRO ? ' · ' + v('DENUNCIA_NRO') : '')) : '') : '') + '</table>';
+  const intro = tipo === 'alta' ? 'el alta en el servicio de dosimetría personal del siguiente trabajador expuesto a radiaciones ionizantes:'
+    : tipo === 'baja' ? 'la baja del dosímetro personal asignado al siguiente trabajador:' : 'la siguiente novedad del dosímetro personal asignado al trabajador que se detalla:';
+  const pedido = tipo === 'alta' ? 'Se solicita asignar el dosímetro e informar su número a este Servicio, junto con la fecha a partir de la cual queda habilitado.'
+    : tipo === 'baja' ? 'Se solicita confirmar la baja y, si corresponde, indicar el procedimiento para la devolución del dosímetro y la emisión de la última lectura.'
+    : 'Se solicita registrar la novedad, indicar si corresponde una lectura o estimación de dosis para el período y gestionar el reemplazo del dosímetro.';
+  return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.5">' +
+    '<p>Estimados:</p><p>El Servicio de Higiene y Seguridad Laboral del ' + e(est) + ' ' + (tipo === 'novedad' ? 'informa' : 'solicita') + ' ' + intro + '</p>' + trab +
+    '<p>' + e(pedido) + '</p><p>Se adjunta el formulario ' + e(RADF.FORMS[tipo].cod) + ' «' + e(RADF.FORMS[tipo].t) + '»' + (firmado ? ', junto con la copia firmada' : '') + '.</p>' +
+    '<p style="color:#555;font-size:12px">' + (tipo === 'novedad' ? 'La comunicación' : 'La solicitud') + ' se realiza en el marco de la vigilancia dosimétrica individual del personal expuesto a radiaciones ionizantes (Ley 17.557 y Dto. 6320/68) y de las competencias del Servicio de Higiene y Seguridad Laboral (Ley 19.587, Dto. 351/79 y Res. SRT 905/2015).</p>' +
+    '<p>Quedo a disposición por cualquier consulta.</p><p>Saludos cordiales,</p><p>Belén Pellegrini<br>Servicio de Higiene y Seguridad Laboral<br>Hospital Zonal Trelew «Dr. Adolfo Margara» · Hospital María Humphreys<br>' + RADM.REMITENTE + '</p></div>';
 }
