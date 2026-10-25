@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.12';
+const VERSION_CAP = '2026-10-25 · 5.13';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -137,7 +137,8 @@ const ACCIONES = {
   c_lote_pdf: d => certLoteDictado_(d),
   c_mis_cert_link: () => ({ ok: true, link: CERT_WEB, qr: qrDe_(CERT_WEB) }),
   c_invitar: d => invitarDatos_(d),
-  c_invitar_registrar: d => invitarRegistrar_(d)
+  c_invitar_registrar: d => invitarRegistrar_(d),
+  c_invitar_enviar: d => invitarEnviar_(d)
 };
 
 function salida_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -2695,15 +2696,22 @@ function invitacionesTabla_() {
 function invitarDatos_(d) {
   const L = baseCorreos_();
   try { escribirBaseCorreos_(L); } catch (e) { /* la hoja se actualiza la próxima vez */ }
-  const C = tabla_('CATALOGO'), caps = C.filas.filter(r => r[C.i('CODIGO')]).map(r => ({ codigo: r[C.i('CODIGO')], nombre: r[C.i('NOMBRE')], estado: r[C.i('ESTADO')] }));
+  const C = tabla_('CATALOGO'), evs = evaluaciones_(), prox = proxDictados_();
+  const caps = C.filas.filter(r => r[C.i('CODIGO')]).map(r => { const cod = r[C.i('CODIGO')]; return { codigo: cod, nombre: r[C.i('NOMBRE')], estado: r[C.i('ESTADO')], eval: !!evalDe_(cod, '', evs), prox: prox[cod] || null }; });
   // Invitaciones anteriores, cruzadas con los registros posteriores a cada una
   invitacionesTabla_();
   const I = tabla_('_INVITACIONES'), R = tabla_('REGISTROS'), ri = R.i, reg = {};
   R.filas.forEach(r => { if (/anulad/i.test(r[ri('ESTADO')])) return; const c = r[ri('CODIGO')], dni = soloDni_(r[ri('DNI')]) || String(r[ri('DNI')] || '').trim(), f = isoDe_(r[ri('FECHA')]);
     if (!c || !dni || !f) return; reg[c] = reg[c] || {}; if (!reg[c][dni] || f > reg[c][dni]) reg[c][dni] = f; });
+  // 25/10/2026: también quiénes se anotaron (inscripción previa) después de la invitación, y cómo se invitó
+  const D = tabla_('DICTADOS'), codDic = {}, ins = {}, II = tabla_('INSCRIPCIONES');
+  D.filas.forEach(r => { codDic[r[D.i('ID_DICTADO')]] = r[D.i('CODIGO')]; });
+  II.filas.forEach(r => { if (/anulad/i.test(r[II.i('ESTADO')])) return; const c = codDic[r[II.i('ID_DICTADO')]], dni = soloDni_(r[II.i('DNI')]) || String(r[II.i('DNI')] || '').trim(), f = isoDe_(r[II.i('FECHA')]);
+    if (!c || !dni || !f) return; ins[c] = ins[c] || {}; if (!ins[c][dni] || f > ins[c][dni]) ins[c][dni] = f; });
+  const como = q => /borrador/i.test(q) ? 'Borrador en Gmail' : /enviad|correo/i.test(q) ? 'Correo enviado' : 'Correos copiados (sin envío desde el sistema)';
   const invs = I.filas.filter(r => r[I.i('ID_INVITACION')]).map(r => { const o = obj_(I, r), f = isoDe_(o.FECHA), dnis = String(o.DNIS || '').split(',').map(x => x.trim()).filter(Boolean);
-    const m = reg[o.CODIGO] || {}; return { id: o.ID_INVITACION, fecha: o.FECHA, codigo: o.CODIGO, nombre: o.CAPACITACION, filtro: o.FILTRO, tanda: o.TANDA, cantidad: Number(o.CANTIDAD) || dnis.length,
-      registrados: dnis.filter(x => m[x] && m[x] >= f).length }; }).reverse().slice(0, 60);
+    const m = reg[o.CODIGO] || {}, a = ins[o.CODIGO] || {}; return { id: o.ID_INVITACION, fecha: o.FECHA, codigo: o.CODIGO, nombre: o.CAPACITACION, filtro: o.FILTRO, tanda: o.TANDA, cantidad: Number(o.CANTIDAD) || dnis.length,
+      registrados: dnis.filter(x => m[x] && m[x] >= f).length, anotados: dnis.filter(x => a[x] && a[x] >= f).length, como: como(o.QUIEN) }; }).reverse().slice(0, 60);
   return { ok: true, lista: L, caps: caps, invitaciones: invs, tanda: INV_TANDA, libro: SpreadsheetApp.getActive().getUrl() + '#gid=' + (SpreadsheetApp.getActive().getSheetByName('CORREOS') || { getSheetId: () => 0 }).getSheetId(), calculado: ahoraTxt_() };
 }
 function invitarRegistrar_(d) {
@@ -2713,6 +2721,55 @@ function invitarRegistrar_(d) {
   agregar_(tabla_('_INVITACIONES'), [{ ID_INVITACION: uid_('INV', ''), FECHA: ahoraTxt_(), CODIGO: d.codigo || 's/d', CAPACITACION: d.nombre || 's/d', FILTRO: String(d.filtro || 'Todos').slice(0, 500),
     TANDA: d.tanda || '', CANTIDAD: dnis.length, DNIS: dnis.join(',').slice(0, 49000), QUIEN: 'Portal' }]);
   return { ok: true };
+}
+// 25/10/2026: próximo dictado de cada capacitación (para el texto de la invitación): el primero que no empezó, con su link
+function proxDictados_() {
+  const D = tabla_('DICTADOS'), ahora = new Date(), out = {};
+  D.filas.map(r => obj_(D, r)).filter(o => o.ID_DICTADO && o.CODIGO && !/cancel|suspend/i.test(o.ESTADO)).forEach(o => {
+    const ini = fechaHora_(dma_(isoDe_(o.FECHA)) + ' ' + (hhmm_(o.HORA_INICIO) || '0:00')); if (!(ini > ahora)) return;
+    if (out[o.CODIGO] && out[o.CODIGO]._t <= ini) return;
+    const conIns = !vacio_(o.LINK_INSCRIPCION), f = isoDe_(o.FECHA);
+    out[o.CODIGO] = { _t: ini, id: o.ID_DICTADO, dia: DIAS_SEMANA[diaSemana_(f)] + ' ' + dma_(f), hora: hhmm_(o.HORA_INICIO), horaFin: hhmm_(o.HORA_FIN), modalidad: o.MODALIDAD, lugar: o.LUGAR,
+      inscripcion: conIns, link: PUBLICO_URL + '?' + (conIns ? 'i=' : 'd=') + encodeURIComponent(o.ID_DICTADO), cupo: num_(o.CUPO_PRESENCIAL) };
+  });
+  Object.keys(out).forEach(k => delete out[k]._t);
+  return out;
+}
+// 25/10/2026 (pedido de Belén): la invitación se manda por correo desde el portal (reemplaza «copiar correos»).
+// Sale desde belenpellegrini.hys@gmail.com, con los invitados en copia oculta (una tanda por correo) y el texto que
+// ella revisó en pantalla. Si la cuota diaria de Google no alcanza (hay que dejar lugar a los recordatorios de la
+// agenda), o si ella lo elige, queda como BORRADOR en Gmail y lo envía ella. Queda en _INVITACIONES y en _MENSAJES.
+const INV_RESERVA = 20;   // envíos diarios que se dejan libres para los recordatorios de la agenda
+function invitarEnviar_(d) {
+  const correos = (d.correos || []).map(x => String(x).trim().toLowerCase()).filter(correoOk_).filter((x, i, a) => a.indexOf(x) === i);
+  const dnis = (d.dnis || []).map(x => String(x).trim()).filter(Boolean);
+  if (!correos.length) return { ok: false, error: 'No hay correos para enviar.' };
+  if (correos.length > INV_TANDA) return { ok: false, error: 'Son ' + correos.length + ' correos: mandalos por tandas de hasta ' + INV_TANDA + '.' };
+  const asunto = String(d.asunto || '').trim(), texto = String(d.texto || '').trim();
+  if (!asunto || !texto) return { ok: false, error: 'Escribí el asunto y el texto.' };
+  if (!puedeEnviar_()) return { ok: false, error: 'Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de la cuenta del libro.' };
+  const borrador = d.modo === 'borrador', quedan = MailApp.getRemainingDailyQuota();
+  if (!borrador && quedan - (correos.length + 1) < INV_RESERVA)
+    return { ok: false, cuota: quedan, error: 'Hoy Google deja enviar ' + quedan + ' correo(s) más desde el sistema y hay que reservar ' + INV_RESERVA + ' para los recordatorios de la agenda. Usá «Dejar como borrador en Gmail» y envialo desde tu Gmail (ahí no hay este límite).' };
+  const html = invitacionHtml_(asunto, texto, d.link || ''), plano = texto;
+  const opc = { bcc: correos.join(','), from: CORREO_HYS, name: 'Belén Pellegrini · Higiene y Seguridad Laboral', htmlBody: html, replyTo: CORREO_HYS };
+  let link = '', estado = '';
+  if (borrador) { const b = GmailApp.createDraft(CORREO_HYS, asunto, plano, opc); link = 'https://mail.google.com/mail/u/0/#drafts?compose=' + b.getMessage().getId(); estado = 'Borrador'; }
+  else { GmailApp.sendEmail(CORREO_HYS, asunto, plano, opc); estado = 'Enviado'; }
+  invitacionesTabla_();
+  agregar_(tabla_('_INVITACIONES'), [{ ID_INVITACION: uid_('INV', ''), FECHA: ahoraTxt_(), CODIGO: d.codigo || 's/d', CAPACITACION: d.nombre || 's/d', FILTRO: String(d.filtro || 'Todos').slice(0, 500),
+    TANDA: d.tanda || '', CANTIDAD: dnis.length || correos.length, DNIS: dnis.join(',').slice(0, 49000), QUIEN: borrador ? 'Borrador en Gmail (portal)' : 'Correo enviado (portal)' }]);
+  agregar_(tabla_('_MENSAJES'), [{ ID_MENSAJE: uid_('MSG', ''), FECHA: ahoraTxt_(), TIPO: 'Invitación', CANAL: 'Correo', DESTINATARIOS: correos.length + ' en copia oculta', ID_DICTADO: d.idDictado || '', CODIGO: d.codigo || '',
+    ASUNTO: asunto, ESTADO: estado, QUIEN: 'Belén (portal · Invitar)', ID_TURNO: '', DETALLE: String(d.filtro || '').slice(0, 300) + (d.tanda ? ' · tanda ' + d.tanda : ''), ID_BORRADOR: link }]);
+  return { ok: true, borrador: borrador, link: link, cuota: borrador ? quedan : quedan - correos.length - 1,
+    mensaje: borrador ? 'Quedó el borrador en tu Gmail: abrilo y tocá Enviar.' : 'Invitación enviada a ' + correos.length + ' correo(s) en copia oculta.' };
+}
+function invitacionHtml_(asunto, texto, link) {
+  const e = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const parrafos = texto.split(/\n\s*\n/).map(p => '<p style="margin:0 0 12px">' + e(p).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#2F6F86">$1</a>').replace(/\n/g, '<br>') + '</p>').join('');
+  const boton = link ? '<p style="text-align:center;margin:18px 0"><a href="' + link + '" style="display:inline-block;background:#5894A7;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">Anotarme</a></p>' : '';
+  return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#0D313F;font-size:15px;line-height:1.55">' + parrafos + boton +
+    '<div style="text-align:center;padding:14px 0 4px"><img src="' + LOGO_HYSL + '" alt="HySL · Hospitales más seguros para las personas" style="height:38px"></div></div>';
 }
 function menuActualizarCorreos() {
   const L = baseCorreos_(); escribirBaseCorreos_(L);

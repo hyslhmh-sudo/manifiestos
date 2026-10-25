@@ -1341,7 +1341,7 @@ async function capInvitar(fresco) {
   marco('#capinv', '<style>.ivf{display:flex;flex-direction:column;gap:6px}.ivt{font-weight:700;font-size:13px}.ivo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}' +
       '.ivc{border:1px solid #C9D9DF;background:#fff;color:#0D313F;border-radius:999px;padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer;line-height:1.2;text-align:left}.ivc span{color:#5894A7;font-weight:700;margin-left:2px}' +
       '.ivc:hover{border-color:#5894A7}.ivc.on{background:#0D313F;border-color:#0D313F;color:#fff}.ivc.on span{color:#BFD9E2}</style>' +
-    capTit('Invitar a capacitaciones', 'Base al ' + esc(D.calculado) + ' · ' + D.lista.length + ' personas · ' + D.lista.filter(p => p.correo).length + ' con correo. Tocá los botones para filtrar (podés marcar varios); el número es la cantidad de personas. Después copiá los correos y pegalos en CCO.',
+    capTit('Invitar a capacitaciones', 'Base al ' + esc(D.calculado) + ' · ' + D.lista.length + ' personas · ' + D.lista.filter(p => p.correo).length + ' con correo. Tocá los botones para filtrar (podés marcar varios); el número es la cantidad de personas. Después elegí la capacitación y mandá la invitación por correo: revisás el texto antes de enviarlo.',
       '<a class="btn sec" href="' + esc(D.libro) + '" target="_blank" rel="noopener">Abrir en el libro ↗</a><button class="btn sec" id="ivAct">Actualizar</button>') +
     '<section class="card" style="display:flex;flex-direction:column;gap:14px">' +
       '<div class="filtros" style="align-items:flex-end">' +
@@ -1364,33 +1364,66 @@ function capInvRes() {
   capInvFacetas();
   const F = capInvFiltrar(), con = F.filter(p => p.correo), vistos = {}, unicos = con.filter(p => !vistos[p.correo] && (vistos[p.correo] = 1)), T = CAPINV.datos.tanda || 90, n = Math.ceil(unicos.length / T);
   const cap = CAPINV.datos.caps.find(c => c.codigo === CAPINV.cod);
-  const tandas = n > 1 ? Array.from({ length: n }, (_, k) => '<button class="btn sec" data-tanda="' + k + '">Tanda ' + (k + 1) + ' (' + (k * T + 1) + '–' + Math.min((k + 1) * T, unicos.length) + ')</button>').join('') : '';
+  const tandas = n > 1 ? Array.from({ length: n }, (_, k) => '<button class="btn sec" data-tanda="' + k + '">✉ Enviar tanda ' + (k + 1) + ' (' + (k * T + 1) + '–' + Math.min((k + 1) * T, unicos.length) + ')</button>').join('') : '';
   box.innerHTML = '<section class="card" style="display:flex;flex-direction:column;gap:10px">' +
     '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0">' + F.length + ' persona(s)</h2><span class="mu peq">' + unicos.length + ' correo(s) distintos · ' + (F.length - con.length) + ' sin correo · ' + esc(capInvFiltroTxt()) + '</span></div>' +
-    (!cap ? '<div class="aviso peq" style="margin:0">Elegí la capacitación para que la invitación quede anotada (y después ver quiénes se registraron). Igual podés copiar los correos.</div>' : '') +
-    '<div class="cpn" style="flex-wrap:wrap">' + (unicos.length ? '<button class="btn pri" id="ivTodos">Copiar los ' + unicos.length + ' correos</button>' + tandas : '') + '<button class="btn sec" id="ivCsv">Descargar planilla</button></div>' +
-    (n > 1 ? '<span class="mu peq">En Gmail conviene no pasar de ' + T + ' destinatarios por mensaje (en CCO): usá las tandas, un mail por tanda.</span>' : '') +
+    (!cap ? '<div class="aviso peq" style="margin:0">Elegí la capacitación para armar la invitación (y después ver quiénes se anotaron y se registraron).</div>' : '') +
+    '<div class="cpn" style="flex-wrap:wrap">' + (unicos.length && cap ? (n > 1 ? tandas : '<button class="btn pri" id="ivTodos">✉ Enviar invitación a los ' + unicos.length + ' correos</button>') : '') + '<button class="btn sec" id="ivCsv">Descargar planilla</button></div>' +
+    (n > 1 && cap ? '<span class="mu peq">Son más de ' + T + ' correos: la invitación va en tandas (un correo por tanda, todos en copia oculta). Tocá cada tanda para enviarla.</span>' : '') +
     (F.length ? '<div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px"><th style="padding:5px 6px">PERSONA</th><th style="padding:5px 6px">ESTABLECIMIENTO · SERVICIO</th><th style="padding:5px 6px">FUNCIÓN</th><th style="padding:5px 6px">CORREO</th>' + (cap ? '<th style="padding:5px 6px">' + esc(cap.codigo.replace('CAP-HYS-', '')) + '</th>' : '') + '</tr></thead><tbody>' +
       F.slice(0, 400).map(p => { const v = cap ? p.h[cap.codigo] || '' : ''; return '<tr style="border-top:1px solid #EEF2F4"><td style="padding:5px 6px"><b>' + esc(p.nom) + '</b><div class="mu">' + esc(p.dni) + '</div></td><td style="padding:5px 6px">' + esc(p.estO || p.estN) + '<div class="mu">' + esc(p.serv) + '</div></td><td style="padding:5px 6px">' + esc(p.func) + '</td><td style="padding:5px 6px">' + (p.correo ? esc(p.correo) : '<span class="mu">sin correo</span>') + '</td>' +
         (cap ? '<td style="padding:5px 6px;white-space:nowrap">' + (!v ? '<span class="mu">no</span>' : v === '9999-12-31' ? capChip('Hecha', 'ok') : v >= capInvHoy() ? capChip('Hasta ' + fechaTxt(v), 'ok') : capChip('Venció ' + fechaTxt(v), 'er')) + '</td>' : '') + '</tr>'; }).join('') +
       '</tbody></table></div>' + (F.length > 400 ? '<span class="mu peq">Se muestran 400 de ' + F.length + '. Los correos y la planilla incluyen a todos.</span>' : '') : '<div class="vacio">Nadie con ese filtro.</div>') + '</section>';
-  const copiar = async (lista, tanda) => {
-    await capCopiar(lista.map(p => p.correo).join(', '), lista.length + ' correo(s) copiados' + (cap ? ' · invitación anotada' : '') + '.');
-    if (!cap) return;
-    try { const filtro = capInvFiltroTxt(); await capApi('c_invitar_registrar', { codigo: cap.codigo, nombre: cap.nombre, filtro: filtro, tanda: tanda || '', dnis: lista.map(p => p.dni) });
-      (CAPINV.datos.invitaciones = CAPINV.datos.invitaciones || []).unshift({ fecha: new Date().toLocaleString('es-AR'), codigo: cap.codigo, nombre: cap.nombre, filtro: filtro, tanda: tanda || '', cantidad: lista.length, registrados: 0 }); capInvHist(); } catch (e) { toast('Los correos se copiaron, pero no se pudo anotar la invitación: ' + capMsg(e)); }
-  };
-  if ($('ivTodos')) $('ivTodos').onclick = () => copiar(unicos, n > 1 ? 'Todas (' + unicos.length + ')' : '');
-  box.querySelectorAll('[data-tanda]').forEach(b => b.onclick = () => { const k = +b.dataset.tanda; if (b.textContent.indexOf('✓') < 0) b.textContent = '✓ ' + b.textContent; copiar(unicos.slice(k * T, (k + 1) * T), (k + 1) + ' de ' + n); });
+  // 25/10/2026: la invitación se manda por correo desde el portal (antes se copiaban los correos)
+  const enviar = (lista, tanda, boton) => capInvCorreo(cap, lista, tanda, unicos, () => { if (boton && boton.textContent.indexOf('✓') < 0) boton.textContent = '✓ ' + boton.textContent.replace('✉ ', ''); });
+  if ($('ivTodos')) $('ivTodos').onclick = () => enviar(unicos, '', $('ivTodos'));
+  box.querySelectorAll('[data-tanda]').forEach(b => b.onclick = () => { const k = +b.dataset.tanda; enviar(unicos.slice(k * T, (k + 1) * T), (k + 1) + ' de ' + n, b); });
   $('ivCsv').onclick = () => { const c = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', cab = ['DNI', 'APELLIDO Y NOMBRE', 'ÁREA PROGRAMÁTICA', 'ESTABLECIMIENTO', 'SERVICIO (ÁREA)', 'SERVICIO', 'FUNCIÓN (GRUPO)', 'FUNCIÓN', 'PUBLICO', 'CORREO'].concat(cap ? [cap.codigo + ' VENCE'] : []);
     const b = new Blob(['﻿' + [cab].concat(F.map(p => [p.dni, p.nom, p.area || 's/d', p.estO || p.estN, p.sg || 's/d', p.serv, p.fg || 's/d', p.func, p.pub, p.correo || 's/d'].concat(cap ? [p.h[cap.codigo] ? (p.h[cap.codigo] === '9999-12-31' ? 'No vence' : fechaTxt(p.h[cap.codigo])) : 'No la hizo'] : []))).map(f => f.map(c).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
     a.href = URL.createObjectURL(b); a.download = ('Invitar ' + (cap ? cap.nombre : 'capacitaciones') + ' ' + capInvHoy()).replace(/[\\/:*?"<>|]/g, '-') + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); };
+}
+// Texto sugerido de la invitación (se puede cambiar antes de enviar)
+function capInvTexto(cap, todos) {
+  const x = cap.prox, afuera = todos.some(p => p.pub && !/trelew/i.test(p.pub)), hib = x && /h[ií]brida/i.test(x.modalidad || ''), virt = x && /^virtual/i.test(x.modalidad || '');
+  const l = ['Hola:', '', 'Les comparto la invitación a la capacitación «' + cap.nombre + '».'];
+  if (x) {
+    l.push('', '📅 ' + x.dia + (x.hora ? ', de ' + x.hora + (x.horaFin ? ' a ' + x.horaFin : '') + ' h' : ''));
+    l.push('📍 ' + (hib ? 'Híbrida: presencial en ' + (x.lugar || 'el aula') + ' o virtual por Zoom' : virt ? 'Virtual, por Zoom' : 'Presencial en ' + (x.lugar || 's/d')));
+    l.push('', (x.inscripcion ? 'Para participar, anótense en este link: ' : 'El día de la clase registran su asistencia en este link: ') + x.link);
+    if (x.inscripcion) l.push((hib ? 'Al anotarse eligen si participan presencial o virtual' + (x.cupo ? ' (en el aula hay ' + x.cupo + ' lugares; si se completa, sigue abierta la inscripción virtual)' : '') + '. ' : '') + 'La confirmación y los recordatorios llegan por correo.');
+  } else l.push('', '[Todavía no hay un próximo dictado cargado de esta capacitación: escribí acá la fecha, el horario y el link.]');
+  l.push('', 'La capacitación es gratuita. ' + (cap.eval ? 'Quienes registren su asistencia y aprueben la evaluación descargan su certificado desde «Mis certificados», con su DNI.' : 'Quienes registren su asistencia descargan su constancia desde «Mis certificados», con su DNI.'));
+  if (afuera) l.push('', 'Esta capacitación complementa y no reemplaza a las que organiza el Servicio de Higiene y Seguridad de cada establecimiento.');
+  l.push('', 'Quedo a disposición por cualquier consulta.', '', 'Belén Pellegrini', 'Servicio de Higiene y Seguridad Laboral · HZT / HMH');
+  return l.join('\n');
+}
+// Ventana para revisar y enviar la invitación (o dejarla como borrador en Gmail)
+function capInvCorreo(cap, lista, tanda, todos, listo) {
+  const x = cap.prox, asuntoDef = 'Invitación: ' + cap.nombre + (x ? ' · ' + x.dia + (x.hora ? ', ' + x.hora + ' h' : '') : '');
+  if (!CAPINV.borr || CAPINV.borr.cod !== cap.codigo) CAPINV.borr = { cod: cap.codigo, asunto: asuntoDef, texto: capInvTexto(cap, todos) };   // el texto editado se conserva entre tandas
+  const datos = { codigo: cap.codigo, nombre: cap.nombre, filtro: capInvFiltroTxt(), tanda: tanda || '', dnis: lista.map(p => p.dni), correos: lista.map(p => p.correo), link: x && x.inscripcion ? x.link : '', idDictado: x ? x.id : '' };
+  const anotar = r => { (CAPINV.datos.invitaciones = CAPINV.datos.invitaciones || []).unshift({ fecha: new Date().toLocaleString('es-AR'), codigo: cap.codigo, nombre: cap.nombre, filtro: datos.filtro, tanda: datos.tanda, cantidad: lista.length, registrados: 0, anotados: 0, como: r.borrador ? 'Borrador en Gmail' : 'Correo enviado' }); capInvHist(); listo(); };
+  const m = modal('Invitación por correo' + (tanda ? ' · tanda ' + tanda : ''), [['asunto', 'Asunto', ''], ['texto', 'Texto (podés cambiar lo que quieras)', '', 1]], CAPINV.borr, async v => {
+    CAPINV.borr.asunto = v.asunto; CAPINV.borr.texto = v.texto;
+    try { const r = await capApi('c_invitar_enviar', Object.assign({}, datos, { asunto: v.asunto, texto: v.texto, modo: 'enviar' })); if (!r.ok) return r.error; toast(r.mensaje); anotar(r); }
+    catch (e) { return capMsg(e); }
+  }, '<style>#ov textarea{min-height:300px}</style><p class="mu peq" style="margin:0">Sale desde <b>belenpellegrini.hys@gmail.com</b>, con los <b>' + lista.length + '</b> correo(s) en copia oculta (nadie ve los correos de los demás). Te llega una copia.' + (datos.link ? ' Lleva el botón «Anotarme».' : '') + '</p>');
+  $('mOk').textContent = 'Enviar ahora';
+  const b = document.createElement('button'); b.className = 'btn sec'; b.textContent = 'Dejar como borrador en Gmail'; m.extra.appendChild(b);
+  b.onclick = async () => {
+    const v = {}; document.querySelectorAll('#ov [data-k]').forEach(el => v[el.dataset.k] = el.value); CAPINV.borr.asunto = v.asunto; CAPINV.borr.texto = v.texto;
+    b.disabled = true; b.textContent = 'Preparando…';
+    try { const r = await capApi('c_invitar_enviar', Object.assign({}, datos, { asunto: v.asunto, texto: v.texto, modo: 'borrador' })); if (!r.ok) throw new Error(r.error);
+      m.cerrar(); anotar(r); toast(r.mensaje); if (r.link) window.open(r.link, '_blank', 'noopener'); }
+    catch (e) { $('mErr').textContent = capMsg(e); $('mErr').hidden = false; b.disabled = false; b.textContent = 'Dejar como borrador en Gmail'; }
+  };
 }
 function capInvHist() {
   const box = $('ivHist'); if (!box) return;
   const I = CAPINV.datos.invitaciones || [];
   box.innerHTML = '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2 style="margin:0">Invitaciones anteriores</h2>' +
-    (I.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px"><th style="padding:5px 6px">FECHA</th><th style="padding:5px 6px">CAPACITACIÓN</th><th style="padding:5px 6px">A QUIÉNES</th><th style="padding:5px 6px;text-align:right">INVITADOS</th><th style="padding:5px 6px;text-align:right">SE REGISTRARON</th></tr></thead><tbody>' +
-      I.map(x => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:5px 6px;white-space:nowrap">' + esc(x.fecha) + '</td><td style="padding:5px 6px">' + esc(x.nombre) + (x.tanda ? '<div class="mu">Tanda ' + esc(x.tanda) + '</div>' : '') + '</td><td style="padding:5px 6px">' + esc(x.filtro) + '</td><td style="padding:5px 6px;text-align:right">' + x.cantidad + '</td><td style="padding:5px 6px;text-align:right"><b>' + x.registrados + '</b> <span class="mu">(' + (x.cantidad ? Math.round(x.registrados * 100 / x.cantidad) : 0) + ' %)</span></td></tr>').join('') +
-      '</tbody></table></div><span class="mu peq">«Se registraron»: invitados con un registro de esa capacitación (asistencia o evaluación) desde la fecha de la invitación. Queda en el libro, hoja _INVITACIONES.</span>' : '<div class="mu peq">Todavía no hay invitaciones anotadas. Se anotan solas cuando copiás correos con una capacitación elegida.</div>') + '</section>';
+    (I.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:11.5px"><th style="padding:5px 6px">FECHA</th><th style="padding:5px 6px">CAPACITACIÓN</th><th style="padding:5px 6px">A QUIÉNES</th><th style="padding:5px 6px;text-align:right">INVITADOS</th><th style="padding:5px 6px;text-align:right">SE ANOTARON</th><th style="padding:5px 6px;text-align:right">SE REGISTRARON</th></tr></thead><tbody>' +
+      I.map(x => { const pc = v => '<b>' + (v || 0) + '</b> <span class="mu">(' + (x.cantidad ? Math.round((v || 0) * 100 / x.cantidad) : 0) + ' %)</span>';
+        return '<tr style="border-top:1px solid #EEF2F4"><td style="padding:5px 6px;white-space:nowrap">' + esc(x.fecha) + '<div class="mu">' + esc(x.como || '') + '</div></td><td style="padding:5px 6px">' + esc(x.nombre) + (x.tanda ? '<div class="mu">Tanda ' + esc(x.tanda) + '</div>' : '') + '</td><td style="padding:5px 6px">' + esc(x.filtro) + '</td><td style="padding:5px 6px;text-align:right">' + x.cantidad + '</td><td style="padding:5px 6px;text-align:right">' + pc(x.anotados) + '</td><td style="padding:5px 6px;text-align:right">' + pc(x.registrados) + '</td></tr>'; }).join('') +
+      '</tbody></table></div><span class="mu peq">«Se anotaron»: invitados que se inscribieron a esa capacitación después de la invitación. «Se registraron»: invitados con asistencia o evaluación de esa capacitación desde la fecha de la invitación. Queda en el libro, hoja _INVITACIONES.</span>' : '<div class="mu peq">Todavía no hay invitaciones. Se anotan solas cuando mandás una invitación por correo.</div>') + '</section>';
 }
