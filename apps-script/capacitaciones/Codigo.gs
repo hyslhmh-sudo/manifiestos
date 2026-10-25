@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.14';
+const VERSION_CAP = '2026-10-25 · 5.15';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -2547,7 +2547,7 @@ function enviarCertificadosLaboratorio() { Logger.log(JSON.stringify(enviarCerti
 // el portal queda una fila en _INVITACIONES (fecha, capacitación, filtro y DNI invitados) para cruzarla
 // después con quienes se registraron.
 // =====================================================================
-const INV_TANDA = 90;   // correos por tanda (Gmail: conviene no pasar de 100 destinatarios por mensaje)
+const INV_TANDA = 45;   // correos por tanda: Google no deja más de 50 destinatarios por mensaje enviado o preparado desde el sistema (cuenta de Gmail común)
 function fechaNum_(v) { const i = isoDe_(v); return i ? Number(i.replace(/-/g, '')) : 0; }
 function nombresEst_() { const m = { SIN_ASIGNAR: 'Sin establecimiento asignado' }; try { const E = tabla_('ESTABLECIMIENTOS', SpreadsheetApp.openById(ID_COMUN)); E.filas.forEach(r => { const c = String(r[E.i('CODIGO')] || '').trim(); if (c) m[c] = r[E.i('NOMBRE_OFICIAL')] || c; }); } catch (e) { /* sin el libro común */ } return m; }
 // ===== Grupos para invitar (servicio y función) =====
