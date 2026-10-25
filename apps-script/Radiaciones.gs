@@ -34,11 +34,13 @@ const RAD = {
   P_LIBRO: 'RAD_ID', P_CARPETA: 'RAD_CARPETA',
   H_PER: ['ID', 'ESTABLECIMIENTO', 'DNI', 'CUIL', 'APELLIDO_Y_NOMBRE', 'SERVICIO', 'FUNCION', 'SECTOR_EXPOSICION', 'DOSIMETRO_NRO', 'TIPO_DOSIMETRO', 'PROVEEDOR',
     'ESTADO_DOSIMETRO', 'INICIO_EXPOSICION', 'ALTA_DOSIMETRO', 'BAJA_DOSIMETRO', 'MOTIVO_BAJA', 'AUTORIZACION_INDIVIDUAL', 'AUTORIZACION_NRO', 'AUTORIZACION_VENCE',
-    'EN_NTE', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO'],
+    'EN_NTE', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO',
+    'TELEFONO', 'EMAIL', 'SERVICIOS', 'TITULO', 'MATRICULA', 'FORM_ALTA', 'FORM_BAJA'],   // 25/10/2026: datos de los formularios F-RAD-01 y 02 y enlace al formulario firmado (RadFormularios.gs)
   H_MOV: ['FECHA', 'ID_PERSONA', 'ESTABLECIMIENTO', 'DNI', 'APELLIDO_Y_NOMBRE', 'TIPO', 'DOSIMETRO_NRO', 'DETALLE', 'DOCUMENTO', 'CARGADO_POR', 'CARGADO'],
   H_CON: ['ID', 'ESTABLECIMIENTO', 'PERIODO', 'PROVEEDOR', 'FECHA_RECEPCION', 'ARCHIVO', 'CON_ANORMALES', 'OBSERVACIONES', 'ESTADO', 'CARGADO_POR', 'CARGADO', 'SITIO'],
   H_EVE: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'ID_PERSONA', 'DNI', 'APELLIDO_Y_NOMBRE', 'TIPO', 'PERIODO', 'DOSIS_MSV', 'DESCRIPCION', 'ACCIONES', 'COMUNICADO_A',
-    'FECHA_COMUNICACION', 'ESTADO', 'ARCHIVO', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO'],
+    'FECHA_COMUNICACION', 'ESTADO', 'ARCHIVO', 'CARGADO_POR', 'ACTUALIZADO', 'SITIO',
+    'FECHA_HECHO', 'NOVEDAD', 'FORM_NOVEDAD'],   // 25/10/2026: fecha en que se cree que ocurrió, qué pasó y F-RAD-03 firmado (RadFormularios.gs)
   H_SAL: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'SALA', 'TIPO_EQUIPO', 'MARCA', 'MODELO', 'SERIE', 'ANIO', 'HABILITACION_NRO', 'HABILITACION_FECHA', 'HABILITACION_VENCE',
     'RESPONSABLE_INSTALACION', 'RESPONSABLE_USO', 'PLANO_BLINDAJE', 'MEMORIA_BLINDAJE', 'LEVANTAMIENTO_FECHA', 'LEVANTAMIENTO_PROXIMO', 'CONTROL_CALIDAD_FECHA',
     'CONTROL_CALIDAD_PROXIMO', 'SENALIZACION', 'LUZ_ADVERTENCIA', 'EPP_PLOMADO', 'EPP_CONTROL_FECHA', 'ESTADO', 'OBSERVACIONES', 'CARGADO_POR', 'ACTUALIZADO'],
@@ -197,6 +199,7 @@ const radISO_ = v => { if (v instanceof Date) return Utilities.formatDate(v, TZ,
 const radFecha_ = v => { const s = radISO_(v); return s ? new Date(s + 'T12:00:00') : ''; };
 function radLeer_(hoja, H) {
   const sh = pRad_().getSheetByName(hoja); if (!sh) return [];
+  if (sh.getMaxColumns() < H.length) sh.insertColumnsAfter(sh.getMaxColumns(), H.length - sh.getMaxColumns());   // columnas nuevas (25/10/2026): que la hoja tenga lugar
   return pTabla_(sh, H.length).map(r => { const o = { fila: r.fila }; H.forEach((h, i) => o[h] = r.v[i] instanceof Date ? radISO_(r.v[i]) : r.v[i]); return o; });
 }
 function radCarpetaEst_(cod, sub) {
@@ -209,6 +212,12 @@ function radArchivo_(cod, a, sub, etiqueta) {
   if (!fotosDe_(a).length) return '';   // hasta 5 fotos o un PDF (23/10/2026; Codigo.gs › guardarFotos_)
   const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_');
   return guardarFotos_(radCarpetaEst_(cod, sub), nombre, a);
+}
+// Columnas nuevas (25/10/2026): si la hoja todavía no las tiene en la fila 5, se agregan al final (una vez por hora, sin tocar los datos)
+function radCabeceras_(hoja, H) {
+  const c = CacheService.getScriptCache(), k = 'rad_cab_' + hoja + '_' + H.length; if (c.get(k)) return;
+  try { const sh = pRad_().getSheetByName(hoja); if (!sh) return; const n = sh.getLastColumn(), cab = sh.getRange(5, 1, 1, Math.max(n, H.length)).getValues()[0].map(limpio_);
+    H.forEach((h, j) => { if (!cab[j] && cab.indexOf(h) < 0) sh.getRange(5, j + 1).setValue(h).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#0D313F'); }); c.put(k, '1', 3600); } catch (e) {}
 }
 function radAgregar_(hoja, H, obj) { const sh = pRad_().getSheetByName(hoja); const v = H.map(h => obj[h] == null ? '' : obj[h]); sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, 1, v.length).setValues([v]); }
 function radActualizar_(hoja, H, fila, obj) { const sh = pRad_().getSheetByName(hoja); const v = H.map(h => obj[h] == null ? '' : obj[h]); sh.getRange(fila, 1, 1, v.length).setValues([v]); }
@@ -260,6 +269,8 @@ function radSugeridas_(cod) {
 // x: { ID?, ESTABLECIMIENTO, DNI, …, movimiento?: { tipo, detalle }, archivo? }
 function radPersonaGuardar_(x, quien) {
   const cod = limpio_(x.ESTABLECIMIENTO); if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
+  radCabeceras_('PERSONAL_EXPUESTO', RAD.H_PER); radCabeceras_('EVENTOS', RAD.H_EVE);
+  if (x.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(limpio_(x.EMAIL))) return { ok: false, mensaje: 'El correo no parece válido.' };
   const dni = String(x.DNI || '').replace(/\D/g, ''), nom = limpio_(x.APELLIDO_Y_NOMBRE);
   if (!nom) return { ok: false, mensaje: 'Falta el apellido y nombre.' };
   if (dni && (dni.length < 7 || dni.length > 8)) return { ok: false, mensaje: 'El DNI tiene que tener 7 u 8 números.' };
@@ -273,7 +284,9 @@ function radPersonaGuardar_(x, quien) {
   if (!p.ESTADO_DOSIMETRO) p.ESTADO_DOSIMETRO = p.DOSIMETRO_NRO ? 'Activo' : 'Sin dosímetro (s/d)';
   ['AUTORIZACION_INDIVIDUAL', 'EN_NTE'].forEach(k => { if (!/^(Sí|No)$/.test(p[k])) p[k] = 's/d'; });
   p.CARGADO_POR = limpio_(quien) || 'Portal'; p.ACTUALIZADO = hoy;
-  const doc = x.archivo ? radArchivo_(cod, x.archivo, ['Documentos'], (x.movimiento && x.movimiento.tipo || 'Personal') + ' ' + nom) : '';
+  const fk = x.FORM === 'alta' || x.FORM === 'baja' ? x.FORM : '';   // formulario F-RAD-01 o 02 firmado (25/10/2026)
+  const doc = x.archivo ? radArchivo_(cod, x.archivo, fk ? ['Formularios'] : ['Documentos'], (fk ? (fk === 'alta' ? 'F-RAD-01 alta' : 'F-RAD-02 baja') : (x.movimiento && x.movimiento.tipo || 'Personal')) + ' ' + nom) : '';
+  if (fk && doc) p[fk === 'alta' ? 'FORM_ALTA' : 'FORM_BAJA'] = doc;
   if (antes) radActualizar_('PERSONAL_EXPUESTO', RAD.H_PER, antes.fila, p); else radAgregar_('PERSONAL_EXPUESTO', RAD.H_PER, p);
   // Movimientos: los que pide el portal y los que surgen del cambio de estado o de dosímetro
   const movs = [];
@@ -449,6 +462,7 @@ function radMesesCubiertos_(dos, cod) {
 function radEventoGuardar_(x, quien) {
   const cod = limpio_(x.ESTABLECIMIENTO); if (!cod) return { ok: false, mensaje: 'Falta el establecimiento.' };
   if (!limpio_(x.TIPO)) return { ok: false, mensaje: 'Elegí el tipo de evento.' };
+  radCabeceras_('EVENTOS', RAD.H_EVE);
   const L = radLeer_('EVENTOS', RAD.H_EVE), antes = x.ID ? L.find(e => e.ID === x.ID) : null;
   if (x.ID && !antes) return { ok: false, mensaje: 'No se encontró el evento: actualizá la lista.' };
   const per = x.ID_PERSONA ? radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(p => p.ID === x.ID_PERSONA) : null;
@@ -456,7 +470,9 @@ function radEventoGuardar_(x, quien) {
   e.ID = antes ? antes.ID : radId_('EV', cod); e.ESTABLECIMIENTO = cod; e.FECHA = radFecha_(e.FECHA) || new Date(); e.FECHA_COMUNICACION = radFecha_(e.FECHA_COMUNICACION);
   if (per) { e.DNI = per.DNI; e.APELLIDO_Y_NOMBRE = per.APELLIDO_Y_NOMBRE; }
   if (!e.ESTADO) e.ESTADO = 'Abierto';
-  if (x.archivo) e.ARCHIVO = radArchivo_(cod, x.archivo, ['Eventos'], e.TIPO + ' ' + (e.APELLIDO_Y_NOMBRE || ''));
+  e.FECHA_HECHO = radFecha_(e.FECHA_HECHO);
+  if (x.archivo) e.ARCHIVO = radArchivo_(cod, x.archivo, ['Eventos'], (x.FORM === 'novedad' ? 'F-RAD-03 ' : '') + e.TIPO + ' ' + (e.APELLIDO_Y_NOMBRE || ''));
+  if (x.FORM === 'novedad' && x.archivo && e.ARCHIVO) e.FORM_NOVEDAD = e.ARCHIVO;   // F-RAD-03 firmado (25/10/2026)
   e.CARGADO_POR = limpio_(quien) || 'Portal'; e.ACTUALIZADO = new Date();
   if (antes) radActualizar_('EVENTOS', RAD.H_EVE, antes.fila, e); else radAgregar_('EVENTOS', RAD.H_EVE, e);
   // Un extravío nuevo deja el dosímetro de la persona como «Extraviado» y lo anota en MOVIMIENTOS

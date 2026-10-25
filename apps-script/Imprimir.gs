@@ -40,6 +40,7 @@ const IMP_TEMAS = [
   { k: 'plagas', n: '3 · Plagas · Diagnóstico', mod: 'Plagas', normas: 'Cada punto indica su referencia normativa.' },
   { k: 'plg_rec', n: '3 · Plagas · Recorrida preventiva', mod: 'Plagas', normas: 'Formulario F-PLG-04.' },
   { k: 'cocina', n: '4 · Cocinas · Relevamiento BPM / HACCP', mod: 'Relevamiento de cocina', normas: 'Ley 18.284 (Código Alimentario Argentino) y Res. GMC 80/96 (CAA, capítulo II).' },
+  { k: 'rad_form', n: '5 · Radiaciones · Formularios del dosímetro (alta, baja y novedad)', mod: 'Radiaciones', normas: 'Ley 17.557 y Dto. 6320/68; Ley 19.587 y Dto. 351/79.' },   // RadFormularios.gs (25/10/2026)
   { k: 'infra', n: '6 · Servicios e infraestructura · Relevamiento', mod: '', normas: 'Res. SRT 463/09 (RGRL) y Directrices de Organización y Funcionamiento de los Servicios de Salud (planta física, instalaciones y equipamiento de seguridad).' },
   { k: 'rgrl', n: '6 · RGRL · Relevamiento General de Riesgos Laborales', mod: '', normas: 'Res. SRT 463/09, Anexo I (formulario A); Ley 19.587 y Dto. 351/79.' },
   { k: 'extintores', n: '7 · Incendio · Control mensual de extintores', mod: 'Incendio', normas: 'Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII.' },
@@ -115,7 +116,7 @@ function impOpcTema_(k, cod, acc) {
   if (k === 'res_aud') {
     const L = audLugares_(cod), campo = L.filter(l => l !== 'Establecimiento');
     const tipos = hys ? [impOp_('Interna', 'Auditoría interna (la del referente, lista corta)'), impOp_('De campo', 'Auditoría de campo (Higiene y Seguridad)'), impOp_('Documental', 'Auditoría documental (Higiene y Seguridad)')] : [impOp_('Interna', 'Auditoría interna (lista corta)')];
-    const shA = pDG_().getSheetByName('AUDITORIAS'), hechas = (shA ? audLeer_(shA, AUD_H) : []).filter(a => a.ESTABLECIMIENTO === cod).map(a => ({ id: a.ID_AUD, t: 'Auditoría ' + (a.TIPO || '').toLowerCase() + (a.LUGARES ? ' · ' + a.LUGARES.split(' | ').join(', ') : ''), fecha: a.FECHA || a.CREADA, estado: a.ESTADO || 's/d', pct: a.CUMPLIMIENTO || '' }));
+    const shA = pDG_().getSheetByName('AUDITORIAS'), hechas = (shA ? audLeer_(shA, AUD_H) : []).filter(a => a.ESTABLECIMIENTO === cod).map(a => ({ id: a.ID_AUD, t: 'Auditoría ' + (a.TIPO || '').replace(/^\w/, c => c.toLowerCase()) + (a.LUGARES ? ' · ' + a.LUGARES.split(' | ').join(', ') : ''), fecha: a.FECHA || a.CREADA, estado: a.ESTADO || 's/d', pct: a.CUMPLIMIENTO || '' }));
     return { campos: [{ k: 'tipo', t: 'Tipo de auditoría', ops: tipos }, { k: 'lugar', t: 'Lugar', ops: [impOp_('*', 'Todos los lugares (una sección por lugar)')].concat(campo.map(l => impOp_(l))) }],
       nota: 'La documental es una sola, del establecimiento: no depende del lugar.', hechas: hechas };
   }
@@ -128,6 +129,7 @@ function impOpcTema_(k, cod, acc) {
     const hechas = lista.filter(o => limpio_(o.CODIGO) === cod && o.ESTADO !== 'Anulado').map(o => ({ id: limpio_(o.ID_DIAG), t: (k === 'cocina' ? 'Relevamiento de cocina' : 'Diagnóstico') + (o.MODALIDAD ? ' · ' + limpio_(o.MODALIDAD) : ''), fecha: impF_(o.FECHA), estado: limpio_(o.ESTADO) || 's/d', pct: o.PORCENTAJE === '' || o.PORCENTAJE == null ? '' : String(o.PORCENTAJE).replace('.', ',') + ' %' }));
     return { campos: [{ k: 'lugar', t: 'Qué imprimir', ops: [impOp_('*', 'Todo: establecimiento y todos los lugares'), impOp_('E', 'Solo las preguntas del establecimiento')].concat(sitios.map(s => impOp_(s, 'Establecimiento y ' + s))) }], hechas: hechas };
   }
+  if (k === 'rad_form') return typeof radfOpciones_ === 'function' ? radfOpciones_(cod) : null;   // F-RAD-01 a 03 (RadFormularios.gs)
   if (k === 'plg_rec') {
     const hechas = miLeer_('PLAGAS_REGISTROS').filter(r => r.ESTABLECIMIENTO === cod && r.TIPO === 'Recorrida' && (typeof regVivo_ !== 'function' || regVivo_(r))).map(r => ({ id: r.ID, t: 'Recorrida preventiva' + (r.SECTOR ? ' · ' + r.SECTOR : r.SITIO ? ' · ' + r.SITIO : ''), fecha: r.FECHA, estado: 'Cargada', pct: '' }));
     return { campos: [], nota: 'En blanco se imprime el formulario F-PLG-04 (el mismo de «Formularios para imprimir»).', hechas: hechas };
@@ -209,7 +211,7 @@ function impDoc_(o) {
   const est = impNombreEst_(o.cod), ahora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm');
   const enc = '<div class="enc">' + (logo ? '<img class="lg" src="' + logo + '" alt="HZT · HMH">' : '<div class="inst">Secretaría de Salud del Chubut<br><b>' + impE_(est) + '</b></div>') +
     '<div class="tit"><div class="k">' + impE_(t.n) + '</div><div class="h">' + impE_(o.titulo) + '</div><div class="s">' + impE_(est) + (o.subtitulo ? ' · ' + impE_(o.subtitulo) : '') + '</div></div>' +
-    '<div class="cd"><div>' + (o.completada ? 'Hoja completada' : 'Hoja en blanco') + '</div><b>' + impE_(String(o.codigo || '—').replace(/^En blanco( · )?/, '') || '—') + '</b></div></div>';
+    '<div class="cd"><div>' + (o.etiqueta || (o.completada ? 'Hoja completada' : 'Hoja en blanco')) + '</div><b>' + impE_(String(o.codigo || '—').replace(/^En blanco( · )?/, '') || '—') + '</b></div></div>';
   const css = '@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap");' +
     '@page{size:A4 ' + (o.apaisada ? 'landscape' : 'portrait') + ';margin:11mm 11mm 13mm 11mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:7.5pt "Plus Jakarta Sans",Arial,sans-serif;color:#6B7780}}' +
     ':root{--c1:' + c1 + ';--c2:' + c2 + ';--cl:' + cl + '}*{box-sizing:border-box}html,body{background:#fff}' +
@@ -262,6 +264,7 @@ function impHoja_(cod, acc, x) {
     case 'rgrl': return impRgrl_(cod, id ? '' : (limpio_(b.lugar) || cod), id, F);
     case 'extintores': return impExt_(cod, id ? id.split('|')[0] : limpio_(b.sitio), id ? id.split('|')[1] : '', F);
     case 'inc_rec': return impIncRec_(cod, id, F);
+    case 'rad_form': return typeof radfHoja_ === 'function' ? radfHoja_(cod, b, x.datos || {}) : { ok: false, mensaje: 'Falta instalar RadFormularios.gs.' };   // con los datos de la pantalla, si vienen
   }
   return { ok: false, mensaje: 'Tema desconocido.' };
 }
@@ -288,7 +291,7 @@ function impAudBlanco_(cod, b, hys) {
   const lugares = tipo === 'Documental' ? ['Establecimiento'] : (b.lugar && b.lugar !== '*' ? [b.lugar] : L.filter(l => l !== 'Establecimiento'));
   const pts = audPuntos_(cod, lugares, [], tipo === 'Interna', tipo), simple = tipo === 'Interna';
   if (!pts.length) return { ok: false, mensaje: 'No hay puntos de auditoría para ese lugar con la categoría del establecimiento.' };
-  return impDoc_({ cod: cod, tema: 'res_aud', titulo: 'Auditoría ' + tipo.toLowerCase() + ' de gestión de residuos', subtitulo: lugares.length === 1 ? lugares[0] : lugares.length + ' lugares',
+  return impDoc_({ cod: cod, tema: 'res_aud', titulo: 'Auditoría ' + tipo.replace(/^\w/, c => c.toLowerCase()) + ' de gestión de residuos', subtitulo: lugares.length === 1 ? lugares[0] : lugares.length + ' lugares',
     instrucciones: '<b>Cómo completarla:</b> en cada punto marcá una sola casilla (C conforme · NC no conforme · Obs observación · NA no aplica). Cada «No conforme» necesita una nota en Observaciones (o una foto cuando lo cargues). Después, cargá las respuestas en el sistema' + (simple ? ' («Mi establecimiento» › Auditoría interna)' : '') + ' y adjuntá la foto de esta hoja firmada.',
     datos: [['Fecha', ''], ['Auditor', ''], ['Auditados (nombre y función)', ''], ['Lugares', lugares.join(', ')]],
     cuerpo: impAudPuntos_(pts, simple, false) + impH2_('Observaciones generales') + impLinea_('', 4),
@@ -300,7 +303,7 @@ function impAudHecha_(cod, id, F) {
   const res = '<div class="res"><div>Cumplimiento<b>' + impE_(A.CUMPLIMIENTO || 's/d') + '</b></div><div>No conformidades mayores<b>' + impE_(A.NC_MAYOR || 0) + '</b></div><div>No conformidades menores<b>' + impE_(A.NC_MENOR || 0) + '</b></div><div>Observaciones<b>' + impE_(A.OBSERVACIONES_N || 0) + '</b></div><div>Críticos que se cumplen<b>' + impE_(A.CRITICOS_OK || 's/d') + '</b></div><div>Resultado<b>' + impE_(A.RESULTADO || 'Sin cerrar') + '</b></div></div>';
   const hal = H.length ? impH2_('Hallazgos') + impTabla_([['Hallazgo', '12%'], ['Clasificación', '14%'], ['Descripción', '34%'], ['Acción', '24%'], ['Plazo y estado', '16%']],
     H.map(h => '<tr><td>' + impE_(h.ID_HALLAZGO.replace(id + '-', '')) + '<div class="cod">' + impE_(h.CODIGO) + '</div></td><td>' + impE_(h.CLASIFICACION) + '</td><td>' + impE_(h.DESCRIPCION) + (h.LUGAR ? '<div class="ayuda">' + impE_(h.LUGAR) + '</div>' : '') + '</td><td>' + impE_(h.ACCION || '—') + (h.RESPONSABLE ? '<div class="ayuda">Responsable: ' + impE_(h.RESPONSABLE) + '</div>' : '') + '</td><td>' + impE_(h.PLAZO || '—') + '<div class="ayuda">' + impE_(h.ESTADO) + '</div></td></tr>')) : '';
-  return impDoc_({ cod: cod, tema: 'res_aud', completada: true, codigo: id, titulo: 'Auditoría ' + String(A.TIPO || '').toLowerCase() + ' de gestión de residuos', subtitulo: impFTxt_(A.FECHA),
+  return impDoc_({ cod: cod, tema: 'res_aud', completada: true, codigo: id, titulo: 'Auditoría ' + String(A.TIPO || '').replace(/^\w/, c => c.toLowerCase()) + ' de gestión de residuos', subtitulo: impFTxt_(A.FECHA),
     datos: [['Fecha', impFTxt_(A.FECHA)], ['Tipo y modalidad', [A.TIPO, A.MODALIDAD].filter(Boolean).join(' · ')], ['Auditor', A.AUDITOR || 's/d'], ['Auditados', A.AUDITADOS || 's/d'], ['Lugares', (A.LUGARES || '').split(' | ').join(', ')], ['Categoría', A.CATEGORIA || 's/d'], ['Estado', A.ESTADO], impFirmadaTxt_(F)],
     resumen: res, cuerpo: impAudPuntos_(r.puntos, simple, true) + hal + (A.OBSERVACIONES ? impH2_('Observaciones generales') + '<p>' + impE_(A.OBSERVACIONES) + '</p>' : ''),
     firmas: [{ t: simple ? 'Referente que auditó' : 'Auditor', nombre: A.AUDITOR, fecha: A.FECHA }, { t: 'Auditado', nombre: A.AUDITADOS }], firmasN: 2 });

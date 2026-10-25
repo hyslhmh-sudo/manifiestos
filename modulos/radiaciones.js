@@ -178,49 +178,66 @@ function radPerEv(D) {
 }
 function radPersonaForm(D, p, base) {
   const L = D.listas, v = Object.assign({ ESTADO_DOSIMETRO: 'Activo', AUTORIZACION_INDIVIDUAL: 's/d', EN_NTE: 's/d', SITIO: RADF.sitio }, base || p || {}), arch = {};
-  modal(p ? 'Persona expuesta · ' + p.APELLIDO_Y_NOMBRE : 'Agregar persona expuesta', [
-    ['DNI', 'DNI (sin puntos)'], ['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['CUIL', 'CUIL'], ['SERVICIO', 'Servicio'], ['FUNCION', 'Función'], radSitF(D), ['SECTOR_EXPOSICION', 'Sector donde se expone', L.sectores],
+  const m0 = modal(p ? 'Persona expuesta · ' + p.APELLIDO_Y_NOMBRE : 'Agregar persona expuesta', [
+    ['DNI', 'DNI (sin puntos)'], ['APELLIDO_Y_NOMBRE', 'Apellido y nombre'], ['CUIL', 'CUIL'], ['TELEFONO', 'Teléfono'], ['EMAIL', 'Correo electrónico'], ['SERVICIO', 'Servicio (principal)'],
+    ['SERVICIOS', 'Servicio o servicios en que se desempeña'], ['FUNCION', 'Función'], ['TITULO', 'Título'], ['MATRICULA', 'Matrícula'], radSitF(D), ['SECTOR_EXPOSICION', 'Sector donde se expone', L.sectores],
     ['INICIO_EXPOSICION', 'Inicio de la exposición', 'date'], ['DOSIMETRO_NRO', 'Número de dosímetro'], ['TIPO_DOSIMETRO', 'Tipo de dosímetro', L.tiposDosi], ['PROVEEDOR', 'Servicio de dosimetría'],
     ['ALTA_DOSIMETRO', 'Alta del dosímetro', 'date'], ['ESTADO_DOSIMETRO', 'Estado del dosímetro', L.estadosDosi], ['AUTORIZACION_INDIVIDUAL', 'Autorización individual (autoridad sanitaria)', ['Sí', 'No', 's/d']],
     ['AUTORIZACION_NRO', 'Autorización: número'], ['AUTORIZACION_VENCE', 'Autorización: vencimiento', 'date'], ['EN_NTE', '¿Figura en la NTE / RAR?', ['Sí', 'No', 's/d']], ['OBSERVACIONES', 'Observaciones', null, 1]], v,
     async out => {
       if (!out.APELLIDO_Y_NOMBRE) return 'Falta el apellido y nombre.';
-      const datos = Object.assign({ ID: p ? p.ID : '', ESTABLECIMIENTO: D.cod }, out); if (arch.doc) datos.archivo = arch.doc;
+      if (out.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(out.EMAIL.trim())) return 'El correo no parece válido.';
+      const datos = Object.assign({ ID: p ? p.ID : '', ESTABLECIMIENTO: D.cod }, out); if (arch.doc) { datos.archivo = arch.doc; if (!p) datos.FORM = 'alta'; }
       const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       radRecargar(D, (p ? 'Cambios guardados.' : 'Persona agregada.') + (r.avisoComunicar ? ' ' + r.avisoComunicar : '')); return '';
-    }, radSubir('doc', 'Documento (opcional): autorización individual, nota de alta…', false) + '<p class="mu peq" style="margin:0">Al escribir el DNI, si la persona está en la base de trabajadores, se completan los datos. Los cambios de estado o de dosímetro quedan solos en «Movimientos».</p>');
-  radInputs(arch);
+    }, radSubir('doc', p ? 'Documento (opcional): autorización individual, nota…' : 'Formulario F-RAD-01 firmado, con el anexo (foto o PDF)', p && p.FORM_ALTA) + (p && p.FORM_ALTA ? '<p class="peq" style="margin:0"><a class="link" href="' + esc(p.FORM_ALTA) + '" target="_blank" rel="noopener">Ver el F-RAD-01 firmado ↗</a></p>' : '') + '<p class="mu peq" style="margin:0">Al escribir el DNI, si la persona está en la base de trabajadores, se completan los datos. Los cambios de estado o de dosímetro quedan solos en «Movimientos».</p>');
+  radInputs(arch); radFormBtn(D, m0, 'alta', p);
   const q = k => document.querySelector('#ov [data-k="' + k + '"]'), dni = q('DNI');
   if (dni) dni.onchange = async () => { if (String(dni.value).replace(/\D/g, '').length < 7) return;
     try { const r = await api('p_rad_dni', { dni: dni.value }); if (r.ok && r.persona) { const P = r.persona;
-      [['APELLIDO_Y_NOMBRE', P.nombre], ['CUIL', P.cuil], ['SERVICIO', P.servicio], ['FUNCION', P.funcion]].forEach(([k, val]) => { const el = q(k); if (el && !el.value && val) el.value = val; });
+      [['APELLIDO_Y_NOMBRE', P.nombre], ['CUIL', P.cuil], ['SERVICIO', P.servicio], ['SERVICIOS', P.servicio], ['FUNCION', P.funcion]].forEach(([k, val]) => { const el = q(k); if (el && !el.value && val) el.value = val; });
       toast('Encontrado en la base de trabajadores: ' + P.nombre + (P.est && P.est !== D.cod ? ' (figura en ' + P.est + ')' : '') + '.'); } } catch (e) {} };
 }
 function radBajaForm(D, p) {
   const arch = {};
-  modal('Baja del dosímetro · ' + p.APELLIDO_Y_NOMBRE, [['TIPO', 'Tipo de baja', ['Baja a pedido del trabajador', 'Baja por fin de exposición']], ['BAJA_DOSIMETRO', 'Fecha de baja', 'date'], ['MOTIVO_BAJA', 'Motivo', null, 1]],
+  const m0 = modal('Baja del dosímetro · ' + p.APELLIDO_Y_NOMBRE, [['TIPO', 'Tipo de baja', ['Baja a pedido del trabajador', 'Baja por fin de exposición']], ['MOTIVO_TIPO', 'Motivo', RAD_MOTIVOS_BAJA], ['BAJA_DOSIMETRO', 'Fecha de baja', 'date'],
+    ['ENTREGA', '¿Entrega el dosímetro?', ['Sí', 'No']], ['MOTIVO_BAJA', 'Detalle del motivo', null, 1]],
     { TIPO: 'Baja a pedido del trabajador', BAJA_DOSIMETRO: new Date().toISOString().slice(0, 10) },
     async out => {
       if (!out.TIPO || !out.BAJA_DOSIMETRO) return 'Elegí el tipo y la fecha.';
-      const datos = { ID: p.ID, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, ESTADO_DOSIMETRO: out.TIPO, BAJA_DOSIMETRO: out.BAJA_DOSIMETRO, MOTIVO_BAJA: out.MOTIVO_BAJA, movimiento: { tipo: out.TIPO, detalle: out.MOTIVO_BAJA } };
-      if (arch.doc) datos.archivo = arch.doc;
+      const mot = [out.MOTIVO_TIPO, out.MOTIVO_BAJA].filter(Boolean).join(': ');
+      const datos = { ID: p.ID, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, ESTADO_DOSIMETRO: out.TIPO, BAJA_DOSIMETRO: out.BAJA_DOSIMETRO, MOTIVO_BAJA: mot, movimiento: { tipo: out.TIPO, detalle: mot + (out.ENTREGA ? ' · entrega el dosímetro: ' + out.ENTREGA : '') } };
+      if (arch.doc) { datos.archivo = arch.doc; datos.FORM = 'baja'; }
       const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       radRecargar(D, 'Baja registrada. ' + (r.avisoComunicar || '')); return '';
-    }, radSubir('doc', 'Nota o pedido firmado (opcional)', false) + '<p class="mu peq" style="margin:0">La persona no se borra: queda «de baja» y se puede reactivar. El historial queda en «Movimientos».</p>');
-  radInputs(arch);
+    }, radSubir('doc', 'Formulario F-RAD-02 firmado (foto o PDF)', false) + '<p class="mu peq" style="margin:0">La persona no se borra: queda «de baja» y se puede reactivar. El historial queda en «Movimientos». Si no entrega el dosímetro porque se perdió o se dañó, cargá también el evento con el F-RAD-03.</p>');
+  radInputs(arch); radFormBtn(D, m0, 'baja', p);
 }
 function radReactivarForm(D, p) {
   const arch = {};
-  modal('Reactivar dosímetro · ' + p.APELLIDO_Y_NOMBRE, [['ALTA_DOSIMETRO', 'Fecha de la nueva alta', 'date'], ['DOSIMETRO_NRO', 'Número de dosímetro'], radSitF(D), ['SECTOR_EXPOSICION', 'Sector donde se expone', D.listas.sectores], ['DETALLE', 'Detalle', null, 1]],
+  const m0 = modal('Reactivar dosímetro · ' + p.APELLIDO_Y_NOMBRE, [['ALTA_DOSIMETRO', 'Fecha de la nueva alta', 'date'], ['DOSIMETRO_NRO', 'Número de dosímetro'], radSitF(D), ['SECTOR_EXPOSICION', 'Sector donde se expone', D.listas.sectores], ['DETALLE', 'Detalle', null, 1]],
     { ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10), DOSIMETRO_NRO: p.DOSIMETRO_NRO, SECTOR_EXPOSICION: p.SECTOR_EXPOSICION, SITIO: p.SITIO },
     async out => {
       const datos = { ID: p.ID, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, ESTADO_DOSIMETRO: 'Activo', ALTA_DOSIMETRO: out.ALTA_DOSIMETRO, DOSIMETRO_NRO: out.DOSIMETRO_NRO, SECTOR_EXPOSICION: out.SECTOR_EXPOSICION, SITIO: out.SITIO,
         BAJA_DOSIMETRO: '', MOTIVO_BAJA: '', movimiento: { tipo: 'Reactivación', detalle: (out.DETALLE || '') + (p.BAJA_DOSIMETRO ? ' (baja anterior ' + fechaTxt(p.BAJA_DOSIMETRO) + ')' : '') } };
-      if (arch.doc) datos.archivo = arch.doc;
+      if (arch.doc) { datos.archivo = arch.doc; datos.FORM = 'alta'; }
       const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       radRecargar(D, 'Dosímetro reactivado. ' + (r.avisoComunicar || '')); return '';
-    }, radSubir('doc', 'Nota o pedido (opcional)', false));
-  radInputs(arch);
+    }, radSubir('doc', 'Formulario F-RAD-01 firmado, con el anexo (foto o PDF)', false));
+  radInputs(arch); radFormBtn(D, m0, 'alta', p);
+}
+
+// ---------- Formularios F-RAD-01 a 03 (RadFormularios.gs, 25/10/2026): se imprimen con los datos del cuadro (dos copias: Personal y HyS)
+const RAD_MOTIVOS_BAJA = ['Fin de la exposición (cambio de servicio o de tareas)', 'Licencia prolongada', 'Renuncia, jubilación o traslado', 'A pedido del trabajador', 'Otro'];
+const RAD_NOVEDADES = ['Pérdida', 'Extravío', 'Robo', 'Daño o rotura', 'Expuesto a radiación sin estar en uso', 'Otra'];
+function radFormBtn(D, m, tipo, p, per) {
+  if (!m || !m.extra || typeof impPAbrir !== 'function') return;
+  const cod = { alta: 'F-RAD-01', baja: 'F-RAD-02', novedad: 'F-RAD-03' }[tipo], b = document.createElement('button');
+  b.className = 'btn sec'; b.type = 'button'; b.textContent = 'Imprimir ' + cod; m.extra.appendChild(b);
+  b.onclick = () => { const o = {}; document.querySelectorAll('#ov [data-k]').forEach(el => { if (el.value) o[el.dataset.k] = el.value; });
+    let id = p ? p.ID : ''; if (tipo === 'novedad') { const i = (per || []).indexOf(o.PERSONA); id = i >= 0 ? D.personal[i].ID : ''; delete o.PERSONA; delete o.SITIO; o.FECHA_FORM = new Date().toISOString().slice(0, 10); }
+    if (tipo === 'baja') o.TIPO_BAJA = o.TIPO; delete o.TIPO;
+    impPAbrir({ cod: D.cod, tema: 'rad_form', blanco: { form: tipo, persona: id || '*' }, datos: o }, cod + ' · ' + (o.APELLIDO_Y_NOMBRE || (p && p.APELLIDO_Y_NOMBRE) || 'en blanco')); };
 }
 
 // ---------- Controles mensuales
@@ -415,17 +432,18 @@ function radEveForm(D, e) {
   const arch = {}, per = D.personal.map(p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d'));
   const v = Object.assign({ FECHA: new Date().toISOString().slice(0, 10), ESTADO: 'Abierto', SITIO: RADF.sitio }, e || {});
   const pe = e && D.personal.find(p => p.ID === e.ID_PERSONA); if (pe) v.PERSONA = pe.APELLIDO_Y_NOMBRE + ' · DNI ' + (pe.DNI || 's/d');
-  modal(e ? 'Evento · ' + e.TIPO : 'Cargar evento', [['TIPO', 'Tipo', D.listas.tiposEve], ['FECHA', 'Fecha', 'date'], radSitF(D), ['PERSONA', 'Persona (si corresponde)', per], ['PERIODO', 'Mes del control (aaaa-mm, si corresponde)', D.meses],
+  const m0 = modal(e ? 'Evento · ' + e.TIPO : 'Cargar evento', [['TIPO', 'Tipo', D.listas.tiposEve], ['FECHA', 'Fecha', 'date'], radSitF(D), ['PERSONA', 'Persona (si corresponde)', per],
+    ['NOVEDAD', 'Novedad del dosímetro (F-RAD-03)', RAD_NOVEDADES], ['FECHA_HECHO', 'Fecha en que cree que ocurrió (F-RAD-03)', 'date'], ['PERIODO', 'Mes del control (aaaa-mm, si corresponde)', D.meses],
     ['DOSIS_MSV', 'Dosis informada (mSv)'], ['DESCRIPCION', 'Qué pasó', null, 1], ['ACCIONES', 'Acciones tomadas', null, 1], ['COMUNICADO_A', 'Comunicado a (autoridad, ART, dirección…)'], ['FECHA_COMUNICACION', 'Fecha de comunicación', 'date'],
     ['ESTADO', 'Estado', ['Abierto', 'En seguimiento', 'Cerrado', 'Anulado']]], v,
     async out => {
       if (!out.TIPO) return 'Elegí el tipo.';
       const i = per.indexOf(out.PERSONA), p = i >= 0 ? D.personal[i] : null; delete out.PERSONA;
-      const datos = Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod, ID_PERSONA: p ? p.ID : '' }, out); if (arch.doc) datos.archivo = arch.doc;
+      const datos = Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod, ID_PERSONA: p ? p.ID : '' }, out); if (arch.doc) { datos.archivo = arch.doc; if (/extrav|dañad|no devuelto/i.test(out.TIPO)) datos.FORM = 'novedad'; }
       const r = await api('p_rad_evento_guardar', datos, 120000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
       radRecargar(D, 'Evento guardado.' + (r.aviso ? ' ' + r.aviso : '')); return '';
-    }, radSubir('doc', 'Archivo (opcional): denuncia de extravío, nota, informe', e && e.ARCHIVO));
-  radInputs(arch);
+    }, radSubir('doc', 'Archivo: F-RAD-03 firmado (extravío, pérdida, robo o daño), nota o informe', e && e.ARCHIVO));
+  radInputs(arch); radFormBtn(D, m0, 'novedad', null, per);
 }
 
 // ---------- Salas y equipos

@@ -1437,7 +1437,10 @@ function guardarPlagaReg() {
 function formularios() {
   VISTA = 'mi'; MIV = { f: formularios }; vista('wide'); if (miSinDatos()) return;
   const L = MI.formularios || [];
+  const rx = SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 || maudHys();   // F-RAD-01 a 03 en blanco (RadFormularios.gs, 25/10/2026)
   $('app').innerHTML = miTit('Formularios para imprimir', 'Se descargan, se completan en papel, se firman y se suben por foto desde cada carga.') +
+    (rx ? '<h2>Radiaciones · dosímetro personal</h2><div class="lista">' + Object.keys(RX_FORMS).map(k => '<div class="item"><div><b>' + RX_FORMS[k][0] + ' · ' + esc(RX_FORMS[k][1].charAt(0).toUpperCase() + RX_FORMS[k][1].slice(1)) + '</b><small>En blanco, dos copias (Personal y Higiene y Seguridad)' + (k === 'alta' ? ', con el anexo de compromiso de uso' : '') + '</small></div>' +
+      '<button class="btn pri" style="flex:0 0 auto;padding:10px 16px" data-act="rxFormBlanco" data-arg="' + k + '">Imprimir</button></div>').join('') + '</div><h2>Otros formularios</h2>' : '') +
     (L.length ? '<div class="lista">' + L.map(f => '<div class="item"><div><b>' + esc(f.nombre) + '</b><small><a href="' + esc(f.ver) + '" target="_blank" rel="noopener">Ver</a></small></div><a class="btn pri" style="flex:0 0 auto;padding:10px 16px;text-decoration:none" href="' + esc(f.url) + '" target="_blank" rel="noopener">Descargar</a></div>').join('') + '</div>'
       : '<p class="mu">' + esc(MI.formulariosError || 'No hay formularios en la carpeta.') + '</p>') +
     (MI.carpeta ? '<h2>Carpeta del establecimiento</h2><div class="menu"><a class="big" href="' + esc(MI.carpeta) + '" target="_blank" rel="noopener" style="text-decoration:none"><b>Abrir la carpeta en Drive</b><span>DDJJ, informes, fotos de las cargas y documentos propios</span></a></div>' : '');
@@ -1786,35 +1789,60 @@ const rxSitios = () => [['', 'Elegí…']].concat(RX.sitios || []);
 function rxEditar(id, base) {
   const p = id ? RX.personal.find(x => x.ID === id) : null;
   F = p ? Object.assign({ _f: 'rx' }, p) : Object.assign({ _f: 'rx', ESTADO_DOSIMETRO: 'Activo', AUTORIZACION_INDIVIDUAL: 's/d', ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10) }, base || {});
+  if (!F.SERVICIOS && F.SERVICIO) F.SERVICIOS = F.SERVICIO;   // F-RAD-01: servicio o servicios (25/10/2026)
   delete F.fila; MIV = { f: formRX }; formRX();
 }
 function formRX() {
   VISTA = 'mi'; vista('form');
   $('app').innerHTML = miTit(F.ID ? 'Actualizar datos de ' + F.APELLIDO_Y_NOMBRE : 'Dar de alta una persona') + fErr +
     fInp('DNI', 'DNI', 'number', 'Solo números') + '<p style="margin:-6px 0 10px"><button class="link" data-act="rxDni">Buscar el DNI en la base de personal</button></p>' +
-    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre', 'text', 'Ej.: Pérez, Ana') + fSel('SITIO', 'Sitio (edificio, CAPS, sede)', rxSitios()) +
+    fInp('APELLIDO_Y_NOMBRE', 'Apellido y nombre', 'text', 'Ej.: Pérez, Ana') + fInp('CUIL', 'CUIL', 'text', 'Ej.: 27-30111222-4') +
+    '<div class="grid2">' + fInp('TELEFONO', 'Teléfono', 'tel', 'Ej.: 280 4123456') + fInp('EMAIL', 'Correo electrónico', 'email', 'nombre@correo.com') + '</div>' +   // datos del F-RAD-01 (25/10/2026)
+    fInp('SERVICIOS', 'Servicio o servicios en que se desempeña', 'text', 'Si son varios, separalos con coma') + fInp('FUNCION', 'Función', 'text', 'Ej.: técnico radiólogo') +
+    '<div class="grid2">' + fInp('TITULO', 'Título', 'text', 'Ej.: Técnico en Radiología') + fInp('MATRICULA', 'Matrícula', 'text', 'Ej.: MP 1234') + '</div>' +
+    fSel('SITIO', 'Sitio (edificio, CAPS, sede)', rxSitios()) +
     fSel('SECTOR_EXPOSICION', 'Sector donde se expone', [['', 'Elegí…']].concat(RX.listas.sectores)) +
     '<h2>Dosímetro</h2>' + fInp('DOSIMETRO_NRO', 'Número de dosímetro', 'text', 'Como figura en el dosímetro') + fSel('TIPO_DOSIMETRO', 'Tipo', [['', 'Elegí…']].concat(RX.listas.tiposDosi)) +
     fInp('PROVEEDOR', 'Servicio de dosimetría', 'text', 'Empresa que lee los dosímetros') + '<div class="grid2">' + fInp('INICIO_EXPOSICION', 'Empieza a exponerse', 'date') + fInp('ALTA_DOSIMETRO', 'Alta del dosímetro', 'date') + '</div>' +
     (F.ID && F.ESTADO_DOSIMETRO !== 'Extraviado' ? '' : F.ID ? '<div class="notice">El dosímetro figura extraviado. Cuando llegue el nuevo, cargá su número y marcá «Dosímetro repuesto».</div>' + fSeg('REPUESTO', '¿Dosímetro repuesto?', ['Sí', 'No']) : '') +
     '<h2>Autorización individual</h2>' + fSeg('AUTORIZACION_INDIVIDUAL', '¿Tiene autorización individual de la autoridad sanitaria?', ['Sí', 'No', 's/d']) +
     (F.AUTORIZACION_INDIVIDUAL === 'Sí' ? '<div class="grid2">' + fInp('AUTORIZACION_NRO', 'Número', 'text') + fInp('AUTORIZACION_VENCE', 'Vence', 'date') + '</div>' : '') +
-    fFoto('doc', 'Documento (opcional)', 'Autorización individual, nota de alta u otro papel') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+    rxFormBloque('alta', F.ID ? 'Documento (opcional)' : 'Formulario F-RAD-01 firmado, con el anexo', F.ID ? 'Autorización individual, nota u otro papel' : 'Las dos copias firmadas por el trabajador y el jefe del servicio') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
   bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardar">Guardar</button>');
 }
 function formRXBaja() {
   VISTA = 'mi'; vista('form');
   $('app').innerHTML = miTit('Dar de baja el dosímetro', esc(F.APELLIDO_Y_NOMBRE) + ' · la persona no se borra: queda «de baja» y se puede volver a dar de alta.') + fErr +
-    fSeg('TIPO_BAJA', 'Tipo de baja', ['Baja a pedido del trabajador', 'Baja por fin de exposición']) + fInp('BAJA_DOSIMETRO', 'Fecha de baja', 'date') + fTxt('MOTIVO_BAJA', 'Motivo', 'Ej.: licencia, cambio de servicio, lo pidió por nota') +
-    fFoto('doc', 'Nota o pedido firmado (opcional)');
+    fSeg('TIPO_BAJA', 'Tipo de baja', ['Baja a pedido del trabajador', 'Baja por fin de exposición']) + fSel('MOTIVO_TIPO', 'Motivo', [['', 'Elegí…']].concat(RX_MOTIVOS_BAJA)) + fInp('BAJA_DOSIMETRO', 'Fecha de baja', 'date') + fTxt('MOTIVO_BAJA', 'Detalle del motivo', 'Ej.: pasa a trabajar en consultorios externos') +
+    fSeg('ENTREGA', '¿Entrega el dosímetro a Higiene y Seguridad?', ['Sí', 'No']) + (F.ENTREGA === 'No' ? '<div class="notice">Si no lo entrega porque se perdió, se extravió, se lo robaron o está dañado, completá además el F-RAD-03 (Radiaciones › Eventos).</div>' : '') +
+    rxFormBloque('baja', 'Formulario F-RAD-02 firmado', 'Las dos copias firmadas por el trabajador y el jefe del servicio');
   bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardarBaja">Guardar la baja</button>');
 }
 function formRXReact() {
   VISTA = 'mi'; vista('form');
   $('app').innerHTML = miTit('Volver a dar de alta', esc(F.APELLIDO_Y_NOMBRE) + (F.BAJA_ANT ? ' · baja anterior: ' + fechaTxt(F.BAJA_ANT) : '')) + fErr +
     fInp('ALTA_DOSIMETRO', 'Fecha de la nueva alta', 'date') + fInp('DOSIMETRO_NRO', 'Número de dosímetro', 'text') + fSel('SITIO', 'Sitio', rxSitios()) +
-    fSel('SECTOR_EXPOSICION', 'Sector donde se expone', [['', 'Elegí…']].concat(RX.listas.sectores)) + fTxt('DETALLE', 'Detalle (opcional)') + fFoto('doc', 'Nota o pedido (opcional)');
+    fSel('SECTOR_EXPOSICION', 'Sector donde se expone', [['', 'Elegí…']].concat(RX.listas.sectores)) + fTxt('DETALLE', 'Detalle (opcional)') + rxFormBloque('alta', 'Formulario F-RAD-01 firmado, con el anexo', 'Las dos copias firmadas por el trabajador y el jefe del servicio');
   bar('<button class="btn sec" data-act="rxVolver">Cancelar</button><button class="btn pri" data-act="rxGuardarReact">Guardar el alta</button>');
+}
+// Formularios F-RAD-01 a 03 (RadFormularios.gs, 25/10/2026): se imprimen con los datos de la pantalla, se firman y se adjuntan acá
+const RX_MOTIVOS_BAJA = ['Fin de la exposición (cambio de servicio o de tareas)', 'Licencia prolongada', 'Renuncia, jubilación o traslado', 'A pedido del trabajador', 'Otro'];
+const RX_NOVEDADES = ['Pérdida', 'Extravío', 'Robo', 'Daño o rotura', 'Expuesto a radiación sin estar en uso', 'Otra'], RX_NOV = /extrav|dañad|no devuelto/i;
+const RX_FORMS = { alta: ['F-RAD-01', 'solicitud de alta'], baja: ['F-RAD-02', 'solicitud de baja'], novedad: ['F-RAD-03', 'informe de novedad'] };
+function rxFormBloque(tipo, lab, ayuda) {
+  const f = RX_FORMS[tipo];
+  return '<h2>Formulario ' + f[0] + '</h2><p class="mu" style="font-size:14px;margin-top:-6px">Imprimilo con estos datos (dos copias: Personal y Higiene y Seguridad), hacelo firmar y adjuntá la foto o el PDF firmado.</p>' +
+    '<div class="menu"><button class="big" data-act="rxImprimir" data-arg="' + tipo + '"><b>Imprimir el ' + f[0] + '</b><span>' + f[1].charAt(0).toUpperCase() + f[1].slice(1) + ', con los datos cargados arriba</span></button></div>' + fFoto('doc', lab, ayuda);
+}
+function rxImprimir(tipo) {
+  if (!F) return; const D = {};
+  ['APELLIDO_Y_NOMBRE', 'DNI', 'CUIL', 'TELEFONO', 'EMAIL', 'SERVICIOS', 'SERVICIO', 'FUNCION', 'TITULO', 'MATRICULA', 'SITIO', 'SECTOR_EXPOSICION', 'TIPO_DOSIMETRO', 'DOSIMETRO_NRO', 'PROVEEDOR', 'INICIO_EXPOSICION', 'ALTA_DOSIMETRO',
+    'BAJA_DOSIMETRO', 'MOTIVO_BAJA', 'MOTIVO_TIPO', 'ENTREGA', 'NOVEDAD', 'FECHA_HECHO', 'DESCRIPCION'].forEach(k => { if (F[k] != null && F[k] !== '' && typeof F[k] !== 'object') D[k] = String(F[k]); });
+  if (tipo === 'baja' && F.TIPO_BAJA) D.TIPO_BAJA = F.TIPO_BAJA;
+  if (tipo === 'alta' && !F.ID) delete D.ALTA_DOSIMETRO;   // la fecha de alta la completa Higiene y Seguridad cuando asigna el dosímetro
+  const id = F._f === 'rxe' ? (F.ID_PERSONA || '') : (F.ID || '');
+  if (tipo === 'novedad') { delete D.SITIO; D.FECHA_FORM = new Date().toISOString().slice(0, 10); }
+  impAbrir({ tema: 'rad_form', blanco: { form: tipo, persona: id || '*' }, datos: D }, RX_FORMS[tipo][0] + ' · ' + (F.APELLIDO_Y_NOMBRE || 'en blanco'));
 }
 async function rxEnviar(accion, d, act) {
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
@@ -1827,21 +1855,24 @@ async function rxEnviar(accion, d, act) {
 async function rxGuardar() {
   if (!F.APELLIDO_Y_NOMBRE) return miErr('Falta el apellido y nombre.');
   if (!F.SITIO) return miErr('Elegí el sitio.');
+  if (F.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(F.EMAIL).trim())) return miErr('El correo no parece válido.');
   const d = {}; ['ID', 'DNI', 'CUIL', 'APELLIDO_Y_NOMBRE', 'SERVICIO', 'FUNCION', 'SITIO', 'SECTOR_EXPOSICION', 'DOSIMETRO_NRO', 'TIPO_DOSIMETRO', 'PROVEEDOR', 'INICIO_EXPOSICION', 'ALTA_DOSIMETRO',
-    'AUTORIZACION_INDIVIDUAL', 'AUTORIZACION_NRO', 'AUTORIZACION_VENCE', 'OBSERVACIONES'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+    'AUTORIZACION_INDIVIDUAL', 'AUTORIZACION_NRO', 'AUTORIZACION_VENCE', 'OBSERVACIONES', 'TELEFONO', 'EMAIL', 'SERVICIOS', 'TITULO', 'MATRICULA'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+  if (F.doc && (!F.ID || F.REPUESTO === 'Sí')) d.FORM = 'alta';   // el archivo es el F-RAD-01 firmado (25/10/2026)
   if (F.REPUESTO === 'Sí') { d.ESTADO_DOSIMETRO = 'Activo'; d.movimiento = { tipo: 'Cambio de dosímetro', detalle: 'Repuesto por extravío · nuevo ' + (F.DOSIMETRO_NRO || 's/d') }; }
   const r = await rxEnviar('r_persona_guardar', d, 'rxGuardar'); if (!r) return;
   F = null; RX = null; rxListo(r.avisoComunicar);
 }
 async function rxGuardarBaja() {
   if (!F.TIPO_BAJA || !F.BAJA_DOSIMETRO) return miErr('Elegí el tipo de baja y la fecha.');
-  const r = await rxEnviar('r_persona_guardar', { ID: F.ID, APELLIDO_Y_NOMBRE: F.APELLIDO_Y_NOMBRE, DNI: F.DNI, ESTADO_DOSIMETRO: F.TIPO_BAJA, BAJA_DOSIMETRO: F.BAJA_DOSIMETRO, MOTIVO_BAJA: F.MOTIVO_BAJA || '', movimiento: { tipo: F.TIPO_BAJA, detalle: F.MOTIVO_BAJA || '' } }, 'rxGuardarBaja'); if (!r) return;
+  const mot = [F.MOTIVO_TIPO, F.MOTIVO_BAJA].filter(Boolean).join(': '), ent = F.ENTREGA ? ' · entrega el dosímetro: ' + F.ENTREGA : '';
+  const r = await rxEnviar('r_persona_guardar', { ID: F.ID, APELLIDO_Y_NOMBRE: F.APELLIDO_Y_NOMBRE, DNI: F.DNI, ESTADO_DOSIMETRO: F.TIPO_BAJA, BAJA_DOSIMETRO: F.BAJA_DOSIMETRO, MOTIVO_BAJA: mot, FORM: F.doc ? 'baja' : '', movimiento: { tipo: F.TIPO_BAJA, detalle: mot + ent } }, 'rxGuardarBaja'); if (!r) return;
   F = null; RX = null; rxListo(r.avisoComunicar);
 }
 async function rxGuardarReact() {
   if (!F.ALTA_DOSIMETRO) return miErr('Falta la fecha de la nueva alta.');
   const r = await rxEnviar('r_persona_guardar', { ID: F.ID, APELLIDO_Y_NOMBRE: F.APELLIDO_Y_NOMBRE, DNI: F.DNI, ESTADO_DOSIMETRO: 'Activo', ALTA_DOSIMETRO: F.ALTA_DOSIMETRO, DOSIMETRO_NRO: F.DOSIMETRO_NRO || '', SITIO: F.SITIO || '', SECTOR_EXPOSICION: F.SECTOR_EXPOSICION || '',
-    BAJA_DOSIMETRO: '', MOTIVO_BAJA: '', movimiento: { tipo: 'Reactivación', detalle: (F.DETALLE || '') + (F.BAJA_ANT ? ' (baja anterior ' + fechaTxt(F.BAJA_ANT) + ')' : '') } }, 'rxGuardarReact'); if (!r) return;
+    BAJA_DOSIMETRO: '', MOTIVO_BAJA: '', FORM: F.doc ? 'alta' : '', movimiento: { tipo: 'Reactivación', detalle: (F.DETALLE || '') + (F.BAJA_ANT ? ' (baja anterior ' + fechaTxt(F.BAJA_ANT) + ')' : '') } }, 'rxGuardarReact'); if (!r) return;
   F = null; RX = null; rxListo(r.avisoComunicar);
 }
 // ------------------------------------------------------------------ Módulo 7 · Incendio: control mensual de extintores (Incendio.gs, acciones i_…)
@@ -2331,7 +2362,7 @@ function rxListo(aviso, volver) {
 async function rxDni() {
   const dni = String(F.DNI || '').replace(/\D/g, ''); if (dni.length < 7) return miErr('Escribí el DNI completo.');
   try { const r = await api('r_dni', { dni: dni }); if (!r.ok || !r.persona) return miErr('No está en la base de personal: completá los datos a mano.');
-    const P = r.persona; F.APELLIDO_Y_NOMBRE = F.APELLIDO_Y_NOMBRE || P.nombre; F.CUIL = P.cuil; F.SERVICIO = P.servicio; F.FUNCION = P.funcion; formRX(); }
+    const P = r.persona; F.APELLIDO_Y_NOMBRE = F.APELLIDO_Y_NOMBRE || P.nombre; F.CUIL = P.cuil; F.SERVICIO = P.servicio; F.SERVICIOS = F.SERVICIOS || P.servicio; F.FUNCION = P.funcion; formRX(); }
   catch (e) { miErr('No se pudo buscar. Probá de nuevo.'); }
 }
 // Eventos
@@ -2356,17 +2387,21 @@ function formRXEve() {
   $('app').innerHTML = miTit(F.ID ? 'Evento · ' + F.TIPO : 'Registrar un evento') + fErr +
     fSel('TIPO', 'Qué pasó', [['', 'Elegí…']].concat(RX.listas.tiposEve)) + fInp('FECHA', 'Fecha', 'date') + fSel('SITIO', 'Sitio', rxSitios()) + fSel('ID_PERSONA', 'Persona', pers) +
     (/anormal|accidental/i.test(F.TIPO || '') ? '<div class="grid2">' + fInp('PERIODO', 'Mes del control', 'month') + fInp('DOSIS_MSV', 'Dosis informada (mSv)', 'number') + '</div>' : '') +
+    (RX_NOV.test(F.TIPO || '') ? fSeg('NOVEDAD', 'Qué pasó con el dosímetro', RX_NOVEDADES) + fInp('FECHA_HECHO', 'Fecha en que cree que ocurrió', 'date') : '') +   // F-RAD-03 (25/10/2026)
     fTxt('DESCRIPCION', 'Descripción', 'Qué pasó, dónde y cuándo') + fTxt('ACCIONES', 'Qué se hizo') +
-    (F.ID ? fSeg('ESTADO', 'Estado', ['Abierto', 'En seguimiento', 'Cerrado']) : '') + fFoto('doc', 'Archivo (opcional)', 'Denuncia de extravío, nota o informe');
+    (F.ID ? fSeg('ESTADO', 'Estado', ['Abierto', 'En seguimiento', 'Cerrado']) : '') +
+    (RX_NOV.test(F.TIPO || '') ? rxFormBloque('novedad', 'Formulario F-RAD-03 firmado', 'Informe de novedad de dosímetro, con las firmas y la fecha') : fFoto('doc', 'Archivo (opcional)', 'Nota o informe'));
   bar('<button class="btn sec" data-act="rxEveVolver">Cancelar</button><button class="btn pri" data-act="rxEveGuardar">Guardar</button>');
 }
 async function rxEveGuardar() {
   if (!F.TIPO) return miErr('Elegí qué pasó.');
-  const d = {}; ['ID', 'TIPO', 'FECHA', 'SITIO', 'ID_PERSONA', 'PERIODO', 'DOSIS_MSV', 'DESCRIPCION', 'ACCIONES', 'ESTADO'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+  const d = {}; ['ID', 'TIPO', 'FECHA', 'SITIO', 'ID_PERSONA', 'PERIODO', 'DOSIS_MSV', 'DESCRIPCION', 'ACCIONES', 'ESTADO', 'NOVEDAD', 'FECHA_HECHO'].forEach(k => { if (F[k] != null) d[k] = F[k]; });
+  if (F.doc && RX_NOV.test(F.TIPO || '')) d.FORM = 'novedad';
   const r = await rxEnviar('r_evento_guardar', d, 'rxEveGuardar'); if (!r) return;
   F = null; RX = null; rxListo(r.aviso, 'rxEve');
 }
 Object.assign(ACT, { rxPers: () => { F = null; rxPers(); }, rxAct: () => rxPers(true), rxVolver: () => { F = null; rxPers(); }, rxEditar: b => rxEditar(b.dataset.arg), rxGuardar: () => rxGuardar(), rxDni: () => rxDni(),
+  rxImprimir: b => rxImprimir(b.dataset.arg), rxFormBlanco: b => impAbrir({ tema: 'rad_form', blanco: { form: b.dataset.arg, persona: '*' }, datos: {} }, RX_FORMS[b.dataset.arg][0] + ' · en blanco'),
   rxSug: b => { const s = RX.sugeridas[Number(b.dataset.arg)]; rxEditar('', { DNI: s.dni, CUIL: s.cuil, APELLIDO_Y_NOMBRE: s.nombre, FUNCION: s.funcion, SERVICIO: s.servicio }); },
   rxBaja: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxb', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, TIPO_BAJA: 'Baja a pedido del trabajador', BAJA_DOSIMETRO: new Date().toISOString().slice(0, 10) }; MIV = { f: formRXBaja }; formRXBaja(); },
   rxReact: b => { const p = RX.personal.find(x => x.ID === b.dataset.arg); F = { _f: 'rxr', ID: p.ID, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI, BAJA_ANT: p.BAJA_DOSIMETRO, ALTA_DOSIMETRO: new Date().toISOString().slice(0, 10), DOSIMETRO_NRO: p.DOSIMETRO_NRO, SITIO: p.SITIO, SECTOR_EXPOSICION: p.SECTOR_EXPOSICION }; MIV = { f: formRXReact }; formRXReact(); },
@@ -2402,6 +2437,7 @@ const AYG = [
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
   { m: 'Plagas', t: 'Inspección del trabajo de los operarios (Higiene y Seguridad)', p: ['Solo con la clave de Higiene y Seguridad: Inicio › 3 · Plagas › «Inspección del trabajo de los operarios».', 'Elegí la visita de MIPyV que vas a controlar (o «Sin visita de MIPyV» si es otra empresa), completá sector y quién hizo el trabajo, y contestá cada punto con Sí, No o No aplica. Cada «No» lleva una nota; un «No» en un punto crítico deja la inspección «No conforme».', 'Queda en la BASE COMÚN (PLAGAS_REGISTROS y PLAGAS_INSP_RESP), se ve en el portal y en «Auditorías y diagnósticos por tema», y si elegiste una visita de MIPyV la marca como revisada. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.'] },
+  { m: 'Radiaciones', t: 'Formularios del dosímetro (F-RAD-01, 02 y 03)', p: ['Alta: «Dar de alta una persona» › completá los datos (teléfono, correo, servicios, título y matrícula) › «Imprimir el F-RAD-01». Sale en dos copias (Personal y Higiene y Seguridad) con el anexo «Compromiso de uso del dosímetro personal». Se firma (trabajador y jefe del servicio) y se adjunta la foto o el PDF en el mismo alta.', 'Baja: «Dar de baja el dosímetro» › motivo, fecha y si entrega el dosímetro › «Imprimir el F-RAD-02» › firmado, se adjunta en la baja.', 'Pérdida, extravío, robo o daño: Eventos › «Registrar un evento» (Extravío de dosímetro o Dosímetro dañado) › qué pasó y la fecha en que cree que ocurrió › «Imprimir el F-RAD-03» (Informe de novedad de dosímetro). Se entrega de inmediato a Higiene y Seguridad y se adjunta firmado en el evento.', 'En blanco: Formularios para imprimir › Radiaciones, o Hojas para imprimir › Radiaciones (también con los datos de una persona ya cargada).'] },
   { m: '', t: 'Hojas para imprimir', p: ['Inicio › «Hojas para imprimir»: cada tema que tenés asignado (auditorías y diagnóstico de residuos, agua, plagas, cocina, extintores y recorridas; infraestructura y RGRL solo Higiene y Seguridad).', '«Imprimir en blanco»: elegí el tipo, el lugar o el servicio. La hoja se arma con los puntos de este establecimiento, con la ayuda y la referencia normativa de cada punto y lugar para las firmas.', '«Imprimir» en una completada: la misma hoja con las respuestas. Se ve en pantalla; desde ahí se imprime o se guarda como PDF. Si el celular no imprime, tocá «Abrir en otra pestaña».', 'Lo que se completó en papel se carga en su pantalla de siempre; después, acá, «Adjuntar hoja firmada»: hasta 5 fotos o un PDF. Si adjuntás otra, la anterior queda reemplazada.', 'También se imprime desde la ficha de cada auditoría o diagnóstico («Auditorías y diagnósticos por tema» › «Imprimir»).'] },
   { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, agrupadas por tema (residuos, agua, plagas, cocinas, radiaciones, infraestructura, incendio y personal), de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
