@@ -704,7 +704,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.25";
+const APP_VERSION = "2026.10.25b";
 </script>
 <script>
 // ============================================================
@@ -3437,7 +3437,8 @@ if ("serviceWorker" in navigator) {
 //   lo muestra en rojo y pide indicar el cierre: Resuelto o No resuelto (el biocida no hizo efecto,
 //   faltan herramientas o insumos, u otro motivo que hay que explicar).
 // - Solicitudes a Belén: reiterar pedidos de biocidas (cuál y cuánto) o EPP, pedir que se gestione un
-//   aviso en un CAPS o informar una novedad importante, con hasta 5 fotos.
+//   aviso en un establecimiento (hospital, dependencia o CAPS) o dejar registro de una novedad, con hasta 5 fotos.
+//   No son urgencias: quedan registradas para que Belén las gestione.
 // Todo pasa por la misma cola que las visitas: si no hay señal, se guarda y se envía después.
 // El servidor (Casos_Solicitudes_MIPyV.gs) manda la lista de casos y de solicitudes junto con los catálogos.
 // ============================================================
@@ -3452,8 +3453,8 @@ const MOTIVOS_NR = [
 const TIPOS_SOL = [
   { id: "Biocidas", emoji: "🧪", t: "Biocidas", sub: "Qué producto y cuánto" },
   { id: "EPP", emoji: "🧤", t: "EPP", sub: "Guantes, barbijo, anteojos, ropa…" },
-  { id: "Aviso en un CAPS", emoji: "📢", t: "Aviso en un CAPS", sub: "Que se avise algo en un CAPS" },
-  { id: "Novedad importante", emoji: "⚠️", t: "Novedad importante", sub: "Algo que Belén tiene que saber ya" },
+  { id: "Aviso en un establecimiento", emoji: "📢", t: "Aviso en un lugar", sub: "Que se avise algo en un hospital, dependencia o CAPS" },
+  { id: "Novedad", emoji: "📝", t: "Novedad", sub: "Algo que viste y querés dejar registrado" },
 ];
 
 const avLeer = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") || d; } catch (e) { return d; } };
@@ -3485,7 +3486,7 @@ function avisosPintar() {
     ? `<button type="button" class="av-urgente" data-av="casos"><span class="av-emo">⚠️</span><span><b>Revisar urgente: ${urg.length} caso${urg.length > 1 ? "s" : ""}</b><small>Tocá para indicar si quedó resuelto</small></span></button>`
     : casos.length ? `<button type="button" class="av-suave" data-av="casos"><span class="av-emo">📋</span><span><b>${casos.length} caso${casos.length > 1 ? "s" : ""} abierto${casos.length > 1 ? "s" : ""}</b><small>Al día. Tocá para verlos o cerrarlos</small></span></button>` : "");
   const sol = document.getElementById("goSolicitudes");
-  if (sol) sol.querySelector(".mc-sub").textContent = resp ? "Belén respondió " + resp + " · tocá para ver" : "Biocidas, EPP, avisos en CAPS, novedades";
+  if (sol) sol.querySelector(".mc-sub").textContent = resp ? "Belén respondió " + resp + " · tocá para ver" : "Biocidas, EPP, avisos, novedades";
   box.querySelectorAll("[data-av=casos]").forEach((b) => (b.onclick = () => avCasosLista()));
 }
 
@@ -3593,7 +3594,7 @@ function avCaso(c) {
 function avSolicitudes() {
   const mias = avisosSolicitudes();
   const est = (s) => s.estado === "Pendiente" ? `<span class="av-chip amarillo">Pendiente</span>` : s.estado === "Atendida" ? `<span class="av-chip verde">Atendida</span>` : `<span class="av-chip gris">${avEsc(s.estado)}</span>`;
-  const html = `<button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, aviso en un CAPS o novedad importante</small></span></button>` +
+  const html = `<p class="av-gris" style="margin-top:0">Lo que mandes acá queda registrado para que Belén lo gestione. Si es algo urgente, además llamala.</p><button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, avisos o novedades</small></span></button>` +
     (mias.length ? `<div class="av-pregunta" style="margin-top:18px">Las últimas solicitudes</div>` + mias.slice(0, 25).map((s) => `<div class="av-caso"><b>${avEsc(TIPOS_SOL.find((t) => t.id === s.tipo)?.emoji || "✉️")} ${avEsc(s.tipo)}${s.que ? " · " + avEsc(s.que) : ""}${s.cantidad ? " · " + avEsc(s.cantidad) : ""}</b>${est(s)}<small>${avFecha(s.fecha)} · ${avEsc(s.operario || "")}${s.establecimiento ? " · " + avEsc(s.establecimiento) : ""}</small>${s.respuesta ? `<p class="av-resp">💬 Belén: ${avEsc(s.respuesta)}</p>` : ""}</div>`).join("") : "");
   const ov = avVentana("Solicitudes a Belén", html, "#5B4A8A");
   document.getElementById("avNueva").onclick = () => { const yo = avQuien(); yo ? avSolTipo(yo) : avElegirQuien(avSolTipo); };
@@ -3608,11 +3609,11 @@ function avSolForm(yo, tipo) {
   const s = { que: "", cantidad: "", lugar: "", detalle: "", fotos: [] };
   const prods = (typeof PRODUCTOS !== "undefined" ? PRODUCTOS : []).filter((p) => !/^(PRD-1[345])$/.test(p.id)).map((p) => p.nombre);
   const epps = (typeof EPP !== "undefined" ? EPP : []).map((e) => e.nombre).concat(["Ropa de trabajo", "Otro"]);
-  const lugares = (typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : []).filter((e) => tipo.id === "Aviso en un CAPS" ? e.tipo === "CAP" : true);
+  const lugares = (typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : []);
   const chips = (lista) => `<div class="chip-row">` + lista.map((x) => `<button type="button" class="chip" data-q="${avEsc(x)}">${avEsc(x)}</button>`).join("") + `</div>`;
   const campos = tipo.id === "Biocidas" ? `<div class="av-pregunta">¿Qué producto?</div>${chips(prods.concat(["Otro"]))}<input id="avQue" placeholder="Producto (si no está en la lista)"><div class="av-pregunta">¿Cuánto?</div><input id="avCant" placeholder="Ej.: 2 litros, 3 jeringas, 1 caja">`
     : tipo.id === "EPP" ? `<div class="av-pregunta">¿Qué necesitás?</div>${chips(epps)}<input id="avQue" placeholder="Qué (si no está en la lista)"><div class="av-pregunta">¿Cuánto? (cantidad y talle si corresponde)</div><input id="avCant" placeholder="Ej.: 2 pares de guantes, talle L">`
-    : tipo.id === "Aviso en un CAPS" ? `<div class="av-pregunta">¿En qué CAPS?</div><select id="avLugar"><option value="">Elegí el CAPS</option>${lugares.map((e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`).join("")}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
+    : tipo.id === "Aviso en un establecimiento" ? `<div class="av-pregunta">¿Dónde?</div><select id="avLugar"><option value="">Elegí el lugar</option>${lugares.map((e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`).join("")}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
     : `<div class="av-pregunta">¿Dónde? (opcional)</div><select id="avLugar"><option value="">—</option>${lugares.map((e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`).join("")}</select><div class="av-pregunta">¿Qué pasó?</div>`;
   const ov = avVentana(tipo.t, `${campos}<textarea id="avDet" rows="4" placeholder="Escribí o dictá con el micrófono del teclado"></textarea>
     <div class="av-pregunta" style="margin-top:14px">Fotos (opcional, hasta 5)</div><div class="foto-grid" id="avFot"></div>
@@ -3626,8 +3627,8 @@ function avSolForm(yo, tipo) {
     const lug = lugares.find((x) => x.id === idL);
     if ((tipo.id === "Biocidas" || tipo.id === "EPP") && !s.que) { alert("Indicá qué necesitás."); return; }
     if ((tipo.id === "Biocidas" || tipo.id === "EPP") && !s.cantidad) { alert("Indicá cuánto necesitás."); return; }
-    if (tipo.id === "Aviso en un CAPS" && !lug) { alert("Elegí el CAPS."); return; }
-    if ((tipo.id === "Aviso en un CAPS" || tipo.id === "Novedad importante") && s.detalle.length < 4) { alert("Contá qué pasó o qué hay que avisar."); return; }
+    if (tipo.id === "Aviso en un establecimiento" && !lug) { alert("Elegí el lugar."); return; }
+    if ((tipo.id === "Aviso en un establecimiento" || tipo.id === "Novedad") && s.detalle.length < 4) { alert("Contá qué pasó o qué hay que avisar."); return; }
     e.target.disabled = true;
     await avEnviar({ tipo: "solicitud", data: { id_solicitud: "S-" + Date.now(), fecha: new Date().toISOString(), operario: yo.nombre, tipo: tipo.id, id_establecimiento: lug ? lug.id : "", establecimiento: lug ? lug.nombre : "",
       que: s.que, cantidad: s.cantidad, detalle: s.detalle, fotos_base64: s.fotos.slice(0, 5) } }, "Solicitud enviada a Belén: " + tipo.t + (s.que ? " · " + s.que : "") + ".");

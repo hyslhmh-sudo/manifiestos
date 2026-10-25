@@ -12,7 +12,8 @@
  *    El cierre queda en la hoja «cierres_casos» y el caso deja de figurar abierto (si después se carga
  *    otra visita del mismo caso, se vuelve a abrir). Belén también puede cerrar casos desde el Portal HyS.
  * 2) SOLICITUDES A HyS: desde la app, los operarios reiteran pedidos de biocidas (cuál y cuánto), EPP,
- *    piden que se gestione un aviso en un CAPS o informan una novedad importante, con hasta 5 fotos.
+ *    piden que se gestione un aviso en un establecimiento (hospital, dependencia o CAPS) o dejan registro de una
+ *    novedad, con hasta 5 fotos. No son urgencias: quedan registradas para que HyS las gestione.
  *    Quedan en la hoja «solicitudes» (estado Pendiente). Belén responde desde el Portal HyS y la respuesta
  *    les aparece en la app.
  * No manda correos.
@@ -29,7 +30,7 @@ const COLS_SOLICITUDES = ["id_solicitud", "fecha", "operario", "tipo", "id_estab
   "detalle", "foto_url", "estado", "respuesta_hys", "fecha_respuesta"];
 const DIAS_POR_VENCER = 3;
 const MOTIVOS_NO_RESUELTO = ["El biocida no hizo efecto", "Falta de herramientas o insumos (biocidas)", "Otro"];
-const TIPOS_SOLICITUD = ["Biocidas", "EPP", "Aviso en un CAPS", "Novedad importante"];
+const TIPOS_SOLICITUD = ["Biocidas", "EPP", "Aviso en un establecimiento", "Novedad", "Aviso en un CAPS", "Novedad importante"];   // los dos últimos: nombres viejos (25/10/2026)
 
 // Crea la hoja si falta y agrega al final las columnas que falten (no borra nada)
 function hojaCon_(ss, nombre, cols) {
