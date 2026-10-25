@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.13';
+const VERSION_CAP = '2026-10-25 · 5.14';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -2748,14 +2748,17 @@ function invitarEnviar_(d) {
   const asunto = String(d.asunto || '').trim(), texto = String(d.texto || '').trim();
   if (!asunto || !texto) return { ok: false, error: 'Escribí el asunto y el texto.' };
   if (!puedeEnviar_()) return { ok: false, error: 'Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de la cuenta del libro.' };
-  const borrador = d.modo === 'borrador', quedan = MailApp.getRemainingDailyQuota();
+  const borrador = d.modo === 'borrador', quedan = cuotaHoy_();   // sin MailApp (pediría otro permiso): se cuenta lo enviado hoy en _MENSAJES
   if (!borrador && quedan - (correos.length + 1) < INV_RESERVA)
     return { ok: false, cuota: quedan, error: 'Hoy Google deja enviar ' + quedan + ' correo(s) más desde el sistema y hay que reservar ' + INV_RESERVA + ' para los recordatorios de la agenda. Usá «Dejar como borrador en Gmail» y envialo desde tu Gmail (ahí no hay este límite).' };
   const html = invitacionHtml_(asunto, texto, d.link || ''), plano = texto;
   const opc = { bcc: correos.join(','), from: CORREO_HYS, name: 'Belén Pellegrini · Higiene y Seguridad Laboral', htmlBody: html, replyTo: CORREO_HYS };
   let link = '', estado = '';
   if (borrador) { const b = GmailApp.createDraft(CORREO_HYS, asunto, plano, opc); link = 'https://mail.google.com/mail/u/0/#drafts?compose=' + b.getMessage().getId(); estado = 'Borrador'; }
-  else { GmailApp.sendEmail(CORREO_HYS, asunto, plano, opc); estado = 'Enviado'; }
+  else {
+    try { GmailApp.sendEmail(CORREO_HYS, asunto, plano, opc); estado = 'Enviado'; }
+    catch (e) { return { ok: false, error: 'Google no dejó enviarlo (' + e.message + '). Usá «Dejar como borrador en Gmail» y envialo desde tu Gmail.' }; }
+  }
   invitacionesTabla_();
   agregar_(tabla_('_INVITACIONES'), [{ ID_INVITACION: uid_('INV', ''), FECHA: ahoraTxt_(), CODIGO: d.codigo || 's/d', CAPACITACION: d.nombre || 's/d', FILTRO: String(d.filtro || 'Todos').slice(0, 500),
     TANDA: d.tanda || '', CANTIDAD: dnis.length || correos.length, DNIS: dnis.join(',').slice(0, 49000), QUIEN: borrador ? 'Borrador en Gmail (portal)' : 'Correo enviado (portal)' }]);
@@ -2763,6 +2766,17 @@ function invitarEnviar_(d) {
     ASUNTO: asunto, ESTADO: estado, QUIEN: 'Belén (portal · Invitar)', ID_TURNO: '', DETALLE: String(d.filtro || '').slice(0, 300) + (d.tanda ? ' · tanda ' + d.tanda : ''), ID_BORRADOR: link }]);
   return { ok: true, borrador: borrador, link: link, cuota: borrador ? quedan : quedan - correos.length - 1,
     mensaje: borrador ? 'Quedó el borrador en tu Gmail: abrilo y tocá Enviar.' : 'Invitación enviada a ' + correos.length + ' correo(s) en copia oculta.' };
+}
+// Cuota diaria aproximada de envíos desde el sistema (cuenta de Gmail común: 100 destinatarios por día).
+// Se descuentan los destinatarios de lo enviado hoy según _MENSAJES (agenda, invitaciones, certificados).
+const CUOTA_DIA = 100;
+function cuotaHoy_() {
+  try {
+    const M = tabla_('_MENSAJES'), hoy = Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy'); let usados = 0;
+    M.filas.forEach(r => { if (!/^enviad/i.test(r[M.i('ESTADO')])) return; const f = String(r[M.i('FECHA')] || ''); if (f.indexOf(hoy) !== 0 && f.indexOf(hoy.replace(/^0/, '')) !== 0) return;
+      const dest = String(r[M.i('DESTINATARIOS')] || ''), m = dest.match(/^(\d+) en copia oculta/); usados += m ? Number(m[1]) + 1 : Math.max(1, dest.split(',').filter(x => x.trim()).length); });
+    return Math.max(0, CUOTA_DIA - usados);
+  } catch (e) { return CUOTA_DIA; }
 }
 function invitacionHtml_(asunto, texto, link) {
   const e = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
