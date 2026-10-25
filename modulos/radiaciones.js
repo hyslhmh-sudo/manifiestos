@@ -251,6 +251,8 @@ const RADF_EXTRA = { alta: [['INICIO_EXPOSICION', 'Fecha de inicio de la exposic
   novedad: [['NOVEDAD', 'Qué pasó', RAD_NOVEDADES], ['FECHA_HECHO', 'Fecha en que cree que ocurrió', 'date'], ['HORA_HECHO', 'Hora aproximada'], ['LUGAR_HECHO', 'Dónde cree que ocurrió'], ['DENUNCIA', 'En caso de robo, ¿hizo la denuncia policial?', ['Sí', 'No', 'No corresponde']], ['DENUNCIA_NRO', 'N.º de denuncia y dependencia'], ['DESCRIPCION', 'Descripción', 'area']] };
 const RADF_NOM = { alta: ['F-RAD-01', 'Solicitud de alta de dosímetro personal (con el anexo de compromiso de uso)'], baja: ['F-RAD-02', 'Solicitud de baja de dosímetro personal'], novedad: ['F-RAD-03', 'Informe de novedad de dosímetro (pérdida, extravío, robo, daño)'] };
 const radFormPer = p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d') + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (/^Baja/.test(p.ESTADO_DOSIMETRO) ? ' (de baja)' : '');
+const radFormLista = D => D.personal.filter(p => !/^Baja/.test(p.ESTADO_DOSIMETRO));   // los dados de baja no se ofrecen (25/10/2026)
+const radSd = v => /^s\/?d$/i.test(String(v || '').trim()) ? '' : (v == null ? '' : String(v));   // «s/d» cuenta como vacío
 function radForm(D) {
   const v = RADFF.v, p = RADFF.id ? D.personal.find(x => x.ID === RADFF.id) : null;
   const ctl = (k, l, op) => { const val = v[k] == null ? '' : v[k];
@@ -262,8 +264,8 @@ function radForm(D) {
     '<div class="tabs" style="margin-bottom:10px">' + Object.keys(RADF_NOM).map(k => '<button class="btn ' + (k === RADFF.tipo ? 'pri' : 'sec') + '" data-rft="' + k + '">' + RADF_NOM[k][0] + '</button>').join('') + '</div>' +
     '<p style="margin:0 0 10px"><b>' + esc(RADF_NOM[RADFF.tipo][0]) + '</b> · ' + esc(RADF_NOM[RADFF.tipo][1]) + '</p>' +
     '<div class="filtros" style="align-items:flex-end"><label class="f" style="flex:1 1 380px">Trabajador (escribí el apellido o el DNI)<input class="c" id="rfPer" list="rfPers" value="' + esc(p ? radFormPer(p) : '') + '" placeholder="Elegí de la lista o dejalo vacío para una persona nueva" autocomplete="off"></label>' +
-    '<datalist id="rfPers">' + D.personal.map(x => '<option value="' + esc(radFormPer(x)) + '">').join('') + '</datalist>' + (p || Object.keys(v).length ? '<button class="btn sec" id="rfLimpiar">Limpiar</button>' : '') + '</div>' +
-    (D.personal.length ? '' : '<div class="notice" style="margin-top:8px">No hay personas con dosímetro cargadas en ' + esc(radNom(D.cod)) + '.' + (D.cod === 'HMH' ? ' El personal de Radiología se carga en el HZT: <a class="link" href="#radest/HZT/form">abrir los formularios del HZT</a>.' : ' Podés completar los datos a mano.') + '</div>') +
+    '<datalist id="rfPers">' + radFormLista(D).map(x => '<option value="' + esc(radFormPer(x)) + '">').join('') + '</datalist>' + (p || Object.keys(v).length ? '<button class="btn sec" id="rfLimpiar">Limpiar</button>' : '') + '</div>' +
+    (radFormLista(D).length ? '' : '<div class="notice" style="margin-top:8px">No hay personas con dosímetro activo en ' + esc(radNom(D.cod)) + '.' + (D.cod === 'HMH' ? ' El personal de Radiología se carga en el HZT: <a class="link" href="#radest/HZT/form">abrir los formularios del HZT</a>.' : ' Podés completar los datos a mano.') + '</div>') +
     '<datalist id="rfSit">' + D.sitios.map(x => '<option value="' + esc(x.SITIO) + '">').join('') + '</datalist><datalist id="rfSec">' + D.listas.sectores.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist><datalist id="rfTip">' + D.listas.tiposDosi.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist>' +
     '<h3 style="margin:14px 0 6px">Datos del trabajador</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_CAMPOS.map(c => ctl(c[0], c[1])).join('') + '</div>' +
     '<h3 style="margin:14px 0 6px">' + (RADFF.tipo === 'alta' ? 'Alta' : RADFF.tipo === 'baja' ? 'Baja' : 'Novedad') + '</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_EXTRA[RADFF.tipo].map(c => ctl(c[0], c[1], c[2])).join('') + '</div>' +
@@ -274,10 +276,15 @@ function radForm(D) {
 function radFormEv(D) {
   const leer = () => document.querySelectorAll('[data-rf]').forEach(el => { RADFF.v[el.dataset.rf] = el.value; });
   document.querySelectorAll('[data-rft]').forEach(b => b.onclick = () => { leer(); RADFF.tipo = b.dataset.rft; if (RADFF.tipo === 'baja' && RADFF.id && !RADFF.v.BAJA_DOSIMETRO) RADFF.v.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); radEst(encodeURIComponent(D.cod) + '/form'); });
-  const per = $('rfPer'); if (per) per.onchange = () => { const p = D.personal.find(x => radFormPer(x) === per.value); leer();
-    if (p) { RADFF.id = p.ID; const v = {}; RADF_CAMPOS.forEach(c => { v[c[0]] = p[c[0]] || ''; }); if (!v.SERVICIOS) v.SERVICIOS = p.SERVICIO || '';
+  const per = $('rfPer'); if (per) per.onchange = async () => { const p = radFormLista(D).find(x => radFormPer(x) === per.value); leer();
+    if (p) { RADFF.id = p.ID; const v = {}; RADF_CAMPOS.forEach(c => { v[c[0]] = radSd(p[c[0]]); }); if (!v.SERVICIOS) v.SERVICIOS = radSd(p.SERVICIO);
       Object.keys(RADFF.v).forEach(k => { if (!(k in v)) v[k] = RADFF.v[k]; }); if (RADFF.tipo === 'baja' && !v.BAJA_DOSIMETRO) v.BAJA_DOSIMETRO = new Date().toISOString().slice(0, 10); RADFF.v = v; }
-    else RADFF.id = ''; radEst(encodeURIComponent(D.cod) + '/form'); };
+    else RADFF.id = ''; radEst(encodeURIComponent(D.cod) + '/form');
+    // Lo que falta (CUIL, correo, teléfono, función, servicio) se completa con la BASE DE TRABAJADORES por DNI
+    const dni = p && String(p.DNI || '').replace(/\D/g, ''); if (!dni || dni.length < 7) return;
+    try { const r = await api('p_rad_dni', { dni: dni }); const b = r && r.ok && r.persona; if (!b || RADFF.id !== p.ID) return; const V = RADFF.v;
+      [['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIOS', b.servicio]].forEach(x => { if (!radSd(V[x[0]]) && radSd(x[1])) V[x[0]] = x[1]; });
+      if (RADF.tab === 'form' && $('rfPer')) radEst(encodeURIComponent(D.cod) + '/form'); } catch (e) {} };
   const lim = $('rfLimpiar'); if (lim) lim.onclick = () => { RADFF.id = ''; RADFF.v = {}; radEst(encodeURIComponent(D.cod) + '/form'); };
   const nom = () => RADF_NOM[RADFF.tipo][0];
   $('rfImp').onclick = () => { leer(); const o = {}; Object.keys(RADFF.v).forEach(k => { if (RADFF.v[k]) o[k] = RADFF.v[k]; }); if (RADFF.tipo === 'novedad') o.FECHA_FORM = new Date().toISOString().slice(0, 10);

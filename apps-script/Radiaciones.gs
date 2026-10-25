@@ -231,7 +231,7 @@ function radDniBase_(dni) {
   dni = String(dni || '').replace(/\D/g, ''); if (dni.length < 6) return null;
   const T = pBT_().getSheetByName('TODOS'), n = T.getLastRow() - 5; if (n < 1) return null;
   const r = T.getRange(6, 1, n, 22).getValues().find(x => String(x[1]).replace(/\D/g, '') === dni);
-  return r ? { dni: dni, cuil: limpio_(r[0]), nombre: [r[2], r[3]].filter(Boolean).join(', '), funcion: limpio_(r[5] || r[6]), servicio: limpio_(r[7]), est: limpio_(r[21]), estado: limpio_(r[19]) } : null;
+  return r ? { dni: dni, cuil: limpio_(r[0]), nombre: [r[2], r[3]].filter(Boolean).join(', '), funcion: limpio_(r[5] || r[6]), servicio: limpio_(r[7]), email: limpio_(r[11]), telefono: limpio_(r[13]), est: limpio_(r[21]), estado: limpio_(r[19]) } : null;   // email y teléfono: para los formularios F-RAD (25/10/2026)
 }
 // Índice de la BASE DE TRABAJADORES (hoja TODOS) por DNI, leído una sola vez
 function radBaseIndice_() {
