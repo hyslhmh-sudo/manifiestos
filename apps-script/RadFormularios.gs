@@ -125,7 +125,7 @@ function radfOpciones_(cod) {
 // ------------------------------------------------------------------ CORREO A MKS (25/10/2026, pedido de Belén)
 // Arma un BORRADOR en Gmail (no lo envía: se revisa y se envía desde Gmail) con texto formal y el formulario en PDF adjunto
 // (y, si ya está cargado, el formulario firmado). Sale de belenpellegrini.hys@gmail.com si Gmail tiene ese «Enviar como».
-const RADM = { REMITENTE: 'belenpellegrini.hys@gmail.com', NOMBRE: 'Belén Pellegrini · Higiene y Seguridad Laboral', P_PARA: 'RAD_MKS_CORREO' };
+const RADM = { REMITENTE: 'belenpellegrini.hys@gmail.com', NOMBRE: 'Belén Pellegrini · Higiene y Seguridad Laboral', P_PARA: 'RAD_MKS_CORREO', CC_FIJO: 'personal_hzt@hotmail.com' };   // altas, bajas y novedades siempre con copia a Personal (dato de Belén, 25/10/2026)
 function radMksCorreo_() { return PropertiesService.getScriptProperties().getProperty(RADM.P_PARA) || 'dosimetria@mksargentina.com'; }   // dirección de MKS para altas, bajas y novedades (dato de Belén, 25/10/2026)
 function radMailMks_(x, quien) {
   const cod = limpio_(x.cod), tipo = x.form, F = RADF.FORMS[tipo]; if (!cod || !F) return { ok: false, mensaje: 'Elegí el formulario.' };
@@ -144,13 +144,13 @@ function radMailMks_(x, quien) {
   const asunto = radMksAsunto_(tipo, o, est), html = radMksTexto_(tipo, o, est, !!firmado);
   let desde = ''; try { const al = GmailApp.getAliases().map(a => a.toLowerCase()); if (al.indexOf(RADM.REMITENTE) >= 0 || Session.getEffectiveUser().getEmail().toLowerCase() === RADM.REMITENTE) desde = RADM.REMITENTE; } catch (e) {}
   const op = { htmlBody: html, name: RADM.NOMBRE, attachments: adj }; if (desde) op.from = desde; else op.replyTo = RADM.REMITENTE;
-  if (x.cc && /@/.test(x.cc)) op.cc = limpio_(x.cc);
+  op.cc = [RADM.CC_FIJO].concat(String(x.cc || '').split(/[,;\s]+/).filter(c => /@/.test(c) && c.toLowerCase() !== RADM.CC_FIJO)).join(', ');
   const texto = html.replace(/<br\s*\/?>/g, '\n').replace(/<\/(p|li|tr)>/g, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\n{3,}/g, '\n\n');
   const dr = GmailApp.createDraft(para, asunto, texto, op);
   if (x.para) PropertiesService.getScriptProperties().setProperty(RADM.P_PARA, para);   // se recuerda para la próxima
   if (persona) try { const p = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(r => r.ID === persona); if (p) radMov_(p, 'Comunicación a MKS', 'Borrador de correo a ' + para + ': ' + asunto, '', quien); } catch (e) {}
   const yo = Session.getEffectiveUser().getEmail();
-  return { ok: true, asunto: asunto, para: para, desde: desde || yo, firmado: firmado, url: 'https://mail.google.com/mail/?authuser=' + encodeURIComponent(yo) + '#drafts?compose=' + dr.getMessage().getId(),
+  return { ok: true, asunto: asunto, para: para, cc: op.cc, desde: desde || yo, firmado: firmado, url: 'https://mail.google.com/mail/?authuser=' + encodeURIComponent(yo) + '#drafts?compose=' + dr.getMessage().getId(),
     aviso: desde ? '' : 'Gmail no tiene configurado «Enviar como» ' + RADM.REMITENTE + ': el borrador sale de ' + yo + ', con respuesta a ' + RADM.REMITENTE + '.' };
 }
 function radMksAsunto_(tipo, o, est) {
