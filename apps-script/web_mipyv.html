@@ -704,7 +704,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.25f";
+const APP_VERSION = "2026.10.25g";
 </script>
 <script>
 // ============================================================
@@ -3617,7 +3617,7 @@ function avSolForm(yo, tipo) {
   const lugares = (typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : []);
   const chips = (lista) => `<div class="chip-row">` + lista.map((x) => `<button type="button" class="chip" data-q="${avEsc(x)}">${avEsc(x)}</button>`).join("") + `</div>`;
   const campos = tipo.id === "Biocidas" ? `<div class="av-pregunta">¿Qué producto?</div>${chips(prods.concat(["Otro"]))}<input id="avQue" placeholder="Producto (si no está en la lista)"><div class="av-pregunta">¿Cuánto?</div><input id="avCant" placeholder="Ej.: 2 litros, 3 jeringas, 1 caja">`
-    : tipo.id === "Herramientas" ? `<div class="av-pregunta">¿Qué herramientas? (podés marcar varias)</div>${chips(HERRAMIENTAS)}<input id="avQue" placeholder="Otras herramientas (si no están en la lista)"><div class="av-pregunta">¿Cuántas?</div><input id="avCant" placeholder="Ej.: 1 escalera de 5 escalones, 2 palas"><div class="av-pregunta">¿Para qué las necesitás? <span style="color:#C0453A">(obligatorio)</span></div>`
+    : tipo.id === "Herramientas" ? `<div class="av-pregunta">¿Qué herramientas? (podés marcar varias)</div>${chips(HERRAMIENTAS)}<input id="avQue" placeholder="Otras herramientas (si no están en la lista)"><div class="av-pregunta">¿Cuántas?</div><input id="avCant" placeholder="Ej.: 1 escalera de 5 escalones, 2 palas"><div class="av-pregunta">¿Para qué las necesitás?</div>`
     : tipo.id === "EPP" ? `<div class="av-pregunta">¿Qué necesitás?</div>${chips(epps)}<input id="avQue" placeholder="Qué (si no está en la lista)"><div class="av-pregunta">¿Cuánto? (cantidad y talle si corresponde)</div><input id="avCant" placeholder="Ej.: 2 pares de guantes, talle L">`
     : tipo.id === "Aviso en un establecimiento" ? `<div class="av-pregunta">¿Dónde?</div><select id="avLugar"><option value="">Elegí el lugar</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
     : `<div class="av-pregunta">¿Dónde? (opcional)</div><select id="avLugar"><option value="">—</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué pasó?</div>`;
