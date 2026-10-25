@@ -1333,7 +1333,7 @@ function capInvFacetas() {
 async function capInvitar(fresco) {
   if (!CAPINV.datos || fresco) {
     cargando('#capinv', fresco ? 'Armando de nuevo la lista desde la base de trabajadores… (tarda alrededor de un minuto)' : 'Abriendo la lista de personas y correos…');
-    try { const r = await capApi('c_invitar', { fresco: !!fresco }, 240000); if (!r.ok) throw new Error(r.error || 'No se pudo leer la base.'); CAPINV.datos = r; } catch (e) { return capFalla('#capinv', 'Invitar a capacitaciones', e); }
+    try { const r = await capApi('c_invitar', { fresco: !!fresco }, fresco ? 360000 : 120000); if (!r.ok) throw new Error(r.error || 'No se pudo leer la base.'); CAPINV.datos = r; } catch (e) { return capFalla('#capinv', 'Invitar a capacitaciones', e); }
   }
   if (location.hash.split('/')[0] !== '#capinv') return;
   const D = CAPINV.datos;
