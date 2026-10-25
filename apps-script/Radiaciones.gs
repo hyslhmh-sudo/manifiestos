@@ -600,7 +600,9 @@ function radRed_(d) {
     case 'r_datos': {
       const D = radDatos_(), de = l => l.filter(o => o.ESTABLECIMIENTO === cod);
       return { ok: true, personal: de(D.per), eventos: de(D.eve).reverse().slice(0, 60), sitios: radSitiosEst_(cod, D.sit).filter(s => s.RAYOS_X !== 'No').map(s => s.SITIO),
-        sugeridas: radSugeridas_(cod), listas: { sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, tiposEve: RAD.TIPOS_EVE } };
+        sugeridas: radSugeridas_(cod), listas: { sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, tiposEve: RAD.TIPOS_EVE },
+        // «Formularios del dosímetro» (25/10/2026): el personal de Radiología rota entre el HZT y el HMH y se carga en el HZT, así que desde cualquiera de los dos se elige entre ambos
+        personalUnidad: (cod === 'HZT' || cod === 'HMH') ? D.per.filter(o => o.ESTABLECIMIENTO === 'HZT' || o.ESTABLECIMIENTO === 'HMH') : null };
     }
     case 'r_dni': return { ok: true, persona: radDniBase_(x.dni) };
     case 'r_persona_guardar': {
