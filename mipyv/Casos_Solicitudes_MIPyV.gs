@@ -27,10 +27,10 @@ const SHEET_SOLICITUDES = "solicitudes";
 const COLS_CIERRES = ["id_cierre", "fecha", "operario", "protocolo", "alias", "id_ultima_visita", "establecimiento", "tipo_plaga",
   "resultado_cierre", "motivo", "detalle", "foto_url", "origen", "revisado_hys"];
 const COLS_SOLICITUDES = ["id_solicitud", "fecha", "operario", "tipo", "id_establecimiento", "establecimiento", "que", "cantidad",
-  "detalle", "foto_url", "estado", "respuesta_hys", "fecha_respuesta"];
+  "detalle", "justificacion", "foto_url", "estado", "respuesta_hys", "fecha_respuesta"];
 const DIAS_POR_VENCER = 3;
 const MOTIVOS_NO_RESUELTO = ["El biocida no hizo efecto", "Falta de herramientas o insumos (biocidas)", "Otro"];
-const TIPOS_SOLICITUD = ["Biocidas", "EPP", "Aviso en un establecimiento", "Novedad", "Aviso en un CAPS", "Novedad importante"];   // los dos últimos: nombres viejos (25/10/2026)
+const TIPOS_SOLICITUD = ["Biocidas", "EPP", "Herramientas", "Aviso en un establecimiento", "Novedad", "Aviso en un CAPS", "Novedad importante"];   // los dos últimos: nombres viejos (25/10/2026)
 
 // Crea la hoja si falta y agrega al final las columnas que falten (no borra nada)
 function hojaCon_(ss, nombre, cols) {
@@ -90,7 +90,7 @@ function solicitudesParaApp_(ss) {
   const desde = Date.now() - 120 * 86400000;
   return filasComoObjetos_(ss.getSheetByName(SHEET_SOLICITUDES)).filter((s) => !s.fecha || new Date(s.fecha).getTime() >= desde || s.estado === "Pendiente")
     .map((s) => ({ id: s.id_solicitud, fila: s._fila, fecha: s.fecha, operario: s.operario, tipo: s.tipo, establecimiento: s.establecimiento, que: s.que, cantidad: s.cantidad,
-      detalle: String(s.detalle || "").slice(0, 600), fotos: String(s.foto_url || "").split(/[\s,|]+/).filter((u) => /^https?:/.test(u)), estado: s.estado || "Pendiente",
+      detalle: String(s.detalle || "").slice(0, 600), justificacion: String(s.justificacion || "").slice(0, 600), fotos: String(s.foto_url || "").split(/[\s,|]+/).filter((u) => /^https?:/.test(u)), estado: s.estado || "Pendiente",
       respuesta: s.respuesta_hys, fecha_respuesta: s.fecha_respuesta }))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 }
@@ -114,6 +114,7 @@ function guardarCasoOSolicitud_(ss, tipo, data) {
     if (data.resultado_cierre === "No resuelto" && MOTIVOS_NO_RESUELTO.indexOf(data.motivo) === -1) throw new Error("Falta el motivo.");
     if (data.motivo === "Otro" && !String(data.detalle || "").trim()) throw new Error("Falta explicar el motivo.");
   } else if (TIPOS_SOLICITUD.indexOf(data.tipo) === -1) throw new Error("Falta el tipo de solicitud.");
+  else if (data.tipo === "Herramientas" && String(data.justificacion || data.detalle || "").trim().length < 10) throw new Error("Falta justificar el pedido de herramientas.");
   const fotos = listaDeFotos(data).slice(0, 5);
   const carpeta = Object.assign({}, data, { establecimiento: data.establecimiento || (cierre ? "Cierres de casos" : "Solicitudes a HyS") });
   const links = fotos.length ? guardarFotos(fotos, carpeta, data[campoId]) : [];

@@ -704,7 +704,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.25c";
+const APP_VERSION = "2026.10.25d";
 </script>
 <script>
 // ============================================================
@@ -3450,9 +3450,12 @@ const MOTIVOS_NR = [
   { id: "Falta de herramientas o insumos (biocidas)", emoji: "🧰", t: "Faltan herramientas o insumos (biocidas)" },
   { id: "Otro", emoji: "✏️", t: "Otro motivo (explicar)" },
 ];
+const HERRAMIENTAS = ["Pala", "Pico", "Escalera", "Balde", "Espátula", "Rastrillo", "Escobillón", "Escoba", "Carretilla", "Tijera de podar", "Serrucho", "Machete",
+  "Azada", "Horquilla", "Manguera", "Varilla para destapar", "Sopapa", "Mochila pulverizadora", "Linterna", "Alargue", "Bolsas de consorcio", "Otra"];
 const TIPOS_SOL = [
   { id: "Biocidas", emoji: "🧪", t: "Biocidas", sub: "Qué producto y cuánto" },
   { id: "EPP", emoji: "🧤", t: "EPP", sub: "Guantes, barbijo, anteojos, ropa…" },
+  { id: "Herramientas", emoji: "🛠️", t: "Herramientas", sub: "Pala, pico, escalera, balde… con la justificación" },
   { id: "Aviso en un establecimiento", emoji: "📢", t: "Aviso en un lugar", sub: "Que se avise algo en un hospital, dependencia o CAPS" },
   { id: "Novedad", emoji: "📝", t: "Novedad", sub: "Algo que viste y querés dejar registrado" },
 ];
@@ -3486,7 +3489,7 @@ function avisosPintar() {
     ? `<button type="button" class="av-urgente" data-av="casos"><span class="av-emo">⚠️</span><span><b>Revisar urgente: ${urg.length} caso${urg.length > 1 ? "s" : ""}</b><small>Tocá para indicar si quedó resuelto</small></span></button>`
     : casos.length ? `<button type="button" class="av-suave" data-av="casos"><span class="av-emo">📋</span><span><b>${casos.length} caso${casos.length > 1 ? "s" : ""} abierto${casos.length > 1 ? "s" : ""}</b><small>Al día. Tocá para verlos o cerrarlos</small></span></button>` : "");
   const sol = document.getElementById("goSolicitudes");
-  if (sol) sol.querySelector(".mc-sub").textContent = resp ? "Belén respondió " + resp + " · tocá para ver" : "Biocidas, EPP, avisos, novedades";
+  if (sol) sol.querySelector(".mc-sub").textContent = resp ? "Belén respondió " + resp + " · tocá para ver" : "Biocidas, EPP, herramientas, avisos, novedades";
   box.querySelectorAll("[data-av=casos]").forEach((b) => (b.onclick = () => avCasosLista()));
 }
 
@@ -3594,7 +3597,7 @@ function avCaso(c) {
 function avSolicitudes() {
   const mias = avisosSolicitudes();
   const est = (s) => s.estado === "Pendiente" ? `<span class="av-chip amarillo">Pendiente</span>` : s.estado === "Atendida" ? `<span class="av-chip verde">Atendida</span>` : `<span class="av-chip gris">${avEsc(s.estado)}</span>`;
-  const html = `<p class="av-gris" style="margin-top:0">Lo que mandes acá queda registrado para que Belén lo gestione. Si es algo urgente, además llamala.</p><button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, avisos o novedades</small></span></button>` +
+  const html = `<p class="av-gris" style="margin-top:0">Lo que mandes acá queda registrado para que Belén lo gestione. Si es algo urgente, además llamala.</p><button type="button" class="av-grande" id="avNueva"><span class="av-emo">✉️</span><span><b>Nueva solicitud a Belén</b><small>Biocidas, EPP, herramientas, avisos o novedades</small></span></button>` +
     (mias.length ? `<div class="av-pregunta" style="margin-top:18px">Las últimas solicitudes</div>` + mias.slice(0, 25).map((s) => `<div class="av-caso"><b>${avEsc(TIPOS_SOL.find((t) => t.id === s.tipo)?.emoji || "✉️")} ${avEsc(s.tipo)}${s.que ? " · " + avEsc(s.que) : ""}${s.cantidad ? " · " + avEsc(s.cantidad) : ""}</b>${est(s)}<small>${avFecha(s.fecha)} · ${avEsc(s.operario || "")}${s.establecimiento ? " · " + avEsc(s.establecimiento) : ""}</small>${s.respuesta ? `<p class="av-resp">💬 Belén: ${avEsc(s.respuesta)}</p>` : ""}</div>`).join("") : "");
   const ov = avVentana("Solicitudes a Belén", html, "#5B4A8A");
   document.getElementById("avNueva").onclick = () => { const yo = avQuien(); yo ? avSolTipo(yo) : avElegirQuien(avSolTipo); };
@@ -3619,6 +3622,7 @@ function avSolForm(yo, tipo) {
   const lugares = (typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : []);
   const chips = (lista) => `<div class="chip-row">` + lista.map((x) => `<button type="button" class="chip" data-q="${avEsc(x)}">${avEsc(x)}</button>`).join("") + `</div>`;
   const campos = tipo.id === "Biocidas" ? `<div class="av-pregunta">¿Qué producto?</div>${chips(prods.concat(["Otro"]))}<input id="avQue" placeholder="Producto (si no está en la lista)"><div class="av-pregunta">¿Cuánto?</div><input id="avCant" placeholder="Ej.: 2 litros, 3 jeringas, 1 caja">`
+    : tipo.id === "Herramientas" ? `<div class="av-pregunta">¿Qué herramientas? (podés marcar varias)</div>${chips(HERRAMIENTAS)}<input id="avQue" placeholder="Otras herramientas (si no están en la lista)"><div class="av-pregunta">¿Cuántas?</div><input id="avCant" placeholder="Ej.: 1 escalera de 5 escalones, 2 palas"><div class="av-pregunta">¿Para qué las necesitás? <span style="color:#C0453A">(obligatorio)</span></div>`
     : tipo.id === "EPP" ? `<div class="av-pregunta">¿Qué necesitás?</div>${chips(epps)}<input id="avQue" placeholder="Qué (si no está en la lista)"><div class="av-pregunta">¿Cuánto? (cantidad y talle si corresponde)</div><input id="avCant" placeholder="Ej.: 2 pares de guantes, talle L">`
     : tipo.id === "Aviso en un establecimiento" ? `<div class="av-pregunta">¿Dónde?</div><select id="avLugar"><option value="">Elegí el lugar</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
     : `<div class="av-pregunta">¿Dónde? (opcional)</div><select id="avLugar"><option value="">—</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué pasó?</div>`;
@@ -3626,19 +3630,28 @@ function avSolForm(yo, tipo) {
     <div class="av-pregunta" style="margin-top:14px">Fotos (opcional, hasta 5)</div><div class="foto-grid" id="avFot"></div>
     <button type="button" class="av-btn" id="avOk">Enviar a Belén</button><button type="button" class="av-link" id="avAtras">← Volver</button>`, "#5B4A8A");
   avFotos(document.getElementById("avFot"), s.fotos);
+  if (tipo.id === "Herramientas") {   // varias a la vez; el botón Enviar se habilita recién con la justificación
+    const q = document.getElementById("avQue"), det = document.getElementById("avDet"), ok = document.getElementById("avOk");
+    det.placeholder = "Explicá para qué trabajo y dónde las vas a usar (sin esto no se puede enviar)";
+    const marcar = () => { ok.disabled = det.value.trim().length < 10; ok.textContent = ok.disabled ? "Escribí para qué las necesitás" : "Enviar a Belén"; };
+    det.addEventListener("input", marcar); marcar();
+    ov.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { b.classList.toggle("active"); const sel = Array.from(ov.querySelectorAll("[data-q].active")).map((x) => x.dataset.q).filter((x) => x !== "Otra");
+      const extra = q.value.split(",").map((x) => x.trim()).filter((x) => x && HERRAMIENTAS.indexOf(x) < 0); q.value = sel.concat(extra).join(", "); if (b.dataset.q === "Otra" && b.classList.contains("active")) q.focus(); }));
+  } else
   ov.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { ov.querySelectorAll("[data-q]").forEach((x) => x.classList.toggle("active", x === b)); const q = document.getElementById("avQue"); if (q) q.value = b.dataset.q === "Otro" ? "" : b.dataset.q; if (q && b.dataset.q === "Otro") q.focus(); }));
   document.getElementById("avAtras").onclick = () => avSolTipo(yo);
   document.getElementById("avOk").onclick = async (e) => {
     const v = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
     s.que = v("avQue"); s.cantidad = v("avCant"); s.detalle = v("avDet"); const idL = v("avLugar");
     const lug = lugares.find((x) => x.id === idL);
-    if ((tipo.id === "Biocidas" || tipo.id === "EPP") && !s.que) { alert("Indicá qué necesitás."); return; }
-    if ((tipo.id === "Biocidas" || tipo.id === "EPP") && !s.cantidad) { alert("Indicá cuánto necesitás."); return; }
+    if ((tipo.id === "Biocidas" || tipo.id === "EPP" || tipo.id === "Herramientas") && !s.que) { alert("Indicá qué necesitás."); return; }
+    if ((tipo.id === "Biocidas" || tipo.id === "EPP" || tipo.id === "Herramientas") && !s.cantidad) { alert("Indicá cuánto necesitás."); return; }
+    if (tipo.id === "Herramientas" && s.detalle.length < 10) { alert("Explicá para qué necesitás las herramientas. Sin eso no se puede enviar."); return; }
     if (tipo.id === "Aviso en un establecimiento" && !lug) { alert("Elegí el lugar."); return; }
     if ((tipo.id === "Aviso en un establecimiento" || tipo.id === "Novedad") && s.detalle.length < 4) { alert("Contá qué pasó o qué hay que avisar."); return; }
     e.target.disabled = true;
     await avEnviar({ tipo: "solicitud", data: { id_solicitud: "S-" + Date.now(), fecha: new Date().toISOString(), operario: yo.nombre, tipo: tipo.id, id_establecimiento: lug ? lug.id : "", establecimiento: lug ? lug.nombre : "",
-      que: s.que, cantidad: s.cantidad, detalle: s.detalle, fotos_base64: s.fotos.slice(0, 5) } }, "Solicitud enviada a Belén: " + tipo.t + (s.que ? " · " + s.que : "") + ".");
+      que: s.que, cantidad: s.cantidad, detalle: s.detalle, justificacion: tipo.id === "Herramientas" ? s.detalle : "", fotos_base64: s.fotos.slice(0, 5) } }, "Solicitud enviada a Belén: " + tipo.t + (s.que ? " · " + s.que : "") + ".");
   };
 }
 
