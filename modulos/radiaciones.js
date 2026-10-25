@@ -250,7 +250,7 @@ const RADF_EXTRA = { alta: [['INICIO_EXPOSICION', 'Fecha de inicio de la exposic
   baja: [['MOTIVO_TIPO', 'Motivo', RAD_MOTIVOS_BAJA], ['BAJA_DOSIMETRO', 'Fecha a partir de la cual se pide la baja', 'date'], ['ENTREGA', '¿Entrega el dosímetro?', ['Sí', 'No']], ['MOTIVO_BAJA', 'Detalle del motivo']],
   novedad: [['NOVEDAD', 'Qué pasó', RAD_NOVEDADES], ['FECHA_HECHO', 'Fecha en que cree que ocurrió', 'date'], ['HORA_HECHO', 'Hora aproximada'], ['LUGAR_HECHO', 'Dónde cree que ocurrió'], ['DENUNCIA', 'En caso de robo, ¿hizo la denuncia policial?', ['Sí', 'No', 'No corresponde']], ['DENUNCIA_NRO', 'N.º de denuncia y dependencia'], ['DESCRIPCION', 'Descripción', 'area']] };
 const RADF_NOM = { alta: ['F-RAD-01', 'Solicitud de alta de dosímetro personal (con el anexo de compromiso de uso)'], baja: ['F-RAD-02', 'Solicitud de baja de dosímetro personal'], novedad: ['F-RAD-03', 'Informe de novedad de dosímetro (pérdida, extravío, robo, daño)'] };
-const radFormPer = p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d') + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (/^Baja/.test(p.ESTADO_DOSIMETRO) ? ' (de baja)' : '');
+const radFormPer = p => p.APELLIDO_Y_NOMBRE + ' · DNI ' + (p.DNI || 's/d') + (p.DOSIMETRO_NRO ? ' · ' + p.DOSIMETRO_NRO : '') + (p.EN_BASE === 'No' ? ' (no está en la base de personal)' : /baja|traslado|renuncia|jubil|fallec/i.test(p.BASE_ESTADO || '') ? ' (de baja en la base de personal)' : '');
 const radFormLista = D => D.personal.filter(p => !/^Baja/.test(p.ESTADO_DOSIMETRO));   // los dados de baja no se ofrecen (25/10/2026)
 const radSd = v => /^s\/?d$/i.test(String(v || '').trim()) ? '' : (v == null ? '' : String(v));   // «s/d» cuenta como vacío
 function radForm(D) {
@@ -270,8 +270,8 @@ function radForm(D) {
     '<h3 style="margin:14px 0 6px">Datos del trabajador</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_CAMPOS.map(c => ctl(c[0], c[1])).join('') + '</div>' +
     '<h3 style="margin:14px 0 6px">' + (RADFF.tipo === 'alta' ? 'Alta' : RADFF.tipo === 'baja' ? 'Baja' : 'Novedad') + '</h3><div class="campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + RADF_EXTRA[RADFF.tipo].map(c => ctl(c[0], c[1], c[2])).join('') + '</div>' +
     '<div class="filtros" style="margin-top:14px"><button class="btn pri" id="rfImp">Imprimir con estos datos</button><button class="btn sec" id="rfBlanco">Imprimir en blanco</button>' +
-    (p ? '<button class="btn sec" id="rfGuardar">Guardar los datos de contacto en la ficha</button>' : '') + '</div>' +
-    '<p class="mu peq" style="margin:8px 0 0">«Guardar los datos de contacto» pasa a la ficha de la persona el CUIL, teléfono, correo, servicios, función, título y matrícula, para que la próxima vez salgan solos. Firmado el formulario, se adjunta en el alta, la baja o el evento (pestañas Personal y Eventos).</p></section>';
+    (p ? '<button class="btn sec" id="rfGuardar">Guardar estos datos en la base de personal</button>' : '') + '</div>' +
+    '<p class="mu peq" style="margin:8px 0 0">Los datos personales salen de la BASE DE TRABAJADORES (base única). «Guardar estos datos en la base de personal» escribe ahí el CUIL, teléfono, correo, servicios, función, título y matrícula (queda en el historial de la base) y los ven todos los módulos. Firmado el formulario, se adjunta en el alta, la baja o el evento (pestañas Personal y Eventos).</p></section>';
 }
 function radFormEv(D) {
   const leer = () => document.querySelectorAll('[data-rf]').forEach(el => { RADFF.v[el.dataset.rf] = el.value; });
@@ -283,7 +283,7 @@ function radFormEv(D) {
     // Lo que falta (CUIL, correo, teléfono, función, servicio) se completa con la BASE DE TRABAJADORES por DNI
     const dni = p && String(p.DNI || '').replace(/\D/g, ''); if (!dni || dni.length < 7) return;
     try { const r = await api('p_rad_dni', { dni: dni }); const b = r && r.ok && r.persona; if (!b || RADFF.id !== p.ID) return; const V = RADFF.v;
-      [['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIOS', b.servicio]].forEach(x => { if (!radSd(V[x[0]]) && radSd(x[1])) V[x[0]] = x[1]; });
+      [['APELLIDO_Y_NOMBRE', b.nombre], ['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIOS', b.servicios || b.servicio], ['TITULO', b.titulo], ['MATRICULA', b.matricula]].forEach(x => { if (radSd(x[1])) V[x[0]] = x[1]; });   // la base manda
       if (RADF.tab === 'form' && $('rfPer')) radEst(encodeURIComponent(D.cod) + '/form'); } catch (e) {} };
   const lim = $('rfLimpiar'); if (lim) lim.onclick = () => { RADFF.id = ''; RADFF.v = {}; radEst(encodeURIComponent(D.cod) + '/form'); };
   const nom = () => RADF_NOM[RADFF.tipo][0];
@@ -294,8 +294,8 @@ function radFormEv(D) {
     const datos = { ID: p.ID, ESTABLECIMIENTO: D.cod, APELLIDO_Y_NOMBRE: p.APELLIDO_Y_NOMBRE, DNI: p.DNI }; ['CUIL', 'TELEFONO', 'EMAIL', 'SERVICIOS', 'FUNCION', 'TITULO', 'MATRICULA'].forEach(k => { if (RADFF.v[k] != null) datos[k] = RADFF.v[k]; });
     if (datos.EMAIL && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(datos.EMAIL.trim())) return toast('El correo no parece válido.');
     g.disabled = true; g.textContent = 'Guardando…';
-    try { const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) { g.disabled = false; g.textContent = 'Guardar los datos de contacto en la ficha'; return toast(r.mensaje || 'No se pudo guardar.'); }
-      toast('Datos guardados en la ficha de ' + p.APELLIDO_Y_NOMBRE + '.'); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/form', true); } catch (e) { g.disabled = false; g.textContent = 'Guardar los datos de contacto en la ficha'; } };
+    try { const r = await api('p_rad_persona_guardar', datos, 120000); if (!r.ok) { g.disabled = false; g.textContent = 'Guardar estos datos en la base de personal'; return toast(r.mensaje || 'No se pudo guardar.'); }
+      toast('Datos guardados en la base de personal (' + p.APELLIDO_Y_NOMBRE + ').'); RADT = null; delete RADD[D.cod]; radEst(encodeURIComponent(D.cod) + '/form', true); } catch (e) { g.disabled = false; g.textContent = 'Guardar estos datos en la base de personal'; } };
 }
 
 // ---------- Controles mensuales

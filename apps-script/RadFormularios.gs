@@ -45,6 +45,7 @@ const RADF = {
 function radfDatos_(cod, d) {
   d = d || {}; let p = null;
   if (d.ID) { try { p = radLeer_('PERSONAL_EXPUESTO', RAD.H_PER).find(o => o.ID === d.ID && limpio_(o.ESTABLECIMIENTO) === cod) || null; } catch (e) {} }
+  if (p) p = radConBase_([p])[0];   // datos personales: de la base única
   const o = Object.assign({}, p || {}); Object.keys(d).forEach(k => { if (d[k] !== '' && d[k] != null && typeof d[k] !== 'object') o[k] = d[k]; });
   if (o.SERVICIOS == null || o.SERVICIOS === '') o.SERVICIOS = o.SERVICIO || '';
   return o;

@@ -227,11 +227,47 @@ function radMov_(p, tipo, detalle, doc, quien) {
     DOSIMETRO_NRO: p.DOSIMETRO_NRO, DETALLE: detalle || '', DOCUMENTO: doc || '', CARGADO_POR: quien || 'Portal', CARGADO: new Date() });
 }
 // Datos de la BASE DE TRABAJADORES por DNI (hoja TODOS)
+// LA BASE DE DATOS ES ÚNICA (regla de todo el sistema, 25/10/2026): los datos personales (nombre, CUIL, correo, teléfono, función, servicio,
+// título, matrícula) se leen de la BASE DE TRABAJADORES por DNI y los cambios se escriben ahí, con HISTORIAL (Personas.gs, Bandeja.gs).
+// PERSONAL_EXPUESTO guarda solo lo propio de radiaciones (dosímetro, sector, estado, autorización) y el DNI como clave.
+let RAD_PIX_ = null;
+function radPersIx_() {
+  if (RAD_PIX_) return RAD_PIX_; const ix = {};
+  persIndice_().forEach(x => { const y = ix[x.dni]; if (!y || (y.hoja === 'SIN_ASIGNAR' && x.hoja !== 'SIN_ASIGNAR')) ix[x.dni] = x; });
+  return RAD_PIX_ = ix;
+}
+function radBaseDe_(x) {
+  const v = k => { const t = persVal_(x, k); return bjVacio_(t) ? '' : t; };
+  return { dni: x.dni, nombre: [v('APELLIDOS'), v('NOMBRES')].filter(Boolean).join(', '), cuil: v('CUIL'), email: v('EMAIL'), telefono: v('TELEFONO'), funcion: v('FUNCION') || v('FUNCION_DETALLE'),
+    servicio: v('SERVICIO'), servicios: v('SERVICIOS'), titulo: v('TITULO'), matricula: v('MATRICULA'), est: x.hoja, estado: v('ESTADO') };
+}
 function radDniBase_(dni) {
   dni = String(dni || '').replace(/\D/g, ''); if (dni.length < 6) return null;
-  const T = pBT_().getSheetByName('TODOS'), n = T.getLastRow() - 5; if (n < 1) return null;
-  const r = T.getRange(6, 1, n, 22).getValues().find(x => String(x[1]).replace(/\D/g, '') === dni);
-  return r ? { dni: dni, cuil: limpio_(r[0]), nombre: [r[2], r[3]].filter(Boolean).join(', '), funcion: limpio_(r[5] || r[6]), servicio: limpio_(r[7]), email: limpio_(r[11]), telefono: limpio_(r[13]), est: limpio_(r[21]), estado: limpio_(r[19]) } : null;   // email y teléfono: para los formularios F-RAD (25/10/2026)
+  const x = radPersIx_()[dni]; return x ? radBaseDe_(x) : null;
+}
+// Pone sobre cada persona expuesta los datos de la base (la base manda; lo de la planilla de radiaciones queda solo si la base no lo tiene)
+function radConBase_(per) {
+  let ix = {}; try { ix = radPersIx_(); } catch (e) { return per; }
+  return per.map(p => { const x = ix[String(p.DNI || '').replace(/\D/g, '')]; if (!x) return Object.assign({}, p, { EN_BASE: 'No' });
+    const b = radBaseDe_(x), o = Object.assign({}, p, { EN_BASE: 'Sí', BASE_ESTADO: b.estado, BASE_EST: b.est });
+    [['APELLIDO_Y_NOMBRE', b.nombre], ['CUIL', b.cuil], ['EMAIL', b.email], ['TELEFONO', b.telefono], ['FUNCION', b.funcion], ['SERVICIO', b.servicio], ['SERVICIOS', b.servicios || b.servicio], ['TITULO', b.titulo], ['MATRICULA', b.matricula]]
+      .forEach(c => { if (c[1]) o[c[0]] = c[1]; else if (bjVacio_(o[c[0]])) o[c[0]] = ''; });
+    return o; });
+}
+// Escribe en la base los datos personales que llegan desde radiaciones (solo lo que cambia; si la persona no está, la da de alta en su establecimiento)
+function radBaseEscribir_(cod, x, dni, nom, quien) {
+  if (!dni) return { aviso: 'Sin DNI no se puede vincular con la base de personal.' };
+  const norm = (k, v) => /CUIL|TELEFONO/.test(k) ? String(v || '').replace(/\D/g, '') : k === 'EMAIL' ? String(v || '').trim().toLowerCase() : sinTildes_(String(v || ''));
+  const val = {}; ['CUIL', 'EMAIL', 'TELEFONO', 'FUNCION', 'SERVICIOS', 'TITULO', 'MATRICULA'].forEach(k => { if (x[k] != null && !bjVacio_(x[k])) val[k] = limpio_(x[k]); });
+  const origen = 'Radiaciones (' + (limpio_(quien) || 'Portal') + ')', b = radPersIx_()[dni];
+  if (!b) {
+    const pz = nom.split(','), nueva = Object.assign({ DNI: dni, APELLIDOS: pz[0].trim(), NOMBRES: pz.slice(1).join(',').trim() }, val);
+    if (val.SERVICIOS) nueva.SERVICIO = val.SERVICIOS.split(',')[0].trim();
+    bjAplicarTrab_(cod, [{ clave: 'DNI ' + dni, nueva: nueva, despues: nom }], origen); RAD_PIX_ = null; return { alta: true };
+  }
+  const C = []; Object.keys(val).forEach(k => { const antes = persVal_(b, k); if (norm(k, antes) !== norm(k, val[k])) C.push({ clave: 'DNI ' + dni, campo: k, antes: antes, despues: val[k] }); });
+  if (C.length) { bjAplicarTrab_(b.hoja, C, origen); RAD_PIX_ = null; }
+  return { cambios: C.length };
 }
 // Índice de la BASE DE TRABAJADORES (hoja TODOS) por DNI, leído una sola vez
 function radBaseIndice_() {
@@ -288,6 +324,9 @@ function radPersonaGuardar_(x, quien) {
   const fk = x.FORM === 'alta' || x.FORM === 'baja' ? x.FORM : '';   // formulario F-RAD-01 o 02 firmado (25/10/2026)
   const doc = x.archivo ? radArchivo_(cod, x.archivo, fk ? ['Formularios'] : ['Documentos'], (fk ? (fk === 'alta' ? 'F-RAD-01 alta' : 'F-RAD-02 baja') : (x.movimiento && x.movimiento.tipo || 'Personal')) + ' ' + nom) : '';
   if (fk && doc) p[fk === 'alta' ? 'FORM_ALTA' : 'FORM_BAJA'] = doc;
+  // Datos personales: a la BASE DE TRABAJADORES (base única); en PERSONAL_EXPUESTO no se guardan copias de correo, teléfono, servicios, título ni matrícula
+  let base = null; try { base = radBaseEscribir_(cod, x, dni, nom, quien); ['EMAIL', 'TELEFONO', 'SERVICIOS', 'TITULO', 'MATRICULA'].forEach(k => p[k] = ''); }
+  catch (e) { base = { aviso: 'No se pudo actualizar la base de personal (' + e.message + '): los datos quedaron solo en radiaciones.' }; }
   if (antes) radActualizar_('PERSONAL_EXPUESTO', RAD.H_PER, antes.fila, p); else radAgregar_('PERSONAL_EXPUESTO', RAD.H_PER, p);
   // Movimientos: los que pide el portal y los que surgen del cambio de estado o de dosímetro
   const movs = [];
@@ -299,7 +338,7 @@ function radPersonaGuardar_(x, quien) {
   } else if (p.DOSIMETRO_NRO) movs.push(['Alta de dosímetro', 'Dosímetro ' + p.DOSIMETRO_NRO]);
   movs.forEach(m => radMov_(p, m[0], m[1], doc, quien));
   CacheService.getScriptCache().remove('rad_tablero');
-  return { ok: true, id: p.ID, avisoComunicar: movs.length ? 'Recordá comunicar el cambio de personal con dosímetro a la autoridad sanitaria (Dto. 6320/68, art. 22).' : '' };
+  return { ok: true, id: p.ID, base: base, avisoComunicar: movs.length ? 'Recordá comunicar el cambio de personal con dosímetro a la autoridad sanitaria (Dto. 6320/68, art. 22).' : '' };
 }
 
 // ------------------------------------------------------------------ CONTROLES MENSUALES (PDF)
@@ -578,7 +617,7 @@ function radDetalle_(cod) {
   const req = D.req.filter(r => r.ACTIVO !== 'No').map(r => ({ id: r.ID, alcance: r.ALCANCE, requisito: r.REQUISITO, norma: r.NORMA, como: r.COMO_SE_CUMPLE, docTipo: r.DOC_TIPO,
     docs: r.DOC_TIPO ? docs.filter(d => d.TIPO === r.DOC_TIPO && d.ESTADO === 'Vigente').map(d => ({ titulo: d.TITULO, archivo: d.ARCHIVO, vence: d.VENCE })) : null }));
   const mov = radLeer_('MOVIMIENTOS', RAD.H_MOV).filter(m => limpio_(m.ESTABLECIMIENTO) === cod).slice(-200).reverse();
-  return { ok: true, cod: cod, hoy: hoy, resumen: radResumenEst_(cod, D, hoy), personal: de(D.per), movimientos: mov,
+  return { ok: true, cod: cod, hoy: hoy, resumen: radResumenEst_(cod, D, hoy), personal: radConBase_(de(D.per)), movimientos: mov,
     controles: de(D.con).sort((a, b) => String(b.PERIODO).localeCompare(String(a.PERIODO))), meses: radMeses_(12),
     eventos: de(D.eve).reverse(), salas: de(D.sal).map(s => Object.assign(s, { hab: radEstadoFecha_(s.HABILITACION_VENCE, hoy), lev: radEstadoFecha_(s.LEVANTAMIENTO_PROXIMO, hoy), cc: radEstadoFecha_(s.CONTROL_CALIDAD_PROXIMO, hoy) })),
     documentos: docs.reverse(), requisitos: req, sugeridas: radSugeridas_(cod), cruce: radCruce_(cod, de(D.per)), sitios: radSitiosEst_(cod, D.sit),
@@ -599,10 +638,10 @@ function radRed_(d) {
   switch (d.accion) {
     case 'r_datos': {
       const D = radDatos_(), de = l => l.filter(o => o.ESTABLECIMIENTO === cod);
-      return { ok: true, personal: de(D.per), eventos: de(D.eve).reverse().slice(0, 60), sitios: radSitiosEst_(cod, D.sit).filter(s => s.RAYOS_X !== 'No').map(s => s.SITIO),
+      return { ok: true, personal: radConBase_(de(D.per)), eventos: de(D.eve).reverse().slice(0, 60), sitios: radSitiosEst_(cod, D.sit).filter(s => s.RAYOS_X !== 'No').map(s => s.SITIO),
         sugeridas: radSugeridas_(cod), listas: { sectores: RAD.SECTORES, tiposDosi: RAD.TIPOS_DOSI, tiposEve: RAD.TIPOS_EVE },
         // «Formularios del dosímetro» (25/10/2026): el personal de Radiología rota entre el HZT y el HMH y se carga en el HZT, así que desde cualquiera de los dos se elige entre ambos
-        personalUnidad: (cod === 'HZT' || cod === 'HMH') ? D.per.filter(o => o.ESTABLECIMIENTO === 'HZT' || o.ESTABLECIMIENTO === 'HMH') : null };
+        personalUnidad: (cod === 'HZT' || cod === 'HMH') ? radConBase_(D.per.filter(o => o.ESTABLECIMIENTO === 'HZT' || o.ESTABLECIMIENTO === 'HMH')) : null };
     }
     case 'r_dni': return { ok: true, persona: radDniBase_(x.dni) };
     case 'r_persona_guardar': {
