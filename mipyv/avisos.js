@@ -172,6 +172,13 @@ function avSolTipo(yo) {
   ov.querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => avSolForm(yo, TIPOS_SOL[Number(b.dataset.t)])));
   document.getElementById("avOtro").onclick = () => avElegirQuien(avSolTipo);
 }
+// Lista de lugares agrupada: hospitales, dependencias (ex ADOS, Pichi Anai, PROSATE…) y CAPS
+function avOpcionesLugar(lugares) {
+  const grupos = [["Hospital", "Hospitales"], ["Dependencia", "Dependencias"], ["CAP", "CAPS"]];
+  const opt = (e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`;
+  const otros = lugares.filter((e) => !grupos.some((g) => g[0] === e.tipo));
+  return grupos.map((g) => { const l = lugares.filter((e) => e.tipo === g[0]).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), "es")); return l.length ? `<optgroup label="${g[1]}">${l.map(opt).join("")}</optgroup>` : ""; }).join("") + otros.map(opt).join("");
+}
 function avSolForm(yo, tipo) {
   const s = { que: "", cantidad: "", lugar: "", detalle: "", fotos: [] };
   const prods = (typeof PRODUCTOS !== "undefined" ? PRODUCTOS : []).filter((p) => !/^(PRD-1[345])$/.test(p.id)).map((p) => p.nombre);
@@ -180,8 +187,8 @@ function avSolForm(yo, tipo) {
   const chips = (lista) => `<div class="chip-row">` + lista.map((x) => `<button type="button" class="chip" data-q="${avEsc(x)}">${avEsc(x)}</button>`).join("") + `</div>`;
   const campos = tipo.id === "Biocidas" ? `<div class="av-pregunta">¿Qué producto?</div>${chips(prods.concat(["Otro"]))}<input id="avQue" placeholder="Producto (si no está en la lista)"><div class="av-pregunta">¿Cuánto?</div><input id="avCant" placeholder="Ej.: 2 litros, 3 jeringas, 1 caja">`
     : tipo.id === "EPP" ? `<div class="av-pregunta">¿Qué necesitás?</div>${chips(epps)}<input id="avQue" placeholder="Qué (si no está en la lista)"><div class="av-pregunta">¿Cuánto? (cantidad y talle si corresponde)</div><input id="avCant" placeholder="Ej.: 2 pares de guantes, talle L">`
-    : tipo.id === "Aviso en un establecimiento" ? `<div class="av-pregunta">¿Dónde?</div><select id="avLugar"><option value="">Elegí el lugar</option>${lugares.map((e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`).join("")}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
-    : `<div class="av-pregunta">¿Dónde? (opcional)</div><select id="avLugar"><option value="">—</option>${lugares.map((e) => `<option value="${avEsc(e.id)}">${avEsc(e.nombre)}</option>`).join("")}</select><div class="av-pregunta">¿Qué pasó?</div>`;
+    : tipo.id === "Aviso en un establecimiento" ? `<div class="av-pregunta">¿Dónde?</div><select id="avLugar"><option value="">Elegí el lugar</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué hay que avisar?</div>`
+    : `<div class="av-pregunta">¿Dónde? (opcional)</div><select id="avLugar"><option value="">—</option>${avOpcionesLugar(lugares)}</select><div class="av-pregunta">¿Qué pasó?</div>`;
   const ov = avVentana(tipo.t, `${campos}<textarea id="avDet" rows="4" placeholder="Escribí o dictá con el micrófono del teclado"></textarea>
     <div class="av-pregunta" style="margin-top:14px">Fotos (opcional, hasta 5)</div><div class="foto-grid" id="avFot"></div>
     <button type="button" class="av-btn" id="avOk">Enviar a Belén</button><button type="button" class="av-link" id="avAtras">← Volver</button>`, "#5B4A8A");
