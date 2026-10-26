@@ -516,9 +516,11 @@ async function capAlta() {
 // cuando se cierra su registro (48 h después de la clase); no se borra: queda en «Ver anteriores».
 let CAPDIC_ANT = false;
 function capDicPasado(x) {
-  if (/^cerrado$/i.test(x.ahora)) return true;
-  if (/cancel|suspend/i.test(x.ahora)) { const m = String(x.fecha || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return false; const hoy = new Date(); hoy.setHours(0, 0, 0, 0); return new Date(+m[3], m[2] - 1, +m[1]) < hoy; }
-  return false;
+  // REGLA (Belén, 25/10/2026): en la lista quedan solo las clases que todavía no pasaron. Cancelados, suspendidos, cerrados y
+  // encuentros que ya se dictaron (aunque su registro siga abierto) van a «Ver anteriores». No se borra nada.
+  if (/^cerrado$/i.test(x.ahora) || /cancel|suspend/i.test(x.ahora)) return true;
+  const m = String(x.fecha || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return false;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0); return new Date(+m[3], m[2] - 1, +m[1]) < hoy;
 }
 async function capDictados() {
   cargando('#capdic', 'Leyendo los dictados…');
@@ -526,23 +528,22 @@ async function capDictados() {
   if (location.hash.split('/')[0] !== '#capdic') return;
   const chip = x => /abierto/i.test(x.ahora) ? 'ok' : /próximo/i.test(x.ahora) ? 'pa' : /cancel|suspend/i.test(x.ahora) ? 'er' : 'gr';
   const nAnt = r.lista.filter(capDicPasado).length;
-  // Antes de la clase, si hay inscripción previa, «Link» y «QR» comparten la inscripción (el link de asistencia recién abre a la hora de la clase)
-  const conInsc = x => !!x.linkInscripcion && /próximo/i.test(x.ahora);
-  const linkDe = x => conInsc(x) ? x.linkInscripcion : x.link;
-  const qrDe = x => conInsc(x) ? 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=' + encodeURIComponent(x.linkInscripcion) : x.qr;
+  // Compartir: el link y el QR de inscripción (si la lleva) y el link y el QR del certificado van por separado, con su nombre (25/10/2026)
+  const qrIns = x => x.qrInscripcion || 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=' + encodeURIComponent(x.linkInscripcion);
   const lista = CAPDIC_ANT ? r.lista.filter(capDicPasado).reverse() : r.lista.filter(x => !capDicPasado(x));
-  const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días con el registro ya cerrado, del más reciente al más antiguo. Tocá uno para ver asistentes y certificados.' : 'Próximos y con registro abierto. El link de registro abre a la hora de la clase y cierra solo a las 48 h; al cerrarse, el dictado pasa a «Ver anteriores».';
+  const sub = CAPDIC_ANT ? 'Anteriores: dictados de los últimos 60 días que ya se dieron, cancelados o suspendidos, del más reciente al más antiguo. Si el registro de alguno sigue abierto, lo dice su estado. Tocá uno para ver asistentes y certificados.' : 'Solo las clases que todavía no pasaron (las de hoy incluidas). Antes de la clase se comparte la inscripción (si la lleva); el link del certificado abre a la hora de la clase y cierra solo a las 48 h. Al cerrarse, el dictado pasa a «Ver anteriores».';
   const btnAnt = '<button class="btn sec" id="dicAnt">' + (CAPDIC_ANT ? 'Volver a los vigentes' : 'Ver anteriores' + (nAnt ? ' (' + nAnt + ')' : '')) + '</button>';
   marco('#capdic', capTit('Dictados', sub, '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a>' + btnAnt + '<a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
-    (!lista.length ? '<div class="card vacio">' + (CAPDIC_ANT ? 'No hay dictados anteriores en los últimos 60 días.' : 'No hay dictados próximos ni con registro abierto.' + (nAnt ? ' Los anteriores están en «Ver anteriores».' : '')) + '</div>' :
+    (!lista.length ? '<div class="card vacio">' + (CAPDIC_ANT ? 'No hay dictados anteriores en los últimos 60 días.' : 'No hay clases próximas.' + (nAnt ? ' Los anteriores están en «Ver anteriores».' : '')) + '</div>' :
     '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
     lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
       '<td><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></td><td>' + (x.linkInscripcion ? esc(x.inscriptos) + (capVacio(x.cupo) || /sin/i.test(x.cupo) ? '' : ' / ' + esc(x.cupo)) : '<span class="mu">—</span>') + '</td><td>' + esc(x.asistentes) + '</td>' +
-      '<td style="white-space:nowrap"><button class="link" data-cop="' + j + '" title="' + (conInsc(x) ? 'Link de inscripción' : 'Link de registro de asistencia') + '">Link' + (conInsc(x) ? ' inscripción' : '') + '</button> · <button class="link" data-wa="' + j + '">WhatsApp</button> · <a class="link" href="' + esc(qrDe(x)) + '" target="_blank" rel="noopener">QR</a></td></tr>').join('') + '</tbody></table></section>' +
+      '<td style="white-space:nowrap">' + (x.linkInscripcion ? '<div><span class="mu peq">Inscripción:</span> <button class="link" data-copi="' + j + '" title="Copiar el link de inscripción">Link</button> · <a class="link" href="' + esc(qrIns(x)) + '" target="_blank" rel="noopener" title="QR de inscripción">QR</a></div>' : '') + '<div><span class="mu peq">Certificado:</span> <button class="link" data-cop="' + j + '" title="Copiar el link del certificado (registro de asistencia)">Link</button> · <a class="link" href="' + esc(x.qr) + '" target="_blank" rel="noopener" title="QR del certificado">QR</a></div><div><button class="link" data-wa="' + j + '">WhatsApp</button></div></td></tr>').join('') + '</tbody></table></section>' +
     '<div class="tarjetas">' + lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
   $('dicAnt').onclick = () => { CAPDIC_ANT = !CAPDIC_ANT; capDictados(); };
   document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
-  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(linkDe(lista[b.dataset.cop]), conInsc(lista[b.dataset.cop]) ? 'Link de inscripción copiado.' : 'Link de registro copiado.'));
+  document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.cop].link, 'Link del certificado copiado.'));
+  document.querySelectorAll('[data-copi]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.copi].linkInscripcion, 'Link de inscripción copiado.'));
   document.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.wa].whatsapp, 'Texto para WhatsApp copiado.'));
 }
 async function capDictadoNuevo(cod) {
@@ -550,7 +551,7 @@ async function capDictadoNuevo(cod) {
   const L = CAPC.listas, caps = CAPC.lista.filter(c => !/inactiv|anulad/i.test(c.estado)).sort((a, b) => a.nombre.localeCompare(b.nombre));
   CAPD = { cod: cod || '', modalidad: 'Presencial', servicios: [], q: '', dis: [], fir: [] };
   const firm = (CAPC.firmantes || []).filter(f => f.vigente && f.id !== 'FIR-001');
-  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' + capTit('Nuevo dictado', 'El link y el QR se abren a la hora de la clase y se cierran solos a las 48 h. Fuera de ese plazo, solo vos agregás asistentes.') +
+  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' + capTit('Nuevo dictado', 'El link y el QR del certificado se abren a la hora de la clase y se cierran solos a las 48 h. Fuera de ese plazo, solo vos agregás asistentes.') +
     '<section class="card" style="display:flex;flex-direction:column;gap:14px">' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">' +
     '<label class="f" style="grid-column:1/-1">Capacitación<select class="c" id="ndCap"><option value="">Elegí…</option>' + caps.map(c => '<option value="' + esc(c.codigo) + '"' + (c.codigo === CAPD.cod ? ' selected' : '') + '>' + esc(c.nombre) + ' (' + esc(c.codigo) + (/^activ/i.test(c.estado) ? '' : ' · ' + esc(c.estado)) + ')</option>').join('') + '</select></label>' +
@@ -606,11 +607,11 @@ function capDictadoListo(r, c) {
   const wa = 'https://wa.me/?text=' + encodeURIComponent(r.whatsapp);
   marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' + capTit('Dictado creado', esc(c.nombre) + ' · ' + esc(r.fecha) + ' ' + esc(r.hora) + ' · ' + esc(r.modalidad)) +
     (r.aviso ? '<div class="aviso error">' + esc(r.aviso) + '</div>' : '') +
-    '<div class="tb2"><section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Registro de asistencia</h2><span class="mu peq">Abre el ' + esc(r.abre) + ' y cierra el ' + esc(r.cierra) + '.</span><span class="peq" style="overflow-wrap:anywhere">' + esc(r.link) + '</span>' +
-      '<div class="cpn"><button class="btn sec" id="dlCop">Copiar link</button><a class="btn sec" href="' + esc(r.qr) + '" target="_blank" rel="noopener">Abrir QR para descargar ↗</a></div><img src="' + esc(r.qr) + '" alt="QR del registro" style="width:180px;height:180px;border:1px solid var(--ln);border-radius:8px"></section>' +
+    '<div class="tb2"><section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Certificado (registro de asistencia)</h2><span class="mu peq">Abre el ' + esc(r.abre) + ' y cierra el ' + esc(r.cierra) + '.</span><span class="peq" style="overflow-wrap:anywhere">' + esc(r.link) + '</span>' +
+      '<div class="cpn"><button class="btn sec" id="dlCop">Copiar link</button><a class="btn sec" href="' + esc(r.qr) + '" target="_blank" rel="noopener">Abrir QR para descargar ↗</a></div><img src="' + esc(r.qr) + '" alt="QR del certificado" style="width:180px;height:180px;border:1px solid var(--ln);border-radius:8px"></section>' +
     (r.linkInscripcion ? '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Inscripción previa</h2><span class="mu peq">Cierra el ' + esc(r.cierreInscripcion) + ' o al llenarse el cupo (' + esc(r.cupo) + ').</span><span class="peq" style="overflow-wrap:anywhere">' + esc(r.linkInscripcion) + '</span><div class="cpn"><button class="btn sec" id="dlCopI">Copiar link</button><a class="btn sec" href="' + esc(r.qrInscripcion) + '" target="_blank" rel="noopener">Abrir QR ↗</a></div><img src="' + esc(r.qrInscripcion) + '" alt="QR de la inscripción" style="width:180px;height:180px;border:1px solid var(--ln);border-radius:8px"></section>' : '') + '</div>' +
     '<section class="card" style="display:flex;flex-direction:column;gap:10px"><h2>Texto para WhatsApp</h2><textarea class="c" id="dlWa" style="min-height:170px">' + esc(r.whatsapp) + '</textarea><div class="cpn"><button class="btn sec" id="dlCopW">Copiar texto</button><a class="btn pri" href="' + esc(wa) + '" target="_blank" rel="noopener">Abrir WhatsApp ↗</a><a class="btn sec" href="#capins/' + encodeURIComponent(r.id) + '">Ver el dictado</a></div></section>');
-  $('dlCop').onclick = () => capCopiar(r.link, 'Link de registro copiado.');
+  $('dlCop').onclick = () => capCopiar(r.link, 'Link del certificado copiado.');
   if ($('dlCopI')) $('dlCopI').onclick = () => capCopiar(r.linkInscripcion, 'Link de inscripción copiado.');
   $('dlCopW').onclick = () => capCopiar($('dlWa').value, 'Texto copiado.');
 }
@@ -626,7 +627,7 @@ async function capInscriptos(id) {
   const asis = a => '<span class="chip ' + (a === 'Vino' ? 'ok' : a === 'No vino' ? 'er' : a === 'Avisó que no asiste' ? 'gr' : 'pa') + '">' + esc(a) + '</span>';
   marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' +
     capTit(capN ? capN.nombre : D.codigo, esc(D.fecha + ' ' + (D.hora || '')) + ' · ' + esc(D.codigo) + (capN && capN.encuentros > 1 ? ' · encuentro ' + esc(D.encuentro) + ' de ' + capN.encuentros : '') + ' · ' + esc(D.modalidad) + (capVacio(D.lugar) || /virtual/i.test(D.lugar) ? '' : ' · ' + esc(D.lugar)) + ' · registro ' + esc(D.abre) + ' a ' + esc(D.cierra) + ' · ' + capEst(D.estado),
-      '<button class="btn sec" id="diCop">Copiar link de registro</button>' + (D.qr ? '<a class="btn sec" href="' + esc(D.qr) + '" target="_blank" rel="noopener">QR de registro ↗</a>' : '') + (D.linkInscripcion ? '<button class="btn sec" id="diCopI">Copiar link de inscripción</button><a class="btn sec" href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&amp;margin=12&amp;data=' + encodeURIComponent(D.linkInscripcion) + '" target="_blank" rel="noopener">QR de inscripción ↗</a>' : '') + '<button class="btn sec" id="diAgr">Agregar asistente</button>' + (cancelado ? '' : '<button class="btn peligro" id="diCan">Suspender o cancelar</button>')) +
+      '<button class="btn sec" id="diCop">Copiar link del certificado</button>' + (D.qr ? '<a class="btn sec" href="' + esc(D.qr) + '" target="_blank" rel="noopener">QR del certificado ↗</a>' : '') + (D.linkInscripcion ? '<button class="btn sec" id="diCopI">Copiar link de inscripción</button><a class="btn sec" href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&amp;margin=12&amp;data=' + encodeURIComponent(D.linkInscripcion) + '" target="_blank" rel="noopener">QR de inscripción ↗</a>' : '') + '<button class="btn sec" id="diAgr">Agregar asistente</button>' + (cancelado ? '' : '<button class="btn peligro" id="diCan">Suspender o cancelar</button>')) +
     '<div class="tb5">' + (D.linkInscripcion ? kp('Inscriptos', R.activos, capVacio(R.cupo) || /sin/i.test(R.cupo) ? 'sin cupo' : R.presenciales + ' presenciales de ' + R.cupo) + kp('Vinieron', R.vinieron, 'de los inscriptos') + kp('Avisaron que no', R.anuladas) + kp('Consultas', R.consultasPendientes, 'pendientes') : '') + kp('Sin inscripción', r.sinInscripcion.length, 'vinieron igual') + '</div>' +
     (D.linkInscripcion ? '<section class="card tabla"><div style="padding:14px 18px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Inscriptos</h2>' + (r.correos ? '<button class="btn sec" id="diMails">Copiar correos</button>' : '') + '</div>' +
       (!r.lista.some(x => x.estado !== 'Anulada') ? '<div class="vacio">Todavía no hay inscriptos.</div>' : '<table><thead><tr><th>Persona</th><th>Público</th><th>Modalidad</th><th>Consulta previa</th><th>Asistencia</th><th></th></tr></thead><tbody>' +
@@ -638,7 +639,7 @@ async function capInscriptos(id) {
     (!D.linkInscripcion ? '<section class="card peq mu">Este dictado no tiene inscripción previa. Las asistencias están en el libro, hoja REGISTROS (ID_DICTADO ' + esc(D.id) + ').</section>' : '') +
     '<section class="card" id="diCert"><h2>Certificados y constancias</h2><div class="mu peq" style="margin-top:6px">Leyendo los certificados…</div></section>' +
     '<section class="card peq"><dl class="dl"><dt>Disertantes</dt><dd>' + esc(D.disertantes) + '</dd><dt>Servicios</dt><dd>' + esc(D.servicios) + '</dd><dt>Institución</dt><dd>' + esc(D.institucion) + '</dd><dt>Firmas</dt><dd>' + esc(nomFir) + '</dd><dt>Observaciones</dt><dd>' + esc(D.observaciones) + '</dd></dl></section>');
-  $('diCop').onclick = () => capCopiar(D.link, 'Link de registro copiado.');
+  $('diCop').onclick = () => capCopiar(D.link, 'Link del certificado copiado.');
   if ($('diCopI')) $('diCopI').onclick = () => capCopiar(D.linkInscripcion, 'Link de inscripción copiado.');
   if ($('diMails')) $('diMails').onclick = () => capCopiar(r.correos, 'Correos copiados: pegalos en «CCO» de tu correo (belenpellegrini.hys@gmail.com).');
   document.querySelectorAll('[data-resp]').forEach(b => b.onclick = async () => { const x = r.lista[b.dataset.resp]; const ok = await capHacer('c_insc_consulta', { id: x.id, estado: 'Respondida' }, b, '…'); if (ok) capInscriptos(id); });
@@ -785,7 +786,7 @@ async function capAgenda(desde) {
 function capConfirmar(t) {
   const v = capVentana('Confirmar el pedido', '<dl class="dl"><dt>Servicio</dt><dd>' + esc(t.jefatura) + '</dd><dt>Pidió</dt><dd>' + esc((t.pedidoPor || 's/d') + (t.cargo ? ' (' + t.cargo + ')' : '') + ' · DNI ' + (t.pedidoDni || 's/d')) + '</dd><dt>Cuándo</dt><dd>' + esc(t.dia + ' ' + t.hora + '–' + t.horaFin) + '</dd><dt>Capacitación</dt><dd>' + esc(t.nombre || t.codigo) + '</dd><dt>Avisos a</dt><dd>' + esc(t.correo || 's/d') + '</dd></dl>' +
     '<label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="vSumar" checked> <span>Habilitar a esta persona para reservar por <b>' + esc(t.jefatura) + '</b> (queda en JEFATURAS, columna OTROS_DNI). Destildalo si no corresponde.</span></label>' +
-    '<p class="mu peq" style="margin:0">Al confirmar se crea el dictado con su QR de registro y se avisa por correo.</p>', '<button class="btn pri" id="vOk">Confirmar</button>');
+    '<p class="mu peq" style="margin:0">Al confirmar se crea el dictado con su link y QR del certificado y se avisa por correo.</p>', '<button class="btn pri" id="vOk">Confirmar</button>');
   $('vOk').onclick = async () => { const x = await capHacer('c_ag_confirmar', { id: t.id, decision: 'confirmar', sumarDni: $('vSumar').checked }, $('vOk'), 'Confirmando…'); if (x) { v.cerrar(); toast(x.mensaje); capAgenda(); } };
 }
 function capTurno(t, r) {
@@ -835,7 +836,7 @@ function capClaseAbierta(r, t) {
       if (v.modalidad !== 'Virtual' && !v.lugar) return 'Elegí el lugar.';
       try { const x = await capApi('c_ag_clase', { id: t ? t.id : '', codigo: v.cap.split(' · ')[0], fecha: v.fecha, hora: v.hora, horaFin: v.horaFin, modalidad: v.modalidad, lugar: v.lugar, cupo: v.cupo, publicar: v.publicar !== 'No' });
         toast(x.mensaje); capAgenda(); setTimeout(() => capTextoSemana(x.whatsapp), 400); } catch (e) { return capMsg(e); }
-    }, '<p class="mu peq" style="margin:0">Cualquier persona se anota con DNI y correo desde la agenda pública; le llegan la confirmación y los recordatorios. Se crea el dictado con su QR de registro. Fuera de tus franjas también se puede: queda anotado.</p>');
+    }, '<p class="mu peq" style="margin:0">Cualquier persona se anota con DNI y correo desde la agenda pública; le llegan la confirmación y los recordatorios. Se crea el dictado con su link y QR del certificado. Fuera de tus franjas también se puede: queda anotado.</p>');
 }
 function capFranjas(r) {
   const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
