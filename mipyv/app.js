@@ -79,6 +79,7 @@ function goHome() {
   document.querySelector('.screen[data-step="home"]').classList.add("active");
   screensEl.scrollTop = 0;
   if (typeof avisosPintar === "function") avisosPintar();
+  borradorMostrarAviso();
 }
 homeBtn.addEventListener("click", goHome);
 
@@ -145,6 +146,7 @@ function showStep(name) {
   if (name === "h-detalle") prepararDetalleHys();
   if (name === "h-hallazgos") prepararHallazgosHys();
   if (name === "h-confirm") renderResumenHys();
+  if (currentModule === "hys" && name !== "h-sent") borradorProgramar();
 }
 
 function canAdvance(name) {
@@ -697,7 +699,7 @@ async function agregarFotos(lista, files, render) {
   for (const f of files) { if (lista.length >= 5) { sobra = true; break; } try { lista.push(await comprimirFoto(f)); } catch (err) { error = true; } }
   render();
   if (sobra) alert("Se cargaron 5 fotos, que es el máximo.");
-  else if (error) alert("No se pudo cargar alguna foto. Probá de nuevo.");
+  else if (error) alert(AVISO_FOTO_FALLO);
 }
 
 // ============================================================
@@ -742,32 +744,47 @@ photoInput.addEventListener("change", (e) => {
 const FOTO_LADO_MAX = 1280;
 const FOTO_CALIDAD = 0.7;
 
-function comprimirFoto(file) {
+// Primero intenta con createImageBitmap (usa menos memoria y respeta la
+// orientación de la foto); si el celular no lo tiene, usa el método anterior.
+// Si el resultado sale vacío (pasa en celulares con poca memoria), avisa.
+async function comprimirFoto(file) {
+  if (!file) throw new Error("sin archivo");
+  if ("createImageBitmap" in window) {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      try { return dibujarComprimida(bmp, bmp.width, bmp.height); }
+      finally { if (bmp.close) bmp.close(); }
+    } catch (err) { /* sigue con el método anterior */ }
+  }
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      try {
-        const escala = Math.min(1, FOTO_LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.round(img.naturalWidth * escala);
-        const h = Math.round(img.naturalHeight * escala);
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL("image/jpeg", FOTO_CALIDAD));
-      } catch (err) {
-        URL.revokeObjectURL(url);
-        reject(err);
-      }
+      try { resolve(dibujarComprimida(img, img.naturalWidth, img.naturalHeight)); }
+      catch (err) { reject(err); }
+      finally { URL.revokeObjectURL(url); }
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen ilegible")); };
     img.src = url;
   });
 }
+function dibujarComprimida(fuente, ancho, alto) {
+  if (!ancho || !alto) throw new Error("imagen sin tamaño");
+  const escala = Math.min(1, FOTO_LADO_MAX / Math.max(ancho, alto));
+  const w = Math.max(1, Math.round(ancho * escala));
+  const h = Math.max(1, Math.round(alto * escala));
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(fuente, 0, 0, w, h);
+  const url = canvas.toDataURL("image/jpeg", FOTO_CALIDAD);
+  canvas.width = canvas.height = 0; // libera memoria enseguida
+  if (!url || url.length < 1000) throw new Error("la foto salió vacía");
+  return url;
+}
+const AVISO_FOTO_FALLO = "No se pudo cargar la foto.\n\nProbá así: sacala con la cámara común del celular y después, en la app, tocá el casillero y elegí «🖼️ Elegir del teléfono».";
 
 // ============================================================
 // MIPyV — m-obs (chips + notas de texto libre)
@@ -1468,8 +1485,9 @@ async function extFotoPoner(file) {
     if (extFotoDestino[0] === "alta") { const a = tareaHys.altas.find(x => x.uid === extFotoDestino[1]); if (a) a.fotos[extFotoDestino[2]] = foto; }
     else { const [id, campo] = extFotoDestino; tareaHys.controles[id].fotos[campo] = foto; }
     renderExtintores();
+    borradorGuardar();
   }
-  catch (err) { alert("No se pudo cargar la foto. Probá sacarla de nuevo."); }
+  catch (err) { alert(AVISO_FOTO_FALLO); }
 }
 function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k] = null); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = "");
   const iso = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : "";
@@ -1838,6 +1856,7 @@ async function sendTareaHys() {
   const guardado = await guardarEnCola(controles.concat([{ tipo: "tarea_hys", data: record }]));
   nextBtn.disabled = false;
   if (!guardado) return;
+  borradorBorrar();
   document.getElementById("hSentSub").textContent = navigator.onLine
     ? "Tarea registrada — sincronizando…"
     : "Tarea guardada en el celular — se enviará cuando haya señal";
@@ -1854,6 +1873,127 @@ document.getElementById("hNewBtn").addEventListener("click", () => {
   renderTiposTarea();
   enterModule("hys");
 });
+
+// ============================================================
+// BORRADOR DE LA TAREA DE HIGIENE Y SEGURIDAD (27/10/2026)
+// En muchos Android, al abrir la cámara el navegador cierra la app para
+// liberar memoria y la vuelve a abrir al regresar: se perdía todo lo cargado
+// (por eso «no cargaba la foto» en el control de extintores).
+// Ahora cada respuesta y cada foto quedan guardadas en el celular al momento.
+// Si la app se cierra, al volver ofrece «Seguir con la tarea que estabas
+// haciendo» y aparece todo como estaba, fotos incluidas.
+// Se borra solo cuando la tarea se envía o el operario la descarta.
+// Dura 3 días; después se descarta sola.
+// ============================================================
+var BORRADOR_DB = "mipyv_borrador", BORRADOR_STORE = "b", BORRADOR_ID = "hys";
+var BORRADOR_DIAS = 3;
+var borradorTimer = null;
+
+function borradorAbrir() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("sin IndexedDB")); return; }
+    const req = indexedDB.open(BORRADOR_DB, 1);
+    req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains(BORRADOR_STORE)) db.createObjectStore(BORRADOR_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function borradorTx(modo, accion) {
+  const db = await borradorAbrir();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(BORRADOR_STORE, modo), st = tx.objectStore(BORRADOR_STORE);
+    let r; accion(st, (v) => { r = v; });
+    tx.oncomplete = () => { db.close(); resolve(r); };
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+// Se guarda solo si hay una tarea de Higiene y Seguridad con tipo elegido.
+function borradorFoto() {
+  if (currentModule !== "hys" || !tareaHys.tipo_tarea) return null;
+  const paso = stepList[stepIndex];
+  if (!paso || paso === "h-sent") return null;
+  return {
+    guardado: new Date().toISOString(), version: APP_VERSION, paso,
+    operario: currentOperario, acompanante: operarioAcompanante, acompananteRespondido,
+    tarea: tareaHys, extAbierto, altaAbierta, fotos: hFotosDataUrls,
+    horas: [horaInicioEl.value, horaFinEl.value, horaInicioAcompEl.value, horaFinAcompEl.value],
+  };
+}
+async function borradorGuardar() {
+  clearTimeout(borradorTimer); borradorTimer = null;
+  const b = borradorFoto(); if (!b) return;
+  try { await borradorTx("readwrite", (st) => st.put(JSON.parse(JSON.stringify(b)), BORRADOR_ID)); }
+  catch (err) { console.warn("No se pudo guardar el borrador en el celular.", err); }
+}
+function borradorProgramar() { clearTimeout(borradorTimer); borradorTimer = setTimeout(borradorGuardar, 600); }
+async function borradorLeer() {
+  try {
+    const b = await borradorTx("readonly", (st, set) => { const r = st.get(BORRADOR_ID); r.onsuccess = () => set(r.result || null); });
+    if (!b || !b.tarea) return null;
+    if (Date.now() - new Date(b.guardado).getTime() > BORRADOR_DIAS * 864e5) { borradorBorrar(); return null; }
+    return b;
+  } catch (err) { return null; }
+}
+async function borradorBorrar() {
+  clearTimeout(borradorTimer); borradorTimer = null;
+  try { await borradorTx("readwrite", (st) => st.delete(BORRADOR_ID)); } catch (err) { /* nada */ }
+}
+
+// Vuelve a dejar la tarea exactamente donde estaba.
+function borradorRestaurar(b) {
+  enterModule("hys");
+  currentOperario = b.operario || null;
+  operarioAcompanante = b.acompanante || null;
+  acompananteRespondido = !!b.acompananteRespondido;
+  tareaHys = Object.assign({ tipo_tarea: null, lugares: [], controles: {}, altas: [], ediciones: {}, detalle: "", hallazgos: "", observaciones: "" }, b.tarea);
+  extAbierto = b.extAbierto || null;
+  altaAbierta = b.altaAbierta || null;
+  hFotosDataUrls = Array.isArray(b.fotos) ? b.fotos : [];
+  const h = b.horas || [];
+  horaInicioEl.value = h[0] || ""; horaFinEl.value = h[1] || "";
+  horaInicioAcompEl.value = h[2] || ""; horaFinAcompEl.value = h[3] || "";
+  hDetalle.value = tareaHys.detalle || ""; hHallazgos.value = tareaHys.hallazgos || ""; hObservaciones.value = tareaHys.observaciones || "";
+  // el número de los extintores nuevos sigue desde el último que había
+  (tareaHys.altas || []).forEach(a => { const n = parseInt(String(a.uid || "").replace(/^A/, ""), 10); if (n > altaN) altaN = n; });
+  renderTiposTarea();
+  armarPasosHys();
+  const paso = stepList.indexOf(b.paso) >= 0 ? b.paso : "h-lugares";
+  // si no quedó cargado quién trabajó, se empieza por ahí
+  stepIndex = currentOperario ? stepList.indexOf(paso) : 0;
+  showStep(stepList[stepIndex]);
+}
+
+// Aviso en la pantalla de inicio
+const borradorAviso = document.createElement("div");
+borradorAviso.style.cssText = "display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FFF4D6;border:2px solid #E0A800;color:#3B2F00";
+document.querySelector('.screen[data-step="home"]').prepend(borradorAviso);
+async function borradorMostrarAviso() {
+  const b = await borradorLeer();
+  if (!b || currentModule) { borradorAviso.style.display = "none"; return; }
+  const t = b.tarea || {}, f = new Date(b.guardado);
+  const cuando = f.toLocaleDateString("es-AR") + " " + f.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  let nFotos = (b.fotos || []).length;
+  Object.values(t.controles || {}).forEach(c => { nFotos += Object.values(c.fotos || {}).filter(Boolean).length; });
+  (t.altas || []).forEach(a => { nFotos += Object.values(a.fotos || {}).filter(Boolean).length; });
+  const lugares = (t.lugares || []).map(l => l.nombre).join(", ");
+  borradorAviso.innerHTML = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">⏸️ Tenés una tarea sin terminar</div>
+    <div style="margin-bottom:12px">${escX(t.tipo_tarea || "")}${lugares ? " · " + escX(lugares) : ""}<br><small>Guardada el ${escX(cuando)}${nFotos ? " · " + nFotos + " foto(s)" : ""}</small></div>
+    <button type="button" data-b="seguir" style="width:100%;font-size:18px;padding:14px;border-radius:12px;border:0;background:#0D313F;color:#fff;margin-bottom:8px">Seguir con la tarea que estabas haciendo</button>
+    <button type="button" data-b="descartar" style="width:100%;font-size:15px;padding:10px;border-radius:12px;border:1px solid #8A6D00;background:#fff;color:#3B2F00">Descartarla</button>`;
+  borradorAviso.querySelector('[data-b="seguir"]').onclick = () => { borradorAviso.style.display = "none"; borradorRestaurar(b); };
+  borradorAviso.querySelector('[data-b="descartar"]').onclick = async () => {
+    if (!confirm("¿Descartar la tarea sin terminar? Se borra lo que cargaste, fotos incluidas.")) return;
+    await borradorBorrar(); borradorAviso.style.display = "none";
+  };
+  borradorAviso.style.display = "block";
+}
+
+// Guardar mientras se escribe o se contesta, y siempre antes de que la app
+// quede en segundo plano (por ejemplo, al abrir la cámara).
+document.getElementById("screens").addEventListener("input", () => { if (currentModule === "hys") borradorProgramar(); });
+document.getElementById("screens").addEventListener("click", () => { if (currentModule === "hys") borradorProgramar(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && currentModule === "hys") borradorGuardar(); });
+window.addEventListener("pagehide", () => { if (currentModule === "hys") borradorGuardar(); });
 
 // ============================================================
 // SINCRONIZACIÓN
@@ -2146,6 +2286,7 @@ progressWrap.style.display = "none";
 bottomBar.style.display = "none";
 
 document.getElementById("appVersion").textContent = "Versión " + APP_VERSION;
+borradorMostrarAviso();
 
 // ============================================================
 // ACTUALIZACIÓN AUTOMÁTICA
