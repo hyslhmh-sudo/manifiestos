@@ -81,6 +81,53 @@ function mpSemanas(visitas) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Visitas por semana">' + g + '</svg>';
 }
 const mpTop = (arr, n) => { const c = {}; arr.forEach(x => { if (x) c[x] = (c[x] || 0) + 1; }); return Object.keys(c).map(k => [k, c[k]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).slice(0, n); };
+// «Qué hicieron» (26/10/2026): visitas de plagas y avances de saneamiento agrupados por día, con lugar, horario, tareas y operarios
+let MPA = 'semana';
+const mpDia = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const mpYmd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+function mpRango(p) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0); const lun = new Date(hoy); lun.setDate(lun.getDate() - ((lun.getDay() + 6) % 7)); const mas = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  if (p === 'hoy') return [hoy, hoy, 'Hoy'];
+  if (p === 'ayer') return [mas(hoy, -1), mas(hoy, -1), 'Ayer'];
+  if (p === 'semana') return [lun, hoy, 'Esta semana (desde el lunes ' + String(lun.getDate()).padStart(2, '0') + '/' + String(lun.getMonth() + 1).padStart(2, '0') + ')'];
+  if (p === 'pasada') return [mas(lun, -7), mas(lun, -1), 'Semana pasada (lunes ' + String(mas(lun, -7).getDate()).padStart(2, '0') + '/' + String(mas(lun, -7).getMonth() + 1).padStart(2, '0') + ' a domingo ' + String(mas(lun, -1).getDate()).padStart(2, '0') + '/' + String(mas(lun, -1).getMonth() + 1).padStart(2, '0') + ')'];
+  return [mas(hoy, -29), hoy, 'Últimos 30 días'];
+}
+function mpActividad(V, A, sinAvances) {
+  const box = $('mpHizo'); if (!box) return;
+  const [d1, d2, tit] = mpRango(MPA), a = mpYmd(d1), b = mpYmd(d2);
+  const items = V.filter(v => v.fecha >= a && v.fecha <= b).map(v => ({ t: 'v', f: v.fecha, o: v, ini: (String(v.horario).match(/(\d{1,2})[:.](\d{2})/) || []).slice(1).join(':') }))
+    .concat(A.filter(x => x.fecha >= a && x.fecha <= b).map(x => ({ t: 'a', f: x.fecha, o: x, ini: (String(x.horario).match(/(\d{1,2})[:.](\d{2})/) || []).slice(1).join(':') })))
+    .sort((x, y) => y.f.localeCompare(x.f) || String(x.ini).padStart(5, '0').localeCompare(String(y.ini).padStart(5, '0')));
+  const dias = {}; items.forEach(i => (dias[i.f] = dias[i.f] || []).push(i));
+  const lugares = new Set(items.map(i => i.o.lugar).filter(Boolean)), nV = items.filter(i => i.t === 'v').length, nA = items.length - nV;
+  const per = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['pasada', 'Semana pasada'], ['30', 'Últimos 30 días']];
+  const ultimo = !items.length ? V.concat(A).map(x => x.fecha).filter(Boolean).sort().pop() : '';
+  const fila = i => { const o = i.o, op = esc(o.operario || '') + (o.acompanante ? ' y ' + esc(o.acompanante) : ''), hr = o.horario ? esc(mpHorario(o.horario) || o.horario) : 'sin horario';
+    if (i.t === 'v') return '<div class="at cl" data-hv="' + V.indexOf(o) + '" style="cursor:pointer;align-items:flex-start"><span style="min-width:0"><b>' + esc(o.lugar || '—') + (o.sector ? ' · <span style="font-weight:600">' + esc(o.sector) + '</span>' : '') + '</b>' +
+      '<small style="display:block"><span class="chip gr mini">Plagas</span> ' + esc(o.plaga || '—') + (o.producto ? ' · ' + esc(o.producto) : '') + '</small>' + (o.motivo ? '<small class="mu" style="display:block">' + esc(String(o.motivo).slice(0, 220)) + '</small>' : '') +
+      '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + mpRes(o.resultado) + '</span></div>';
+    return '<div class="at cl" data-ha="' + A.indexOf(o) + '" style="cursor:pointer;align-items:flex-start"><span style="min-width:0"><b>' + esc(o.lugar || '—') + '</b>' +
+      '<small style="display:block"><span class="chip gr mini">Saneamiento</span> ' + esc(o.tareas || '—') + (o.producto ? ' · ' + esc(o.producto) : '') + '</small>' + (o.detalle ? '<small class="mu" style="display:block">' + esc(String(o.detalle).slice(0, 220)) + (String(o.detalle).length > 220 ? '…' : '') + '</small>' : '') +
+      '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + (/cerr|final|termin/i.test(o.cierre || '') ? '<span class="chip ok mini">Trabajo terminado</span>' : '<span class="chip wa mini">Continúa</span>') + '</span></div>'; };
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Qué hicieron y dónde</h2><div class="mu peq">' + esc(tit) + ' · visitas de plagas y avances de limpieza y saneamiento, día por día. Tocá una fila para ver todo el detalle y las fotos.</div></div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' + per.map(p => '<button class="btn ' + (p[0] === MPA ? 'pri' : 'sec') + '" data-mpa="' + p[0] + '" style="padding:6px 10px;font-size:13px">' + p[1] + '</button>').join('') + '</div></div>' +
+    (items.length ? '<div class="peq" style="margin:4px 0 10px"><b>' + nV + '</b> visita(s) de plagas · <b>' + nA + '</b> avance(s) de saneamiento · <b>' + lugares.size + '</b> lugar(es) · <b>' + Object.keys(dias).length + '</b> día(s) con registros</div>' +
+      Object.keys(dias).sort().reverse().map(f => '<h3 style="margin:14px 0 4px;font-size:14px;border-bottom:1px solid var(--ln);padding-bottom:4px">' + mpF(f) + ' <span class="mu peq" style="font-weight:400">· ' + dias[f].length + ' registro(s) · ' + Array.from(new Set(dias[f].map(i => i.o.lugar).filter(Boolean))).map(esc).join(', ') + '</span></h3>' + dias[f].map(fila).join('')).join('')
+      : '<div class="mu" style="padding:8px 0">No cargaron registros en este período.' + (ultimo ? ' El último registro es del ' + mpF(ultimo) + '.' : '') + '</div>') +
+    (sinAvances ? '<div class="mu peq" style="margin-top:8px">Los avances de saneamiento aparecen cuando se implementa la versión nueva del Apps Script.</div>' : '');
+  box.querySelectorAll('[data-mpa]').forEach(x => x.onclick = () => { MPA = x.dataset.mpa; mpActividad(V, A, sinAvances); });
+  box.querySelectorAll('[data-hv]').forEach(x => x.onclick = () => mipyvVer(V[Number(x.dataset.hv)]));
+  box.querySelectorAll('[data-ha]').forEach(x => x.onclick = () => mpAvanceVer(A[Number(x.dataset.ha)]));
+}
+function mpAvanceVer(x) {
+  const dd = (t, v) => v ? '<dt>' + t + '</dt><dd>' + v + '</dd>' : '';
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Avance de saneamiento"><h2>Saneamiento del ' + mpF(x.fecha) + ' · ' + esc(x.lugar || '') + '</h2><dl class="dl">' +
+    dd('Operarios', esc(x.operario || '') + (x.acompanante ? ' y ' + esc(x.acompanante) : '') + (x.horario ? ' · ' + esc(mpHorario(x.horario) || x.horario) : '')) + dd('Tareas', esc(x.tareas)) + dd('Detalle', esc(x.detalle).replace(/\n/g, '<br>')) +
+    dd('Notas', esc(x.notas).replace(/\n/g, '<br>')) + dd('Biocida', esc(x.producto)) + dd('Estado del trabajo', esc(x.cierre)) + dd('Fotos', (x.fotos || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + ' ↗</a>').join(' · ')) + '</dl>' +
+    '<div class="acciones"><div></div><button class="btn sec" id="mpCer">Cerrar</button></div></div>';
+  $('ov').hidden = false; $('mpCer').onclick = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+}
 async function mipyv(fresco) {
   const box = $('mipyvBox'); if (!box) return;
   if (!MIPYV || fresco) { if (fresco) box.insertAdjacentHTML('afterbegin', '<div class="aviso" id="mpLeyendo" style="margin-bottom:12px">Actualizando…</div>');
@@ -91,7 +138,7 @@ async function mipyv(fresco) {
   const lugarDe = o => o.lugar || o.establecimiento || (o.cod ? o.cod + (o.sitio ? ' · ' + o.sitio : '') : '');
   const vencidos = C ? C.filter(c => c.dias < 0).length : R.vencidos.length, porVencer = C ? C.filter(c => c.dias >= 0 && c.urgente).length : 0;
   const pend = S.filter(x => x.estado === 'Pendiente').length, sinRev = V.filter(v => !/^revisad/i.test(String(v.revisado))).length;
-  const kp = (href, n, t, sub, alerta) => '<a class="kpi2" href="' + href + '"' + (alerta && n ? ' style="background:var(--erbg)"' : '') + '><span>' + t + '</span><b' + (alerta && n ? ' style="color:var(--er)"' : '') + '>' + n + '</b><small>' + sub + '</small></a>';
+  const kp = (href, n, t, sub, alerta) => '<a class="kpi2" role="button" tabindex="0" data-ir="' + href.slice(1) + '" style="cursor:pointer' + (alerta && n ? ';background:var(--erbg)' : '') + '"><span>' + t + '</span><b' + (alerta && n ? ' style="color:var(--er)"' : '') + '>' + n + '</b><small>' + sub + '</small></a>';
   const kpis = '<div class="tb5" style="margin-bottom:16px">' +
     kp('#mpCasos', vencidos, 'Casos vencidos', vencidos ? 'pasó la fecha de la 2.ª visita' : 'ninguno vencido', true) +
     kp('#mpCasos', porVencer, 'Casos por vencer', 'vencen en 3 días o menos', false) +
@@ -120,7 +167,7 @@ async function mipyv(fresco) {
   const visitas = '<section class="card" id="mpVis" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Visitas de los últimos 90 días</h2><div class="mu peq">La más nueva arriba. Tocá una para ver el detalle y las fotos, y marcarla como revisada.</div></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="mpFL"><option value="">Todos</option>' + opt(lugares, MPF.lugar) + '</select></label><label class="f">Plaga<select class="c" id="mpFP"><option value="">Todas</option>' + opt(plagasL, MPF.plaga) + '</select></label><label style="display:flex;gap:6px;align-items:center;font-size:14px;padding-bottom:8px"><input type="checkbox" id="mpFR"' + (MPF.sinRev ? ' checked' : '') + '> Solo sin revisar</label></div></div><div id="mpTabla"></div></section>';
   const san = R.saneamiento.length ? '<section class="card" id="mpSan" style="margin-bottom:16px"><h2 style="margin:0 0 6px;font-size:16px">Saneamiento en curso (' + R.saneamiento.length + ')</h2>' + R.saneamiento.map(t => '<div class="at"><span><b>' + esc(lugarDe(t)) + '</b><small>Desde ' + mpF(t.desde) + ' · ' + esc(t.operario) + '</small></span></div>').join('') + '</section>' : '<div id="mpSan"></div>';
-  box.innerHTML = aviso + kpis + graficos + casos + (C ? '<section class="card" id="mpSol" style="margin-bottom:16px">' + mpSolHtml(S).replace('margin:14px 0 6px', 'margin:0 0 6px') + mpCierresHtml(R.cierres || []) + '</section>' : '') + visitas + san +
+  box.innerHTML = aviso + kpis + '<section class="card" id="mpHizo" style="margin-bottom:16px"></section>' + graficos + casos + (C ? '<section class="card" id="mpSol" style="margin-bottom:16px">' + mpSolHtml(S).replace('margin:14px 0 6px', 'margin:0 0 6px') + mpCierresHtml(R.cierres || []) + '</section>' : '') + visitas + san +
     '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas de cada operario por día y por mes están en el libro MIPyV › HORAS (para leer) y en su Tablero.</div>';
   const pintar = () => {
     const F = V.filter(v => (!MPF.lugar || v.lugar === MPF.lugar) && (!MPF.plaga || v.plaga === MPF.plaga) && (!MPF.sinRev || !/^revisad/i.test(String(v.revisado))));
@@ -132,6 +179,10 @@ async function mipyv(fresco) {
     document.querySelectorAll('#mpTabla tr[data-v]').forEach(tr => tr.onclick = () => mipyvVer(V[Number(tr.dataset.v)]));
   };
   pintar();
+  mpActividad(V, R.avances || [], R.avances === undefined);
+  box.querySelectorAll('[data-ir]').forEach(a => { const ir = () => { if (a.dataset.ir === 'mpVis' && /sin revisar/i.test(a.textContent)) { MPF.sinRev = true; $('mpFR').checked = true; pintar(); }
+    const el = $(a.dataset.ir); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    a.onclick = e => { e.preventDefault(); ir(); }; a.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } }; });
   $('mpFL').onchange = e => { MPF.lugar = e.target.value; pintar(); };
   $('mpFP').onchange = e => { MPF.plaga = e.target.value; pintar(); };
   $('mpFR').onchange = e => { MPF.sinRev = e.target.checked; pintar(); };

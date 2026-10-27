@@ -109,7 +109,12 @@ function plagMipyv_(dias) {
     .map(x => ({ id: x.id_cierre, fecha: x.fecha, operario: x.operario, protocolo: x.protocolo, establecimiento: x.establecimiento, tipo_plaga: x.tipo_plaga, resultado: x.resultado_cierre, motivo: x.motivo,
       detalle: x.detalle, fotos: fotos_(x.foto_url), origen: x.origen, revisado: x.revisado_hys }))
     .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
-  const out = { ok: true, visitas: visitas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
+  // Avances de saneamiento (26/10/2026): lo que hicieron cada día en los trabajos de limpieza y saneamiento, para «Qué hicieron» del portal
+  const avances = plagTabla_(ss, 'avances_saneamiento').filter(a => a.id_avance).map(a => { const l = lug(a.id_establecimiento);
+    return { id: a.id_avance, trabajo: a.id_trabajo, fecha: plagFecha_(a.fecha), cod: l.cod, sitio: l.sitio, lugar: a.establecimiento, operario: a.operario, acompanante: a.operario_acompanante,
+      horario: [a.hora_inicio, a.hora_fin].filter(Boolean).join(' a '), tareas: a.tareas, detalle: a.detalle, notas: a.notas, producto: a.producto_biocida, fotos: fotos_(a.foto_url), cierre: a.cierre }; })
+    .filter(a => a.fecha >= desde).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const out = { ok: true, visitas: visitas, avances: avances, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;
