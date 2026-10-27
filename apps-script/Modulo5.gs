@@ -114,7 +114,12 @@ function plagMipyv_(dias) {
     return { id: a.id_avance, trabajo: a.id_trabajo, fecha: plagFecha_(a.fecha), cod: l.cod, sitio: l.sitio, lugar: a.establecimiento, operario: a.operario, acompanante: a.operario_acompanante,
       horario: [a.hora_inicio, a.hora_fin].filter(Boolean).join(' a '), tareas: a.tareas, detalle: a.detalle, notas: a.notas, producto: a.producto_biocida, fotos: fotos_(a.foto_url), cierre: a.cierre }; })
     .filter(a => a.fecha >= desde).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const out = { ok: true, visitas: visitas, avances: avances, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
+  // Otros trabajos de HyS cargados en la app (hoja tareas_hys, 26/10/2026)
+  const tareas = plagTabla_(ss, 'tareas_hys').filter(t => t.id_tarea).map(t => { const l = lug(t.id_establecimiento);
+    return { id: t.id_tarea, fila: t._fila, fecha: plagFecha_(t.fecha), cod: l.cod, sitio: l.sitio, lugar: t.establecimiento, operario: t.operario, acompanante: t.operario_acompanante,
+      horario: [t.hora_inicio, t.hora_fin].filter(Boolean).join(' a '), tipo: t.tipo_tarea, detalle: t.detalle, hallazgos: t.hallazgos, obs: t.observaciones, fotos: fotos_(t.foto_url), revisado: t.revisado_hys }; })
+    .filter(t => t.fecha >= desde).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;
