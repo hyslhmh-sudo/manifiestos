@@ -1,5 +1,5 @@
 /**
- * SISTEMA HyS · MÓDULO 1 · RESIDUOS · NOVEDADES DE RESIDUOS (versión 0, 22/10/2026)
+ * SISTEMA HyS · MÓDULO 1 · RESIDUOS · NOVEDADES DE RESIDUOS (versión 0, 22/10/2026 · act. 27/10/2026)
  * Pedido de Belén (22/10/2026): un lugar en «Mi establecimiento» › 1 · Residuos para informar lo que se ve mal en una recorrida
  * (bolsa equivocada, cortopunzante suelto, descartador lleno, depósito abierto, la empresa no retiró, etc.), como
  * «Informar una novedad» de Incendio.
@@ -25,6 +25,12 @@
  *  · GRAVEDAD viene precargada por opción (columna GRAVEDAD de TIPOS_DESVIO); con varias, vale la más alta. Solo la cambia HyS.
  *    «Otro» no tiene gravedad: queda «s/d» hasta que HyS la asigne. Columna nueva GRAVEDAD al final de NOVEDADES_RES (se agrega sola).
  *  · Si la planilla del catálogo no se puede leer, se usa la lista anterior (RNOV.TIPOS) para no frenar la carga.
+ *
+ * CAMBIO 27/10/2026 · Sin duplicados (pedido de Belén):
+ *  · «Novedades de residuos» del portal muestra SOLO lo informado desde «Mi establecimiento» (hoja NOVEDADES_RES).
+ *  · Los desvíos del recorrido de Star Union (DR-…) se ven y se gestionan únicamente en «Desvíos: acciones y seguimiento»
+ *    (DesviosAcciones.gs). Antes aparecían en las dos pantallas y se podían cerrar desde las dos.
+ *  · Se quitaron rdesvLeer_ y rdesvResolver_ (ya no se usan). «Resuelta» sobre un DR-… responde que se gestiona en Desvíos.
  */
 const RNOV = {
   HOJA: 'NOVEDADES_RES',
@@ -229,57 +235,18 @@ function rnovAvisos_() {
   try { ca.put('rnov_avisos', JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
-// ------------------------------------------------------------------ DESVÍOS DEL RECORRIDO (Star Union, HMH)
-// Pedido de Belén (22/10/2026): que en «Novedades de residuos» aparezca también lo que registran los operarios de Star Union en el
-// recorrido de retiro del HMH (planilla «DESVÍOS RESIDUOS HMH · Registro (v0)», hoja REGISTROS). Se leen desde acá, sin copiarlos.
-// Abierto = sin revisar por HyS (REVISADO_POR y FECHA_REVISION vacíos). «Resuelta» escribe REVISADO_POR, FECHA_REVISION y OBS_HYS en esa planilla.
-const RDESV = { LIBRO: '14bK84HUpTXXGcBBQ737SUScFWHOykUh9V50VTpiVCXw', HOJA: 'REGISTROS', EST: 'HMH' };
-function rdesvLeer_() {
-  const sh = SpreadsheetApp.openById(RDESV.LIBRO).getSheetByName(RDESV.HOJA); if (!sh || sh.getLastRow() < 2) return { sh: sh, H: [], L: [] };
-  const v = sh.getDataRange().getValues(), H = v.shift().map(h => String(h).trim()), L = [];
-  v.forEach((r, i) => {
-    const o = {}; H.forEach((h, j) => o[h] = r[j]); if (!o.ID) return;
-    const t = h => o[h] instanceof Date ? o[h] : limpio_(o[h]), fc = o.FECHA_CARGA instanceof Date ? o.FECHA_CARGA : null;
-    const resid = limpio_(o.TIPO_RESIDUO), tipos = limpio_(o.TIPOS_DESVIO);
-    const pel = /biopat|cortopun|químic|quimic|medicam|ampoll/i.test(resid) || /cortopun/i.test(tipos) || o.LESION === 'Sí';
-    const revisado = /^Cerrado/.test(limpio_(o.ESTADO_GESTION));   // estado de «Desvíos: acciones y seguimiento» (DesviosAcciones.gs)
-    const det = [limpio_(o.DESCRIPCION), o.CAUSA ? 'Por qué: ' + limpio_(o.CAUSA) + (o.CONTENEDORES ? ' (' + limpio_(o.CONTENEDORES) + ')' : '') : '',
-      o.AISLAMIENTO ? '¿Aislamiento?: ' + limpio_(o.AISLAMIENTO) : '', o.LESION === 'Sí' ? 'LESIÓN: ' + limpio_(o.DETALLE_LESION) : ''].filter(Boolean).join(' · ');
-    L.push({ fila: i + 2, ID: limpio_(o.ID), ORIGEN: 'Recorrido Star Union',
-      FECHA: fc ? Utilities.formatDate(fc, TZ, 'yyyy-MM-dd') : limpio_(o.FECHA_OBSERVACION), HORA: limpio_(o.HORA),
-      ESTABLECIMIENTO: RDESV.EST, SITIO: RDESV.EST,
-      SECTOR: [o.PISO, o.SERVICIO, o.UBICACION].map(limpio_).filter(Boolean).join(' · ') + (limpio_(o.DETALLE_UBICACION) && limpio_(o.DETALLE_UBICACION) !== 's/d' ? ' · ' + limpio_(o.DETALLE_UBICACION) : ''),
-      TIPO: tipos, CORRIENTE: resid, PELIGROSA: pel ? 'Sí' : 'No', DETALLE: det,
-      GRAVEDAD: limpio_(o.GRAVEDAD_HYS) || limpio_(o.GRAVEDAD_REGLA) || (limpio_(o.GRAVEDAD_INFORMANTE) !== 's/d' ? limpio_(o.GRAVEDAD_INFORMANTE) : '') || 's/d',
-      FOTO: (String(o.FOTOS || '').match(/https?:\/\/[^,\s]+/) || [''])[0], QUIEN: limpio_(o.OPERARIO) + (o.INFORMANTE ? ' (' + limpio_(o.INFORMANTE) + ')' : ''),
-      ESTADO: revisado ? 'Resuelta' : 'Abierta', GESTION: limpio_(o.ESTADO_GESTION) || 'Sin acción', RESUELTO: '', RESUELTO_POR: '',
-      RESOLUCION: [limpio_(o.ESTADO_GESTION), limpio_(o.ULTIMO_SEGUIMIENTO)].filter(Boolean).join(' · ') });
-  });
-  return { sh: sh, H: H, L: L };
-}
-// «Resuelta» sobre un desvío = verificación de HyS «Corregido» (lo cierra en «Desvíos: acciones y seguimiento»)
-function rdesvResolver_(x, quien) {
-  if (typeof dacSeguimiento_ !== 'function') return { ok: false, mensaje: 'Falta instalar DesviosAcciones.gs.' };
-  return dacSeguimiento_({ ids: [limpio_(x.ID)], resultado: 'Corregido', obs: limpio_(x.RESOLUCION) }, quien, 'HyS');
-}
-
 function rnovPortal_(accion, x, quien) {
   if (accion === 'p_resnov_listar') {
     const cods = x.cod ? [limpio_(x.cod)] : (listaActivos_() || []).map(e => e.id), abiertas = [], resueltas = [];
     cods.forEach(c => { try { const r = rnovListar_(c); r.abiertas.forEach(n => abiertas.push(n)); r.resueltas.forEach(n => resueltas.push(n)); } catch (e) {} });
-    let errDesv = '';
-    if (cods.indexOf(RDESV.EST) >= 0) {
-      try { const L = rdesvLeer_().L.reverse().map(n => { const c = Object.assign({}, n); delete c.fila; return c; });
-        L.filter(n => n.ESTADO !== 'Resuelta').forEach(n => abiertas.push(n)); L.filter(n => n.ESTADO === 'Resuelta').slice(0, 30).forEach(n => resueltas.push(n)); }
-      catch (e) { errDesv = 'No se pudieron leer los desvíos del recorrido: ' + (e.message || e); }
-    }
+    // Solo novedades de «Mi establecimiento» (los desvíos de Star Union están en «Desvíos: acciones y seguimiento», 27/10/2026).
     // Primero lo de residuos peligrosos, después la gravedad más alta y, dentro de cada grupo, lo más nuevo arriba
     abiertas.sort(rnovOrden_); resueltas.sort((a, b) => String(b.RESUELTO || b.FECHA).localeCompare(String(a.RESUELTO || a.FECHA)));
     const cat = rnovCatalogo_();
-    return { ok: true, abiertas: abiertas, resueltas: resueltas.slice(0, 60), aviso: errDesv, tipos: cat.map(c => c.tipo), catalogo: cat, corrientes: RNOV.CORRIENTES.map(c => c[0]) };
+    return { ok: true, abiertas: abiertas, resueltas: resueltas.slice(0, 60), tipos: cat.map(c => c.tipo), catalogo: cat, corrientes: RNOV.CORRIENTES.map(c => c[0]) };
   }
   if (accion === 'p_resnov_resolver') {
-    if (/^DR-/.test(limpio_(x.ID))) return conLock_(() => rdesvResolver_(x, quien || 'Belén Pellegrini (portal)'));
+    if (/^DR-/.test(limpio_(x.ID))) return { ok: false, mensaje: 'Los desvíos del recorrido (DR-…) se gestionan en 1 · Residuos › «Desvíos: acciones y seguimiento».' };
     return conLock_(() => rnovResolver_(limpio_(x.cod), x, quien || 'Belén Pellegrini (portal)'));
   }
   return null;
