@@ -119,7 +119,18 @@ function plagMipyv_(dias) {
     return { id: t.id_tarea, fila: t._fila, fecha: plagFecha_(t.fecha), cod: l.cod, sitio: l.sitio, lugar: t.establecimiento, operario: t.operario, acompanante: t.operario_acompanante,
       horario: [t.hora_inicio, t.hora_fin].filter(Boolean).join(' a '), tipo: t.tipo_tarea, detalle: t.detalle, hallazgos: t.hallazgos, obs: t.observaciones, fotos: fotos_(t.foto_url), revisado: t.revisado_hys }; })
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => v.fecha >= desde && !/^revisad/i.test(String(v.revisado))).length,
+  // Control de horas (27/10/2026): una fila por persona y registro, con su propio horario (el acompañante tiene el suyo; si no lo cargó, toma el del titular)
+  const hh_ = v => { const m = String(v == null ? '' : v).match(/(\d{1,2})[:.](\d{2})(?!.*\d{1,2}[:.]\d{2})/); return m ? String(+m[1]).padStart(2, '0') + ':' + m[2] : ''; };
+  const horas = [];
+  const hAdd = (r, tipo, cargo) => { const f = plagFecha_(r.fecha), lugar = r.establecimiento || '', ini = hh_(r.hora_inicio), fin = hh_(r.hora_fin);
+    if (r.operario) horas.push({ fecha: f, persona: String(r.operario).trim(), rol: cargo, tipo: tipo, lugar: lugar, ini: ini, fin: fin, id: r.id_visita || r.id_avance || r.id_tarea });
+    if (r.operario_acompanante) String(r.operario_acompanante).split(/\s*[,|]\s*/).filter(Boolean).forEach(pa => { const i2 = hh_(r.hora_inicio_acompanante), f2 = hh_(r.hora_fin_acompanante);
+      horas.push({ fecha: f, persona: pa.trim(), rol: 'Acompañante', tipo: tipo, lugar: lugar, ini: i2 || ini, fin: f2 || fin, delTitular: !(i2 && f2), id: r.id_visita || r.id_avance || r.id_tarea }); }); };
+  plagTabla_(ss, 'visitas').forEach(r => hAdd(r, 'Plagas', 'Cargó la visita'));
+  plagTabla_(ss, 'avances_saneamiento').forEach(r => hAdd(r, 'Saneamiento', 'Cargó el avance'));
+  plagTabla_(ss, 'tareas_hys').forEach(r => hAdd(r, 'Otros trabajos HyS' + (r.tipo_tarea ? ' · ' + r.tipo_tarea : ''), 'Cargó la tarea'));
+  horas.sort((a, b) => b.fecha.localeCompare(a.fecha) || a.persona.localeCompare(b.persona));
+  const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, horas: horas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => v.fecha >= desde && !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;

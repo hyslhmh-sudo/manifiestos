@@ -38,7 +38,7 @@ async function agua(modo) {
 // Lee el registro MIPyV (Modulo5.gs › p_mipyv): lo cargan los operarios desde su app; acá se ve, se revisa y se cierran casos.
 function pantallaPlagas() {
   marco('#plagas', '<div class="cab"><div><span class="mu peq">3 · Plagas</span><h1>Plagas, saneamiento y trabajos de HyS</h1><span class="mu peq">Lo que cargan Javier y Paulo en la app MIP: plagas, saneamiento, otros trabajos de HyS y pedidos. Fechas en hora de Argentina.</span></div>' +
-    '<div class="filtros"><button class="btn sec" id="mpAct">Actualizar</button><a class="btn sec" id="mpLib" href="#" target="_blank" rel="noopener" hidden>Libro MIPyV ↗</a></div></div>' +
+    '<div class="filtros"><a class="btn sec" href="#plghs">Control de horas</a><button class="btn sec" id="mpAct">Actualizar</button><a class="btn sec" id="mpLib" href="#" target="_blank" rel="noopener" hidden>Libro MIPyV ↗</a></div></div>' +
     '<div id="mipyvBox"><section class="card"><div class="mu">Leyendo el registro MIPyV…</div></section></div>' +
     '<style>#mipyvBox .filtros select{max-width:100%}@media (max-width:760px){.mpT thead{display:none}.mpT,.mpT tbody,.mpT tr,.mpT td{display:block;width:100%}.mpT tr{border-top:1px solid var(--ln);padding:10px 0}.mpT td{border:0!important;padding:2px 0!important}.mpT td:empty{display:none}.mpT td[data-l]::before{content:attr(data-l) ": ";color:var(--mu);font-weight:600}#mipyvBox .filtros,#mipyvBox .filtros label.f{width:100%}#mipyvBox .filtros select{width:100%}}</style>');
   $('mpAct').onclick = () => mipyv(true);
@@ -282,4 +282,75 @@ function mipyvVer(v) {
   $('mpRev').onclick = async () => { $('mpRev').disabled = true; $('mpRev').textContent = 'Guardando…';
     try { const r = await api('p_mipyv_revisar', { id: v.id, nota: $('mpNota').value }); if (!r.ok) throw new Error(r.mensaje); toast('Visita marcada como revisada.'); cerrar(); mipyv(true); }
     catch (e) { $('mpRev').disabled = false; $('mpRev').textContent = 'Marcar como revisada'; toast(e.message || 'No se pudo guardar.'); } };
+}
+
+// ------------------------------------------------------------------ 3 · Control de horas de los operarios (27/10/2026)
+// Sale de los horarios que cargan en la app MIP (visitas, saneamiento y otros trabajos de HyS). Si el mismo día hay registros que se superponen,
+// las horas se cuentan una sola vez. Las horas de guardia se pagan al 100 %: 1 hora reloj de guardia = 2 horas de guardia.
+const HS_CONF = [
+  { re: /javier/i, nombre: 'Javier Tramaleo', contrato: 30, guardiaMes: 140, regla: 'Contrato: 30 h semanales + 140 h de guardia por mes. La guardia se computa al 100 %: 140 h de guardia = 70 h reloj. Cada semana (lunes a domingo), las primeras 30 h son de contrato y lo que pasa de 30 h es guardia.' },
+  { re: /paulo/i, nombre: 'Paulo Tramaleo', contrato: 0, guardiaMes: null, regla: 'Cumple su contrato en otro lugar; con HyS solo hace guardias. Todas sus horas son de guardia, al 100 %: 1 h reloj = 2 h de guardia.' }];
+let MHS = '';
+const hsMin = t => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : null; };
+const hsTxt = min => { min = Math.round(min || 0); const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + String(m).padStart(2, '0') + ' min' : ''); };
+const hsHM = min => String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+function hsCalcular(H) {
+  const P = {};   // persona → {conf, dias: {fecha: {tramos, lugares, tipos, notas}}, sin: []}
+  H.forEach(r => { const c = HS_CONF.find(x => x.re.test(r.persona)), k = c ? c.nombre : r.persona;
+    const p = P[k] = P[k] || { nombre: k, conf: c || { nombre: k, contrato: 0, guardiaMes: null, regla: 'Sin regla cargada: se muestran las horas trabajadas.' }, dias: {}, sin: [] };
+    const a = hsMin(r.ini), b = hsMin(r.fin);
+    if (a == null || b == null || b <= a) { p.sin.push(r); return; }
+    const d = p.dias[r.fecha] = p.dias[r.fecha] || { tramos: [], lugares: new Set(), tipos: new Set(), titular: false };
+    d.tramos.push([a, b]); if (r.lugar) d.lugares.add(r.lugar); d.tipos.add(String(r.tipo).split(' · ')[0]); if (r.delTitular) d.titular = true; });
+  Object.values(P).forEach(p => {
+    Object.keys(p.dias).forEach(f => { const d = p.dias[f], t = d.tramos.sort((x, y) => x[0] - y[0]), u = [];
+      t.forEach(x => { const l = u[u.length - 1]; if (l && x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else u.push(x.slice()); });
+      d.union = u; d.min = u.reduce((s, x) => s + x[1] - x[0], 0); d.superpuestos = t.length > u.length; });
+    // Reparto por semana (lunes a domingo): primero contrato, el resto guardia
+    const sem = {};
+    Object.keys(p.dias).sort().forEach(f => { const dt = mpDia(f), l = new Date(dt); l.setDate(l.getDate() - ((l.getDay() + 6) % 7)); const k = mpYmd(l), s = sem[k] = sem[k] || { lunes: l, usado: 0 };
+      const d = p.dias[f], tope = p.conf.contrato * 60, c = Math.max(0, Math.min(d.min, tope - s.usado)); s.usado += c; d.contrato = c; d.guardia = d.min - c; });
+    p.semanas = sem; });
+  return P;
+}
+async function pantallaHoras(fresco) {
+  marco('#plghs', '<div class="cab"><div><span class="mu peq">3 · Plagas, saneamiento y trabajos de HyS</span><h1>Control de horas</h1><span class="mu peq">Horas de Javier y Paulo según los horarios que cargan en la app MIP. Si dos registros del mismo día se superponen, esas horas se cuentan una sola vez.</span></div>' +
+    '<div class="filtros"><button class="btn sec" id="hsAct">Actualizar</button><a class="btn sec" href="#plagas">Volver a Plagas</a></div></div><div id="hsBox"><section class="card"><div class="mu">Leyendo el registro MIP…</div></section></div>');
+  $('hsAct').onclick = () => pantallaHoras(true);
+  if (!MIPYV || fresco) { try { MIPYV = await api('p_mipyv', { fresco: !!fresco }, 120000); } catch (e) { $('hsBox').innerHTML = '<section class="card"><div class="aviso error">No se pudo leer el registro MIP.</div></section>'; return; } }
+  const R = MIPYV, box = $('hsBox'); if (!box) return;
+  if (!R.ok) { box.innerHTML = '<section class="card"><div class="aviso error">' + esc(R.mensaje || 'Error') + '</div></section>'; return; }
+  if (!Array.isArray(R.horas)) { box.innerHTML = '<section class="card"><div class="aviso">El control de horas aparece cuando se implementa la versión nueva del Apps Script (Implementar › Administrar las implementaciones › Nueva versión).</div></section>'; return; }
+  const P = hsCalcular(R.horas), meses = Array.from(new Set(R.horas.map(r => String(r.fecha).slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))).sort().reverse();
+  if (!MHS || meses.indexOf(MHS) < 0) MHS = meses.indexOf(mpYmd(new Date()).slice(0, 7)) >= 0 ? mpYmd(new Date()).slice(0, 7) : (meses[0] || mpYmd(new Date()).slice(0, 7));
+  const nomMes = m => MP_MESES[+m.slice(5) - 1] + ' de ' + m.slice(0, 4), hoyY = mpYmd(new Date());
+  const orden = Object.values(P).sort((a, b) => (HS_CONF.indexOf(a.conf) < 0 ? 9 : HS_CONF.indexOf(a.conf)) - (HS_CONF.indexOf(b.conf) < 0 ? 9 : HS_CONF.indexOf(b.conf)));
+  const tarjeta = p => {
+    const dm = Object.keys(p.dias).filter(f => f.slice(0, 7) === MHS).sort(), tot = dm.reduce((s, f) => s + p.dias[f].min, 0), con = dm.reduce((s, f) => s + p.dias[f].contrato, 0), gua = dm.reduce((s, f) => s + p.dias[f].guardia, 0);
+    const sinM = p.sin.filter(r => String(r.fecha).slice(0, 7) === MHS), c = p.conf;
+    const tope = c.guardiaMes ? c.guardiaMes * 30 : null;   // en minutos reloj (140 h guardia = 70 h reloj)
+    const barra = tope ? '<div style="margin:6px 0 2px;height:10px;border-radius:6px;background:#E3EBEE;overflow:hidden"><div style="height:100%;width:' + Math.min(100, Math.round(gua / tope * 100)) + '%;background:' + (gua > tope ? 'var(--er)' : '#5894A7') + '"></div></div>' : '';
+    const k = (t, v, sub, alerta) => '<div><span class="mu peq">' + t + '</span><div style="font-size:22px;font-weight:700;color:' + (alerta ? 'var(--er)' : 'var(--az)') + '">' + v + '</div><small class="mu">' + sub + '</small></div>';
+    const kpis = '<div class="tb3" style="margin:10px 0">' + k('Horas trabajadas', hsTxt(tot), dm.length + ' día(s) con horario en ' + nomMes(MHS)) +
+      (c.contrato ? k('De contrato', hsTxt(con), c.contrato + ' h por semana') : '') +
+      k('Guardia (horas reloj)', hsTxt(gua), c.contrato ? 'lo que pasa de ' + c.contrato + ' h en la semana' : 'todas sus horas', tope && gua > tope) +
+      k('Guardia al 100 %', hsTxt(gua * 2), tope ? 'de ' + c.guardiaMes + ' h de guardia del mes · ' + (gua * 2 <= c.guardiaMes * 60 ? 'quedan ' + hsTxt(c.guardiaMes * 60 - gua * 2) : 'se pasó por ' + hsTxt(gua * 2 - c.guardiaMes * 60)) : '1 h reloj = 2 h de guardia', tope && gua > tope) + '</div>' + barra;
+    // Semanas que tocan el mes
+    const sems = Object.keys(p.semanas).filter(l => { const a = mpDia(l), b = new Date(a); b.setDate(b.getDate() + 6); return mpYmd(a).slice(0, 7) <= MHS && mpYmd(b).slice(0, 7) >= MHS; }).sort();
+    const tSem = sems.length ? '<h3 style="margin:14px 0 6px;font-size:14px">Por semana (lunes a domingo)</h3><div style="overflow-x:auto"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Semana</th><th>Días</th><th>Trabajadas</th>' + (c.contrato ? '<th>Contrato (' + c.contrato + ' h)</th>' : '') + '<th>Guardia reloj</th><th>Guardia al 100 %</th></tr></thead><tbody>' +
+      sems.map(l => { const a = mpDia(l), b = new Date(a); b.setDate(b.getDate() + 6); const fs = Object.keys(p.dias).filter(f => f >= l && f <= mpYmd(b)), t = fs.reduce((s, f) => s + p.dias[f].min, 0), cc = fs.reduce((s, f) => s + p.dias[f].contrato, 0), g = fs.reduce((s, f) => s + p.dias[f].guardia, 0), cerrada = mpYmd(b) < hoyY;
+        return '<tr><td><b>' + mpF(l).slice(4) + '</b> al ' + mpF(mpYmd(b)).slice(4) + (cerrada ? '' : ' <span class="chip gr mini">en curso</span>') + '</td><td data-l="Días">' + fs.length + '</td><td data-l="Trabajadas">' + hsTxt(t) + '</td>' +
+          (c.contrato ? '<td data-l="Contrato">' + hsTxt(cc) + (cerrada && cc < c.contrato * 60 ? ' <span class="chip wa mini">faltan ' + hsTxt(c.contrato * 60 - cc) + '</span>' : '') + '</td>' : '') + '<td data-l="Guardia reloj">' + hsTxt(g) + '</td><td data-l="Guardia al 100 %"><b>' + hsTxt(g * 2) + '</b></td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<div class="mu peq" style="margin-top:4px">Las semanas que empiezan o terminan en otro mes se muestran completas; los totales de arriba cuentan solo los días de ' + nomMes(MHS) + '.</div>' : '';
+    const tDia = dm.length ? '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-size:14px">Día por día (' + dm.length + ')</summary><div style="overflow-x:auto;margin-top:6px"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th>' + (c.contrato ? '<th>Contrato</th>' : '') + '<th>Guardia reloj</th><th>Dónde y qué</th></tr></thead><tbody>' +
+      dm.slice().reverse().map(f => { const d = p.dias[f]; return '<tr><td style="white-space:nowrap"><b>' + mpF(f) + '</b></td><td data-l="Horario">' + d.union.map(x => hsHM(x[0]) + ' a ' + hsHM(x[1])).join(' y ') + (d.superpuestos ? '<div class="mu peq">registros superpuestos: contados una vez</div>' : '') + (d.titular ? '<div class="mu peq">sin horario propio: se tomó el del titular</div>' : '') + '</td>' +
+        '<td data-l="Horas">' + hsTxt(d.min) + '</td>' + (c.contrato ? '<td data-l="Contrato">' + hsTxt(d.contrato) + '</td>' : '') + '<td data-l="Guardia reloj">' + hsTxt(d.guardia) + '</td><td class="peq" data-l="Dónde">' + Array.from(d.lugares).map(esc).join(', ') + '<div class="mu">' + Array.from(d.tipos).map(esc).join(', ') + '</div></td></tr>'; }).join('') + '</tbody></table></div></details>' : '<div class="mu" style="margin-top:8px">Sin horas cargadas en ' + nomMes(MHS) + '.</div>';
+    const tSin = sinM.length ? '<div class="aviso" style="margin-top:10px">' + sinM.length + ' registro(s) de ' + nomMes(MHS) + ' sin horario o con horario incompleto: no se cuentan. ' + sinM.slice(0, 8).map(r => mpF(r.fecha) + ' · ' + esc(r.lugar || '') + ' (' + esc(String(r.tipo).split(' · ')[0]) + ')').join('; ') + (sinM.length > 8 ? '…' : '') + '</div>' : '';
+    return '<section class="card" style="margin-bottom:16px"><h2 style="margin:0 0 2px;font-size:17px">' + esc(p.nombre) + '</h2><div class="mu peq">' + esc(c.regla) + '</div>' + kpis + tSem + tDia + tSin + '</section>';
+  };
+  box.innerHTML = '<section class="card" style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><label class="f" style="margin:0">Mes<select class="c" id="hsMes">' + meses.map(m => '<option value="' + m + '"' + (m === MHS ? ' selected' : '') + '>' + nomMes(m) + '</option>').join('') + '</select></label>' +
+    '<button class="btn sec" id="hsImp">Imprimir</button></section>' + (orden.length ? orden.map(tarjeta).join('') : '<section class="card"><div class="mu">Todavía no hay horarios cargados en la app.</div></section>') +
+    '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas salen de «hora de inicio» y «hora de fin» de cada registro de la app; el acompañante usa su propio horario y, si no lo cargó, el del titular.</div>';
+  $('hsMes').onchange = e => { MHS = e.target.value; pantallaHoras(); };
+  $('hsImp').onclick = () => { document.querySelectorAll('#hsBox details').forEach(d => d.open = true); window.print(); };
 }
