@@ -83,6 +83,7 @@ function mpSemanas(visitas) {
 const mpTop = (arr, n) => { const c = {}; arr.forEach(x => { if (x) c[x] = (c[x] || 0) + 1; }); return Object.keys(c).map(k => [k, c[k]]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).slice(0, n); };
 // «Qué hicieron» (26/10/2026): visitas de plagas y avances de saneamiento agrupados por día, con lugar, horario, tareas y operarios
 let MPA = 'semana';
+const MP_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const mpDia = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
 const mpYmd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 function mpRango(p) {
@@ -91,6 +92,8 @@ function mpRango(p) {
   if (p === 'ayer') return [mas(hoy, -1), mas(hoy, -1), 'Ayer'];
   if (p === 'semana') return [lun, hoy, 'Esta semana (desde el lunes ' + String(lun.getDate()).padStart(2, '0') + '/' + String(lun.getMonth() + 1).padStart(2, '0') + ')'];
   if (p === 'pasada') return [mas(lun, -7), mas(lun, -1), 'Semana pasada (lunes ' + String(mas(lun, -7).getDate()).padStart(2, '0') + '/' + String(mas(lun, -7).getMonth() + 1).padStart(2, '0') + ' a domingo ' + String(mas(lun, -1).getDate()).padStart(2, '0') + '/' + String(mas(lun, -1).getMonth() + 1).padStart(2, '0') + ')'];
+  if (p === 'todo') return [new Date(2000, 0, 1), hoy, 'Todo el historial'];
+  const mm = String(p).match(/^m:(\d{4})-(\d{2})$/); if (mm) { const d1 = new Date(+mm[1], +mm[2] - 1, 1); return [d1, new Date(+mm[1], +mm[2], 0), MP_MESES[+mm[2] - 1] + ' de ' + mm[1]]; }
   return [mas(hoy, -29), hoy, 'Últimos 30 días'];
 }
 function mpActividad(V, A, sinAvances, T) {
@@ -103,7 +106,9 @@ function mpActividad(V, A, sinAvances, T) {
     .sort((x, y) => y.f.localeCompare(x.f) || String(x.ini).padStart(5, '0').localeCompare(String(y.ini).padStart(5, '0')));
   const dias = {}; items.forEach(i => (dias[i.f] = dias[i.f] || []).push(i));
   const lugares = new Set(items.map(i => i.o.lugar).filter(Boolean)), nV = items.filter(i => i.t === 'v').length, nA = items.filter(i => i.t === 'a').length, nT = items.filter(i => i.t === 't').length;
-  const per = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['pasada', 'Semana pasada'], ['30', 'Últimos 30 días']];
+  const per = [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['pasada', 'Semana pasada'], ['30', 'Últimos 30 días'], ['todo', 'Todo el historial']];
+  const meses = Array.from(new Set(V.concat(A, T).map(x => String(x.fecha || '').slice(0, 7)).filter(x => /^\d{4}-\d{2}$/.test(x)))).sort().reverse();
+  const cuenta = m => V.concat(A, T).filter(x => String(x.fecha || '').slice(0, 7) === m).length;
   const ultimo = !items.length ? V.concat(A, T).map(x => x.fecha).filter(Boolean).sort().pop() : '';
   const fila = i => { const o = i.o, op = esc(o.operario || '') + (o.acompanante ? ' y ' + esc(o.acompanante) : ''), hr = o.horario ? esc(mpHorario(o.horario) || o.horario) : 'sin horario';
     if (i.t === 'v') return '<div class="at cl" data-hv="' + V.indexOf(o) + '" style="cursor:pointer;align-items:flex-start"><span style="min-width:0"><b>' + esc(o.lugar || '—') + (o.sector ? ' · <span style="font-weight:600">' + esc(o.sector) + '</span>' : '') + '</b>' +
@@ -116,12 +121,13 @@ function mpActividad(V, A, sinAvances, T) {
       '<small style="display:block"><span class="chip gr mini">Saneamiento</span> ' + esc(o.tareas || '—') + (o.producto ? ' · ' + esc(o.producto) : '') + '</small>' + (o.detalle ? '<small class="mu" style="display:block">' + esc(String(o.detalle).slice(0, 220)) + (String(o.detalle).length > 220 ? '…' : '') + '</small>' : '') +
       '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + (/cerr|final|termin/i.test(o.cierre || '') ? '<span class="chip ok mini">Trabajo terminado</span>' : '<span class="chip wa mini">Continúa</span>') + '</span></div>'; };
   box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Qué hicieron y dónde</h2><div class="mu peq">' + esc(tit) + ' · todo lo que cargan en la app MIP, día por día: plagas, saneamiento y otros trabajos de HyS. Tocá una fila para ver todo el detalle y las fotos.</div></div>' +
-    '<div style="display:flex;gap:6px;flex-wrap:wrap">' + per.map(p => '<button class="btn ' + (p[0] === MPA ? 'pri' : 'sec') + '" data-mpa="' + p[0] + '" style="padding:6px 10px;font-size:13px">' + p[1] + '</button>').join('') + '</div></div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">' + per.map(p => '<button class="btn ' + (p[0] === MPA ? 'pri' : 'sec') + '" data-mpa="' + p[0] + '" style="padding:6px 10px;font-size:13px">' + p[1] + '</button>').join('') + '<select class="c" id="mpMes" style="padding:6px 8px;font-size:13px;width:auto"><option value="">Elegir un mes…</option>' + meses.map(m => '<option value="m:' + m + '"' + ('m:' + m === MPA ? ' selected' : '') + '>' + MP_MESES[+m.slice(5) - 1] + ' ' + m.slice(0, 4) + ' (' + cuenta(m) + ')</option>').join('') + '</select></div></div>' +
     (items.length ? '<div class="peq" style="margin:4px 0 10px"><b>' + nV + '</b> de plagas · <b>' + nA + '</b> de saneamiento · <b>' + nT + '</b> otros trabajos de HyS · <b>' + lugares.size + '</b> lugar(es) · <b>' + Object.keys(dias).length + '</b> día(s) con registros</div>' +
       Object.keys(dias).sort().reverse().map(f => '<h3 style="margin:14px 0 4px;font-size:14px;border-bottom:1px solid var(--ln);padding-bottom:4px">' + mpF(f) + ' <span class="mu peq" style="font-weight:400">· ' + dias[f].length + ' registro(s) · ' + Array.from(new Set(dias[f].map(i => i.o.lugar).filter(Boolean))).map(esc).join(', ') + '</span></h3>' + dias[f].map(fila).join('')).join('')
       : '<div class="mu" style="padding:8px 0">No cargaron registros en este período.' + (ultimo ? ' El último registro es del ' + mpF(ultimo) + '.' : '') + '</div>') +
     (sinAvances ? '<div class="mu peq" style="margin-top:8px">El saneamiento y los otros trabajos de HyS aparecen cuando se implementa la versión nueva del Apps Script.</div>' : '');
   box.querySelectorAll('[data-mpa]').forEach(x => x.onclick = () => { MPA = x.dataset.mpa; mpActividad(V, A, sinAvances, T); });
+  const sm = $('mpMes'); if (sm) sm.onchange = () => { if (sm.value) { MPA = sm.value; mpActividad(V, A, sinAvances, T); } };
   box.querySelectorAll('[data-ht]').forEach(x => x.onclick = () => mpTareaVer(T[Number(x.dataset.ht)]));
   box.querySelectorAll('[data-hv]').forEach(x => x.onclick = () => mipyvVer(V[Number(x.dataset.hv)]));
   box.querySelectorAll('[data-ha]').forEach(x => x.onclick = () => mpAvanceVer(A[Number(x.dataset.ha)]));
@@ -149,7 +155,7 @@ async function mipyv(fresco) {
     try { MIPYV = await api('p_mipyv', { fresco: !!fresco }, 120000); } catch (e) { box.innerHTML = '<section class="card"><div class="aviso error">No se pudo leer el registro MIPyV.</div></section>'; return; } }
   const R = MIPYV; if (!R.ok) { box.innerHTML = '<section class="card"><div class="aviso error">' + esc(R.mensaje || 'Error') + '</div></section>'; return; }
   const lib = $('mpLib'); if (lib && R.libro) { lib.href = R.libro.replace(/#.*$/, '') + '#gid=900001'; lib.hidden = false; }
-  const C = Array.isArray(R.casos) ? R.casos.slice().sort((a, b) => a.dias - b.dias) : null, S = R.solicitudes || [], V = R.visitas || [];
+  const C = Array.isArray(R.casos) ? R.casos.slice().sort((a, b) => a.dias - b.dias) : null, S = R.solicitudes || [], VT = R.visitas || [], h90 = mpYmd(new Date(Date.now() - 90 * 864e5)), V = VT.filter(v => v.fecha >= h90);
   const lugarDe = o => o.lugar || o.establecimiento || (o.cod ? o.cod + (o.sitio ? ' · ' + o.sitio : '') : '');
   const vencidos = C ? C.filter(c => c.dias < 0).length : R.vencidos.length, porVencer = C ? C.filter(c => c.dias >= 0 && c.urgente).length : 0;
   const pend = S.filter(x => x.estado === 'Pendiente').length, sinRev = V.filter(v => !/^revisad/i.test(String(v.revisado))).length;
@@ -194,7 +200,7 @@ async function mipyv(fresco) {
     document.querySelectorAll('#mpTabla tr[data-v]').forEach(tr => tr.onclick = () => mipyvVer(V[Number(tr.dataset.v)]));
   };
   pintar();
-  mpActividad(V, R.avances || [], R.avances === undefined, R.tareas || []);
+  mpActividad(VT, R.avances || [], R.avances === undefined, R.tareas || []);
   box.querySelectorAll('[data-ir]').forEach(a => { const ir = () => { if (a.dataset.ir === 'mpVis' && /sin revisar/i.test(a.textContent)) { MPF.sinRev = true; $('mpFR').checked = true; pintar(); }
     const el = $(a.dataset.ir); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
     a.onclick = e => { e.preventDefault(); ir(); }; a.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } }; });
