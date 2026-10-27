@@ -2010,7 +2010,7 @@ async function sinEst(fresco) {
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Módulo 2 · Agua y módulo 3 · Plagas (toda la red; la misma lectura, dos pantallas)
 async function agua(modo) {
-  if (modo === 'plagas') return plagas();
+  if (modo === 'plagas') return pantallaPlagas();
   modo = 'agua'; const R = '#' + modo;
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando(R, 'Leyendo establecimientos…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   if (!TB) TB = LS.get('tab', null);
@@ -2044,7 +2044,7 @@ async function agua(modo) {
 }
 // ------------------------------------------------------------------ 3 · Plagas (26/10/2026: tablero con gráficos, fechas y horarios claros)
 // Lee el registro MIPyV (Modulo5.gs › p_mipyv): lo cargan los operarios desde su app; acá se ve, se revisa y se cierran casos.
-function plagas() {
+function pantallaPlagas() {
   marco('#plagas', '<div class="cab"><div><span class="mu peq">3 · Plagas</span><h1>Plagas en la red Trelew</h1><span class="mu peq">Lo que cargan Javier y Paulo en la app MIPyV: visitas, casos, saneamiento y pedidos. Fechas en hora de Argentina.</span></div>' +
     '<div class="filtros"><button class="btn sec" id="mpAct">Actualizar</button><a class="btn sec" id="mpLib" href="#" target="_blank" rel="noopener" hidden>Libro MIPyV ↗</a></div></div>' +
     '<div id="mipyvBox"><section class="card"><div class="mu">Leyendo el registro MIPyV…</div></section></div>' +
