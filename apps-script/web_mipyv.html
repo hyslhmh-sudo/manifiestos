@@ -704,7 +704,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.25g";
+const APP_VERSION = "2026.10.27c";
 </script>
 <script>
 // ============================================================
@@ -730,7 +730,7 @@ const OPERARIOS = [
 ];
 
 const ESTABLECIMIENTOS = [
-  { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital" },
+  { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital", plantas: ["Subsuelo", "Planta baja", "1er piso", "2do piso"] },
   { id: "HMH", nombre: "Hospital María Humphreys", tipo: "Hospital" },
   { id: "ADOL", nombre: "Adolescencia", tipo: "Dependencia" },
   { id: "CTUT", nombre: "Casa Tutelada", tipo: "Dependencia" },
@@ -1027,7 +1027,7 @@ const EMOJI_TAREA_HYS = [
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal.",
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
   horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
@@ -1058,7 +1058,7 @@ const AYUDA_TEXTOS = {
   "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
   "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
   "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
-  "h-extintores": "Tocá cada extintor de la lista y contestá las 5 preguntas con Sí o No. Mirá la tarjeta y poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, hasta cuándo vale la prueba hidráulica. Después sacá las 3 fotos: 1) de lejos, que se vea el extintor y todo alrededor; 2) la tarjeta con la fecha, que se lea; 3) la chapita con el número de inventario. Si querés, escribí un comentario (es opcional). Si dice ⚠️ la carga está vencida; si dice ⏰ vence en menos de 30 días. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: completá todos los datos (planta, sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario y vencimiento de la carga) y sacá las 3 fotos; todo es obligatorio. Si el nombre o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el nombre o dónde está»: cambiá el nombre o N.º, el lugar, la planta, el sector o dónde está, y tocá «Guardar la corrección». Belén lo revisa y lo verifica. Lo que da No pasa solo a hallazgos.",
+  "h-extintores": "Tocá cada extintor de la lista y contestá las 5 preguntas con Sí o No. Mirá la tarjeta y poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, hasta cuándo vale la prueba hidráulica. Después sacá las 3 fotos: 1) de lejos, que se vea el extintor y todo alrededor; 2) la tarjeta con la fecha, que se lea; 3) la chapita con el número de inventario. Si querés, escribí un comentario (es opcional). Si dice ⚠️ la carga está vencida; si dice ⏰ vence en menos de 30 días. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: completá todos los datos (planta, sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario y vencimiento de la carga) y sacá las 3 fotos; todo es obligatorio. Si el nombre o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el nombre o dónde está»: cambiá el nombre o N.º, el lugar, la planta, el sector o dónde está, y tocá «Guardar la corrección». Belén lo revisa y lo verifica. Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. En los kilos podés escribir 5, 2,5 o 5 kg. Lo que cargás se guarda solo en el celular. Si al sacar una foto la app se cierra o vuelve al inicio, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común del celular y después tocá el casillero y elegí «🖼️ Elegir del teléfono».",
   "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
   "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
   "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
@@ -1340,6 +1340,7 @@ function goHome() {
   document.querySelector('.screen[data-step="home"]').classList.add("active");
   screensEl.scrollTop = 0;
   if (typeof avisosPintar === "function") avisosPintar();
+  borradorMostrarAviso();
 }
 homeBtn.addEventListener("click", goHome);
 
@@ -1406,6 +1407,7 @@ function showStep(name) {
   if (name === "h-detalle") prepararDetalleHys();
   if (name === "h-hallazgos") prepararHallazgosHys();
   if (name === "h-confirm") renderResumenHys();
+  if (currentModule === "hys" && name !== "h-sent") borradorProgramar();
 }
 
 function canAdvance(name) {
@@ -1958,7 +1960,7 @@ async function agregarFotos(lista, files, render) {
   for (const f of files) { if (lista.length >= 5) { sobra = true; break; } try { lista.push(await comprimirFoto(f)); } catch (err) { error = true; } }
   render();
   if (sobra) alert("Se cargaron 5 fotos, que es el máximo.");
-  else if (error) alert("No se pudo cargar alguna foto. Probá de nuevo.");
+  else if (error) alert(AVISO_FOTO_FALLO);
 }
 
 // ============================================================
@@ -2003,32 +2005,47 @@ photoInput.addEventListener("change", (e) => {
 const FOTO_LADO_MAX = 1280;
 const FOTO_CALIDAD = 0.7;
 
-function comprimirFoto(file) {
+// Primero intenta con createImageBitmap (usa menos memoria y respeta la
+// orientación de la foto); si el celular no lo tiene, usa el método anterior.
+// Si el resultado sale vacío (pasa en celulares con poca memoria), avisa.
+async function comprimirFoto(file) {
+  if (!file) throw new Error("sin archivo");
+  if ("createImageBitmap" in window) {
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      try { return dibujarComprimida(bmp, bmp.width, bmp.height); }
+      finally { if (bmp.close) bmp.close(); }
+    } catch (err) { /* sigue con el método anterior */ }
+  }
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      try {
-        const escala = Math.min(1, FOTO_LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.round(img.naturalWidth * escala);
-        const h = Math.round(img.naturalHeight * escala);
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL("image/jpeg", FOTO_CALIDAD));
-      } catch (err) {
-        URL.revokeObjectURL(url);
-        reject(err);
-      }
+      try { resolve(dibujarComprimida(img, img.naturalWidth, img.naturalHeight)); }
+      catch (err) { reject(err); }
+      finally { URL.revokeObjectURL(url); }
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen ilegible")); };
     img.src = url;
   });
 }
+function dibujarComprimida(fuente, ancho, alto) {
+  if (!ancho || !alto) throw new Error("imagen sin tamaño");
+  const escala = Math.min(1, FOTO_LADO_MAX / Math.max(ancho, alto));
+  const w = Math.max(1, Math.round(ancho * escala));
+  const h = Math.max(1, Math.round(alto * escala));
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; // fondo blanco por si la imagen trae transparencia
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(fuente, 0, 0, w, h);
+  const url = canvas.toDataURL("image/jpeg", FOTO_CALIDAD);
+  canvas.width = canvas.height = 0; // libera memoria enseguida
+  if (!url || url.length < 1000) throw new Error("la foto salió vacía");
+  return url;
+}
+const AVISO_FOTO_FALLO = "No se pudo cargar la foto.\n\nProbá así: sacala con la cámara común del celular y después, en la app, tocá el casillero y elegí «🖼️ Elegir del teléfono».";
 
 // ============================================================
 // MIPyV — m-obs (chips + notas de texto libre)
@@ -2729,14 +2746,25 @@ async function extFotoPoner(file) {
     if (extFotoDestino[0] === "alta") { const a = tareaHys.altas.find(x => x.uid === extFotoDestino[1]); if (a) a.fotos[extFotoDestino[2]] = foto; }
     else { const [id, campo] = extFotoDestino; tareaHys.controles[id].fotos[campo] = foto; }
     renderExtintores();
+    borradorGuardar();
   }
-  catch (err) { alert("No se pudo cargar la foto. Probá sacarla de nuevo."); }
+  catch (err) { alert(AVISO_FOTO_FALLO); }
 }
 function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k] = null); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = "");
   const iso = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : "";
   return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false }; }
 // Completo: 5 respuestas, 3 fotos y el vencimiento de la carga (o «No se lee»)
 function controlCompleto(c) { return !!c && PREGUNTAS_EXTINTOR.every(([k]) => c.resp[k] !== null) && FOTOS_EXTINTOR.every(([k]) => !!c.fotos[k]) && (!!c.vto || !!c.noSeLee); }
+// Lo que falta para poder guardar el control (se muestra en el botón)
+function controlFaltan(c) {
+  const f = [], sinResp = PREGUNTAS_EXTINTOR.filter(([k]) => !c || c.resp[k] === null).length;
+  if (sinResp) f.push(sinResp === 1 ? "1 pregunta" : sinResp + " preguntas");
+  if (!c || (!c.vto && !c.noSeLee)) f.push("hasta cuándo dura la carga");
+  const sinFoto = FOTOS_EXTINTOR.filter(([k]) => !c || !c.fotos[k]).map(([, , tit]) => tit.replace(/^\d+\.\s*/, "").toLowerCase());
+  if (sinFoto.length) f.push(sinFoto.length === 1 ? "la foto: " + sinFoto[0] : sinFoto.length + " fotos");
+  return f;
+}
+function textoBotonControl(c) { return controlCompleto(c) ? "Listo, guardar este extintor" : "Falta: " + controlFaltan(c).join(", "); }
 function controlEmpezado(c) { return !!c && (PREGUNTAS_EXTINTOR.some(([k]) => c.resp[k] !== null) || FOTOS_EXTINTOR.some(([k]) => !!c.fotos[k])); }
 const extintoresDe = (idLugar) => EXTINTORES_CAT.filter(e => (e.lugares || []).indexOf(idLugar) >= 0);
 function extNombre(e) { const ed = tareaHys.ediciones && tareaHys.ediciones[e.id], nro = ed ? ed.NRO_EXTINTOR : e.nro; return (nro ? "N.º " + nro : e.id) + " · " + [e.tipo, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" "); }
@@ -2800,7 +2828,7 @@ function panelControl(e, l) {
     const b = c.borrador;
     html += `<div class="ext-edicion"><div class="ext-preg">Nombre o N.º del extintor</div><input class="ext-inp" data-ed="NRO_EXTINTOR" value="${escX(b.NRO_EXTINTOR)}" placeholder="Ej.: 12, o Extintor del office">
       <div class="ext-preg">¿En qué lugar está?</div><select class="ext-inp" data-ed="lugar_id">${ESTABLECIMIENTOS.map(x => `<option value="${escX(x.id)}"${x.id === b.lugar_id ? " selected" : ""}>${escX(x.nombre)}</option>`).join("")}</select>
-      <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${["Baja", "Alta", "Subsuelo", "Única"].map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${x}">${x}</button>`).join("")}</div>
+      <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${plantasDe(b.lugar_id, b.PLANTA).map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${escX(x)}">${escX(x)}</button>`).join("")}</div>
       <div class="ext-preg">Sector o servicio</div><input class="ext-inp" data-ed="SECTOR" value="${escX(b.SECTOR)}">
       <div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-ed="UBICACION" value="${escX(b.UBICACION)}">
       <button type="button" class="ext-listo ext-ed-ok">Guardar la corrección</button><button type="button" class="ext-quitar ext-ed-no">${ed ? "Deshacer la corrección" : "Cancelar"}</button></div>`;
@@ -2822,10 +2850,10 @@ function panelControl(e, l) {
     <div class="ext-preg">¿Hasta cuándo vale la prueba hidráulica? (si figura)</div>
     <input class="ext-inp ext-ph-inp" type="date" value="${escX(c.ph)}">
     <div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(c.obs || "")}</textarea>`;
-  html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${controlCompleto(c) ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"}</button>`;
+  html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${escX(textoBotonControl(c))}</button>`;
   panel.innerHTML = html;
   panel.querySelector(".ext-com").oninput = (ev) => { c.obs = ev.target.value; };
-  const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = ok ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = textoBotonControl(c); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelector(".ext-vto-inp").onchange = panel.querySelector(".ext-vto-inp").oninput = (ev) => { c.vto = ev.target.value; actListo(); };
   panel.querySelector(".ext-ph-inp").onchange = panel.querySelector(".ext-ph-inp").oninput = (ev) => { c.ph = ev.target.value; };
   panel.querySelector(".ext-nose").onchange = (ev) => { c.noSeLee = ev.target.checked; renderExtintores(); };
@@ -2838,7 +2866,7 @@ function panelControl(e, l) {
   panel.querySelector(".ext-editar").onclick = () => { c.editando = !c.editando; c.borrador = null; renderExtintores(); };
   if (c.editando) {
     const b = c.borrador;
-    panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; }; });
+    panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; if (i.dataset.ed === "lugar_id") renderExtintores(); }; });
     panel.querySelectorAll(".ext-opc[data-ed] button").forEach(x => { x.onclick = () => { b.PLANTA = x.dataset.valor; renderExtintores(); }; });
     panel.querySelector(".ext-ed-ok").onclick = () => {
       if (!String(b.SECTOR || "").trim() || !String(b.UBICACION || "").trim()) { alert("El sector y dónde está no pueden quedar vacíos."); return; }
@@ -2862,6 +2890,17 @@ function avisoVto(e) {
 
 // --- Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios.
 // Se manda al sistema HyS (módulo 10, hoja EXTINTORES) como registro «alta_extintor».
+// Plantas de cada lugar: salen de la columna «plantas» de la hoja establecimientos
+// (separadas por coma, ej.: «Subsuelo, Planta baja, 1er piso, 2do piso»).
+// Si un lugar no la tiene cargada, se ofrecen las opciones generales.
+const PLANTAS_POR_DEFECTO = ["Baja", "Alta", "Subsuelo", "Única"];
+function listaPlantas(v) { return String(v == null ? "" : v).split(/[,;]/).map(x => x.trim()).filter(x => x && x.toLowerCase() !== "s/d"); }
+function plantasDe(idLugar, valorActual) {
+  const e = ESTABLECIMIENTOS.find(x => x.id === idLugar);
+  const lista = (e && e.plantas && e.plantas.length ? e.plantas : PLANTAS_POR_DEFECTO).slice();
+  if (valorActual && lista.indexOf(valorActual) < 0) lista.push(valorActual); // que se vea lo que ya estaba cargado
+  return lista;
+}
 const CAMPOS_ALTA = [
   ["PLANTA", "¿En qué planta está?", "botones", ["Baja", "Alta", "Subsuelo", "Única"]],
   ["SECTOR", "Sector o servicio", "texto", "Ej.: Guardia, sala de espera"],
@@ -2875,15 +2914,26 @@ const CAMPOS_ALTA = [
 ];
 let altaN = 0;
 function altaVacia(l) { const d = {}; CAMPOS_ALTA.forEach(([k]) => d[k] = ""); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = ""); return { uid: "A" + (++altaN) + "-" + Date.now(), lugar: { id: l.id, nombre: l.nombre }, datos: d, fotos: f, obs: "" }; }
-function altaCompleta(a) { return CAMPOS_ALTA.every(([k, , , , opc]) => opc || String(a.datos[k] || "").trim()) && FOTOS_EXTINTOR.every(([k]) => !!a.fotos[k]); }
+// Kilos: acepta «5», «2,5», «2.5» o «5 kg»; devuelve el número con punto, o "" si no hay número
+function kilosNormal(v) { const m = String(v || "").replace(",", ".").match(/\d+(\.\d+)?/); return m ? m[0] : ""; }
+function altaValor(a, k) { return k === "CAPACIDAD_KG" ? kilosNormal(a.datos[k]) : String(a.datos[k] || "").trim(); }
+function altaFaltan(a) {
+  const f = CAMPOS_ALTA.filter(([k, , , , opc]) => !opc && !altaValor(a, k)).map(([, tit]) => tit.replace(/[¿?]/g, "").replace(/\s*\(.*\)\s*/, "").trim().toLowerCase());
+  const sinFoto = FOTOS_EXTINTOR.filter(([k]) => !a.fotos[k]).length;
+  if (sinFoto) f.push(sinFoto === 1 ? "1 foto" : sinFoto + " fotos");
+  return f;
+}
+function altaCompleta(a) { return altaFaltan(a).length === 0; }
+function textoBotonAlta(a) { return altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Falta: " + altaFaltan(a).join(", "); }
 function panelAlta(a) {
   const panel = document.createElement("div");
   panel.className = "ext-panel";
   let html = `<div class="step-sub" style="margin:8px 0 0">Completá todo y sacá las 3 fotos. Es obligatorio.</div>`;
   CAMPOS_ALTA.forEach(([k, tit, tipo, x]) => {
     html += `<div class="ext-preg">${tit}</div>`;
-    if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + x.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
-    else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : tipo === "numero" ? "number" : "text"}"${tipo === "numero" ? ' inputmode="decimal" step="any"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
+    const opciones = k === "PLANTA" ? plantasDe(a.lugar.id, a.datos.PLANTA) : x;
+    if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + opciones.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
+    else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : "text"}"${tipo === "numero" ? ' inputmode="decimal"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
   });
   html += `<div class="ext-preg" style="margin-top:16px">Sacá las 3 fotos</div><div class="ext-fotos">`;
   FOTOS_EXTINTOR.forEach(([k, ico, tit, ayuda]) => {
@@ -2892,13 +2942,13 @@ function panelAlta(a) {
       : `<button type="button" class="ext-foto" data-foto="${k}"><span class="ext-foto-ico">${ico}</span><b>${tit}</b><small>${ayuda}</small></button>`;
   });
   html += `</div><div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(a.obs || "")}</textarea>`;
-  html += `<button type="button" class="ext-listo"${altaCompleta(a) ? "" : " disabled"}>${altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"}</button>`;
+  html += `<button type="button" class="ext-listo"${altaCompleta(a) ? "" : " disabled"}>${escX(textoBotonAlta(a))}</button>`;
   html += `<button type="button" class="ext-quitar">Quitar este extintor nuevo</button>`;
   panel.innerHTML = html;
   const boton = panel.querySelector(".ext-listo");
-  const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = ok ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = textoBotonAlta(a); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
-  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
+  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
   panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
   panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
@@ -2958,7 +3008,7 @@ function registrosAltaExtintores(idTarea) {
   return tareaHys.altas.filter(altaCompleta).map((a, i) => {
     const d = Object.assign({ id_alta: idTarea + "-A" + (i + 1), id_tarea: idTarea, lugar_id: a.lugar.id, lugar_nombre: a.lugar.nombre, fecha: new Date().toISOString(),
       operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
-      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos);
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
     return { tipo: "alta_extintor", data: d };
   });
 }
@@ -3099,6 +3149,7 @@ async function sendTareaHys() {
   const guardado = await guardarEnCola(controles.concat([{ tipo: "tarea_hys", data: record }]));
   nextBtn.disabled = false;
   if (!guardado) return;
+  borradorBorrar();
   document.getElementById("hSentSub").textContent = navigator.onLine
     ? "Tarea registrada — sincronizando…"
     : "Tarea guardada en el celular — se enviará cuando haya señal";
@@ -3115,6 +3166,127 @@ document.getElementById("hNewBtn").addEventListener("click", () => {
   renderTiposTarea();
   enterModule("hys");
 });
+
+// ============================================================
+// BORRADOR DE LA TAREA DE HIGIENE Y SEGURIDAD (27/10/2026)
+// En muchos Android, al abrir la cámara el navegador cierra la app para
+// liberar memoria y la vuelve a abrir al regresar: se perdía todo lo cargado
+// (por eso «no cargaba la foto» en el control de extintores).
+// Ahora cada respuesta y cada foto quedan guardadas en el celular al momento.
+// Si la app se cierra, al volver ofrece «Seguir con la tarea que estabas
+// haciendo» y aparece todo como estaba, fotos incluidas.
+// Se borra solo cuando la tarea se envía o el operario la descarta.
+// Dura 3 días; después se descarta sola.
+// ============================================================
+var BORRADOR_DB = "mipyv_borrador", BORRADOR_STORE = "b", BORRADOR_ID = "hys";
+var BORRADOR_DIAS = 3;
+var borradorTimer = null;
+
+function borradorAbrir() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("sin IndexedDB")); return; }
+    const req = indexedDB.open(BORRADOR_DB, 1);
+    req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains(BORRADOR_STORE)) db.createObjectStore(BORRADOR_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function borradorTx(modo, accion) {
+  const db = await borradorAbrir();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(BORRADOR_STORE, modo), st = tx.objectStore(BORRADOR_STORE);
+    let r; accion(st, (v) => { r = v; });
+    tx.oncomplete = () => { db.close(); resolve(r); };
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+// Se guarda solo si hay una tarea de Higiene y Seguridad con tipo elegido.
+function borradorFoto() {
+  if (currentModule !== "hys" || !tareaHys.tipo_tarea) return null;
+  const paso = stepList[stepIndex];
+  if (!paso || paso === "h-sent") return null;
+  return {
+    guardado: new Date().toISOString(), version: APP_VERSION, paso,
+    operario: currentOperario, acompanante: operarioAcompanante, acompananteRespondido,
+    tarea: tareaHys, extAbierto, altaAbierta, fotos: hFotosDataUrls,
+    horas: [horaInicioEl.value, horaFinEl.value, horaInicioAcompEl.value, horaFinAcompEl.value],
+  };
+}
+async function borradorGuardar() {
+  clearTimeout(borradorTimer); borradorTimer = null;
+  const b = borradorFoto(); if (!b) return;
+  try { await borradorTx("readwrite", (st) => st.put(JSON.parse(JSON.stringify(b)), BORRADOR_ID)); }
+  catch (err) { console.warn("No se pudo guardar el borrador en el celular.", err); }
+}
+function borradorProgramar() { clearTimeout(borradorTimer); borradorTimer = setTimeout(borradorGuardar, 600); }
+async function borradorLeer() {
+  try {
+    const b = await borradorTx("readonly", (st, set) => { const r = st.get(BORRADOR_ID); r.onsuccess = () => set(r.result || null); });
+    if (!b || !b.tarea) return null;
+    if (Date.now() - new Date(b.guardado).getTime() > BORRADOR_DIAS * 864e5) { borradorBorrar(); return null; }
+    return b;
+  } catch (err) { return null; }
+}
+async function borradorBorrar() {
+  clearTimeout(borradorTimer); borradorTimer = null;
+  try { await borradorTx("readwrite", (st) => st.delete(BORRADOR_ID)); } catch (err) { /* nada */ }
+}
+
+// Vuelve a dejar la tarea exactamente donde estaba.
+function borradorRestaurar(b) {
+  enterModule("hys");
+  currentOperario = b.operario || null;
+  operarioAcompanante = b.acompanante || null;
+  acompananteRespondido = !!b.acompananteRespondido;
+  tareaHys = Object.assign({ tipo_tarea: null, lugares: [], controles: {}, altas: [], ediciones: {}, detalle: "", hallazgos: "", observaciones: "" }, b.tarea);
+  extAbierto = b.extAbierto || null;
+  altaAbierta = b.altaAbierta || null;
+  hFotosDataUrls = Array.isArray(b.fotos) ? b.fotos : [];
+  const h = b.horas || [];
+  horaInicioEl.value = h[0] || ""; horaFinEl.value = h[1] || "";
+  horaInicioAcompEl.value = h[2] || ""; horaFinAcompEl.value = h[3] || "";
+  hDetalle.value = tareaHys.detalle || ""; hHallazgos.value = tareaHys.hallazgos || ""; hObservaciones.value = tareaHys.observaciones || "";
+  // el número de los extintores nuevos sigue desde el último que había
+  (tareaHys.altas || []).forEach(a => { const n = parseInt(String(a.uid || "").replace(/^A/, ""), 10); if (n > altaN) altaN = n; });
+  renderTiposTarea();
+  armarPasosHys();
+  const paso = stepList.indexOf(b.paso) >= 0 ? b.paso : "h-lugares";
+  // si no quedó cargado quién trabajó, se empieza por ahí
+  stepIndex = currentOperario ? stepList.indexOf(paso) : 0;
+  showStep(stepList[stepIndex]);
+}
+
+// Aviso en la pantalla de inicio
+const borradorAviso = document.createElement("div");
+borradorAviso.style.cssText = "display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FFF4D6;border:2px solid #E0A800;color:#3B2F00";
+document.querySelector('.screen[data-step="home"]').prepend(borradorAviso);
+async function borradorMostrarAviso() {
+  const b = await borradorLeer();
+  if (!b || currentModule) { borradorAviso.style.display = "none"; return; }
+  const t = b.tarea || {}, f = new Date(b.guardado);
+  const cuando = f.toLocaleDateString("es-AR") + " " + f.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  let nFotos = (b.fotos || []).length;
+  Object.values(t.controles || {}).forEach(c => { nFotos += Object.values(c.fotos || {}).filter(Boolean).length; });
+  (t.altas || []).forEach(a => { nFotos += Object.values(a.fotos || {}).filter(Boolean).length; });
+  const lugares = (t.lugares || []).map(l => l.nombre).join(", ");
+  borradorAviso.innerHTML = `<div style="font-weight:700;font-size:18px;margin-bottom:6px">⏸️ Tenés una tarea sin terminar</div>
+    <div style="margin-bottom:12px">${escX(t.tipo_tarea || "")}${lugares ? " · " + escX(lugares) : ""}<br><small>Guardada el ${escX(cuando)}${nFotos ? " · " + nFotos + " foto(s)" : ""}</small></div>
+    <button type="button" data-b="seguir" style="width:100%;font-size:18px;padding:14px;border-radius:12px;border:0;background:#0D313F;color:#fff;margin-bottom:8px">Seguir con la tarea que estabas haciendo</button>
+    <button type="button" data-b="descartar" style="width:100%;font-size:15px;padding:10px;border-radius:12px;border:1px solid #8A6D00;background:#fff;color:#3B2F00">Descartarla</button>`;
+  borradorAviso.querySelector('[data-b="seguir"]').onclick = () => { borradorAviso.style.display = "none"; borradorRestaurar(b); };
+  borradorAviso.querySelector('[data-b="descartar"]').onclick = async () => {
+    if (!confirm("¿Descartar la tarea sin terminar? Se borra lo que cargaste, fotos incluidas.")) return;
+    await borradorBorrar(); borradorAviso.style.display = "none";
+  };
+  borradorAviso.style.display = "block";
+}
+
+// Guardar mientras se escribe o se contesta, y siempre antes de que la app
+// quede en segundo plano (por ejemplo, al abrir la cámara).
+document.getElementById("screens").addEventListener("input", () => { if (currentModule === "hys") borradorProgramar(); });
+document.getElementById("screens").addEventListener("click", () => { if (currentModule === "hys") borradorProgramar(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && currentModule === "hys") borradorGuardar(); });
+window.addEventListener("pagehide", () => { if (currentModule === "hys") borradorGuardar(); });
 
 // ============================================================
 // SINCRONIZACIÓN
@@ -3290,7 +3462,7 @@ function convertirCatalogos(d) {
   if (Array.isArray(d.establecimientos)) {
     out.establecimientos = d.establecimientos
       .filter(r => texto(r.id_establecimiento) && esSi(r.activo))
-      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo) }));
+      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo), plantas: listaPlantas(r.plantas) }));
   }
   if (Array.isArray(d.sectores)) {
     out.sectores_hospital = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_hospital)).map(r => texto(r.nombre_sector));
@@ -3407,6 +3579,7 @@ progressWrap.style.display = "none";
 bottomBar.style.display = "none";
 
 document.getElementById("appVersion").textContent = "Versión " + APP_VERSION;
+borradorMostrarAviso();
 
 // ============================================================
 // ACTUALIZACIÓN AUTOMÁTICA
