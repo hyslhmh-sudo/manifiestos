@@ -1,5 +1,5 @@
 /**
- * SISTEMA HyS · HOJAS PARA IMPRIMIR (Imprimir.gs) · versión 0 (23/10/2026)
+ * SISTEMA HyS · HOJAS PARA IMPRIMIR (Imprimir.gs) · versión 0 (23/10/2026) · formularios: solo el código (sin «v0», sin etiqueta ni fecha de generación) (27/10/2026)
  * Pedido de Belén (23/10/2026): que todas las auditorías, inspecciones y relevamientos se puedan imprimir
  *   1) EN BLANCO, para completarlos en papel (armados según el tipo de establecimiento, sus lugares y sus servicios), y
  *   2) COMPLETADOS, desde «Mi establecimiento» y desde el Portal HyS.
@@ -209,9 +209,11 @@ function impDoc_(o) {
   const azul = IMP.AZULES.indexOf(o.cod) >= 0, c1 = azul ? '#0D313F' : '#C24E1C', c2 = azul ? '#5894A7' : '#FF682C', cl = azul ? '#EAF3F6' : '#FFF1EA';
   const logo = azul ? impImg_(IMP.LOGO_HZT) : '', pie = impImg_(IMP.LOGO_PIE), t = impTema_(o.tema) || { n: '', normas: '' };
   const est = impNombreEst_(o.cod), ahora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm');
+  // Formularios (p. ej. dosímetro): sin cuadro de estado/versión en el encabezado ni línea de sistema en el pie
+  const sinMeta = o.tema === 'rad_form' || o.sinMeta === true;
   const enc = (logo ? '<div class="logoi"><img class="lg" src="' + logo + '" alt="Hospital María Humphreys · Hospital Zonal de Trelew"></div>' : '') + '<div class="enc">' + (logo ? '' : '<div class="inst">Secretaría de Salud del Chubut<br><b>' + impE_(est) + '</b></div>') +
     '<div class="tit"><div class="k">' + impE_(t.n) + '</div><div class="h">' + impE_(o.titulo) + '</div><div class="s">' + impE_(est) + (o.subtitulo ? ' · ' + impE_(o.subtitulo) : '') + '</div></div>' +
-    '<div class="cd"><div>' + (o.etiqueta || (o.completada ? 'Hoja completada' : 'Hoja en blanco')) + '</div><b>' + impE_(String(o.codigo || '—').replace(/^En blanco( · )?/, '') || '—') + '</b></div></div>';
+    (sinMeta ? '<div class="cd"><b>' + impE_(String(o.codigo || '').replace(/ · v\d+$/, '')) + '</b></div>' : '<div class="cd"><div>' + (o.etiqueta || (o.completada ? 'Hoja completada' : 'Hoja en blanco')) + '</div><b>' + impE_(String(o.codigo || '—').replace(/^En blanco( · )?/, '') || '—') + '</b></div>') + '</div>';
   const css = '@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap");' +
     '@page{size:A4 ' + (o.apaisada ? 'landscape' : 'portrait') + ';margin:11mm 11mm 13mm 11mm;@bottom-right{content:"Página " counter(page) " de " counter(pages);font:7.5pt "Plus Jakarta Sans",Arial,sans-serif;color:#6B7780}}' +
     ':root{--c1:' + c1 + ';--c2:' + c2 + ';--cl:' + cl + '}*{box-sizing:border-box}html,body{background:#fff}' +
@@ -247,7 +249,7 @@ function impDoc_(o) {
   const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + impE_(o.titulo + ' · ' + est) + '</title><style>' + css + '.enmarco .bar{display:none}</style><script>if(window.top!==window.self)document.documentElement.classList.add("enmarco")</script></head><body>' +
     '<div class="bar"><button onclick="window.print()">Imprimir o guardar PDF</button><span>En la ventana de impresión elegí la impresora o «Guardar como PDF». Tamaño A4' + (o.apaisada ? ', apaisada' : '') + '.</span></div>' +
     '<div class="hoja"><table class="pag"><thead><tr><td>' + enc + '</td></tr></thead><tbody><tr><td>' + cuerpo + '</td></tr></tbody>' +
-    '<tfoot><tr><td><div class="pie">' + (pie ? '<img src="' + pie + '" alt="HySL · Hospitales más seguros para las personas">' : '<b>HySL</b>') + '<div class="v">Sistema HyS · Servicio de Higiene y Seguridad Laboral · hoja en versión 0 · generada el ' + ahora + '</div></div></td></tr></tfoot></table></div></body></html>';
+    '<tfoot><tr><td><div class="pie">' + (pie ? '<img src="' + pie + '" alt="HySL · Hospitales más seguros para las personas">' : '<b>HySL</b>') + (sinMeta ? '' : '<div class="v">Sistema HyS · Servicio de Higiene y Seguridad Laboral · hoja en versión 0 · generada el ' + ahora + '</div>') + '</div></td></tr></tfoot></table></div></body></html>';
   return { ok: true, titulo: o.titulo + ' · ' + est, html: html };
 }
 

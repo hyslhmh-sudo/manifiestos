@@ -321,7 +321,8 @@ function radPersonaGuardar_(x, quien) {
   const dni = String(x.DNI != null && x.DNI !== '' ? x.DNI : antes ? antes.DNI : '').replace(/\D/g, ''), nom = limpio_(x.APELLIDO_Y_NOMBRE) || (antes ? limpio_(antes.APELLIDO_Y_NOMBRE) : '');
   if (!nom) return { ok: false, mensaje: 'Falta el apellido y nombre.' };
   if (dni && (dni.length < 7 || dni.length > 8)) return { ok: false, mensaje: 'El DNI tiene que tener 7 u 8 números.' };
-  else if (dni && L.some(p => String(p.DNI).replace(/\D/g, '') === dni && limpio_(p.ESTABLECIMIENTO) === cod)) return { ok: false, mensaje: 'Esa persona ya está cargada en este establecimiento: abrila y usá «Reactivar» si había pedido la baja.' };
+  // 27/10/2026: al editar (baja, reactivación, corrección) el control de DNI repetido no se compara con su propia fila
+  else if (dni && L.some(p => (!antes || p.ID !== antes.ID) && String(p.DNI).replace(/\D/g, '') === dni && limpio_(p.ESTABLECIMIENTO) === cod)) return { ok: false, mensaje: 'Esa persona ya está cargada en este establecimiento: abrila y usá «Reactivar» si había pedido la baja.' };
   const hoy = new Date(), p = {};
   RAD.H_PER.forEach(h => p[h] = x[h] != null ? x[h] : antes ? antes[h] : '');
   p.ID = antes ? antes.ID : radId_('RX', cod); p.ESTABLECIMIENTO = cod; p.DNI = dni; p.APELLIDO_Y_NOMBRE = nom;
