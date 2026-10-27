@@ -289,7 +289,7 @@ function mipyvVer(v) {
 // las horas se cuentan una sola vez. Las horas de guardia se pagan al 100 %: 1 hora reloj de guardia = 2 horas de guardia.
 const HS_CONF = [
   { re: /javier/i, nombre: 'Javier Tramaleo', contrato: 30, guardiaMes: 140, regla: 'Contrato: 30 h semanales + 140 h de guardia por mes. La guardia se computa al 100 %: 140 h de guardia = 70 h reloj. Cada semana (lunes a domingo), las primeras 30 h son de contrato y lo que pasa de 30 h es guardia.' },
-  { re: /paulo/i, nombre: 'Paulo Tramaleo', contrato: 0, guardiaMes: null, regla: 'Cumple su contrato en otro lugar; con HyS solo hace guardias. Todas sus horas son de guardia, al 100 %: 1 h reloj = 2 h de guardia.' }];
+  { re: /paulo/i, nombre: 'Paulo Tramaleo', contrato: 0, guardiaMes: null, regla: 'Cumple su contrato en otro lugar; con HyS solo hace guardias. Se cuentan solo las horas que trabaja con HyS (las que carga en la app MIP), todas como guardia al 100 %: 1 h reloj = 2 h de guardia. Sin tope mensual.' }];
 let MHS = '';
 const hsMin = t => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : null; };
 const hsTxt = min => { min = Math.round(min || 0); const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + String(m).padStart(2, '0') + ' min' : ''); };
@@ -334,7 +334,7 @@ async function pantallaHoras(fresco) {
     const kpis = '<div class="tb3" style="margin:10px 0">' + k('Horas trabajadas', hsTxt(tot), dm.length + ' día(s) con horario en ' + nomMes(MHS)) +
       (c.contrato ? k('De contrato', hsTxt(con), c.contrato + ' h por semana') : '') +
       k('Guardia (horas reloj)', hsTxt(gua), c.contrato ? 'lo que pasa de ' + c.contrato + ' h en la semana' : 'todas sus horas', tope && gua > tope) +
-      k('Guardia al 100 %', hsTxt(gua * 2), tope ? 'de ' + c.guardiaMes + ' h de guardia del mes · ' + (gua * 2 <= c.guardiaMes * 60 ? 'quedan ' + hsTxt(c.guardiaMes * 60 - gua * 2) : 'se pasó por ' + hsTxt(gua * 2 - c.guardiaMes * 60)) : '1 h reloj = 2 h de guardia', tope && gua > tope) + '</div>' + barra;
+      k(c.contrato ? 'Guardia al 100 %' : 'Guardia a pasar (al 100 %)', hsTxt(gua * 2), tope ? 'de ' + c.guardiaMes + ' h de guardia del mes · ' + (gua * 2 <= c.guardiaMes * 60 ? 'quedan ' + hsTxt(c.guardiaMes * 60 - gua * 2) : 'se pasó por ' + hsTxt(gua * 2 - c.guardiaMes * 60)) : '1 h reloj = 2 h de guardia', tope && gua > tope) + '</div>' + barra;
     // Semanas que tocan el mes
     const sems = Object.keys(p.semanas).filter(l => { const a = mpDia(l), b = new Date(a); b.setDate(b.getDate() + 6); return mpYmd(a).slice(0, 7) <= MHS && mpYmd(b).slice(0, 7) >= MHS; }).sort();
     const tSem = sems.length ? '<h3 style="margin:14px 0 6px;font-size:14px">Por semana (lunes a domingo)</h3><div style="overflow-x:auto"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Semana</th><th>Días</th><th>Trabajadas</th>' + (c.contrato ? '<th>Contrato (' + c.contrato + ' h)</th>' : '') + '<th>Guardia reloj</th><th>Guardia al 100 %</th></tr></thead><tbody>' +
