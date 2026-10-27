@@ -121,11 +121,15 @@ function tbTablero_(fresco) {
   // Plagas · registro MIPyV de los operarios (12/10/2026): intervenciones y saneamientos abiertos, y visitas que pidieron otra visita sin una posterior
   try { if (typeof plagMipyv_ === 'function') { const MP = plagMipyv_(), mas = (f, d) => { const x = new Date(String(f).slice(0, 10) + 'T12:00:00'); x.setDate(x.getDate() + d); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); };
     const add = (cod, que, donde, lim, ref, est) => { const atr = !!lim && lim < hoy; acciones.push({ cod: cod, origen: 'Plagas (MIPyV)', vencida: atr, estado: atr ? 'Revisión atrasada' : est, que: que, donde: donde || '', prioridad: '', aCargo: '', limite: lim || '', ref: ref || '', ir: '#plagas' }); plagas.push({ cod: cod, caso: ref, plaga: que, revision: lim }); };
+    if (Array.isArray(MP.casos)) {   // 26/10/2026: los mismos casos que muestra 3 · Plagas › Tablero (los calcula el Apps Script de MIPyV, con la regla de la app de los operarios)
+      MP.casos.forEach(c => add(c.cod || '', 'Caso abierto: ' + (c.tipo_plaga || 's/d'), c.establecimiento, mas(hoy, Number(c.dias) || 0), c.protocolo, 'Abierto'));
+      (MP.saneamiento || []).forEach(s => acciones.push({ cod: s.cod, origen: 'Plagas (MIPyV)', vencida: false, estado: s.estado || 'Abierto', que: 'Trabajo de saneamiento abierto', donde: s.lugar || '', prioridad: '', aCargo: '', limite: '', ref: s.id || '', ir: '#plagas' }));
+    } else {   // sin respuesta del Apps Script de MIPyV: cálculo anterior
     const conProt = {}; (MP.abiertas || []).forEach(i => { conProt[i.protocolo] = true; add(i.cod, 'Intervención abierta: ' + (i.plaga || 's/d'), i.lugar, '', i.protocolo, i.estado || 'Abierta'); });
     (MP.saneamiento || []).forEach(s => add(s.cod, 'Trabajo de saneamiento abierto', s.lugar, '', s.id, s.estado || 'Abierto'));
     const ult = {}; (MP.visitas || []).slice().reverse().forEach(x => { if (/no corresponde/i.test(x.plaga || '')) return; ult[x.lugar + '|' + x.plaga] = x; });
     Object.keys(ult).forEach(k => { const x = ult[k]; if (!/otra visita/i.test(x.resultado || '') || (x.protocolo && conProt[x.protocolo])) return;
-      add(x.cod, 'Otra visita pendiente: ' + (x.plaga || 's/d'), x.lugar, x.segunda || mas(x.fecha, 15), x.protocolo || x.id, 'Pendiente'); }); } } catch (e) {}
+      add(x.cod, 'Otra visita pendiente: ' + (x.plaga || 's/d'), x.lugar, x.segunda || mas(x.fecha, 15), x.protocolo || x.id, 'Pendiente'); }); } } } catch (e) {}
   // Agua: tanques con limpieza al día
   const tanques = RV.filter(t => !/fuera/i.test(t.ESTADO)).map(t => { const p = t.PROXIMA_LIMPIEZA || (t.ULTIMA_LIMPIEZA ? miSumarMeses_(t.ULTIMA_LIMPIEZA, t.FRECUENCIA_LIMPIEZA_MESES || 12) : ''), d = tbDias_(p);
     return { cod: t.ESTABLECIMIENTO, aldia: !!p && p >= hoy, estado: /riego/i.test(t.USO) ? 'riego' : !t.ULTIMA_LIMPIEZA ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
