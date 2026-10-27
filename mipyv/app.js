@@ -1567,7 +1567,7 @@ function panelControl(e, l) {
     const b = c.borrador;
     html += `<div class="ext-edicion"><div class="ext-preg">Nombre o N.º del extintor</div><input class="ext-inp" data-ed="NRO_EXTINTOR" value="${escX(b.NRO_EXTINTOR)}" placeholder="Ej.: 12, o Extintor del office">
       <div class="ext-preg">¿En qué lugar está?</div><select class="ext-inp" data-ed="lugar_id">${ESTABLECIMIENTOS.map(x => `<option value="${escX(x.id)}"${x.id === b.lugar_id ? " selected" : ""}>${escX(x.nombre)}</option>`).join("")}</select>
-      <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${["Baja", "Alta", "Subsuelo", "Única"].map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${x}">${x}</button>`).join("")}</div>
+      <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${plantasDe(b.lugar_id, b.PLANTA).map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${escX(x)}">${escX(x)}</button>`).join("")}</div>
       <div class="ext-preg">Sector o servicio</div><input class="ext-inp" data-ed="SECTOR" value="${escX(b.SECTOR)}">
       <div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-ed="UBICACION" value="${escX(b.UBICACION)}">
       <button type="button" class="ext-listo ext-ed-ok">Guardar la corrección</button><button type="button" class="ext-quitar ext-ed-no">${ed ? "Deshacer la corrección" : "Cancelar"}</button></div>`;
@@ -1605,7 +1605,7 @@ function panelControl(e, l) {
   panel.querySelector(".ext-editar").onclick = () => { c.editando = !c.editando; c.borrador = null; renderExtintores(); };
   if (c.editando) {
     const b = c.borrador;
-    panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; }; });
+    panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; if (i.dataset.ed === "lugar_id") renderExtintores(); }; });
     panel.querySelectorAll(".ext-opc[data-ed] button").forEach(x => { x.onclick = () => { b.PLANTA = x.dataset.valor; renderExtintores(); }; });
     panel.querySelector(".ext-ed-ok").onclick = () => {
       if (!String(b.SECTOR || "").trim() || !String(b.UBICACION || "").trim()) { alert("El sector y dónde está no pueden quedar vacíos."); return; }
@@ -1629,6 +1629,17 @@ function avisoVto(e) {
 
 // --- Agregar un extintor que no está en la lista: todos los datos y las 3 fotos son obligatorios.
 // Se manda al sistema HyS (módulo 10, hoja EXTINTORES) como registro «alta_extintor».
+// Plantas de cada lugar: salen de la columna «plantas» de la hoja establecimientos
+// (separadas por coma, ej.: «Subsuelo, Planta baja, 1er piso, 2do piso»).
+// Si un lugar no la tiene cargada, se ofrecen las opciones generales.
+const PLANTAS_POR_DEFECTO = ["Baja", "Alta", "Subsuelo", "Única"];
+function listaPlantas(v) { return String(v == null ? "" : v).split(/[,;]/).map(x => x.trim()).filter(x => x && x.toLowerCase() !== "s/d"); }
+function plantasDe(idLugar, valorActual) {
+  const e = ESTABLECIMIENTOS.find(x => x.id === idLugar);
+  const lista = (e && e.plantas && e.plantas.length ? e.plantas : PLANTAS_POR_DEFECTO).slice();
+  if (valorActual && lista.indexOf(valorActual) < 0) lista.push(valorActual); // que se vea lo que ya estaba cargado
+  return lista;
+}
 const CAMPOS_ALTA = [
   ["PLANTA", "¿En qué planta está?", "botones", ["Baja", "Alta", "Subsuelo", "Única"]],
   ["SECTOR", "Sector o servicio", "texto", "Ej.: Guardia, sala de espera"],
@@ -1659,7 +1670,8 @@ function panelAlta(a) {
   let html = `<div class="step-sub" style="margin:8px 0 0">Completá todo y sacá las 3 fotos. Es obligatorio.</div>`;
   CAMPOS_ALTA.forEach(([k, tit, tipo, x]) => {
     html += `<div class="ext-preg">${tit}</div>`;
-    if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + x.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
+    const opciones = k === "PLANTA" ? plantasDe(a.lugar.id, a.datos.PLANTA) : x;
+    if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + opciones.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
     else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : "text"}"${tipo === "numero" ? ' inputmode="decimal"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
   });
   html += `<div class="ext-preg" style="margin-top:16px">Sacá las 3 fotos</div><div class="ext-fotos">`;
@@ -2189,7 +2201,7 @@ function convertirCatalogos(d) {
   if (Array.isArray(d.establecimientos)) {
     out.establecimientos = d.establecimientos
       .filter(r => texto(r.id_establecimiento) && esSi(r.activo))
-      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo) }));
+      .map(r => ({ id: texto(r.id_establecimiento), nombre: texto(r.nombre), tipo: texto(r.tipo), plantas: listaPlantas(r.plantas) }));
   }
   if (Array.isArray(d.sectores)) {
     out.sectores_hospital = d.sectores.filter(r => texto(r.nombre_sector) && esSi(r.aplica_hospital)).map(r => texto(r.nombre_sector));

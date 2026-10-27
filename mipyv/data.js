@@ -21,7 +21,7 @@ const OPERARIOS = [
 ];
 
 const ESTABLECIMIENTOS = [
-  { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital" },
+  { id: "HZT", nombre: "Hospital Zonal Trelew", tipo: "Hospital", plantas: ["Subsuelo", "Planta baja", "1er piso", "2do piso"] },
   { id: "HMH", nombre: "Hospital María Humphreys", tipo: "Hospital" },
   { id: "ADOL", nombre: "Adolescencia", tipo: "Dependencia" },
   { id: "CTUT", nombre: "Casa Tutelada", tipo: "Dependencia" },
