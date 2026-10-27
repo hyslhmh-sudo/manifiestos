@@ -1494,6 +1494,16 @@ function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k
   return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false }; }
 // Completo: 5 respuestas, 3 fotos y el vencimiento de la carga (o «No se lee»)
 function controlCompleto(c) { return !!c && PREGUNTAS_EXTINTOR.every(([k]) => c.resp[k] !== null) && FOTOS_EXTINTOR.every(([k]) => !!c.fotos[k]) && (!!c.vto || !!c.noSeLee); }
+// Lo que falta para poder guardar el control (se muestra en el botón)
+function controlFaltan(c) {
+  const f = [], sinResp = PREGUNTAS_EXTINTOR.filter(([k]) => !c || c.resp[k] === null).length;
+  if (sinResp) f.push(sinResp === 1 ? "1 pregunta" : sinResp + " preguntas");
+  if (!c || (!c.vto && !c.noSeLee)) f.push("hasta cuándo dura la carga");
+  const sinFoto = FOTOS_EXTINTOR.filter(([k]) => !c || !c.fotos[k]).map(([, , tit]) => tit.replace(/^\d+\.\s*/, "").toLowerCase());
+  if (sinFoto.length) f.push(sinFoto.length === 1 ? "la foto: " + sinFoto[0] : sinFoto.length + " fotos");
+  return f;
+}
+function textoBotonControl(c) { return controlCompleto(c) ? "Listo, guardar este extintor" : "Falta: " + controlFaltan(c).join(", "); }
 function controlEmpezado(c) { return !!c && (PREGUNTAS_EXTINTOR.some(([k]) => c.resp[k] !== null) || FOTOS_EXTINTOR.some(([k]) => !!c.fotos[k])); }
 const extintoresDe = (idLugar) => EXTINTORES_CAT.filter(e => (e.lugares || []).indexOf(idLugar) >= 0);
 function extNombre(e) { const ed = tareaHys.ediciones && tareaHys.ediciones[e.id], nro = ed ? ed.NRO_EXTINTOR : e.nro; return (nro ? "N.º " + nro : e.id) + " · " + [e.tipo, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" "); }
@@ -1579,10 +1589,10 @@ function panelControl(e, l) {
     <div class="ext-preg">¿Hasta cuándo vale la prueba hidráulica? (si figura)</div>
     <input class="ext-inp ext-ph-inp" type="date" value="${escX(c.ph)}">
     <div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(c.obs || "")}</textarea>`;
-  html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${controlCompleto(c) ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"}</button>`;
+  html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${escX(textoBotonControl(c))}</button>`;
   panel.innerHTML = html;
   panel.querySelector(".ext-com").oninput = (ev) => { c.obs = ev.target.value; };
-  const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = ok ? "Listo, guardar este extintor" : "Contestá todo, poné el vencimiento y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = textoBotonControl(c); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelector(".ext-vto-inp").onchange = panel.querySelector(".ext-vto-inp").oninput = (ev) => { c.vto = ev.target.value; actListo(); };
   panel.querySelector(".ext-ph-inp").onchange = panel.querySelector(".ext-ph-inp").oninput = (ev) => { c.ph = ev.target.value; };
   panel.querySelector(".ext-nose").onchange = (ev) => { c.noSeLee = ev.target.checked; renderExtintores(); };
@@ -1632,7 +1642,17 @@ const CAMPOS_ALTA = [
 ];
 let altaN = 0;
 function altaVacia(l) { const d = {}; CAMPOS_ALTA.forEach(([k]) => d[k] = ""); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = ""); return { uid: "A" + (++altaN) + "-" + Date.now(), lugar: { id: l.id, nombre: l.nombre }, datos: d, fotos: f, obs: "" }; }
-function altaCompleta(a) { return CAMPOS_ALTA.every(([k, , , , opc]) => opc || String(a.datos[k] || "").trim()) && FOTOS_EXTINTOR.every(([k]) => !!a.fotos[k]); }
+// Kilos: acepta «5», «2,5», «2.5» o «5 kg»; devuelve el número con punto, o "" si no hay número
+function kilosNormal(v) { const m = String(v || "").replace(",", ".").match(/\d+(\.\d+)?/); return m ? m[0] : ""; }
+function altaValor(a, k) { return k === "CAPACIDAD_KG" ? kilosNormal(a.datos[k]) : String(a.datos[k] || "").trim(); }
+function altaFaltan(a) {
+  const f = CAMPOS_ALTA.filter(([k, , , , opc]) => !opc && !altaValor(a, k)).map(([, tit]) => tit.replace(/[¿?]/g, "").replace(/\s*\(.*\)\s*/, "").trim().toLowerCase());
+  const sinFoto = FOTOS_EXTINTOR.filter(([k]) => !a.fotos[k]).length;
+  if (sinFoto) f.push(sinFoto === 1 ? "1 foto" : sinFoto + " fotos");
+  return f;
+}
+function altaCompleta(a) { return altaFaltan(a).length === 0; }
+function textoBotonAlta(a) { return altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Falta: " + altaFaltan(a).join(", "); }
 function panelAlta(a) {
   const panel = document.createElement("div");
   panel.className = "ext-panel";
@@ -1640,7 +1660,7 @@ function panelAlta(a) {
   CAMPOS_ALTA.forEach(([k, tit, tipo, x]) => {
     html += `<div class="ext-preg">${tit}</div>`;
     if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + x.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
-    else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : tipo === "numero" ? "number" : "text"}"${tipo === "numero" ? ' inputmode="decimal" step="any"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
+    else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : "text"}"${tipo === "numero" ? ' inputmode="decimal"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
   });
   html += `<div class="ext-preg" style="margin-top:16px">Sacá las 3 fotos</div><div class="ext-fotos">`;
   FOTOS_EXTINTOR.forEach(([k, ico, tit, ayuda]) => {
@@ -1649,13 +1669,13 @@ function panelAlta(a) {
       : `<button type="button" class="ext-foto" data-foto="${k}"><span class="ext-foto-ico">${ico}</span><b>${tit}</b><small>${ayuda}</small></button>`;
   });
   html += `</div><div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(a.obs || "")}</textarea>`;
-  html += `<button type="button" class="ext-listo"${altaCompleta(a) ? "" : " disabled"}>${altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"}</button>`;
+  html += `<button type="button" class="ext-listo"${altaCompleta(a) ? "" : " disabled"}>${escX(textoBotonAlta(a))}</button>`;
   html += `<button type="button" class="ext-quitar">Quitar este extintor nuevo</button>`;
   panel.innerHTML = html;
   const boton = panel.querySelector(".ext-listo");
-  const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = ok ? "Listo, guardar este extintor nuevo" : "Completá todo y sacá las 3 fotos"; nextBtn.disabled = !canAdvance("h-extintores"); };
+  const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = textoBotonAlta(a); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
-  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
+  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
   panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
   panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
@@ -1715,7 +1735,7 @@ function registrosAltaExtintores(idTarea) {
   return tareaHys.altas.filter(altaCompleta).map((a, i) => {
     const d = Object.assign({ id_alta: idTarea + "-A" + (i + 1), id_tarea: idTarea, lugar_id: a.lugar.id, lugar_nombre: a.lugar.nombre, fecha: new Date().toISOString(),
       operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
-      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos);
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
     return { tipo: "alta_extintor", data: d };
   });
 }
