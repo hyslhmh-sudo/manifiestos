@@ -53,7 +53,7 @@ const INC = {
   TIPOS: ['ABC', 'BC', 'K', 'D', 'Otro'],
   AGENTES: ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 's/d'],
   ESTADOS: ['Operativo', 'Sobrecarga', 'Recargar', 'Fuera de servicio', 'Baja', 's/d (revisar)'],
-  PLANTAS: ['Baja', 'Alta', 'Terraza', 'Subsuelo', 'Única', 'Vehículo'],
+  PLANTAS: ['Baja', 'Alta', 'Planta baja', '1er piso', '2do piso', 'Terraza', 'Subsuelo', 'Única', 'Vehículo'],   // HZT: subsuelo, planta baja, 1er y 2do piso (dato de Belén, 27/10/2026)
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
   RESP_TRELEW: 'Belén Pellegrini · Melani · Javier Tramaleo',
   RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
