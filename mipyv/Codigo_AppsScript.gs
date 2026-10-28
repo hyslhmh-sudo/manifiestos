@@ -231,7 +231,7 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     const body = JSON.parse(e.postData.contents);
-    const tipo = body.tipo; // "visita" | "hallazgo" | "trabajo_nuevo" | "avance" | "cierre_trabajo" | "tarea_hys" | "control_extintor" | "alta_extintor" | "editar_extintor"
+    const tipo = body.tipo; // "visita" | "hallazgo" | "trabajo_nuevo" | "avance" | "cierre_trabajo" | "tarea_hys" | "control_extintor" | "alta_extintor" | "editar_extintor" | "alta_tanque" | "editar_tanque" | "inspeccion_tanque" | "limpieza_tanque"
     const data = body.data || {};
 
     // Espera hasta 30 s a que termine otro envío, para que no se pisen.
@@ -257,6 +257,10 @@ function doPost(e) {
     }
 
 
+    if (tipo === "alta_tanque" || tipo === "editar_tanque" || tipo === "inspeccion_tanque" || tipo === "limpieza_tanque") {   // tanques y cisternas de la red Trelew → BASE COMÚN del sistema HyS (Tanques_MIPyV.gs, 28/10/2026)
+      const r = guardarTanqueMipyv_(tipo, data);
+      return respuesta(Object.assign({ ok: true }, r));
+    }
     if (tipo === "cierre_caso" || tipo === "solicitud") {   // cierre de casos y solicitudes a HyS (Casos_Solicitudes_MIPyV.gs, 25/10/2026)
       const r = guardarCasoOSolicitud_(ss, tipo, data);
       return respuesta(Object.assign({ ok: true }, r));
@@ -487,6 +491,8 @@ function doGet(e) {
   try { out.casos = casosParaApp_(ss); } catch (err) { out.casos_error = String(err.message || err); }
   // extintores del módulo 10 del sistema HyS (archivo Incendio_MIPyV.gs)
   try { out.extintores = extintoresParaApp_(ss); } catch (err) { out.extintores_error = String(err.message || err); }
+  // tanques y cisternas de la red Trelew, sin el HMH (archivo Tanques_MIPyV.gs, 28/10/2026)
+  try { out.tanques = tanquesParaApp_(ss); } catch (err) { out.tanques_error = String(err.message || err); }
 
 
   return respuesta(out);

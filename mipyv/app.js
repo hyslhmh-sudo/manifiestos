@@ -71,7 +71,7 @@ function goHome() {
   currentModule = null;
   if (hayVersionNueva) { window.location.reload(); return; }
   cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
-  document.body.classList.remove("mode-saneamiento", "mode-hys");
+  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques");
   brandLabel.textContent = "Red HZT";
   progressWrap.style.display = "none";
   bottomBar.style.display = "none";
@@ -80,6 +80,7 @@ function goHome() {
   screensEl.scrollTop = 0;
   if (typeof avisosPintar === "function") avisosPintar();
   borradorMostrarAviso();
+  if (typeof tqAvisoHome === "function") { tqPintarHome(); tqAvisoHome(); }
 }
 homeBtn.addEventListener("click", goHome);
 
@@ -91,8 +92,14 @@ function enterModule(mod) {
   resetTareaHys();
   operarioAcompanante = null;
   acompananteRespondido = false;
-  document.body.classList.remove("mode-saneamiento", "mode-hys");
-  if (mod === "hys") {
+  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques");
+  if (mod === "tanques") {   // tanques y cisternas de la red Trelew (tanques.js, 28/10/2026)
+    document.body.classList.add("mode-tanques");
+    brandLabel.textContent = "Tanques y cisternas";
+    stepList = ["quien", "acompanante", "t-main"];
+    if (typeof tqEntrar === "function") tqEntrar();
+    const av = document.getElementById("tqBorradorAviso"); if (av) av.style.display = "none";
+  } else if (mod === "hys") {
     document.body.classList.add("mode-hys");
     brandLabel.textContent = "Higiene y Seguridad";
     stepList = ["quien", "acompanante", "h-tipo"];
@@ -114,6 +121,7 @@ function enterModule(mod) {
 document.getElementById("goMipyv").addEventListener("click", () => enterModule("mipyv"));
 document.getElementById("goSaneamiento").addEventListener("click", () => enterModule("saneamiento"));
 document.getElementById("goHys").addEventListener("click", () => enterModule("hys"));
+document.getElementById("goTanques").addEventListener("click", () => enterModule("tanques"));
 
 function showStep(name) {
   document.querySelectorAll(".screen").forEach(s => {
@@ -122,7 +130,7 @@ function showStep(name) {
   const pos = stepList.indexOf(name) + 1;
   progressFill.style.width = Math.max(8, (pos / stepList.length) * 100) + "%";
   backBtn.style.visibility = pos <= 1 ? "hidden" : "visible";
-  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent";
+  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent" || name === "t-main";   // t-main tiene sus propios botones
   bottomBar.style.display = isSentScreen ? "none" : "flex";
   nextBtn.disabled = !canAdvance(name);
   const isConfirm = name === "m-confirm" || name === "s-confirm" || name === "h-confirm";
@@ -146,6 +154,7 @@ function showStep(name) {
   if (name === "h-detalle") prepararDetalleHys();
   if (name === "h-hallazgos") prepararHallazgosHys();
   if (name === "h-confirm") renderResumenHys();
+  if (name === "t-main" && typeof tqRender === "function") tqRender();
   if (currentModule === "hys" && name !== "h-sent") borradorProgramar();
 }
 
@@ -2225,6 +2234,7 @@ function convertirCatalogos(d) {
     });
   }
   if (Array.isArray(d.extintores)) out.extintores = d.extintores;
+  if (d.tanques && Array.isArray(d.tanques.tanques)) out.tanques = d.tanques;   // tanques y cisternas (Tanques_MIPyV.gs)
   if (Array.isArray(d.tipos_tarea)) {
     out.tipos_tarea = d.tipos_tarea.map(texto).filter(Boolean);
   }
@@ -2290,6 +2300,7 @@ async function actualizarCatalogosDesdePlanilla() {
     if (Array.isArray(datos.trabajos_abiertos)) guardarCopia(TRABAJOS_PLANILLA_KEY, datos.trabajos_abiertos);
     if (Array.isArray(datos.intervenciones_abiertas)) guardarCopia(INTERV_PLANILLA_KEY, datos.intervenciones_abiertas);
     if (!currentModule) aplicarCatalogos(catalogos);
+    if (catalogos.tanques && typeof tqAplicarCatalogo === "function") tqAplicarCatalogo(catalogos.tanques);   // aunque esté cargando (no cambia el formulario abierto)
     if (typeof avisosDatos === "function") avisosDatos(datos);   // casos por vencer y solicitudes (avisos.js)
   } catch (err) {
     console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);

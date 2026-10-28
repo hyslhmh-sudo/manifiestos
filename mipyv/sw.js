@@ -14,6 +14,8 @@ const FILES_TO_CACHE = [
   "./version.js",
   "./app.js",
   "./avisos.js",
+  "./tanques.js",
+  "./F-AGU-01-T.pdf",
   "./data.js",
   "./icons.js",
   "./manifest.json",
