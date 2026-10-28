@@ -1,6 +1,24 @@
 // Portal HyS · 2 · Agua y 3 · Plagas
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Módulo 2 · Agua y módulo 3 · Plagas (toda la red; la misma lectura, dos pantallas)
+// ------------------------------------------------------------------ 2 · Agua · Informes de laboratorio (28/10/2026, pedido de Belén)
+// PDF de los informes y remitos del laboratorio provincial (DPSB), ordenados en Drive por red y establecimiento, más el tablero en Sheets.
+// Red Trelew y red Rawson van siempre separadas. Si cambia una carpeta, se corrige acá (y en index.html › AGUA_INF_MI).
+const AGUA_INF = {
+  tablero: 'https://docs.google.com/spreadsheets/d/1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM/edit',
+  raiz: 'https://drive.google.com/drive/folders/1nTlxXtSKwlJMIyjsMMucU1T2Jvt3R8Ta',
+  trelew: 'https://drive.google.com/drive/folders/1AQq9kXOabvClIEGckl9iU1IDAQQP_r9D',
+  rawson: 'https://drive.google.com/drive/folders/1s9UNW9jAwUEZ836yjg6pg9YDE0EBKR0I',
+  normativa: 'https://drive.google.com/drive/folders/16IyGjFyAi88I5jjL3AyI7JP0WLG4rinv',
+  subir: 'https://drive.google.com/drive/folders/13iS2VTDBs-kEJqV22ajzA-GJhq2mRZdm'
+};
+function aguaInfCard() {
+  const b = (u, t, pri) => '<a class="btn' + (pri ? '' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="display:inline-block;margin:4px 6px 4px 0">' + t + '</a>';
+  return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Informes de laboratorio y remitos (PDF)</h2>' +
+    '<span class="mu peq" style="display:block;margin-bottom:6px">Los informes del laboratorio provincial y los remitos del Departamento de Saneamiento Básico, por red y por establecimiento. El tablero muestra el último muestreo de cada uno, si está vigente o vencido (cada 6 meses) y el enlace a cada PDF.</span>' +
+    b(AGUA_INF.tablero, 'Tablero de análisis ↗', 1) + b(AGUA_INF.trelew, 'Red Trelew ↗') + b(AGUA_INF.rawson, 'Red Rawson ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.subir, 'Subir informes nuevos ↗') +
+    '</section>';
+}
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
   modo = 'agua'; const R = '#' + modo;
@@ -18,7 +36,7 @@ async function agua(modo) {
   const pe = {}; (TB.puntos || []).filter(p => enA(p.cod)).forEach(p => { const x = pe[p.cod] = pe[p.cod] || { t: 0, aldia: 0, porvencer: 0, vencida: 0, sin: 0, unica: 0 }; x.t++; x[p.estado in x ? p.estado : 'sin']++; });
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
-    ? '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    ? aguaInfCard() + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
