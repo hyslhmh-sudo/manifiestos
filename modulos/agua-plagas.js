@@ -19,6 +19,44 @@ function aguaInfCard() {
     b(AGUA_INF.tablero, 'Tablero de análisis ↗', 1) + b(AGUA_INF.trelew, 'Red Trelew ↗') + b(AGUA_INF.rawson, 'Red Rawson ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.subir, 'Subir informes nuevos ↗') +
     '</section>';
 }
+// ------------------------------------------------------------------ 2 · Agua · Muestreos de laboratorio: qué pedir y cuándo (28/10/2026, pedido de Belén)
+// Datos: TB.lab (Tablero.gs › AguaLab.gs), que lee las fórmulas del libro «Agua · Tablero de análisis de laboratorio».
+// Parcial = solo bacteriológico cada 6 meses; completo = bacteriológico + físico-químico cada 12, previa limpieza de tanques y cisternas.
+// Las reglas y los días de aviso se cambian en el libro (celdas B2, D3, F3, H3 de cada pestaña Tablero).
+function aguaLabCard(lab, labError) {
+  const fT = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? fechaTxt(v) : esc(v || 's/d');
+  const orden = a => /urgente/i.test(a) ? 0 : /vencido/i.test(a) ? 1 : /pedir/i.test(a) ? 2 : 3;
+  const chip = a => '<span class="chip ' + (/urgente|vencido/i.test(a) ? 'er' : /pedir/i.test(a) ? 'wa' : 'ok') + '">' + esc(a || 's/d') + '</span>';
+  const fila = x => {
+    const comp = /COMPLETO|URGENTE/.test(x.que), parc = /PARCIAL/.test(x.que), nada = !comp && !parc;
+    const cuando = nada ? 'Próximo: parcial el ' + fT(x.parcial) + ' · completo el ' + fT(x.completo) + (x.desde && x.desde !== 'Ya' ? ' · pedirlo desde el ' + fT(x.desde) : '')
+      : 'Fecha límite: ' + fT(x.limite);
+    const donde = comp ? 'Salida del tanque y canilla más alejada, más las de siempre' + (x.canillas && x.canillas !== 's/d' ? ': ' + esc(x.canillas) : '')
+      : parc ? 'Mismas canillas del último muestreo' + (x.canillas && x.canillas !== 's/d' ? ': ' + esc(x.canillas) : '') : '';
+    return '<div class="at" style="display:block"><b>' + esc(x.lugar) + ' ' + chip(x.aviso) + '</b>' +
+      (nada ? '' : '<small style="display:block;color:#0D313F;font-weight:600">' + esc(comp ? (/URGENTE/.test(x.que) ? 'URGENTE · agua NO APTA: limpiar y desinfectar tanques y cisternas y pedir muestreo COMPLETO en 15 días hábiles' : 'Pedir muestreo COMPLETO: bacteriológico + físico-químico. Antes: limpieza y desinfección de tanques y cisternas') : 'Pedir muestreo PARCIAL de 6 meses: solo bacteriológico') + '</small>') +
+      '<small style="display:block">' + cuando + '</small>' + (donde ? '<small style="display:block">' + donde + '</small>' : '') +
+      '<small style="display:block">Último bacteriológico ' + fT(x.bact) + ' · último físico-químico ' + fT(x.fq) + (x.sinConclusion ? ' · ' + x.sinConclusion + ' muestra(s) sin conclusión: consultar al DPSB' : '') + '</small></div>';
+  };
+  const red = r => { const L = (lab || []).filter(x => x.red === r).sort((a, b) => orden(a.aviso) - orden(b.aviso) || a.lugar.localeCompare(b.lugar, 'es'));
+    const n = k => L.filter(x => x.grupo !== 'Otros' && orden(x.aviso) === k).length;
+    return '<div style="flex:1 1 320px;min-width:0"><h3 style="margin:8px 0 2px;font-size:15px">Red ' + r + '</h3><span class="mu peq">' + [[n(0), 'urgentes'], [n(1), 'vencidos'], [n(2), 'para pedir ahora'], [n(3), 'al día']].filter(y => y[0]).map(y => y[0] + ' ' + y[1]).join(' · ') + '</span>' +
+      '<div style="max-height:560px;overflow-y:auto">' + (L.length ? L.map(fila).join('') : '<div class="mu">Sin datos.</div>') + '</div></div>'; };
+  const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
+    '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
+    '1) El establecimiento limpia y desinfecta tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
+    '2) Higiene y Seguridad completa la «Solicitud de análisis de agua» (Anexo III del POE del DPSB) pidiendo bacteriológico + físico-químico. ' +
+    '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
+    '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico, en las mismas canillas del último muestreo, con la misma solicitud. Los tanques tienen que estar dentro de su cronograma de limpieza (el DPSB lo verifica) y con el relevamiento trimestral sin problemas.<br>' +
+    '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
+    'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). Se cambia en el tablero de Sheets (celdas F3 y H3). ' +
+    '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.</div></details>';
+  const sinDatos = !Array.isArray(lab) || !lab.length;
+  return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Muestreos de laboratorio: qué pedir y cuándo</h2>' +
+    '<span class="mu peq" style="display:block;margin-bottom:6px">Parcial cada 6 meses (solo bacteriológico) y completo cada 12 (bacteriológico + físico-químico, con limpieza previa de tanques y cisternas). Dto. 351/79 art. 57 y POE del DPSB. Primero lo urgente y lo vencido.</span>' +
+    (sinDatos ? '<div class="aviso">' + (labError ? 'No se pudo leer el tablero de análisis: ' + esc(labError) + '. ' : 'Todavía no llegan los datos de los muestreos: falta pegar AguaLab.gs y Tablero.gs en el Apps Script «Sistema HyS» y tocar «Actualizar». ') + 'Mientras tanto, el detalle está en el <a href="' + AGUA_INF.tablero + '" target="_blank" rel="noopener">tablero de análisis ↗</a> (columnas «Qué solicitar» y «Aviso»).</div>'
+      : '<div style="display:flex;flex-wrap:wrap;gap:18px">' + red('Trelew') + red('Rawson') + '</div>') + como + '</section>';
+}
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
   modo = 'agua'; const R = '#' + modo;
@@ -36,7 +74,7 @@ async function agua(modo) {
   const pe = {}; (TB.puntos || []).filter(p => enA(p.cod)).forEach(p => { const x = pe[p.cod] = pe[p.cod] || { t: 0, aldia: 0, porvencer: 0, vencida: 0, sin: 0, unica: 0 }; x.t++; x[p.estado in x ? p.estado : 'sin']++; });
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
-    ? aguaInfCard() + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    ? aguaLabCard(TB.lab, TB.labError) + aguaInfCard() + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +

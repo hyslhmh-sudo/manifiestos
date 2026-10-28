@@ -136,6 +136,8 @@ function tbTablero_(fresco) {
   // Agua: canillas con análisis bacteriológico al día (cada 6 meses)
   const puntos = leer('PUNTOS_MUESTREO').filter(x => !/fuera/i.test(x.ESTADO)).map(x => { const un = /[uú]nica/i.test(x.ESTADO), eq = /equipo|solo f[ií]sico/i.test(x.ESTADO), v = eq ? (x.ULTIMO_FISICOQUIMICO ? miSumarMeses_(x.ULTIMO_FISICOQUIMICO, 12) : '') : x.ULTIMO_BACTERIOLOGICO ? miSumarMeses_(x.ULTIMO_BACTERIOLOGICO, 6) : '', d = tbDias_(v);   // equipos: físico-químico cada 12 meses (14.37)
     return { cod: x.ESTABLECIMIENTO, estado: un ? 'unica' : !v ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
+  // Agua: muestreos de laboratorio, qué pedir y cuándo (AguaLab.gs, 28/10/2026): parcial cada 6 meses y completo cada 12 con limpieza previa
+  let lab = [], labError = ''; try { if (typeof aguaLab_ === 'function') { lab = aguaLab_(); aguaLabAcciones_(lab).forEach(a => acciones.push(a)); } } catch (e) { labError = e.message; }
   // Auditorías: último cumplimiento de campo o verificación y las que esperan verificación
   let aud = { ultima: '', paraVerificar: [] };
   try { const A = audLeer_(audHojaA_(), AUD_H); const u = A.filter(a => /campo|verificaci/i.test(a.TIPO) && a.CUMPLIMIENTO).sort((a, b) => (b.FECHA || '').localeCompare(a.FECHA || ''))[0];
@@ -145,7 +147,7 @@ function tbTablero_(fresco) {
   let cocina = []; try { const pc_ = {}; cocPersonas_('*').filter(p => p.ACTIVO !== 'No').forEach(p => { const c = pc_[p.ESTABLECIMIENTO] = pc_[p.ESTABLECIMIENTO] || { cod: p.ESTABLECIMIENTO, vencidos: 0, porVencer: 0 }; if (p.estado === 'vencido' || p.estado === 'no') c.vencidos++; else if (p.estado === 'porvencer') c.porVencer++; }); cocina = Object.keys(pc_).map(k => pc_[k]).filter(c => c.vencidos || c.porVencer); } catch (e) {}   // 6 · Cocinas: carnets y libretas
   let docsEst = { total: 0, establecimientos: 0, avisos: [] }; try { docsEst = docEstResumen_(); } catch (e) {}   // 2 · Documentos de los establecimientos (Modulo2.gs)
   let modulos = {}; try { modulos = tbModulos_(); } catch (e) { modulos = { error: e.message }; }
-  const out = { ok: true, mediciones: typeof rgrlMedVigentes_ === 'function' ? rgrlMedVigentes_() : [], rgrl: typeof rgrlResumen_ === 'function' ? rgrlResumen_() : [], meses: meses, retiros: retiros, acciones: acciones, noApta: noApta, plagas: plagas, tanques: tanques, puntos: puntos, auditorias: aud, docsRevisar: docs, cocina: cocina, docsEst: docsEst, areaDe: areaDe, modulos: modulos, actualizado: new Date().toISOString() };
+  const out = { ok: true, mediciones: typeof rgrlMedVigentes_ === 'function' ? rgrlMedVigentes_() : [], rgrl: typeof rgrlResumen_ === 'function' ? rgrlResumen_() : [], meses: meses, retiros: retiros, acciones: acciones, noApta: noApta, plagas: plagas, tanques: tanques, puntos: puntos, lab: lab, labError: labError, auditorias: aud, docsRevisar: docs, cocina: cocina, docsEst: docsEst, areaDe: areaDe, modulos: modulos, actualizado: new Date().toISOString() };
   try { cache.put('p_tablero', JSON.stringify(out), 21600); } catch (e) {}   // 6 h: la tarea automática lo rehace una vez por día (5 h)
   sysGuardar_('tablero', out);
   return out;
