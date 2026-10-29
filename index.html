@@ -1465,15 +1465,15 @@ function aguaHojaImp() {
       '<tr><td colspan="4">Relevó (nombre y función): ______________________________________________ &nbsp; Una columna por tanque o cisterna. Marcá con una X. Las canillas de muestreo las asigna Higiene y Seguridad.</td></tr></table>' +
       '<table class="t"><colgroup><col style="width:21%">' + cols.map(() => '<col style="width:19.75%">').join('') + '</colgroup><tr><th></th>' + cols.map((c, i) => '<th>Tanque o cisterna ' + (h * porHoja + i + 1) + '</th>').join('') + '</tr>' +
       filas.map(f => f[1] ? '<tr><td class="lab">' + e(f[0]) + '</td>' + cols.map(c => '<td' + (/Observ/.test(f[0]) ? ' class="obs"' : '') + '>' + f[1](c) + '</td>').join('') + '</tr>' : '<tr class="sec"><td colspan="' + (porHoja + 1) + '">' + e(f[0]) + '</td></tr>').join('') + '</table>' +
-      '<table class="firmas"><tr><td>Relevó (Mantenimiento) · firma y aclaración</td><td>Recibió y cargó (referente) · firma, aclaración y fecha</td></tr></table>' +
+      '<div class="firmas"><div><span></span>Relevó (Mantenimiento) · firma y aclaración</div><div><span></span>Recibió y cargó (referente) · firma, aclaración y fecha</div></div>' +
       '<footer><span>Según el POE de limpieza y desinfección de tanques y cisternas (inspección visual trimestral) · Dto. 351/79, arts. 57 y 58</span><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png"></footer></section>';
   }
   const doc = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>' + e(AGUA_F3() + ' · Relevamiento de tanques · ' + (sitio || 'en blanco')) + '</title><style>' +
     '@page{size:A4 landscape;margin:8mm}body{font-family:"Plus Jakarta Sans",Arial,sans-serif;color:#3A4A52;margin:0;font-size:8.2pt}.hoja{page-break-after:always;height:192mm;display:flex;flex-direction:column}.hoja:last-child{page-break-after:auto}' +
-    'header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0D313F;padding-bottom:4px}.logos img{height:34px;margin-right:8px}.tit{color:#0D313F;font-size:11pt}.tit span{font-size:8pt;color:#5894A7}' +
+    'header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0D313F;padding-bottom:4px}.logos img{height:40px;margin-right:10px}.tit{color:#0D313F;font-size:11pt}.tit span{font-size:8pt;color:#5894A7}' +
     'table{border-collapse:collapse;width:100%}.cab td{padding:3px 4px;font-size:8.2pt}.t{table-layout:fixed;margin-top:3px}.t th,.t td{border:0.6pt solid #5894A7;padding:2.2px 4px;vertical-align:middle}.t th{background:#0D313F;color:#fff;font-size:8.4pt}' +
     '.t .lab{font-weight:600;color:#0D313F;background:#F4F8FA}.t .sec td{background:#E8F0F3;color:#0D313F;font-weight:700}.t .obs{height:16mm}.op{white-space:nowrap;margin-right:4px}.gris{color:#9FB0B8}' +
-    '.firmas{margin-top:auto}.firmas td{border-top:0.8pt solid #0D313F;width:50%;padding-top:2px;text-align:center;font-size:7.5pt;height:12mm;vertical-align:bottom}' +
+    '.firmas{margin-top:auto;display:flex;gap:40mm;padding:0 20mm}.firmas div{flex:1;text-align:center;font-size:7.5pt}.firmas span{display:block;border-bottom:1pt solid #0D313F;height:11mm;margin-bottom:2px}' +
     'footer{display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#6B7A82;margin-top:3px}footer img{height:22px}' +
     '.no-imp{position:fixed;top:8px;right:8px}@media print{.no-imp{display:none}}</style><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet"></head><body>' +
     '<button class="no-imp" onclick="print()" style="padding:10px 16px;font-size:14px">Imprimir</button>' + html + '</body></html>';
