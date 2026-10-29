@@ -345,6 +345,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
     <section class="screen active" data-step="home">
       <div class="step-title">¿Qué vas a registrar?</div>
       <div class="step-sub">Tocá el módulo</div>
+      <div id="extFallidos" style="display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FBE4E1;border:2px solid #C0453A;color:#5A1A13;cursor:pointer"></div>
       <button class="module-card mipyv" type="button" id="goMipyv">
         <span id="iconBug"></span>
         <div>
@@ -371,6 +372,13 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
         <div>
           <div class="mc-title">Tanques y cisternas</div>
           <div class="mc-sub" id="tqHomeSub">Relevamiento y limpieza · red Trelew</div>
+        </div>
+      </button>
+      <button class="module-card ext" type="button" id="goExtTabla">
+        <span class="mc-emoji">📋</span>
+        <div>
+          <div class="mc-title">Extintores cargados</div>
+          <div class="mc-sub">Ver la lista: puesto, lugar, inventario y vencimientos</div>
         </div>
       </button>
       <div id="tqBorradorAviso" style="display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FFF4D6;border:2px solid #E0A800;color:#3B2F00"></div>
@@ -731,5 +739,6 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 <script src="app.js"></script>
 <script src="avisos.js"></script>
 <script src="tanques.js"></script>
+<script src="extintores.js"></script>
 </body>
 </html>
