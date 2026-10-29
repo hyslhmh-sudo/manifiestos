@@ -105,6 +105,7 @@ function miRed_(d) {
     case 'm_limpieza': return conLock_(() => corr('limpieza', () => miLimpieza_(cod, x, quien)));
     case 'm_analisis': return conLock_(() => corr('analisis', () => miAnalisis_(cod, x, quien)));
     case 'm_inspeccion': return conLock_(() => miInspeccion_(cod, x, quien));   // relevamiento de estado cada 3 meses (29/10/2026)
+    case 'm_relev_dep': return conLock_(() => miRelevDep_(cod, x, quien));   // hoja de relevamiento de una dependencia completa (29/10/2026)
     case 'm_form2': return conLock_(() => miForm2_(cod, x, quien));   // Formulario 2 firmado: personal designado y capacitado (29/10/2026)
     case 'm_plaga_aviso': return conLock_(() => x.CASO_EDITAR ? regEditar_(cod, 'PLAGAS_CASOS', 'CASO', x.CASO_EDITAR, maestra, x, quien) : miPlagaAviso_(cod, x, quien));
     case 'm_plaga_registro': return conLock_(() => corr('plaga', () => miPlagaRegistro_(cod, x, quien)));
@@ -206,7 +207,7 @@ function miInspeccion_(cod, x, quien) {
   MI_INSP.forEach(q => { if (x[q[0]] !== q[1]) { prob.push(q[3]); if (q[2] === 'limpieza') limpiar = true; else reparar = true; } });
   const resultado = limpiar && reparar ? 'Requiere limpieza y reparación' : limpiar ? 'Requiere limpieza' : reparar ? 'Requiere reparación' : 'Conforme';
   const L = miLeer_('AGUA_INSPECCIONES'), id = miId_('INS', R.ESTABLECIMIENTO, L, 'ID');
-  const fotos = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + R.CODIGO_TANQUE + '_' + fecha }, x.archivo)) : '';
+  const fotos = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + R.CODIGO_TANQUE + '_' + fecha }, x.archivo)) : (x.fotoUrl || '');
   const o = { ID: id, FECHA: fecha, ESTABLECIMIENTO: R.ESTABLECIMIENTO, SITIO: R.SITIO, CODIGO_TANQUE: R.CODIGO_TANQUE, TAPA: x.TAPA, CLORO_MG_L: 'Lo mide el DPSB', RESULTADO: resultado,
     PROXIMA_INSPECCION: miSumarMeses_(fecha, 3), FOTOS: fotos, QUIEN: quien + ' · Mi establecimiento', CARGADO: miHoy_(),
     OBSERVACIONES: [prob.length ? 'Problemas: ' + prob.join('; ') + '.' : '', String(x.OBSERVACIONES || '').trim()].filter(Boolean).join(' ') };
@@ -214,6 +215,33 @@ function miInspeccion_(cod, x, quien) {
   miAgregar_('AGUA_INSPECCIONES', o);
   miCambiar_('RESERVORIOS', R.fila, { TAPA: x.TAPA, ACTUALIZADO: miHoy_() });
   return { ok: true, id: id, resultado: resultado, aviso: resultado === 'Conforme' ? '' : resultado + ': ' + prob.join(', ') + '.' };
+}
+// Hoja de relevamiento de una dependencia (Formulario 3 / F-AGU-02, versión 0): mapeo y estado de todos sus tanques y cisternas en una sola carga.
+// Primero valida todo; después actualiza o da de alta cada tanque (RESERVORIOS) y registra su relevamiento (AGUA_INSPECCIONES) con la hoja firmada.
+function miRelevDep_(cod, x, quien) {
+  const L = Array.isArray(x.tanques) ? x.tanques : [], G = miGrupo_(cod), R = miLeer_('RESERVORIOS');
+  if (!L.length) return { ok: false, mensaje: 'No hay tanques en la hoja.' };
+  if (!(x.archivo && x.archivo.base64)) return { ok: false, mensaje: 'Falta la foto o el PDF de la hoja firmada.' };
+  const fecha = /^\d{4}-\d{2}-\d{2}/.test(x.FECHA || '') ? x.FECHA.slice(0, 10) : miHoy_();
+  for (let i = 0; i < L.length; i++) {
+    const t = L[i], n = 'Columna ' + (i + 1);
+    if (t.CODIGO_TANQUE && !R.some(r => r.CODIGO_TANQUE === t.CODIGO_TANQUE && G.cods.indexOf(r.ESTABLECIMIENTO) >= 0)) return { ok: false, mensaje: n + ': no encontré ' + t.CODIGO_TANQUE + '.' };
+    if (!String(t.UBICACION || '').trim()) return { ok: false, mensaje: n + ': falta la ubicación.' };
+    if (t.ESTADO !== 'Fuera de uso') { if (!/^(Sí, en condiciones|Deficiente|No tiene)$/.test(t.TAPA || '')) return { ok: false, mensaje: n + ': falta la tapa.' };
+      if (MI_INSP.some(q => !/^(Sí|No)$/.test(t[q[0]] || ''))) return { ok: false, mensaje: n + ': faltan respuestas del estado.' }; }
+  }
+  const url = miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + String(x.SITIO || 'dependencia').replace(/\s+/g, '_') + '_' + fecha }, x.archivo));
+  const quien2 = quien + (x.RELEVO ? ' (relevó: ' + x.RELEVO + ')' : ''), res = [];
+  L.forEach(t => {
+    const inv = { SITIO: x.SITIO || '', UBICACION: t.UBICACION, TIPO: t.TIPO || '', USO: t.USO || '', CAPACIDAD_L: t.CAPACIDAD_L || '', MATERIAL: t.MATERIAL || '', ACCESO: t.ACCESO || '', ESTADO: t.ESTADO || 'Activo', quien: quien2 };
+    if (t.OBSERVACIONES) inv.OBSERVACIONES = t.OBSERVACIONES;
+    if (t.CODIGO_TANQUE) inv.CODIGO_TANQUE = t.CODIGO_TANQUE;
+    const g = miGuardarInv_(cod, 'RESERVORIOS', 'CODIGO_TANQUE', /cisterna/i.test(t.TIPO) ? 'C' : 'T', inv); if (!g.ok) throw new Error(g.mensaje);
+    if (t.ESTADO === 'Fuera de uso') { res.push(g.codigo + ': fuera de uso'); return; }
+    const r = miInspeccion_(cod, Object.assign({}, t, { CODIGO_TANQUE: g.codigo, FECHA: fecha, fotoUrl: url, archivo: null }), quien2); if (!r.ok) throw new Error(r.mensaje);
+    res.push(g.codigo + ': ' + r.resultado);
+  });
+  return { ok: true, aviso: res.join(' · ') };
 }
 // Formulario 2 firmado (registro de personal designado y capacitado para la limpieza de tanques): queda como documento propio del
 // establecimiento (DOCUMENTOS_EST, tema Agua); el que se carga después reemplaza al anterior. Hasta 5 fotos o un PDF.

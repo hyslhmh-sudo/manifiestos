@@ -885,7 +885,7 @@ function inicio() {
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
-  const P = MI ? MI.pendientes.filter(p => !TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) : [], ir = { agua_alta: 'aguaInv', agua_insp: 'aguaInsp', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
+  const P = MI ? MI.pendientes.filter(p => !TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) : [], ir = { agua_alta: 'aguaInv', agua_insp: 'aguaRelDep', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · ' + (SES.persona.propia ? '' : '<button class="link" data-act="quienCarga">Cambiar de persona</button> · ') + '<button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
@@ -902,7 +902,7 @@ function inicio() {
       (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
       (puede('Residuos') ? tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') : '') + '</div>' : '') +
-    (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaInsp', 'Relevamiento de tanques', 'Cada 3 meses: tapa, fisuras, sedimento, ventilación…') + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto o el PDF del ' + aguaF1() + ' firmado') + (SES.est === 'HSST' ? tile('aguaForm2', 'Personal designado (Formulario 2)', MI && MI.form2 ? 'Cargado el ' + fechaTxt(MI.form2.cargado) + ' · subir uno nuevo si cambió' : 'Subir el registro firmado del personal que limpia los tanques') : '') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y cisternas', 'Ver, cambiar o agregar · las canillas de muestreo las asigna HyS') + (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
+    (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaRelDep', 'Relevamiento por dependencia', 'Cada 3 meses: cargar la hoja ' + AGUA_F3() + ' completa (mapeo y estado de todos los tanques)') + tile('aguaHojaRelev', 'Hoja de relevamiento para imprimir', 'Una por dependencia, para Mantenimiento') + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto o el PDF del ' + aguaF1() + ' firmado') + (SES.est === 'HSST' ? tile('aguaForm2', 'Personal designado (Formulario 2)', MI && MI.form2 ? 'Cargado el ' + fechaTxt(MI.form2.cargado) + ' · subir uno nuevo si cambió' : 'Subir el registro firmado del personal que limpia los tanques') : '') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y cisternas', 'Ver, cambiar o agregar · las canillas de muestreo las asigna HyS') + (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
     (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + (maudHys() ? tile('plInsp', 'Inspección del trabajo de los operarios', 'Higiene y Seguridad: control en el lugar, con puntos críticos y fotos') : '') + '</div>' : '') +
     (puede('Cocina') || puede('Relevamiento de cocina') ? '<h2>4 · Cocina</h2><div class="menu">' + (puede('Cocina') ? tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') : '') + (puede('Relevamiento de cocina') ? tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') : '') + '</div>' : '') +   // 14.70: se habilitan aparte
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>5 · Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + tile('rxForms', 'Formularios del dosímetro', 'F-RAD-01 alta, F-RAD-02 baja y F-RAD-03 novedad: con los datos del trabajador o en blanco') + '</div>' : '') +
@@ -1429,8 +1429,108 @@ function guardarForm2() {
   const d = Object.assign({}, F); ['foto', 'fotoNombre', 'fotoMas', '_f'].forEach(k => delete d[k]); d.archivo = miArch(F, 'foto');
   encolarMi('m_form2', d, 'Formulario 2');
 }
+// ------------------------------------------------------------------ Agua: relevamiento por dependencia (29/10/2026, pedido de Belén)
+// Mantenimiento recorre cada dependencia (HSST, CAPS…) con una hoja impresa: una columna por tanque o cisterna, con el mapeo y el estado.
+// El referente después carga la hoja entera de una vez acá. Las canillas no van: los puntos de muestreo los asigna Higiene y Seguridad.
+// Formulario nuevo: versión 0 hasta su alta en el sistema.
+const AGUA_F3 = () => SES && SES.est === 'HSST' ? 'Formulario 3' : 'F-AGU-02';
+const AGUA_REL_OPC = { TIPO: ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro'], USO: ['Consumo humano', 'Consumo y reserva de incendio', 'Reserva de incendio', 'Riego', 'Mixto'],
+  MATERIAL: ['Plástico', 'Fibrocemento', 'Hormigón', 'Acero inoxidable', 'Otro'], ACCESO: ['Escalera fija', 'Escalera móvil', 'A nivel', 'Espacio confinado', 'Otro'], TAPA: ['Sí, en condiciones', 'Deficiente', 'No tiene'] };
+const aguaTanquesDe = s => (MI.tanques || []).filter(t => t.sitio === s && !/fuera/i.test(t.inv || ''));
+// Hoja para imprimir (A4 apaisada): 4 tanques por hoja; los que ya están cargados salen con sus datos y el resto en blanco
+function aguaHojaRelev() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  F = F && F._f === 'hoja' ? F : { _f: 'hoja', SITIO: (MI.sitios || [])[0] || '' };
+  MIV = { f: aguaHojaRelev }; VISTA = 'mi'; vista('form');
+  const n = F.SITIO && F.SITIO !== '(en blanco)' ? aguaTanquesDe(F.SITIO).length : 0;
+  $('app').innerHTML = miTit('Hoja de relevamiento para imprimir', AGUA_F3() + ' · una hoja por dependencia, con una columna por tanque o cisterna (4 por hoja). Mantenimiento la completa en papel y el referente la carga en «Relevamiento por dependencia».') +
+    fSel('SITIO', 'Dependencia', ['(en blanco)'].concat(MI.sitios || [])) +
+    '<p class="mu">' + (F.SITIO === '(en blanco)' ? 'Sale sin datos, para completar a mano.' : n ? 'Salen los ' + n + ' tanque(s) o cisterna(s) ya cargados de ' + esc(F.SITIO) + ', con columnas libres para agregar otros.' : 'Todavía no hay tanques cargados en ' + esc(F.SITIO) + ': sale en blanco con el nombre de la dependencia.') + '</p>';
+  bar('<button class="btn sec" data-act="inicio">Volver</button><button class="btn pri" data-act="aguaHojaImp">Imprimir</button>');
+}
+function aguaHojaImp() {
+  const sitio = F.SITIO === '(en blanco)' ? '' : F.SITIO, L = sitio ? aguaTanquesDe(sitio) : [], porHoja = 4, hojas = Math.max(1, Math.ceil((L.length + 1) / porHoja));
+  const est = SES.est, enc = est === 'HSST' ? ['enc-hsst.png', 'enc-secretaria.png'] : ['enc-trelew.png'], base = 'https://hyslhmh-sudo.github.io/starh/';
+  const e = s => esc(s == null ? '' : String(s)), cx = (ops, sel) => ops.map(o => '<span class="op">' + (sel && sel === o ? '☒' : '☐') + ' ' + e(o) + '</span>').join(' ');
+  const sn = '<span class="op">☐ Sí</span> <span class="op">☐ No</span>';
+  const filas = [['MAPEO: qué hay y dónde', null], ['Código del sistema', t => t ? '<b>' + e(t.codigo) + '</b>' : '<span class="gris">nuevo</span>'], ['Ubicación dentro de la dependencia', t => t ? e(t.ubicacion) : ''],
+    ['Tipo', t => cx(AGUA_REL_OPC.TIPO, t && t.tipo)], ['Uso', t => cx(['Consumo humano', 'Consumo e incendio', 'Incendio', 'Riego'], t && (t.uso === 'Consumo y reserva de incendio' ? 'Consumo e incendio' : t.uso === 'Reserva de incendio' ? 'Incendio' : t.uso))],
+    ['Capacidad (litros)', t => t && t.capacidad ? nf(t.capacidad) + ' L' : ''], ['Material', t => cx(AGUA_REL_OPC.MATERIAL, t && t.material)], ['Acceso', t => cx(AGUA_REL_OPC.ACCESO, t && t.acceso)], ['¿Está en uso?', () => sn],
+    ['ESTADO: mirá cada uno y marcá', null], ['Tapa', () => cx(['Bien', 'Deficiente', 'No tiene'])]].concat(AGUA_INSP_P.map(q => [q[1], () => sn])).concat([['Observaciones (qué hay que arreglar)', () => '']]);
+  let html = '';
+  for (let h = 0; h < hojas; h++) {
+    const cols = []; for (let i = 0; i < porHoja; i++) cols.push(L[h * porHoja + i] || null);
+    html += '<section class="hoja"><header><div class="logos">' + enc.map(x => '<img src="' + base + x + '">').join('') + '</div><div class="tit"><b>Relevamiento de tanques y cisternas por dependencia</b><br><span>' + e(AGUA_F3()) + ' · versión 0 · inspección visual cada 3 meses</span></div></header>' +
+      '<table class="cab"><tr><td>Establecimiento: <b>' + e(SES.nombre) + '</b></td><td>Dependencia: <b>' + (sitio ? e(sitio) : '') + '</b></td><td>Fecha: ____ / ____ / ______</td><td>Hoja ' + (h + 1) + ' de ' + hojas + '</td></tr>' +
+      '<tr><td colspan="4">Relevó (nombre y función): ______________________________________________ &nbsp; Una columna por tanque o cisterna. Marcá con una X. Las canillas de muestreo las asigna Higiene y Seguridad.</td></tr></table>' +
+      '<table class="t"><colgroup><col style="width:21%">' + cols.map(() => '<col style="width:19.75%">').join('') + '</colgroup><tr><th></th>' + cols.map((c, i) => '<th>Tanque o cisterna ' + (h * porHoja + i + 1) + '</th>').join('') + '</tr>' +
+      filas.map(f => f[1] ? '<tr><td class="lab">' + e(f[0]) + '</td>' + cols.map(c => '<td' + (/Observ/.test(f[0]) ? ' class="obs"' : '') + '>' + f[1](c) + '</td>').join('') + '</tr>' : '<tr class="sec"><td colspan="' + (porHoja + 1) + '">' + e(f[0]) + '</td></tr>').join('') + '</table>' +
+      '<table class="firmas"><tr><td>Relevó (Mantenimiento) · firma y aclaración</td><td>Recibió y cargó (referente) · firma, aclaración y fecha</td></tr></table>' +
+      '<footer><span>Según el POE de limpieza y desinfección de tanques y cisternas (inspección visual trimestral) · Dto. 351/79, arts. 57 y 58</span><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png"></footer></section>';
+  }
+  const doc = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>' + e(AGUA_F3() + ' · Relevamiento de tanques · ' + (sitio || 'en blanco')) + '</title><style>' +
+    '@page{size:A4 landscape;margin:8mm}body{font-family:"Plus Jakarta Sans",Arial,sans-serif;color:#3A4A52;margin:0;font-size:8.2pt}.hoja{page-break-after:always;height:192mm;display:flex;flex-direction:column}.hoja:last-child{page-break-after:auto}' +
+    'header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0D313F;padding-bottom:4px}.logos img{height:34px;margin-right:8px}.tit{color:#0D313F;font-size:11pt}.tit span{font-size:8pt;color:#5894A7}' +
+    'table{border-collapse:collapse;width:100%}.cab td{padding:3px 4px;font-size:8.2pt}.t{table-layout:fixed;margin-top:3px}.t th,.t td{border:0.6pt solid #5894A7;padding:2.2px 4px;vertical-align:middle}.t th{background:#0D313F;color:#fff;font-size:8.4pt}' +
+    '.t .lab{font-weight:600;color:#0D313F;background:#F4F8FA}.t .sec td{background:#E8F0F3;color:#0D313F;font-weight:700}.t .obs{height:16mm}.op{white-space:nowrap;margin-right:4px}.gris{color:#9FB0B8}' +
+    '.firmas{margin-top:auto}.firmas td{border-top:0.8pt solid #0D313F;width:50%;padding-top:2px;text-align:center;font-size:7.5pt;height:12mm;vertical-align:bottom}' +
+    'footer{display:flex;justify-content:space-between;align-items:center;font-size:7pt;color:#6B7A82;margin-top:3px}footer img{height:22px}' +
+    '.no-imp{position:fixed;top:8px;right:8px}@media print{.no-imp{display:none}}</style><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet"></head><body>' +
+    '<button class="no-imp" onclick="print()" style="padding:10px 16px;font-size:14px">Imprimir</button>' + html + '</body></html>';
+  const w = window.open(URL.createObjectURL(new Blob([doc], { type: 'text/html' })), '_blank');
+  if (!w) miErr('El navegador bloqueó la ventana: permití las ventanas emergentes para imprimir.');
+}
+// Carga de la hoja completa de una dependencia: mapeo + estado de todos sus tanques y cisternas, con la foto o el PDF de la hoja firmada
+function aguaRelDep() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  if (!F || F._f !== 'rel') { F = { _f: 'rel', SITIO: (MI.sitios || [])[0] || '', FECHA: hoyISO(), RELEVO: '' }; aguaRelArmar(); }
+  MIV = { f: aguaRelDep }; VISTA = 'mi'; vista('form');
+  const fs = (k, t, ops) => fSeg(k, t, ops), bloques = [];
+  for (let i = 0; i < F._n; i++) {
+    const c = F['T' + i + '_CODIGO'], k = x => 'T' + i + '_' + x;
+    bloques.push('<div class="card" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0"><h2 style="margin-top:0">' + (c ? esc(c) : 'Tanque o cisterna nuevo') + ' <span class="mu" style="font-size:13px">(columna ' + (i + 1) + ' de la hoja)</span>' + (c ? '' : ' <button class="link" data-act="aguaRelQuitar" data-arg="' + i + '">Quitar</button>') + '</h2>' +
+      fInp(k('UBICACION'), 'Ubicación dentro de la dependencia', 'text', 'Ej.: techo de la cocina') + fs(k('TIPO'), 'Tipo', AGUA_REL_OPC.TIPO) + fs(k('USO'), 'Uso', AGUA_REL_OPC.USO) +
+      '<div class="grid2">' + fInp(k('CAPACIDAD_L'), 'Capacidad (litros)', 'number', 's/d si no se sabe') + fSel(k('MATERIAL'), 'Material', [['', 's/d']].concat(AGUA_REL_OPC.MATERIAL)) + '</div>' +
+      fSel(k('ACCESO'), 'Acceso', AGUA_REL_OPC.ACCESO) + fs(k('ESTADO'), '¿Está en uso?', ['Activo', 'Fuera de uso']) +
+      (F[k('ESTADO')] === 'Fuera de uso' ? '<p class="mu">Fuera de uso: no se carga el estado.</p>' : '<h3 style="margin:12px 0 4px;color:var(--az,#0D313F)">Estado</h3>' + fs(k('TAPA'), 'Tapa', AGUA_REL_OPC.TAPA) + AGUA_INSP_P.map(q => fs(k(q[0]), q[1], ['Sí', 'No'])).join('')) +
+      fTxt(k('OBSERVACIONES'), 'Observaciones (opcional)', 'Qué hay que arreglar…') + '</div>');
+  }
+  $('app').innerHTML = miTit('Relevamiento por dependencia', 'Cargá la hoja ' + AGUA_F3() + ' completa de una dependencia: el mapeo y el estado de cada tanque o cisterna, en el mismo orden de las columnas.') + fErr +
+    fSel('SITIO', 'Dependencia', MI.sitios || ['s/d (revisar)']) + '<div class="grid2">' + fInp('FECHA', 'Fecha del relevamiento', 'date') + fInp('RELEVO', 'Relevó (nombre y función)', 'text', 'Ej.: Juan Pérez, Mantenimiento') + '</div>' +
+    bloques.join('') + '<div class="menu"><button class="big" data-act="aguaRelMas"><b>+ Agregar otro tanque o cisterna</b><span>Uno que todavía no estaba cargado</span></button></div>' +
+    fFoto('foto', 'Foto o PDF de la hoja firmada', 'Obligatorio · hasta 5 fotos o un PDF');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarRelDep">Guardar todo</button>');
+}
+// Arma los bloques con los tanques ya cargados de la dependencia elegida (si no hay, uno en blanco)
+function aguaRelArmar() {
+  Object.keys(F).filter(k => /^T\d+_/.test(k)).forEach(k => delete F[k]);
+  const L = aguaTanquesDe(F.SITIO); F._n = Math.max(1, L.length);
+  L.forEach((t, i) => { const k = x => 'T' + i + '_' + x; F[k('CODIGO')] = t.codigo; F[k('UBICACION')] = t.ubicacion || ''; F[k('TIPO')] = t.tipo || ''; F[k('USO')] = t.uso || ''; F[k('CAPACIDAD_L')] = t.capacidad || '';
+    F[k('MATERIAL')] = t.material || ''; F[k('ACCESO')] = t.acceso || 'Escalera fija'; F[k('ESTADO')] = 'Activo'; });
+  if (!L.length) { F.T0_TIPO = 'Tanque elevado'; F.T0_USO = 'Consumo humano'; F.T0_ACCESO = 'Escalera fija'; F.T0_ESTADO = 'Activo'; }
+}
+function aguaRelMas() { const i = F._n++; F['T' + i + '_TIPO'] = 'Tanque elevado'; F['T' + i + '_USO'] = 'Consumo humano'; F['T' + i + '_ACCESO'] = 'Escalera fija'; F['T' + i + '_ESTADO'] = 'Activo'; aguaRelDep(); }
+function aguaRelQuitar(i) {   // solo los nuevos; corre los siguientes un lugar
+  i = Number(i); for (let j = i; j < F._n - 1; j++) Object.keys(F).filter(k => k.indexOf('T' + (j + 1) + '_') === 0).forEach(k => { F['T' + j + '_' + k.split('_').slice(1).join('_')] = F[k]; });
+  Object.keys(F).filter(k => k.indexOf('T' + (F._n - 1) + '_') === 0).forEach(k => delete F[k]); F._n = Math.max(1, F._n - 1); aguaRelDep();
+}
+function guardarRelDep() {
+  if (!F.FECHA) return miErr('Falta la fecha del relevamiento.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF de la hoja firmada.');
+  const T = [];
+  for (let i = 0; i < F._n; i++) {
+    const g = x => F['T' + i + '_' + x] || '', o = { CODIGO_TANQUE: g('CODIGO') };
+    ['UBICACION', 'TIPO', 'USO', 'CAPACIDAD_L', 'MATERIAL', 'ACCESO', 'ESTADO', 'TAPA', 'OBSERVACIONES'].concat(AGUA_INSP_P.map(q => q[0])).forEach(k => o[k] = g(k));
+    const n = 'Columna ' + (i + 1) + (o.CODIGO_TANQUE ? ' (' + o.CODIGO_TANQUE + ')' : '');
+    if (!o.UBICACION) return miErr(n + ': falta la ubicación.');
+    if (o.ESTADO !== 'Fuera de uso') { if (!o.TAPA) return miErr(n + ': falta la tapa.'); const f = AGUA_INSP_P.filter(q => !o[q[0]]); if (f.length) return miErr(n + ': faltan ' + f.length + ' respuesta(s) del estado.'); }
+    T.push(o);
+  }
+  const d = { SITIO: F.SITIO, FECHA: F.FECHA, RELEVO: F.RELEVO || '', tanques: T, archivo: miArch(F, 'foto') };
+  encolarMi('m_relev_dep', d, 'Relevamiento de ' + F.SITIO);
+}
 // Al cambiar de tanque en la limpieza o el relevamiento, se vuelve a dibujar (datos guardados y cuenta de la dosis)
-document.addEventListener('change', e => { const s = e.target; if (s.dataset && s.dataset.f === 'CODIGO_TANQUE' && F && MIV && (MIV.f === aguaLimpieza || MIV.f === aguaInsp)) { F.CODIGO_TANQUE = s.value; MIV.f(); } });
+document.addEventListener('change', e => { const s = e.target; if (s.dataset && s.dataset.f === 'CODIGO_TANQUE' && F && MIV && (MIV.f === aguaLimpieza || MIV.f === aguaInsp)) { F.CODIGO_TANQUE = s.value; MIV.f(); }
+  if (s.dataset && s.dataset.f === 'SITIO' && F && MIV && (MIV.f === aguaRelDep || MIV.f === aguaHojaRelev)) { F.SITIO = s.value; if (MIV.f === aguaRelDep) aguaRelArmar(); MIV.f(); } });
 function aguaAnalisis() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
   if (!MI.puntos.length) return aguaInv();
@@ -2535,7 +2635,7 @@ const AYG = [
   { m: 'Residuos', t: 'Desvíos del recorrido (Star Union)', p: ['Inicio › Residuos › «Desvíos del recorrido»: lo que registran los operarios de Star Union en el recorrido de retiro de residuos del HMH (bolsas en el piso, bolsa equivocada, cortopunzantes sueltos, contenedores llenos…).', 'Arriba ves los totales y dónde se repite más. Abajo, cada registro con su foto. Podés filtrar por lugar, por días o buscar una palabra.', 'En «contenedor lleno» y «residuo fuera de contenedor» el operario dice por qué pasó. Si no había lugar en ningún contenedor, el registro aparece como «Faltan contenedores»: el problema es la cantidad de contenedores del lugar, no la práctica del servicio. Arriba ves cuántos hay por cada causa.', 'En «segregación incorrecta» y «bolsa incorrecta» la página le recuerda al operario que todo residuo que sale de un aislamiento por enfermedad infectocontagiosa, incluida la comida, es biopatogénico, y le pregunta si venía de un aislamiento. Si dice que sí, el registro lleva la etiqueta «Aislamiento infectocontagioso»: si estaba en bolsa roja, no es un error. En el aislamiento inverso o protector los residuos se separan como siempre.', 'Cada carga llega también por correo en el momento a la secretaría de HyS y a los supervisores de Star Union (Federico Obelar y Eduardo Mengozzi); las que tienen cortopunzantes o una lesión llegan como URGENTE. A los supervisores les llega sin la evaluación de HyS.', 'Si tenés el módulo «Desvíos» (supervisor de Star Union): «Desvíos: supervisión» muestra todo lo que cargan los operarios, las acciones de HyS (las que hay que seguir con la empresa, arriba), la adhesión de cada operario y los desvíos por semana. Cada lunes llega además un resumen por correo.', '«Para verificar en el lugar»: los desvíos en los que Higiene y Seguridad ya tomó una medida. Cuando pases por el lugar, tocá «Corregido» (se cierra) o «Sigue igual» (HyS lo vuelve a revisar).', 'Es solo para ver: la revisión (origen, gravedad, acciones) la hace Higiene y Seguridad en la planilla del registro.'] },
   { m: 'Residuos', t: 'Informar una novedad de residuos', p: ['Inicio › Residuos › «Informar una novedad»: para lo que se ve mal en una recorrida (bolsa equivocada, cortopunzante fuera del descartador, descartador lleno, depósito abierto, la empresa no retiró, etc.).', 'Elegí el lugar, escribí el sector, qué viste y qué residuo es, y contalo en pocas palabras. La foto es opcional, pero ayuda mucho: que no aparezcan pacientes ni datos personales.', 'Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado), avisá también en el momento a Higiene y Seguridad.', '«Novedades de residuos»: lo abierto (primero lo de residuos peligrosos) y lo resuelto. Cuando se corrige, tocá «Resuelta» y contá qué se hizo.', 'No envía correos: Higiene y Seguridad las ve en el sistema.'] },
   { m: 'Agua', t: 'Tanques y cisternas', p: ['Inicio › Agua › «Mis tanques y cisternas». Se cargan una sola vez; para cambiar algo, «Cambiar datos». Necesita señal.', 'Las canillas donde se toman las muestras (puntos de muestreo) las asigna Higiene y Seguridad: el referente las ve, pero no las agrega ni las cambia.'] },
-  { m: 'Agua', t: 'Relevamiento de tanques (cada 3 meses)', p: ['Inicio › Agua › «Relevamiento de tanques»: elegí el tanque o cisterna, la fecha, cómo está la tapa y respondé las 8 preguntas (fisuras, óxido, sedimento, olor o turbidez, flotante y válvulas, malla de ventilación, bichos, acceso seguro).', 'El sistema dice si está conforme, si hay que limpiarlo o si hay que repararlo. Si pide limpieza, se limpia aunque no toque.', 'Las fotos son opcionales (hasta 5). A los 3 meses aparece como pendiente.'] },
+  { m: 'Agua', t: 'Relevamiento por dependencia (cada 3 meses)', p: ['Inicio › Agua › «Hoja de relevamiento para imprimir»: elegí la dependencia (hospital, CAPS…) e imprimila. Salen los tanques ya cargados con sus datos y columnas libres; 4 tanques por hoja. Mantenimiento la completa en papel con una X y la firma.', 'Inicio › Agua › «Relevamiento por dependencia»: elegí la dependencia y cargá cada columna de la hoja (ubicación, tipo, uso, capacidad, material, acceso, tapa y las 8 preguntas). «+ Agregar otro tanque o cisterna» para los que no estaban. Adjuntá la hoja firmada (hasta 5 fotos o un PDF) y «Guardar todo».', 'Las canillas no van en esta hoja: los puntos de muestreo los asigna Higiene y Seguridad.'] },
   { m: 'Agua', t: 'Limpieza de tanque', p: ['Formularios para imprimir: el de tu red (HSST: Formulario 1 del POE-HSST-AGU-001; red Trelew: F-AGU-01-T). Se completa en papel durante la limpieza y se firma.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento, horas, litros de agua cargada (el 20 % de la capacidad) y mL de lavandina 5,5 % (2 mL por litro de agua). El sistema propone la cuenta según la capacidad del tanque.', 'Mínimo 6 horas cerrado (3 h con el POE-AGU-001 de la red Trelew). El cloro no se mide: lo mide el DPSB cuando toma la muestra.', 'Es obligatorio adjuntar el formulario firmado: hasta 5 fotos o un PDF.'] },
   { m: 'Agua', t: 'Personal designado (Formulario 2)', p: ['Inicio › Agua › «Personal designado (Formulario 2)»: subí el registro firmado de las personas que designó la Dirección para limpiar los tanques, con su capacitación (hasta 5 fotos o un PDF).', 'Si cambia el personal o vence una capacitación, subí uno nuevo: reemplaza al anterior y queda en «Manuales, guías, POE, protocolos y PTS».'] },
   { m: 'Agua', t: 'Informes del laboratorio', p: ['Inicio › Agua › «Informes del laboratorio»: abre la carpeta de Drive con los PDF de los análisis y los remitos del laboratorio provincial, ordenados por establecimiento y por fecha.', 'HMH: su carpeta. HZT: la de la red Trelew (hospital, dependencias y CAPS). HSST: la de la red Rawson (hospital, Playa Unión y CAPS). Las dos redes no se mezclan.', 'Si no abre, pedí acceso a Higiene y Seguridad: la carpeta es del servicio.'] },
@@ -2736,7 +2836,7 @@ Object.assign(ACT, { qPers: () => { F = null; QR = null; qPers(); }, qPersIr: ()
 Object.assign(ACT, {
   actualizar: () => { actualizarConfig(false); sincronizar(); miCargar(false); },
   irDiag: () => irDiag(), irDiagRes: () => irDiag('#diagnostico'), irAud: () => irDiag('#auditoria'), aguaInv: () => { F = null; aguaInv(); }, aguaInformes: () => aguaInformes(), aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
-  aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaInsp: () => { F = null; aguaInsp(); }, guardarInsp: () => guardarInsp(), aguaForm2: () => { F = null; aguaForm2(); }, guardarForm2: () => guardarForm2(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
+  aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaInsp: () => { F = null; aguaInsp(); }, guardarInsp: () => guardarInsp(), aguaRelDep: () => { F = null; aguaRelDep(); }, aguaRelMas: () => aguaRelMas(), aguaRelQuitar: b => aguaRelQuitar(b.dataset.arg), guardarRelDep: () => guardarRelDep(), aguaHojaRelev: () => { F = null; aguaHojaRelev(); }, aguaHojaImp: () => aguaHojaImp(), aguaForm2: () => { F = null; aguaForm2(); }, guardarForm2: () => guardarForm2(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
   guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
   sinCorr: b => sinCorr(b.dataset.arg), sinVolverVer: () => { F = null; SIN_VER ? sinVer(SIN_VER) : siniestros(); }, sinNovCorr: b => sinNovCorr(b.dataset.arg), sinAnular: b => { F = null; sinAnular(b.dataset.arg); },
