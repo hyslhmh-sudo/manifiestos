@@ -175,8 +175,7 @@ for i, (a, b, d) in enumerate(dosis):
     c.setFont('Helvetica-Bold', 7.5); c.drawCentredString(xx + cw / 2, y - 24, d)
 c.setFont('Helvetica', 6.5); c.setFillColor(GRIS); c.drawString(M, y - 38, 'Si la lavandina no es al 5,5 %, avisar a Higiene y Seguridad antes de usarla: hay que recalcular la dosis.')
 y -= 50
-check('Abrir las salidas hacia las canillas hasta que en cada una se sienta olor a cloro; después cerrarlas.', 8)
-check('Cerrar la entrada de agua y dejar todo cerrado: mínimo 3 horas, mejor 6 horas.', 9,
+check('Cerrar la entrada de agua y dejar todo cerrado: mínimo 3 horas, mejor 6 horas.', 8,
       extra=['Desde las ______ h hasta las ______ h · total ______ h.'])
 pie(1, 2)
 c.showPage()
@@ -184,9 +183,9 @@ c.showPage()
 # ------------------------------------------------------------------ Página 2
 cabecera(2)
 seccion('6. Paso 3 · Enjuague y puesta en servicio')
-check('Abrir todas las canillas y salidas hasta vaciar el agua con cloro.', 10)
-check('Abrir la entrada y dejar las canillas abiertas hasta que el olor y el sabor a cloro sean aceptables.', 11)
-check('Tapar bien el tanque o la cisterna (no sirve lona ni nylon).', 12)
+check('Abrir todas las canillas y salidas hasta vaciar el agua con cloro.', 9)
+check('Abrir la entrada y dejar las canillas abiertas hasta que el olor y el sabor a cloro sean aceptables.', 10)
+check('Tapar bien el tanque o la cisterna (no sirve lona ni nylon).', 11)
 parrafo('El cloro residual no lo mide el establecimiento: lo mide el Departamento Provincial de Saneamiento Básico (DPSB) cuando toma la muestra.', M, W - 2 * M, 8, color=GRIS)
 y -= 4
 seccion('7. Cómo estaba el tanque')
