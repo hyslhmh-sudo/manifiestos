@@ -19,43 +19,75 @@ function aguaInfCard() {
     b(AGUA_INF.tablero, 'Tablero de análisis ↗', 1) + b(AGUA_INF.trelew, 'Red Trelew ↗') + b(AGUA_INF.rawson, 'Red Rawson ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.subir, 'Subir informes nuevos ↗') +
     '</section>';
 }
-// ------------------------------------------------------------------ 2 · Agua · Muestreos de laboratorio: qué pedir y cuándo (28/10/2026, pedido de Belén)
+// ------------------------------------------------------------------ 2 · Agua · Muestreos de laboratorio: tablero (28/10/2026, pedido de Belén: «info rápida y acciones», sin abrir Sheets)
 // Datos: TB.lab (Tablero.gs › AguaLab.gs), que lee las fórmulas del libro «Agua · Tablero de análisis de laboratorio».
 // Parcial = solo bacteriológico cada 6 meses; completo = bacteriológico + físico-químico cada 12, previa limpieza de tanques y cisternas.
 // Las reglas y los días de aviso se cambian en el libro (celdas B2, D3, F3, H3 de cada pestaña Tablero).
-function aguaLabCard(lab, labError) {
+// Arriba: contadores (se tocan para filtrar) y accesos directos. Abajo: «Qué hacer ahora», una línea por establecimiento (se toca para ver el detalle), y «Al día».
+let AGL = { lab: [], red: '', ver: '' };
+function aglSet(k, v) { AGL[k] = AGL[k] === v ? '' : v; const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar(); }
+function aglPintar() {
   const fT = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? fechaTxt(v) : esc(v || 's/d');
-  const orden = a => /urgente/i.test(a) ? 0 : /vencido/i.test(a) ? 1 : /pedir/i.test(a) ? 2 : 3;
-  const chip = a => '<span class="chip ' + (/urgente|vencido/i.test(a) ? 'er' : /pedir/i.test(a) ? 'wa' : 'ok') + '">' + esc(a || 's/d') + '</span>';
+  const est = x => /urgente/i.test(x.aviso) ? 'urg' : /vencido/i.test(x.aviso) ? 'ven' : /pedir/i.test(x.aviso) ? 'aho' : 'ok';
+  const orden = { urg: 0, ven: 1, aho: 2, ok: 3 };
+  const L = AGL.lab.filter(x => x.grupo !== 'Otros' && (!AGL.red || x.red === AGL.red));
+  const cuenta = f => { const t = L.filter(f), r = k => AGL.lab.filter(x => x.grupo !== 'Otros' && x.red === k).filter(f).length; return [t.length, AGL.red ? '' : 'Trelew ' + r('Trelew') + ' · Rawson ' + r('Rawson')]; };
+  const kp = (ver, n, t, sub, color, bg) => '<a class="kpi2" role="button" tabindex="0" onclick="aglSet(\'ver\',\'' + ver + '\')" style="cursor:pointer' + (n && bg ? ';background:' + bg : '') + (AGL.ver === ver ? ';outline:3px solid var(--az);outline-offset:-3px' : '') + '"><span>' + t + '</span><b' + (n && color ? ' style="color:' + color + '"' : '') + '>' + n + '</b><small>' + sub + '</small></a>';
+  const ya = cuenta(x => /urg|ven/.test(est(x))), ahora = cuenta(x => est(x) === 'aho'), ok = cuenta(x => est(x) === 'ok'),
+    noAp = cuenta(x => x.noAptas > 0), sinD = cuenta(x => !/^\d{4}/.test(x.ultimo || ''));
+  const kpis = '<div class="tb5" style="margin:4px 0 14px">' +
+    kp('ya', ya[0], 'Pedir ya', ya[1] || 'vencidos o con agua no apta', 'var(--er)', 'var(--erbg)') +
+    kp('aho', ahora[0], 'Pedir ahora', ahora[1] || 'dentro del plazo de aviso', 'var(--wa)', 'var(--wabg)') +
+    kp('ok', ok[0], 'Al día', ok[1] || 'nada que pedir todavía', 'var(--okt)', '') +
+    kp('noap', noAp[0], 'Con agua NO APTA', 'en el último muestreo', 'var(--er)', 'var(--erbg)') +
+    kp('sind', sinD[0], 'Sin informes', 'nunca se cargó un muestreo', 'var(--mu)', '') + '</div>';
+  const tab = (v, t) => '<button class="btn ' + (AGL.red === v ? 'pri' : 'sec') + '" onclick="aglSet(\'red\',\'' + v + '\')">' + t + '</button>';
+  const filtro = { ya: x => /urg|ven/.test(est(x)), aho: x => est(x) === 'aho', ok: x => est(x) === 'ok', noap: x => x.noAptas > 0, sind: x => !/^\d{4}/.test(x.ultimo || '') }[AGL.ver] || (x => est(x) !== 'ok');
+  const lista = L.filter(filtro).sort((a, b) => orden[est(a)] - orden[est(b)] || (a.red === b.red ? 0 : a.red === 'Trelew' ? -1 : 1) || String(a.ultimo).localeCompare(String(b.ultimo)));
+  const color = { urg: 'er', ven: 'er', aho: 'wa', ok: 'ok' };
+  const qTxt = x => /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' : /COMPLETO/.test(x.que) ? 'Completo · limpiar tanques antes' : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
+  const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) && x.limite >= new Date().toISOString().slice(0, 10) ? 'hasta el ' + fT(x.limite) : 'ya';
   const fila = x => {
-    const comp = /COMPLETO|URGENTE/.test(x.que), parc = /PARCIAL/.test(x.que), nada = !comp && !parc;
-    const cuando = nada ? 'Próximo: parcial el ' + fT(x.parcial) + ' · completo el ' + fT(x.completo) + (x.desde && x.desde !== 'Ya' ? ' · pedirlo desde el ' + fT(x.desde) : '')
-      : 'Fecha límite: ' + fT(x.limite);
-    const donde = comp ? 'Salida del tanque y canilla más alejada, más las de siempre' + (x.canillas && x.canillas !== 's/d' ? ': ' + esc(x.canillas) : '')
-      : parc ? 'Mismas canillas del último muestreo' + (x.canillas && x.canillas !== 's/d' ? ': ' + esc(x.canillas) : '') : '';
-    return '<div class="at" style="display:block"><b>' + esc(x.lugar) + ' ' + chip(x.aviso) + '</b>' +
-      (nada ? '' : '<small style="display:block;color:#0D313F;font-weight:600">' + esc(comp ? (/URGENTE/.test(x.que) ? 'URGENTE · agua NO APTA: limpiar y desinfectar tanques y cisternas y pedir muestreo COMPLETO en 15 días hábiles' : 'Pedir muestreo COMPLETO: bacteriológico + físico-químico. Antes: limpieza y desinfección de tanques y cisternas') : 'Pedir muestreo PARCIAL de 6 meses: solo bacteriológico') + '</small>') +
-      '<small style="display:block">' + cuando + '</small>' + (donde ? '<small style="display:block">' + donde + '</small>' : '') +
-      '<small style="display:block">Último bacteriológico ' + fT(x.bact) + ' · último físico-químico ' + fT(x.fq) + (x.sinConclusion ? ' · ' + x.sinConclusion + ' muestra(s) sin conclusión: consultar al DPSB' : '') + '</small></div>';
+    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), can = x.canillas && x.canillas !== 's/d' ? esc(x.canillas) : 's/d';
+    return '<details class="aglF" style="border-top:1px solid #EEF2F4"><summary style="list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 4px;align-items:center">' +
+      '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
+      '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
+      '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
+      (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
+      '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
+      ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
+      '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
+      (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
+      (comp ? '<br><b>Antes:</b> el establecimiento limpia y desinfecta tanques y cisternas (sin eso el DPSB no toma la muestra).' : '') + '</div></details>';
   };
-  const red = r => { const L = (lab || []).filter(x => x.red === r).sort((a, b) => orden(a.aviso) - orden(b.aviso) || a.lugar.localeCompare(b.lugar, 'es'));
-    const n = k => L.filter(x => x.grupo !== 'Otros' && orden(x.aviso) === k).length;
-    return '<div style="flex:1 1 320px;min-width:0"><h3 style="margin:8px 0 2px;font-size:15px">Red ' + r + '</h3><span class="mu peq">' + [[n(0), 'urgentes'], [n(1), 'vencidos'], [n(2), 'para pedir ahora'], [n(3), 'al día']].filter(y => y[0]).map(y => y[0] + ' ' + y[1]).join(' · ') + '</span>' +
-      '<div style="max-height:560px;overflow-y:auto">' + (L.length ? L.map(fila).join('') : '<div class="mu">Sin datos.</div>') + '</div></div>'; };
+  const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
+  const resto = AGL.ver ? [] : L.filter(x => est(x) === 'ok');
+  return kpis + '<div class="tabs" style="margin-bottom:8px">' + tab('', 'Todas las redes') + tab('Trelew', 'Red Trelew') + tab('Rawson', 'Red Rawson') +
+    (AGL.ver ? '<button class="link" onclick="aglSet(\'ver\',\'' + AGL.ver + '\')" style="margin-left:6px">Quitar filtro «' + titulo + '»</button>' : '') + '</div>' +
+    '<h3 style="margin:10px 0 0;font-size:15px">' + titulo + ' (' + lista.length + ')</h3><span class="mu peq">Tocá un establecimiento para ver canillas, fechas y qué hacer antes.</span>' +
+    '<div style="max-height:620px;overflow-y:auto;margin-top:4px">' + (lista.length ? lista.map(fila).join('') : '<div class="mu" style="padding:10px 4px">Nada para mostrar.</div>') + '</div>' +
+    (resto.length ? '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Al día (' + resto.length + ') · cuándo pedir el próximo</summary>' + resto.sort((a, b) => String(a.desde).localeCompare(String(b.desde))).map(fila).join('') + '</details>' : '');
+}
+function aguaLabCard(lab, labError) {
+  AGL.lab = Array.isArray(lab) ? lab : [];
+  const b = (u, t, pri) => '<a class="btn' + (pri ? ' pri' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="margin:0 6px 6px 0">' + t + '</a>';
+  const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:12px">' + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
+    b('https://drive.google.com/file/d/1FpmfodUSL0-E_8Q7urXqkpmiKbQI4A2x/view', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
     '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
     '1) El establecimiento limpia y desinfecta tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
     '2) Higiene y Seguridad completa la «Solicitud de análisis de agua» (Anexo III del POE del DPSB) pidiendo bacteriológico + físico-químico. ' +
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
-    '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico, en las mismas canillas del último muestreo, con la misma solicitud. Los tanques tienen que estar dentro de su cronograma de limpieza (el DPSB lo verifica) y con el relevamiento trimestral sin problemas.<br>' +
+    '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico, en las mismas canillas del último muestreo, con la misma solicitud.<br>' +
     '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
-    'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). Se cambia en el tablero de Sheets (celdas F3 y H3). ' +
-    '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.</div></details>';
-  const sinDatos = !Array.isArray(lab) || !lab.length;
-  return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Muestreos de laboratorio: qué pedir y cuándo</h2>' +
-    '<span class="mu peq" style="display:block;margin-bottom:6px">Parcial cada 6 meses (solo bacteriológico) y completo cada 12 (bacteriológico + físico-químico, con limpieza previa de tanques y cisternas). Dto. 351/79 art. 57 y POE del DPSB. Primero lo urgente y lo vencido.</span>' +
-    (sinDatos ? '<div class="aviso">' + (labError ? 'No se pudo leer el tablero de análisis: ' + esc(labError) + '. ' : 'Todavía no llegan los datos de los muestreos: falta pegar AguaLab.gs y Tablero.gs en el Apps Script «Sistema HyS» y tocar «Actualizar». ') + 'Mientras tanto, el detalle está en el <a href="' + AGUA_INF.tablero + '" target="_blank" rel="noopener">tablero de análisis ↗</a> (columnas «Qué solicitar» y «Aviso»).</div>'
-      : '<div style="display:flex;flex-wrap:wrap;gap:18px">' + red('Trelew') + red('Rawson') + '</div>') + como + '</section>';
+    'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). ' +
+    '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.<br>' +
+    'Informes nuevos: subirlos a «Subir informes nuevos»; Claude los ordena, los carga y actualiza este tablero.</div></details>';
+  const sinDatos = !AGL.lab.length;
+  return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 2px;font-size:17px">Muestreos de laboratorio</h2>' +
+    '<span class="mu peq" style="display:block">Parcial cada 6 meses (solo bacteriológico) · completo cada 12 (bacteriológico + físico-químico, con limpieza previa de tanques). Dto. 351/79 art. 57 y POE del DPSB. Red Trelew y red Rawson por separado. Tocá un número para filtrar.</span>' +
+    (sinDatos ? '<div class="aviso" style="margin-top:10px">' + (labError ? 'No se pudo leer el tablero de análisis: ' + esc(labError) + '. ' : 'Todavía no llegan los datos de los muestreos: tocá «Actualizar» en el Inicio. ') + 'Mientras tanto, el detalle está en la <a href="' + AGUA_INF.tablero + '" target="_blank" rel="noopener">planilla ↗</a>.</div>'
+      : '<div id="aglBox" style="margin-top:8px">' + aglPintar() + '</div>') + accesos + como + '</section>';
 }
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
@@ -74,7 +106,7 @@ async function agua(modo) {
   const pe = {}; (TB.puntos || []).filter(p => enA(p.cod)).forEach(p => { const x = pe[p.cod] = pe[p.cod] || { t: 0, aldia: 0, porvencer: 0, vencida: 0, sin: 0, unica: 0 }; x.t++; x[p.estado in x ? p.estado : 'sin']++; });
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
-    ? aguaLabCard(TB.lab, TB.labError) + aguaInfCard() + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    ? aguaLabCard(TB.lab, TB.labError) + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
