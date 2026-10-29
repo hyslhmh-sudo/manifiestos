@@ -34,7 +34,7 @@
  *    que «Mi establecimiento». Cada envío trae su id_origen: si MIPyV reintenta, no se duplica.
  *  - N.º de puesto (el cartel, columna NRO_EXTINTOR): obligatorio en el alta, solo números (1 a 3 cifras) y único en el establecimiento.
  *    El N.º de inventario (la chapita) no puede ser igual al de puesto (para que no se crucen) ni estar repetido.
- *  - Plantas: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una planta) y Vehículo (ambulancias).
+ *  - Plantas por establecimiento (INC.PLANTAS_EST): HMH planta baja, planta alta y terraza; HZT subsuelo, planta baja, 1er a 3er piso, Única (CAPS) y Vehículo (ambulancias).
  *  - Fechas de vencimiento entre 2020 y 2040.
  *  - Lugares con dependencias (SITIOS_INC › DEPENDENCIAS, separadas por «·»; hoy Sede ex ADOS): el sector se elige de esa lista.
  *  - «Casa de convivencia» pasa a llamarse «Casa Tutelada»; se agrega «UGD - Ex APT». Ejecutar una vez actualizarModuloIncendio29oct().
@@ -65,7 +65,11 @@ const INC = {
   TIPOS: ['ABC', 'BC', 'K', 'D', 'Otro'],
   AGENTES: ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 's/d'],
   ESTADOS: ['Operativo', 'Sobrecarga', 'Recargar', 'Fuera de servicio', 'Baja', 's/d (revisar)'],
-  PLANTAS: ['Subsuelo', 'Planta baja', '1er piso', '2do piso', '3er piso', 'Única', 'Vehículo'],   // edificios de hasta 3 plantas más subsuelo (HZT, sede ex ADOS) · Única: CAPS de una planta · Vehículo: ambulancias (Belén, 29/10/2026)
+  PLANTAS: ['Subsuelo', 'Planta baja', 'Planta alta', '1er piso', '2do piso', '3er piso', 'Terraza', 'Única', 'Vehículo'],   // todas las plantas posibles (lista de la columna PLANTA)
+  // Plantas de cada establecimiento (Belén, 29/10/2026): HMH planta baja, planta alta y terraza; red HZT hasta 3 plantas más subsuelo (HZT, sede ex ADOS),
+  // Única en los CAPS de una planta y Vehículo en ambulancias. Un establecimiento que no está acá usa PLANTAS_OTROS.
+  PLANTAS_EST: { HMH: ['Planta baja', 'Planta alta', 'Terraza'], HZT: ['Subsuelo', 'Planta baja', '1er piso', '2do piso', '3er piso', 'Única', 'Vehículo'] },
+  PLANTAS_OTROS: ['Subsuelo', 'Planta baja', 'Planta alta', '1er piso', '2do piso', '3er piso', 'Terraza', 'Única', 'Vehículo'],
   FECHA_MIN: '2020-01-01', FECHA_MAX: '2040-12-31',   // rango aceptado para los vencimientos (evita años mal tipeados, como 0027)
   SERVICIO_MIPYV: 'MIPyV',   // nombre del acceso de servicio de MIPyV en BASE COMÚN › ACCESOS
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
@@ -162,7 +166,7 @@ const INC_AYUDA = [
   ['Qué es', 'El inventario de extintores de la red y su control mensual. Versión 0: red Trelew (HZT y sus sitios, HMH) y HSST con sus CAPS.'],
   ['Desde dónde se carga', 'Portal HyS › 7 · Protección contra incendios (Higiene y Seguridad: todo). Aplicación «Mi establecimiento» › Incendio (las personas con el módulo Incendio en BASE COMÚN › ACCESOS). Aplicación MIPyV (Javier Tramaleo, red Trelew sin HMH): pasa por las mismas reglas que «Mi establecimiento». También se puede cargar y corregir acá, en cada hoja.'],
   ['Números de cada extintor', 'ID: lo pone el sistema (EXT-HZT-001). N.º de puesto (columna NRO_EXTINTOR): el número del cartel donde va colgado; solo números, único en el establecimiento y obligatorio. N.º de inventario: el de la chapita patrimonial; no puede repetirse ni ser igual al de puesto. Si no tiene chapita: s/d.'],
-  ['Plantas', 'Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias).'],
+  ['Plantas', 'HMH: Planta baja, Planta alta y Terraza. Red HZT: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias). Se cambian en Incendio.gs › INC.PLANTAS_EST.'],
   ['SITIOS_INC', 'Cada lugar con extintores y quiénes hacen el control: HMH (Belén, Melani, SOMI y MAREM); HZT, Sede ex ADOS, CAPS, dispositivos (Casa Tutelada, UGD - Ex APT…) y ambulancias de la red Trelew (Belén, Melani y Javier Tramaleo); HSST y sus CAPS (a definir). DEPENDENCIAS: si un edificio tiene varias (Sede ex ADOS: Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental y Áreas comunes), van separadas por «·» y el sector de cada extintor se elige de esa lista. Se pueden agregar o cambiar acá.'],
   ['EXTINTORES', 'Una fila por extintor. La carga inicial salió de la planilla «Inventario de Extintores»; lo que había que revisar quedó escrito en OBSERVACIONES (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes).'],
   ['CONTROLES', 'Control mensual de cada extintor: en su lugar, acceso libre, manómetro, precinto y señalización, más 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Cada control actualiza el último control del extintor.'],
@@ -291,6 +295,7 @@ function incDependencias_() {
 }
 
 // ------------------------------------------------------------------ REGLAS COMUNES (portal, «Mi establecimiento» y MIPyV · 29/10/2026)
+const incPlantas_ = cod => INC.PLANTAS_EST[limpio_(cod)] || INC.PLANTAS_OTROS;
 const incFechaOk_ = iso => !!iso && iso >= INC.FECHA_MIN && iso <= INC.FECHA_MAX;
 const incSinNro_ = v => sinTildes_(v).replace(/[\s.\-]/g, '');
 // Revisa un extintor nuevo (e = null) o corregido (e = como estaba) antes de guardarlo. o = cómo va a quedar. L = todos los extintores. sitDep = dependencias del lugar.
@@ -312,7 +317,8 @@ function incValidar_(o, e, L, sitDep) {
     const r = otros.find(z => incSinNro_(z.NRO_INVENTARIO) === inv);
     if (r) return { ok: false, codigo: 'inventario', mensaje: 'Ese N.º de inventario ya está cargado en ' + donde(r) + '. Si es el mismo extintor, buscalo en la lista; si se mudó, avisale a Higiene y Seguridad.' };
   }
-  if (cambia('PLANTA') && limpio_(o.PLANTA) && INC.PLANTAS.indexOf(limpio_(o.PLANTA)) < 0) return { ok: false, codigo: 'datos', mensaje: 'La planta tiene que ser una de estas: ' + INC.PLANTAS.join(', ') + '.' };
+  const pl = incPlantas_(cod);
+  if (cambia('PLANTA') && limpio_(o.PLANTA) && pl.indexOf(limpio_(o.PLANTA)) < 0) return { ok: false, codigo: 'datos', mensaje: 'La planta tiene que ser una de estas: ' + pl.join(', ') + '.' };
   if (sitDep && sitDep.length && (cambia('SECTOR') || cambia('SITIO')) && !sitDep.some(d => sinTildes_(d) === sinTildes_(o.SECTOR)))
     return { ok: false, codigo: 'lugar', mensaje: 'En ' + o.SITIO + ' el sector es una de estas dependencias: ' + sitDep.join(', ') + '.' };
   for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
@@ -363,7 +369,7 @@ function incDetalle_(cod, sitio) {
   const ids = {}; ext.forEach(e => ids[e.ID] = true);
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
-    listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS,
+    listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: incPlantas_(cod), chequeos: INC.CHEQUEOS, fotos: INC.FOTOS,
       puesto: 'N.º de puesto: el número del cartel donde va colgado el extintor (solo números, único en el establecimiento).', inventario: 'N.º de inventario: el de la chapita patrimonial pegada en el extintor. Si no tiene, s/d.' } };
 }
 // Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
