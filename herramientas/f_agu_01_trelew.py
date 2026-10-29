@@ -1,5 +1,5 @@
 # Genera mipyv/F-AGU-01-T.pdf · Registro de limpieza y desinfección de tanque o cisterna · Red Trelew (POE-AGU-001)
-# Versión 0 hasta su alta en el sistema (regla de Belén). Uso: python3 herramientas/f_agu_01_trelew.py
+# Versión 01 (28/10/2026: Belén pidió sacar la leyenda de versión 0). Uso: python3 herramientas/f_agu_01_trelew.py
 # Datos técnicos del POE-AGU-001 v01 (HySL HZT/HMH, vigencia 03/09/2026), con la corrección de Belén del 28/10/2026:
 # la desinfección se hace con el 20 % de la capacidad del tanque (no con el tanque lleno ni «20 a 30 cm»), y en esa agua se
 # prepara la lavandina 5,5 % (55 g/L) a 110 ppm = 2 mL por litro de agua cargada; contacto mínimo 3 h (recomendado 6 h);
@@ -17,7 +17,7 @@ LOGO = os.path.join(RAIZ, 'desvios', 'logo-hysl.png')
 AZUL, GRIS, LINEA, CLARO = HexColor('#0D313F'), HexColor('#4F616B'), HexColor('#9FB0B8'), HexColor('#E8F0F3')
 W, H = A4
 M = 36  # margen
-CODIGO = 'F-AGU-01-T · v0 (10/2026)'
+CODIGO = 'F-AGU-01-T · v01 (10/2026)'
 TITULO = 'Registro de limpieza y desinfección de tanque o cisterna · Red Trelew'
 
 c = canvas.Canvas(SALIDA, pagesize=A4)
@@ -63,7 +63,7 @@ def pie(pag, total):
         img = ImageReader(LOGO); iw, ih = img.getSize(); ancho = 300; alto = ancho * ih / iw
         c.drawImage(img, (W - ancho) / 2, 30, ancho, alto, mask='auto')
     c.setFont('Helvetica', 7); c.setFillColor(GRIS)
-    c.drawString(M, 18, 'F-AGU-01-T · ' + TITULO + ' · Versión 0: borrador hasta su alta en el sistema')
+    c.drawString(M, 18, 'F-AGU-01-T · ' + TITULO + ' · Versión 01 (10/2026)')
     c.drawRightString(W - M, 18, 'Página %d de %d' % (pag, total))
 
 
