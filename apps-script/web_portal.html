@@ -2047,7 +2047,7 @@ function aglPintar() {
   const kpis = '<div class="tb5" style="margin:4px 0 14px">' +
     kp('ya', ya[0], 'Pedir ya', ya[1] || 'vencidos o con agua no apta', 'var(--er)', 'var(--erbg)') +
     kp('aho', ahora[0], 'Pedir ahora', ahora[1] || 'dentro del plazo de aviso', 'var(--wa)', 'var(--wabg)') +
-    kp('ok', ok[0], 'Al día', ok[1] || 'nada que pedir todavía', 'var(--okt)', '') +
+    kp('ok', ok[0], 'Al día', ok[1] || 'nada que pedir todavía', 'var(--az)', '') +
     kp('noap', noAp[0], 'Con agua NO APTA', 'en el último muestreo', 'var(--er)', 'var(--erbg)') +
     kp('sind', sinD[0], 'Sin informes', 'nunca se cargó un muestreo', 'var(--mu)', '') + '</div>';
   const tab = (v, t) => '<button class="btn ' + (AGL.red === v ? 'pri' : 'sec') + '" onclick="aglSet(\'red\',\'' + v + '\')">' + t + '</button>';
@@ -2080,7 +2080,7 @@ function aglPintar() {
 function aguaLabCard(lab, labError) {
   AGL.lab = Array.isArray(lab) ? lab : [];
   const b = (u, t, pri) => '<a class="btn' + (pri ? ' pri' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="margin:0 6px 6px 0">' + t + '</a>';
-  const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:12px">' + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
+  const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:10px">' + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
     b('https://drive.google.com/file/d/1FpmfodUSL0-E_8Q7urXqkpmiKbQI4A2x/view', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
     '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
@@ -2096,7 +2096,7 @@ function aguaLabCard(lab, labError) {
   return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 2px;font-size:17px">Muestreos de laboratorio</h2>' +
     '<span class="mu peq" style="display:block">Parcial cada 6 meses (solo bacteriológico) · completo cada 12 (bacteriológico + físico-químico, con limpieza previa de tanques). Dto. 351/79 art. 57 y POE del DPSB. Red Trelew y red Rawson por separado. Tocá un número para filtrar.</span>' +
     (sinDatos ? '<div class="aviso" style="margin-top:10px">' + (labError ? 'No se pudo leer el tablero de análisis: ' + esc(labError) + '. ' : 'Todavía no llegan los datos de los muestreos: tocá «Actualizar» en el Inicio. ') + 'Mientras tanto, el detalle está en la <a href="' + AGUA_INF.tablero + '" target="_blank" rel="noopener">planilla ↗</a>.</div>'
-      : '<div id="aglBox" style="margin-top:8px">' + aglPintar() + '</div>') + accesos + como + '</section>';
+      : '') + accesos + (sinDatos ? '' : '<div id="aglBox" style="margin-top:4px">' + aglPintar() + '</div>') + como + '</section>';
 }
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
