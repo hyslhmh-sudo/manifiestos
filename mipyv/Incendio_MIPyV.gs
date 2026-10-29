@@ -160,3 +160,11 @@ function guardarEdicionExtintor_(data) {
   const r = incPortal_('i_ext_editar', est, d);
   return r.ok ? { ok: true, cambios: 1, duplicado: !!r.duplicado } : r;
 }
+
+// ------------------------------------------------------------------ PRUEBA DEL PUENTE (ejecutar desde el editor; solo lee, no guarda nada)
+// La primera vez pide permiso para «conectarse a un servicio externo» (el Portal HyS). Dice si la clave anda y cuántos extintores ve.
+function probarPuentePortal() {
+  const r = incPortal_('i_datos', 'HZT', { operario: 'Prueba del puente' });
+  const msg = r && r.ok ? 'Puente MIPyV → Portal HyS OK: ' + (r.extintores || []).length + ' extintor(es) del HZT y ' + (r.sitios || []).length + ' lugar(es).' : 'El puente NO anda: ' + ((r && (r.mensaje || r.error)) || 'sin respuesta');
+  Logger.log(msg); return msg;
+}
