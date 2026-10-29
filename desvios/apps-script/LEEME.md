@@ -13,3 +13,10 @@ Consulta: «Mi establecimiento» › 1 · Residuos › Desvíos del recorrido (S
 - CONFIG › CORREO_SUPERVISOR: Federico Obelar (encargado del servicio, operacioneshmh@starunion.com.ar) y Eduardo Mengozzi (jefe de cuenta / supervisor, emengozzi@starunion.com.ar). Reciben el reporte semanal (lunes 8 h).
 - CONFIG › AVISO_SUPERVISORES = Sí: cada desvío les llega también en el momento, sin la evaluación de HyS (gravedad según reglas y origen sugerido). Con «No», solo a la secretaría (CORREO_AVISO).
 - En REGISTROS › AVISO_ENVIADO queda el resultado de los dos envíos.
+
+## 29/10/2026 · HSST (Rawson)
+- Planilla propia «DESVÍOS RESIDUOS HSST · Registro (v0)» (HSST › DESVÍOS · RESIDUOS HSST), con su Apps Script (copia de este): `Codigo_HSST.gs` y `Carga_HSST.html` (en el editor, `Código.gs` y `Carga.html`).
+- App web: https://script.google.com/macros/s/AKfycbyvDGN5cYxmXFkr-5wIjHRM2INyscCYUADiXKw2qTcE0yOTpdfMXdgFAJx5O2LFlqk-qA/exec
+- Página de carga: https://hyslhmh-sudo.github.io/manifiestos/desvios/?e=HSST (QR: `&p=CÓDIGO`). Carga solo el referente (Guillermo Funez) y HyS. Sin correos ni reporte semanal.
+- «Mi establecimiento» (HSST) › 1 · Residuos › «Cargar un desvío» y «Mis desvíos».
+- Guía y QR: `impresion/guia_hsst.py` y `impresion/qr_hsst.py`.
