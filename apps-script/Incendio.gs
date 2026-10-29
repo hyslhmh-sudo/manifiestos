@@ -75,7 +75,7 @@ const INC = {
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
   RESP_TRELEW: 'Belén Pellegrini · Melani · Javier Tramaleo',
   RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
-  CORREOS_HMH: 'erickvelazquezing@gmail.com, fezequielnieto@gmail.com'   // Ing. Erick Velázquez (representante técnico de SOMI) e Ing. Ezequiel Nieto (Mantenimiento HMH) · pedido de Belén 14/10/2026
+  CORREOS_HMH: ''   // los correos de SOMI y Mantenimiento HMH se cargan solo en la hoja SITIOS › CORREOS_FALLA (no en el código, que es público) · 29/10/2026
 };
 
 // ------------------------------------------------------------------ INSTALACIÓN (se puede volver a ejecutar sin pisar nada)

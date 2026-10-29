@@ -10,7 +10,7 @@ Página de carga de los operarios (GitHub): https://hyslhmh-sudo.github.io/manif
 Consulta: «Mi establecimiento» › 1 · Residuos › Desvíos del recorrido (Star Union), HMH y HZT, módulo Residuos.
 
 ## 25/10/2026 · Aviso inmediato a los supervisores de Star Union
-- CONFIG › CORREO_SUPERVISOR: Federico Obelar (encargado del servicio, operacioneshmh@starunion.com.ar) y Eduardo Mengozzi (jefe de cuenta / supervisor, emengozzi@starunion.com.ar). Reciben el reporte semanal (lunes 8 h).
+- CONFIG › CORREO_SUPERVISOR: los dos supervisores de Star Union (encargado del servicio y jefe de cuenta; sus correos están solo en la hoja CONFIG). Reciben el reporte semanal (lunes 8 h).
 - CONFIG › AVISO_SUPERVISORES = Sí: cada desvío les llega también en el momento, sin la evaluación de HyS (gravedad según reglas y origen sugerido). Con «No», solo a la secretaría (CORREO_AVISO).
 - En REGISTROS › AVISO_ENVIADO queda el resultado de los dos envíos.
 

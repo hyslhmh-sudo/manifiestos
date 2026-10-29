@@ -176,7 +176,7 @@
   // ---------------------------------------------------------------- Anoto a mi servicio
   function jefDni() {
     vista('<h3>Reservar un horario para el servicio</h3><span class="mu peq">Para jefaturas, coordinaciones y personas a cargo (A/C).</span>' +
-      '<label class="f" for="dni"><span>Tu DNI <b>*</b> <em>sin puntos</em></span><input class="c" id="dni" inputmode="numeric" autocomplete="off" placeholder="Ej.: 25710767"></label>' +
+      '<label class="f" for="dni"><span>Tu DNI <b>*</b> <em>sin puntos</em></span><input class="c" id="dni" inputmode="numeric" autocomplete="off" placeholder="Ej.: 30123456"></label>' +
       '<button class="btn" id="bBus">Continuar</button><button class="btn link" id="bVol">Volver</button>', 1);
     $('bBus').onclick = () => {
       dni = $('dni').value.replace(/\D/g, ''); if (dni.length < 6) return error('Escribí tu DNI, sin puntos.');
