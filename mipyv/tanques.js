@@ -163,10 +163,10 @@ function tqBind(box) {
 function tqRenderPoe() {
   const pasos = [
     ["Antes", ["Avisar el corte a los sectores. Si es el único tanque del lugar, prever agua.", "Guantes de nitrilo o PVC, antiparras, ropa impermeable y botas. Tanque alto: escalera segura y arnés.", "Si hay que meterse adentro (espacio confinado): permiso firmado por Higiene y Seguridad, medir el aire, arnés con línea de vida y alguien afuera mirando todo el tiempo. Nunca solo."]],
-    ["Paso 1 · Limpieza", ["Cerrar la entrada de agua.", "Vaciar dejando 20 a 30 cm de agua.", "Cerrar las salidas a las cañerías.", "Cepillar piso, paredes y tapa con cepillo de cerdas plásticas. SIN detergente.", "Vaciar del todo y sacar el barro."]],
-    ["Paso 2 · Desinfección", ["Empezar a llenar con agua de red.", "Agregar lavandina al 5,5 %: 2 litros cada 1.000 litros de tanque (tanque de 1.100 L → 2,2 L; de 2.750 L → 5,5 L).", "Abrir las canillas hasta sentir olor a cloro en cada una y cerrarlas.", "Cerrar la entrada y dejar todo cerrado mínimo 3 horas (mejor 6)."]],
-    ["Paso 3 · Enjuague", ["Abrir todas las canillas hasta vaciar el agua con cloro.", "Abrir la entrada y dejar correr hasta que el olor y el sabor a cloro sean aceptables.", "Tapar bien el tanque (no sirve lona ni nylon).", "Medir el cloro en la canilla más alejada: tiene que dar entre 0,2 y 2 mg/L.", "Completar y firmar el F-AGU-01-T y sacarle una foto acá, en «Registrar una limpieza»."]],
-    ["Cada 3 meses", ["Mirar cada tanque y cargar el «Relevamiento de estado». Si hay barro, olor, agua turbia, bichos o el cloro no da, se limpia aunque no toque."]],
+    ["Paso 1 · Limpieza", ["Cerrar la entrada de agua.", "Vaciar, dejando solo el agua justa para cepillar.", "Cerrar las salidas a las cañerías.", "Cepillar piso, paredes y tapa con cepillo de cerdas plásticas. SIN detergente.", "Vaciar del todo, sacar el barro y enjuagar."]],
+    ["Paso 2 · Desinfección", ["Cargar agua de red SOLO hasta el 20 % del tanque (un quinto de la altura): tanque de 1.000 L → 200 L de agua. No se llena.", "En esa agua, agregar lavandina al 5,5 %: 2 mL por cada litro de agua cargada (110 ppm). Tanque de 1.000 L → 200 L de agua → 400 mL de lavandina; de 2.750 L → 550 L → 1.100 mL.", "Abrir las canillas hasta sentir olor a cloro en cada una y cerrarlas.", "Cerrar la entrada y dejar todo cerrado mínimo 3 horas (mejor 6)."]],
+    ["Paso 3 · Enjuague", ["Abrir todas las canillas hasta vaciar el agua con cloro.", "Abrir la entrada y dejar correr hasta que el olor y el sabor a cloro sean aceptables.", "Tapar bien el tanque (no sirve lona ni nylon).", "El cloro no se mide acá: lo mide Saneamiento (DPSB) cuando toma la muestra.", "Completar y firmar el F-AGU-01-T y sacarle una foto acá, en «Registrar una limpieza»."]],
+    ["Cada 3 meses", ["Mirar cada tanque y cargar el «Relevamiento de estado». Si hay barro, olor, agua turbia o bichos, se limpia aunque no toque."]],
   ];
   tqBox().innerHTML = `<button type="button" class="ext-quitar tq-volver" data-tq="volver">← Volver</button>
     <div class="step-title" style="font-size:1.25rem">Cómo se limpia un tanque</div><div class="step-sub">Resumen de nuestro protocolo POE-AGU-001 (Higiene y Seguridad HZT/HMH). El detalle está en el F-AGU-01-T.</div>` +
@@ -181,7 +181,7 @@ function tqFormVacio(accion, t) {
   const f = { accion: accion, codigo: t ? t.codigo : "", lugar: tq.lugar, uid: "TQ" + Date.now() + Math.floor(Math.random() * 1000), FECHA: tqHoy(), datos: {}, fotos: [], obs: "" };
   if (accion === "alta" || accion === "insp") { TQ_PREGS.forEach(([k]) => f.datos[k] = null); f.datos.TAPA = accion === "insp" && t ? (TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null) : null; f.datos.CLORO_MG_L = ""; }
   if (accion === "alta") Object.assign(f.datos, { UBICACION: "", TIPO: null, USO: "Consumo humano", CAPACIDAD_L: "", MATERIAL: null, ACCESO: null, ULTIMA_LIMPIEZA: "" });
-  if (accion === "limp") Object.assign(f.datos, { HORA_CORTE: "", HORA_REHABILITACION: "", HORAS_CERRADO: "", VOLUMEN_L: "", CLORO_PPM: "", TAPA: t && TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null, MUESTRA_TOMADA: null, capacidad: t ? t.capacidad : "" });
+  if (accion === "limp") Object.assign(f.datos, { HORA_CORTE: "", HORA_REHABILITACION: "", HORAS_CERRADO: "", VOLUMEN_L: "", LAVANDINA_ML: "", TAPA: t && TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null, MUESTRA_TOMADA: null, capacidad: t ? t.capacidad : "" });
   if (accion === "edit") Object.assign(f.datos, { UBICACION: t.ubicacion || "", TIPO: t.tipo || null, USO: t.uso || null, CAPACIDAD_L: t.capacidad || "", MATERIAL: t.material || null, ACCESO: t.acceso || null, FUERA: false });
   return f;
 }
@@ -201,7 +201,7 @@ function tqFaltan(f) {
     if (!f.fotos.length) x.push("una foto");
   }
   if (f.accion === "limp") {
-    if (!d.HORAS_CERRADO) x.push("horas cerrado"); if (!String(d.CLORO_PPM || "").trim()) x.push("cloro medido");
+    if (!d.HORAS_CERRADO) x.push("horas cerrado");
     if (!d.TAPA) x.push("tapa"); if (!f.fotos.length) x.push("la foto del F-AGU-01-T firmado");
   }
   if (!f.FECHA) x.push("fecha");
@@ -231,18 +231,15 @@ function tqRenderForm() {
       h += `<div class="ext-preg">${preg}</div><div class="sino tq-sino" data-campo="${k}"><button type="button" class="${d[k] === "Sí" ? "on" : ""}" data-valor="Sí">Sí</button><button type="button" class="${d[k] === "No" ? "on" : ""}" data-valor="No">No</button></div>` +
         (mal ? `<small class="ext-vto ${TQ_LIMPIAR.indexOf(k) >= 0 ? "er" : "wa"}">${TQ_LIMPIAR.indexOf(k) >= 0 ? "⚠️ Hay que limpiarlo aunque no toque" : "⚠️ Necesita arreglo: anotalo en Observaciones"}</small>` : "");
     });
-    h += `<div class="ext-preg">Cloro en la canilla (mg/L) · solo si tenés el medidor</div><input class="ext-inp" inputmode="decimal" data-dato="CLORO_MG_L" value="${escX(d.CLORO_MG_L)}" placeholder="Ej.: 0,4">`;
-    const cl = tqNum(d.CLORO_MG_L); if (String(d.CLORO_MG_L).trim() !== "" && cl !== null && (cl < 0.2 || cl > 2)) h += `<small class="ext-vto er">⚠️ Fuera de rango (0,2 a 2): hay que limpiarlo</small>`;
   }
   if (f.accion === "limp") {
-    const cap = tqNum(d.capacidad), lav = cap ? cap / 1000 * 2 : null;
-    h += `<div class="tq-info">Usá el F-AGU-01-T impreso y seguí los pasos. Lavandina al 5,5 %: <b>2 litros cada 1.000 litros</b>${lav ? ` → para este tanque de ${cap.toLocaleString("es-AR")} L: <b>${tqComa(lav)} litros</b>` : ""}.</div>
+    const cap = tqNum(d.capacidad), agua = cap ? Math.round(cap * 0.2) : null, lav = agua ? agua * 2 : null;   // 20 % del tanque; 110 ppm = 2 mL de lavandina 5,5 % por litro
+    h += `<div class="tq-info">Usá el F-AGU-01-T impreso y seguí los pasos. Para desinfectar se carga <b>solo el 20 % del tanque</b> y en esa agua va la lavandina al 5,5 %: <b>2 mL por cada litro de agua</b>${lav ? ` → este tanque de ${cap.toLocaleString("es-AR")} L: <b>${agua.toLocaleString("es-AR")} L de agua y ${lav.toLocaleString("es-AR")} mL de lavandina</b>` : ""}.</div>
       <div class="tq-dos"><div><div class="ext-preg">Hora de corte</div><input class="ext-inp" type="time" data-dato="HORA_CORTE" value="${escX(d.HORA_CORTE)}"></div>
       <div><div class="ext-preg">Hora en que volvió el agua</div><input class="ext-inp" type="time" data-dato="HORA_REHABILITACION" value="${escX(d.HORA_REHABILITACION)}"></div></div>
       <div class="ext-preg">¿Cuántas horas quedó cerrado con la lavandina?</div>${tqOpc("HORAS_CERRADO", ["3", "4", "5", "6", "Más de 6"], d.HORAS_CERRADO)}
-      <div class="ext-preg">Litros de lavandina que usaste</div><input class="ext-inp" inputmode="decimal" data-dato="VOLUMEN_L" value="${escX(d.VOLUMEN_L)}" placeholder="${lav ? "Ej.: " + tqComa(lav) : "Ej.: 2,2"}">
-      <div class="ext-preg">Cloro en la canilla más alejada (mg/L)</div><input class="ext-inp" inputmode="decimal" data-dato="CLORO_PPM" value="${escX(d.CLORO_PPM)}" placeholder="Tiene que dar entre 0,2 y 2">`;
-    const cl = tqNum(d.CLORO_PPM); if (String(d.CLORO_PPM).trim() !== "" && cl !== null && (cl < 0.2 || cl > 2)) h += `<small class="ext-vto er">⚠️ Fuera de rango: seguí enjuagando y volvé a medir antes de habilitar el agua</small>`;
+      <div class="tq-dos"><div><div class="ext-preg">Litros de agua que cargaste</div><input class="ext-inp" inputmode="decimal" data-dato="VOLUMEN_L" value="${escX(d.VOLUMEN_L)}" placeholder="${agua ? "Ej.: " + agua : "Ej.: 200"}"></div>
+      <div><div class="ext-preg">mL de lavandina que usaste</div><input class="ext-inp" inputmode="decimal" data-dato="LAVANDINA_ML" value="${escX(d.LAVANDINA_ML)}" placeholder="${lav ? "Ej.: " + lav : "Ej.: 400"}"></div></div>`;
     h += `<div class="ext-preg">¿Cómo quedó la tapa?</div>${tqOpc("TAPA", TQ_OPC.TAPA, d.TAPA)}
       <div class="ext-preg">Análisis de laboratorio (lo pide Higiene y Seguridad)</div>${tqOpc("MUESTRA_TOMADA", TQ_OPC.MUESTRA_TOMADA, d.MUESTRA_TOMADA)}`;
   }
@@ -269,7 +266,7 @@ function tqRenderForm() {
   box.querySelector('[data-f="guardar"]').onclick = tqGuardar;
 }
 function tqActualizarBoton() { const b = tqBox().querySelector('[data-f="guardar"]'); if (!b) return; const x = tqFaltan(tq.form); b.disabled = !!x.length; b.textContent = x.length ? "Falta: " + x.join(", ") : "Listo, guardar"; }
-function tqEmpezado(f) { return !!f && (f.fotos.length > 0 || !!f.obs.trim() || f.accion === "edit" || TQ_PREGS.some(([k]) => f.datos[k]) || !!String(f.datos.UBICACION || f.datos.HORAS_CERRADO || f.datos.CLORO_PPM || "").trim()); }
+function tqEmpezado(f) { return !!f && (f.fotos.length > 0 || !!f.obs.trim() || f.accion === "edit" || TQ_PREGS.some(([k]) => f.datos[k]) || !!String(f.datos.UBICACION || f.datos.HORAS_CERRADO || f.datos.VOLUMEN_L || "").trim()); }
 
 // fotos (hasta 5; usa la compresión y el selector cámara / galería de app.js)
 const tqFotoInput = document.createElement("input");
@@ -295,7 +292,7 @@ async function tqGuardar() {
   let item;
   if (f.accion === "alta") item = { tipo: "alta_tanque", data: Object.assign(base, preg, { id_alta: f.uid, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, TAPA: d.TAPA, CLORO_MG_L: d.CLORO_MG_L, ULTIMA_LIMPIEZA: d.ULTIMA_LIMPIEZA, fotos_base64: f.fotos.slice() }) };
   if (f.accion === "insp") item = { tipo: "inspeccion_tanque", data: Object.assign(base, preg, { id_insp: f.uid, CODIGO_TANQUE: f.codigo, TAPA: d.TAPA, CLORO_MG_L: d.CLORO_MG_L, fotos_base64: f.fotos.slice() }) };
-  if (f.accion === "limp") item = { tipo: "limpieza_tanque", data: Object.assign(base, { id_limpieza: f.uid, CODIGO_TANQUE: f.codigo, HORA_CORTE: d.HORA_CORTE, HORA_REHABILITACION: d.HORA_REHABILITACION, HORAS_CERRADO: d.HORAS_CERRADO, VOLUMEN_L: d.VOLUMEN_L, CLORO_PPM: d.CLORO_PPM, TAPA: d.TAPA, MUESTRA_TOMADA: d.MUESTRA_TOMADA || "", fotos_base64: f.fotos.slice() }) };
+  if (f.accion === "limp") item = { tipo: "limpieza_tanque", data: Object.assign(base, { id_limpieza: f.uid, CODIGO_TANQUE: f.codigo, HORA_CORTE: d.HORA_CORTE, HORA_REHABILITACION: d.HORA_REHABILITACION, HORAS_CERRADO: d.HORAS_CERRADO, VOLUMEN_L: d.VOLUMEN_L, LAVANDINA_ML: d.LAVANDINA_ML, TAPA: d.TAPA, MUESTRA_TOMADA: d.MUESTRA_TOMADA || "", fotos_base64: f.fotos.slice() }) };
   if (f.accion === "edit") item = { tipo: "editar_tanque", data: Object.assign(base, { id_edit: f.uid, CODIGO_TANQUE: f.codigo, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, ESTADO: d.FUERA ? "Fuera de uso" : "" }) };
   const btn = tqBox().querySelector('[data-f="guardar"]'); if (btn) btn.disabled = true;
   if (!(await guardarEnCola([item]))) { if (btn) btn.disabled = false; return; }

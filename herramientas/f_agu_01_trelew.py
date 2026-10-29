@@ -1,8 +1,9 @@
 # Genera mipyv/F-AGU-01-T.pdf · Registro de limpieza y desinfección de tanque o cisterna · Red Trelew (POE-AGU-001)
 # Versión 0 hasta su alta en el sistema (regla de Belén). Uso: python3 herramientas/f_agu_01_trelew.py
-# Datos técnicos del POE-AGU-001 v01 (HySL HZT/HMH, vigencia 03/09/2026): vaciar a 20-30 cm, cepillo sin detergente,
-# lavandina 5,5 % (55 g/L) 2 L cada 1.000 L (110 ppm), contacto mínimo 3 h (recomendado 6 h), cloro libre residual 0,2 a 2 mg/L
-# en el punto más alejado, espacio confinado Res. SRT 953/2010, registro Modelo A (Ord. Trelew 12695/17 mod. 13422).
+# Datos técnicos del POE-AGU-001 v01 (HySL HZT/HMH, vigencia 03/09/2026), con la corrección de Belén del 28/10/2026:
+# la desinfección se hace con el 20 % de la capacidad del tanque (no con el tanque lleno ni «20 a 30 cm»), y en esa agua se
+# prepara la lavandina 5,5 % (55 g/L) a 110 ppm = 2 mL por litro de agua cargada; contacto mínimo 3 h (recomendado 6 h);
+# el cloro residual no lo mide el establecimiento: lo mide el DPSB al tomar la muestra. Cepillo sin detergente, espacio confinado Res. SRT 953/2010, registro Modelo A (Ord. Trelew 12695/17 mod. 13422).
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -150,28 +151,30 @@ check('Si hay que entrar al tanque o la cisterna (espacio confinado, Res. SRT 95
 opciones('Entrada al tanque o cisterna:', ['No hizo falta entrar', 'Se entró con permiso de trabajo N.º ________'])
 seccion('4. Paso 1 · Preparación y limpieza')
 check('Cerrar la entrada de agua al tanque.', 1)
-check('Vaciar dejando un nivel bajo de agua: 20 a 30 cm.', 2)
+check('Vaciar el tanque, dejando solo el agua justa para poder cepillar.', 2)
 check('Cerrar las salidas hacia las cañerías del edificio.', 3)
 check('Cepillar piso, paredes y tapa con cepillo de cerdas plásticas (nunca de metal). SIN detergente ni ningún otro producto.', 4)
-check('Vaciar del todo y sacar el barro y los sedimentos.', 5)
+check('Vaciar del todo, sacar el barro y los sedimentos y enjuagar con agua de red.', 5)
 seccion('5. Paso 2 · Desinfección con lavandina')
-check('Con el tanque vacío y limpio, empezar a llenarlo con agua de red.', 6)
-check('Agregar lavandina concentrada al 5,5 % (55 g de cloro por litro): 2 litros cada 1.000 litros de tanque (110 ppm).', 7,
-      extra=['Cuenta: capacidad ________ litros ÷ 1.000 × 2 = ________ litros de lavandina 5,5 %.'])
+check('Con el tanque vacío y limpio, cargar agua de red SOLO hasta el 20 % de la capacidad (un quinto de la altura). No se llena el tanque.', 6,
+      extra=['Cuenta: capacidad ________ litros × 0,2 = ________ litros de agua.'])
+check('En esa agua, agregar lavandina concentrada al 5,5 % (55 g de cloro por litro): 2 mL por cada litro de agua cargada (110 ppm).', 7,
+      extra=['Cuenta: ________ litros de agua × 2 = ________ mL de lavandina 5,5 %.'])
 # tabla de dosis
 y -= 1
-dosis = [('500 L', '1 L'), ('850 L', '1,7 L'), ('1.000 L', '2 L'), ('1.100 L', '2,2 L'), ('2.000 L', '4 L'), ('2.750 L', '5,5 L'), ('5.000 L', '10 L'), ('10.000 L', '20 L')]
-c.setFont('Helvetica-Bold', 7); c.setFillColor(AZUL); c.drawString(M + 16, y, 'Tanque'); c.drawString(M + 16, y - 12, 'Lavandina')
-x0 = M + 60; cw = (W - M - x0) / len(dosis)
+dosis = [('500 L', '100 L', '200 mL'), ('850 L', '170 L', '340 mL'), ('1.000 L', '200 L', '400 mL'), ('1.100 L', '220 L', '440 mL'), ('2.000 L', '400 L', '800 mL'), ('2.750 L', '550 L', '1.100 mL'), ('5.000 L', '1.000 L', '2.000 mL'), ('10.000 L', '2.000 L', '4.000 mL')]
+c.setFont('Helvetica-Bold', 7); c.setFillColor(AZUL); c.drawString(M + 16, y, 'Tanque'); c.drawString(M + 16, y - 12, 'Agua (20 %)'); c.drawString(M + 16, y - 24, 'Lavandina')
+x0 = M + 66; cw = (W - M - x0) / len(dosis)
 c.setStrokeColor(LINEA); c.setLineWidth(0.5)
-for i, (a, b) in enumerate(dosis):
+for i, (a, b, d) in enumerate(dosis):
     xx = x0 + i * cw
     c.setFillColor(CLARO); c.rect(xx, y - 3, cw, 12, stroke=1, fill=1)
-    c.rect(xx, y - 15, cw, 12, stroke=1, fill=0)
+    c.rect(xx, y - 15, cw, 12, stroke=1, fill=0); c.rect(xx, y - 27, cw, 12, stroke=1, fill=0)
     c.setFillColor(AZUL); c.setFont('Helvetica-Bold', 7.5); c.drawCentredString(xx + cw / 2, y, a)
     c.setFont('Helvetica', 7.5); c.drawCentredString(xx + cw / 2, y - 12, b)
-c.setFont('Helvetica', 6.5); c.setFillColor(GRIS); c.drawString(M, y - 26, 'Si la lavandina no es al 5,5 %, avisar a Higiene y Seguridad antes de usarla: hay que recalcular la dosis.')
-y -= 38
+    c.setFont('Helvetica-Bold', 7.5); c.drawCentredString(xx + cw / 2, y - 24, d)
+c.setFont('Helvetica', 6.5); c.setFillColor(GRIS); c.drawString(M, y - 38, 'Si la lavandina no es al 5,5 %, avisar a Higiene y Seguridad antes de usarla: hay que recalcular la dosis.')
+y -= 50
 check('Abrir las salidas hacia las canillas hasta que en cada una se sienta olor a cloro; después cerrarlas.', 8)
 check('Cerrar la entrada de agua y dejar todo cerrado: mínimo 3 horas, mejor 6 horas.', 9,
       extra=['Desde las ______ h hasta las ______ h · total ______ h.'])
@@ -184,9 +187,8 @@ seccion('6. Paso 3 · Enjuague y puesta en servicio')
 check('Abrir todas las canillas y salidas hasta vaciar el agua con cloro.', 10)
 check('Abrir la entrada y dejar las canillas abiertas hasta que el olor y el sabor a cloro sean aceptables.', 11)
 check('Tapar bien el tanque o la cisterna (no sirve lona ni nylon).', 12)
-check('Medir el cloro libre residual en la canilla más alejada. Tiene que dar entre 0,2 y 2 mg/L. '
-      'Si no da, seguir enjuagando y volver a medir antes de habilitar el uso.', 13,
-      extra=['Resultado: ________ mg/L · canilla donde se midió: ____________________________________'])
+parrafo('El cloro residual no lo mide el establecimiento: lo mide el Departamento Provincial de Saneamiento Básico (DPSB) cuando toma la muestra.', M, W - 2 * M, 8, color=GRIS)
+y -= 4
 seccion('7. Cómo estaba el tanque')
 opciones('Tapa:', ['En condiciones', 'Deficiente', 'Sin tapa'])
 opciones('Se vio:', ['Fisuras o filtraciones', 'Óxido o deterioro', 'Mucho sedimento', 'Flotante o válvula con fallas',
@@ -212,8 +214,8 @@ for i, t in enumerate(['Ejecutó', 'Acompañó', 'Supervisó (HyS)']):
 y -= 30
 seccion('Referencias')
 refs = ['POE-AGU-001 «Limpieza y desinfección de tanques y cisternas» HZT/HMH, v01 (Servicio de Higiene y Seguridad Laboral, vigencia 03/09/2026): '
-        'método, dosis, tiempo de contacto, cloro residual y elementos de protección de este formulario. Inspección visual de cada tanque cada 3 meses; '
-        'se limpia antes de la fecha si hay sedimento, olor, turbidez o cloro fuera de rango.',
+        'método, dosis, tiempo de contacto y elementos de protección de este formulario (desinfección con el 20 % de la capacidad: corrección de HySL del 28/10/2026). Inspección visual de cada tanque cada 3 meses; '
+        'se limpia antes de la fecha si hay sedimento, olor o turbidez.',
         'Ordenanza de Trelew N.º 12695/17, modificada por la N.º 13.422 (2022): limpieza y desinfección al menos una vez al año, análisis microbiológico '
         'cada 6 meses, personal inscripto en el Registro Municipal y Libro de Registro (Modelo A del POE). Este formulario es el respaldo de cada fila del Modelo A.',
         'Ley 19.587 y Dto. 351/79, arts. 57 y 58 (análisis bacteriológico semestral y físico-químico anual). CAA art. 982. Res. SRT 953/2010 (espacios confinados) '

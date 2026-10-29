@@ -191,10 +191,10 @@ function guardarTanqueMipyv_(tipo, data) {
     const n = Lm.filas.filter((x) => String(x.ID).indexOf(pref) === 0).reduce((m, x) => Math.max(m, Number(String(x.ID).slice(pref.length)) || 0), 0) + 1;
     const id = pref + ('00' + n).slice(-3);
     const archivo = tqFotos_(data, cod, fecha, fecha + ' · ' + t.CODIGO_TANQUE + ' · Limpieza F-AGU-01-T', 1);
-    const cl = String(data.CLORO_PPM == null ? '' : data.CLORO_PPM).replace('.', ',').trim();
+    const ml = String(data.LAVANDINA_ML == null ? '' : data.LAVANDINA_ML).replace('.', ',').trim();   // 28/10/2026: desinfección con el 20 % del tanque, 2 mL de lavandina 5,5 % por litro (110 ppm)
     tqAgregar_(Lm, { ID: id, FECHA: fecha, ESTABLECIMIENTO: cod, CODIGO_TANQUE: t.CODIGO_TANQUE, PROCEDIMIENTO: 'POE-AGU-001 (propio) · F-AGU-01-T',
       HORA_CORTE: data.HORA_CORTE || '', HORA_REHABILITACION: data.HORA_REHABILITACION || '', HORAS_CERRADO: data.HORAS_CERRADO || '',
-      DESINFECTANTE: 'Lavandina 5,5 % (2 L cada 1.000 L)', CONCENTRACION_GL: 55, VOLUMEN_L: data.VOLUMEN_L || '', CLORO_PPM: cl || 's/d', TURBIDEZ_NTU: '',
+      DESINFECTANTE: 'Lavandina 5,5 % · ' + (ml ? ml + ' mL' : 's/d mL') + ' en el 20 % del tanque (110 ppm)', CONCENTRACION_GL: 55, VOLUMEN_L: data.VOLUMEN_L || 's/d', CLORO_PPM: 'Lo mide el DPSB', TURBIDEZ_NTU: '',
       TAPA: data.TAPA || t.TAPA, MUESTRA_TOMADA: data.MUESTRA_TOMADA || '', ARCHIVO: archivo, CARGO: quien, CARGADO: tqHoy_(),
       OBSERVACIONES: ((String(data.OBSERVACIONES || '').trim() ? String(data.OBSERVACIONES).trim() + ' · ' : '') + 'Cargado desde MIPyV ' + marca + '.') });
     const ant = tqIso_(t.ULTIMA_LIMPIEZA), c = { ACTUALIZADO: tqHoy_() };
