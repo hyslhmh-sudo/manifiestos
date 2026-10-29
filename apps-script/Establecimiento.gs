@@ -343,17 +343,19 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
   const T = de(miLeer_('RESERVORIOS')).filter(t => !/fuera/i.test(t.ESTADO)), Pm = de(miLeer_('PUNTOS_MUESTREO')).filter(p => !/fuera/i.test(p.ESTADO));
   if (!T.length) pend('wa', 'agua', 'Cargá tus tanques y cisternas', 'Se hace una sola vez; después cada relevamiento y cada limpieza usan esos datos.', 'agua_alta');
   // Relevamiento de estado cada 3 meses (AGUA_INSPECCIONES, también lo carga la app MIP en la red Trelew)
+  const sinRel = [], sinLim = [];
   const INS = {}; de(miLeer_('AGUA_INSPECCIONES')).forEach(i => { if (!INS[i.CODIGO_TANQUE] || i.FECHA > INS[i.CODIGO_TANQUE].FECHA) INS[i.CODIGO_TANQUE] = i; });
   const tanques = T.map(t => { const prox = t.PROXIMA_LIMPIEZA || (t.ULTIMA_LIMPIEZA ? miSumarMeses_(t.ULTIMA_LIMPIEZA, t.FRECUENCIA_LIMPIEZA_MESES || 12) : ''), d = miDias_(prox);
     const ui = INS[t.CODIGO_TANQUE], pi = ui ? (ui.PROXIMA_INSPECCION || miSumarMeses_(ui.FECHA, 3)) : '', di = miDias_(pi), insp = ui ? { fecha: ui.FECHA, resultado: ui.RESULTADO, proxima: pi } : null;
-    if (!/fuera/i.test(t.ESTADO)) { if (!ui) pend('wa', 'agua', t.CODIGO_TANQUE + ': falta el relevamiento de estado', 'Se hace cada 3 meses: tapa, fisuras, sedimento, ventilación…', 'agua_insp');
-      else if (di < 0) pend('wa', 'agua', t.CODIGO_TANQUE + ': relevamiento de estado vencido', 'Tocaba el ' + pi + ' (cada 3 meses)', 'agua_insp');
+    if (!/fuera/i.test(t.ESTADO)) { if (!ui || di < 0) sinRel.push(t.CODIGO_TANQUE + (t.SITIO ? ' (' + t.SITIO + ')' : ''));   // se agrupan en un solo pendiente
       if (ui && /limpieza/i.test(ui.RESULTADO) && (!t.ULTIMA_LIMPIEZA || t.ULTIMA_LIMPIEZA < ui.FECHA)) pend('er', 'agua', t.CODIGO_TANQUE + ': el relevamiento pide limpiarlo', ui.FECHA + ' · ' + ui.RESULTADO, 'agua_limpieza');
       if (ui && /reparaci/i.test(ui.RESULTADO)) pend('wa', 'agua', t.CODIGO_TANQUE + ': necesita una reparación', ui.FECHA + ' · ' + String(ui.OBSERVACIONES || '').slice(0, 120), 'agua_insp'); }
     const riego = /riego/i.test(t.USO), est = riego ? 'riego' : !t.ULTIMA_LIMPIEZA ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia';
-    { if (est === 'vencida') pend('er', 'agua', t.CODIGO_TANQUE + ': limpieza vencida', 'Vencía el ' + prox, 'agua_limpieza'); else if (est === 'porvencer') pend('wa', 'agua', t.CODIGO_TANQUE + ': la limpieza vence en ' + d + ' días', t.UBICACION, 'agua_limpieza'); else if (est === 'sin') pend('wa', 'agua', t.CODIGO_TANQUE + ': sin limpieza registrada', 'Cargá la última que se hizo', 'agua_limpieza'); }
+    { if (est === 'vencida') pend('er', 'agua', t.CODIGO_TANQUE + ': limpieza vencida', 'Vencía el ' + prox, 'agua_limpieza'); else if (est === 'porvencer') pend('wa', 'agua', t.CODIGO_TANQUE + ': la limpieza vence en ' + d + ' días', t.UBICACION, 'agua_limpieza'); else if (est === 'sin') sinLim.push(t.CODIGO_TANQUE); }
     return { codigo: t.CODIGO_TANQUE, est: t.ESTABLECIMIENTO, sitio: t.SITIO, ubicacion: t.UBICACION, tipo: t.TIPO, uso: t.USO, capacidad: t.CAPACIDAD_L, material: t.MATERIAL, inv: t.ESTADO, tapa: t.TAPA, acceso: t.ACCESO, quienLimpia: t.QUIEN_LIMPIA,
       frecuencia: t.FRECUENCIA_LIMPIEZA_MESES, ultima: t.ULTIMA_LIMPIEZA, proxima: prox, estado: est, obs: t.OBSERVACIONES, insp: insp }; });
+  if (sinRel.length) pend('wa', 'agua', sinRel.length === 1 ? sinRel[0] + ': falta el relevamiento de estado' : sinRel.length + ' tanques o cisternas sin relevamiento de estado al día', (sinRel.length > 1 ? sinRel.join(', ') + ' · ' : '') + 'Se hace cada 3 meses con la hoja de relevamiento por dependencia', 'agua_insp');
+  if (sinLim.length) pend('wa', 'agua', sinLim.length === 1 ? sinLim[0] + ': sin limpieza registrada' : sinLim.length + ' tanques o cisternas sin limpieza registrada', (sinLim.length > 1 ? sinLim.join(', ') + ' · ' : '') + 'Cargá la última que se hizo, con el formulario firmado', 'agua_limpieza');
   // Agua: canillas y análisis
   const A = de(miLeer_('AGUA_ANALISIS'));
   A.filter(a => a.ESTADO_ACCION === 'Abierta').forEach(a => { const lim = miSumarHabiles_(a.FECHA_RESULTADO || a.FECHA_TOMA, 15);

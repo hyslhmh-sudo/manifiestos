@@ -1349,15 +1349,16 @@ async function guardarInv(tipo) {
 
 // ------------------------------------------------------------------ Agua: limpieza y análisis
 // Formulario de limpieza de cada red: HSST (red Rawson) usa el Formulario 1 del POE-HSST-AGU-001; el resto, el F-AGU-01 (29/10/2026)
-const aguaF1 = () => SES && SES.est === 'HSST' ? 'Formulario 1' : 'F-AGU-01';
+const aguaF1 = () => SES && SES.est === 'HSST' ? 'Formulario 1' : 'F-AGU-01-T';
 // Agua al 20 % de la capacidad y 2 mL de lavandina 5,5 % por litro de agua cargada (110 ppm), como en el formulario
 function aguaDosis(t) { if (!F || F._dosisDe === t.codigo) return; F._dosisDe = t.codigo; const cap = Number(String(t.capacidad || '').replace(/\./g, '').replace(',', '.'));
   if (cap > 0) { F.AGUA_L = String(Math.round(cap * 0.2)); F.LAVANDINA_ML = String(Math.round(cap * 0.2) * 2); } else { F.AGUA_L = ''; F.LAVANDINA_ML = ''; } }
 function aguaLimpieza() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
   if (!MI.tanques.length) return aguaInv();
-  const propio = /^propio/i.test(MI.poe.limpieza), cargado = /https?:/.test(MI.poe.limpieza), f1 = aguaF1();
-  F = F && F._f === 'lim' ? F : { _f: 'lim', CODIGO_TANQUE: (MI.tanques.find(t => t.estado !== 'aldia') || MI.tanques[0]).codigo, FECHA: hoyISO(), PROCEDIMIENTO: propio ? 'POE propio' : 'Proceso provincial',
+  const propio = /^propio/i.test(MI.poe.limpieza) || SES.est === 'HSST',   // el HSST usa su POE-HSST-AGU-001
+    cargado = /https?:/.test(MI.poe.limpieza), f1 = aguaF1();
+  F = F && F._f === 'lim' ? F : { _f: 'lim', CODIGO_TANQUE: (MI.tanques.find(t => t.estado !== 'aldia') || MI.tanques[0]).codigo, FECHA: hoyISO(), PROCEDIMIENTO: propio ? 'POE propio' : 'Proceso provincial', POE_CODIGO: SES.est === 'HSST' ? 'POE-HSST-AGU-001' : '',
     TAPA: 'Sí, en condiciones', MUESTRA_TOMADA: 'Pendiente', HORAS_CERRADO: '6' };
   MIV = { f: aguaLimpieza }; VISTA = 'mi'; vista('form');
   const t = MI.tanques.find(x => x.codigo === F.CODIGO_TANQUE) || MI.tanques[0]; aguaDosis(t);
@@ -1502,7 +1503,7 @@ function aguaRelDep() {
   const fs = (k, t, ops) => fSeg(k, t, ops), bloques = [];
   for (let i = 0; i < F._n; i++) {
     const c = F['T' + i + '_CODIGO'], k = x => 'T' + i + '_' + x;
-    bloques.push('<div class="card" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0"><h2 style="margin-top:0">' + (c ? esc(c) : 'Tanque o cisterna nuevo') + ' <span class="mu" style="font-size:13px">(columna ' + (i + 1) + ' de la hoja)</span>' + (c ? '' : ' <button class="link" data-act="aguaRelQuitar" data-arg="' + i + '">Quitar</button>') + '</h2>' +
+    bloques.push('<div class="card" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0"><h2 style="margin-top:0">' + (c ? esc(c) : 'Tanque o cisterna nuevo') + ' <span class="mu" style="font-size:13px">(columna ' + (i + 1) + ' de la hoja)</span>' + (c || F._n < 2 ? '' : ' <button class="link" data-act="aguaRelQuitar" data-arg="' + i + '">Quitar</button>') + '</h2>' +
       fInp(k('UBICACION'), '¿Dónde está?', 'text', 'Ej.: techo de la cocina, patio del fondo') + fs(k('TIPO'), 'Tipo', AGUA_REL_OPC.TIPO) + fs(k('USO'), 'Uso', AGUA_REL_OPC.USO) +
       '<div class="grid2">' + fInp(k('CAPACIDAD_L'), 'Capacidad (litros)', 'number', 's/d si no se sabe') + fSel(k('MATERIAL'), 'Material', [['', 's/d']].concat(AGUA_REL_OPC.MATERIAL)) + '</div>' +
       fSel(k('ACCESO'), 'Acceso', AGUA_REL_OPC.ACCESO) + fs(k('ESTADO'), '¿Está en uso?', ['Activo', 'Fuera de uso']) +
@@ -1511,7 +1512,7 @@ function aguaRelDep() {
   }
   $('app').innerHTML = miTit('Relevamiento por dependencia', 'Cargá la hoja ' + AGUA_F3() + ' completa de una dependencia: el mapeo y el estado de cada tanque o cisterna, en el mismo orden de las columnas.') + fErr +
     fSel('SITIO', 'Dependencia', MI.sitios || ['s/d (revisar)']) + '<div class="grid2">' + fInp('FECHA', 'Fecha del relevamiento', 'date') + fInp('RELEVO', 'Relevó (nombre y función)', 'text', 'Ej.: Juan Pérez, Mantenimiento') + '</div>' +
-    bloques.join('') + '<div class="menu"><button class="big" data-act="aguaRelMas"><b>+ Agregar otro tanque o cisterna</b><span>Uno que todavía no estaba cargado</span></button></div>' +
+    bloques.join('') + '<p class="mu" style="font-size:13px">Cargá una tarjeta por cada columna completa de la hoja, en el mismo orden. Si la hoja tiene más columnas, tocá «+ Agregar otro tanque o cisterna».</p><div class="menu"><button class="big" data-act="aguaRelMas"><b>+ Agregar otro tanque o cisterna</b><span>Uno que todavía no estaba cargado</span></button></div>' +
     fFoto('foto', 'Foto o PDF de la hoja firmada', 'Obligatorio · hasta 5 fotos o un PDF');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarRelDep">Guardar todo</button>');
 }
