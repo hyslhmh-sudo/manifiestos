@@ -27,6 +27,18 @@
  * Carga inicial: importarExtintoresIncendio() lee la planilla «Inventario de Extintores» de Belén (INC.FUENTE) y no pisa lo ya cargado.
  * Normativa: Ley 19.587; Dto. 351/79, cap. 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL). Solo envía el aviso de extintores con problemas (ver arriba).
  * Instalación: ejecutar una vez construirModuloIncendio() (la primera vez también importa la planilla; importarExtintoresIncendio() se puede volver a ejecutar sin duplicar).
+ *
+ * Cambios del 29/10/2026 (revisión de la carga, pedido de Belén):
+ *  - Una sola puerta: MIPyV ya no escribe en la planilla. Manda cada alta, corrección y control acá, como acceso de servicio «MIPyV»
+ *    (BASE COMÚN › ACCESOS, ROL = Servicio, módulo Incendio, establecimiento HZT). Mismas reglas, mismo turno (bloqueo) y mismos mensajes
+ *    que «Mi establecimiento». Cada envío trae su id_origen: si MIPyV reintenta, no se duplica.
+ *  - N.º de puesto (el cartel, columna NRO_EXTINTOR): obligatorio en el alta, solo números (1 a 3 cifras) y único en el establecimiento.
+ *    El N.º de inventario (la chapita) no puede ser igual al de puesto (para que no se crucen) ni estar repetido.
+ *  - Plantas: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una planta) y Vehículo (ambulancias).
+ *  - Fechas de vencimiento entre 2020 y 2040.
+ *  - Lugares con dependencias (SITIOS_INC › DEPENDENCIAS, separadas por «·»; hoy Sede ex ADOS): el sector se elige de esa lista.
+ *  - «Casa de convivencia» pasa a llamarse «Casa Tutelada»; se agrega «UGD - Ex APT». Ejecutar una vez actualizarModuloIncendio29oct().
+ *  - Los errores llevan un código (no_existe, puesto, inventario, datos, fecha, lugar) para que la aplicación los explique.
  */
 const INC = {
   SIS: '16AIJZcmxG9EBM3-D-J4vRtvruHK9DVrA',   // SISTEMA HyS
@@ -53,7 +65,9 @@ const INC = {
   TIPOS: ['ABC', 'BC', 'K', 'D', 'Otro'],
   AGENTES: ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 's/d'],
   ESTADOS: ['Operativo', 'Sobrecarga', 'Recargar', 'Fuera de servicio', 'Baja', 's/d (revisar)'],
-  PLANTAS: ['Baja', 'Alta', 'Planta baja', '1er piso', '2do piso', 'Terraza', 'Subsuelo', 'Única', 'Vehículo'],   // HZT: subsuelo, planta baja, 1er y 2do piso (dato de Belén, 27/10/2026)
+  PLANTAS: ['Subsuelo', 'Planta baja', '1er piso', '2do piso', '3er piso', 'Única', 'Vehículo'],   // edificios de hasta 3 plantas más subsuelo (HZT, sede ex ADOS) · Única: CAPS de una planta · Vehículo: ambulancias (Belén, 29/10/2026)
+  FECHA_MIN: '2020-01-01', FECHA_MAX: '2040-12-31',   // rango aceptado para los vencimientos (evita años mal tipeados, como 0027)
+  SERVICIO_MIPYV: 'MIPyV',   // nombre del acceso de servicio de MIPyV en BASE COMÚN › ACCESOS
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
   RESP_TRELEW: 'Belén Pellegrini · Melani · Javier Tramaleo',
   RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
@@ -77,7 +91,7 @@ function construirModuloIncendio() {
   });
   hoja('EXTINTORES', sh => {
     encabezar_(sh, 'Inventario de extintores', 'Una fila por extintor. Fechas dd/mm/aaaa. VTO_CARGA: vencimiento de la carga (marbete). PRUEBA_HIDRAULICA_VENCE: si no se sabe, s/d (revisar). Para sacar uno: ESTADO = Baja (no borrar la fila). Las columnas del último control las completa el sistema.', INC.H_EXT,
-      ['Lo pone el sistema.', 'Código del establecimiento.', 'Como en SITIOS_INC.', 'Número del extintor en el lugar.', 'Número de chapa.', 'Baja · Alta · Terraza…', 'Servicio o sector.', 'Detalle de la ubicación.', 'ABC · BC · K…', 'PQS · CO2 · HCFC…', 'Kilos.', 'Número de inventario patrimonial.', 'dd/mm/aaaa', 'dd/mm/aaaa o s/d (revisar)', 'Operativo · Sobrecarga · Recargar · Fuera de servicio · Baja', 'Lo pone el sistema.', 'Lo pone el sistema.', 'Enlace a la foto.', 'Enlace a la foto.', 'Enlace a la foto.', '', 'Lo pone el sistema.'],
+      ['Lo pone el sistema.', 'Código del establecimiento.', 'Como en SITIOS_INC.', 'N.º de puesto (el cartel): solo números, único en el establecimiento.', 'Número de chapa.', 'Subsuelo · Planta baja · 1er, 2do o 3er piso · Única · Vehículo', 'Servicio o sector.', 'Detalle de la ubicación.', 'ABC · BC · K…', 'PQS · CO2 · HCFC…', 'Kilos.', 'Número de inventario patrimonial.', 'dd/mm/aaaa', 'dd/mm/aaaa o s/d (revisar)', 'Operativo · Sobrecarga · Recargar · Fuera de servicio · Baja', 'Lo pone el sistema.', 'Lo pone el sistema.', 'Enlace a la foto.', 'Enlace a la foto.', 'Enlace a la foto.', '', 'Lo pone el sistema.'],
       [0, 15, 16, 17, 18, 19, 21]);
     lista_(sh, 5, 2000, INC.PLANTAS); lista_(sh, 8, 2000, INC.TIPOS); lista_(sh, 9, 2000, INC.AGENTES); lista_(sh, 14, 2000, INC.ESTADOS);
     sh.getRange(6, 13, 2000, 2).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 16, 2000, 1).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 12, 2000, 1).setNumberFormat('@');
@@ -96,11 +110,60 @@ function construirModuloIncendio() {
   Logger.log('Módulo 10 listo: ' + ss.getUrl() + ' · carpeta ' + dir.getUrl());
   return { ok: true, libro: ss.getUrl(), carpeta: dir.getUrl() };
 }
+// ------------------------------------------------------------------ ACTUALIZACIÓN DEL 29/10/2026 (ejecutar UNA vez desde el editor; se puede repetir sin duplicar)
+// 1) SITIOS_INC: columna DEPENDENCIAS (Sede ex ADOS), «Casa de convivencia» → «Casa Tutelada» (también en EXTINTORES, CONTROLES y FALLAS) y lugar «UGD - Ex APT».
+// 2) EXTINTORES: lista nueva de plantas (los valores viejos, como «Baja» o «Alta» del HMH, quedan y se marcan para revisar).
+// 3) AYUDA: texto nuevo.
+// 4) BASE COMÚN › ACCESOS: acceso de servicio «MIPyV» (módulo Incendio, HZT) con su clave. La clave aparece en el registro de ejecución:
+//    copiarla en el proyecto de Apps Script de MIPyV › Configuración del proyecto › Propiedades del script › PORTAL_CLAVE.
+const INC_DEP_EXADOS = ['Adolescencia', 'Vacunatorio', 'PROSATE', 'Consultorios Externos', 'Internación de Salud Mental', 'Áreas comunes'];
+function actualizarModuloIncendio29oct() {
+  const ss = pInc_(), hechos = [];
+  // 1) SITIOS_INC
+  const shS = ss.getSheetByName('SITIOS_INC'), HS = shS.getRange(5, 1, 1, shS.getLastColumn()).getValues()[0].map(h => limpio_(h));
+  let jDep = HS.indexOf('DEPENDENCIAS'); if (jDep < 0) { jDep = HS.length; shS.getRange(5, jDep + 1).setValue('DEPENDENCIAS').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#0D313F'); hechos.push('Columna DEPENDENCIAS agregada en SITIOS_INC.'); }
+  const S = pTabla_(shS, Math.max(HS.length, jDep + 1));
+  S.forEach(r => {
+    if (limpio_(r.v[0]) === 'HZT' && sinTildes_(r.v[1]) === sinTildes_('Sede ex ADOS')) {
+      if (!limpio_(r.v[jDep])) { shS.getRange(r.fila, jDep + 1).setValue(INC_DEP_EXADOS.join(' · ')); hechos.push('Dependencias de Sede ex ADOS cargadas.'); }
+      shS.getRange(r.fila, 6).setValue('Un solo edificio: el sector de cada extintor es una de las DEPENDENCIAS.');
+    }
+  });
+  const renombrar = (hoja, col) => { const sh = ss.getSheetByName(hoja); if (!sh || sh.getLastRow() < 6) return 0; let n = 0;
+    const R = sh.getRange(6, col, sh.getLastRow() - 5, 1), v = R.getValues(); v.forEach(r => { if (sinTildes_(r[0]) === sinTildes_('Casa de convivencia')) { r[0] = 'Casa Tutelada'; n++; } }); if (n) R.setValues(v); return n; };
+  const nCasa = renombrar('SITIOS_INC', 2) + renombrar('EXTINTORES', 3) + renombrar('CONTROLES', 4) + renombrar('FALLAS', 4);
+  if (nCasa) hechos.push('«Casa de convivencia» → «Casa Tutelada» en ' + nCasa + ' fila(s).');
+  if (!pTabla_(shS, 2).some(r => limpio_(r.v[0]) === 'HZT' && sinTildes_(r.v[1]) === sinTildes_('UGD - Ex APT'))) {
+    const f = ['HZT', 'UGD - Ex APT', 'Dispositivo', INC.RESP_TRELEW, 'Sí', '', new Date()]; while (f.length < HS.length) f.push('');
+    shS.getRange(Math.max(shS.getLastRow(), 5) + 1, 1, 1, f.length).setValues([f]); hechos.push('Lugar «UGD - Ex APT» agregado.');
+  }
+  // 2) EXTINTORES › PLANTA
+  lista_(ss.getSheetByName('EXTINTORES'), 5, 2000, INC.PLANTAS); hechos.push('Lista de plantas actualizada: ' + INC.PLANTAS.join(', ') + '.');
+  // 3) AYUDA
+  const shA = ss.getSheetByName('AYUDA'); if (shA) { shA.clear(); shA.getRange(1, 1, INC_AYUDA.length, 2).setValues(INC_AYUDA); shA.getRange(1, 1).setFontSize(16).setFontWeight('bold').setFontColor('#0D313F');
+    shA.getRange(2, 1, INC_AYUDA.length - 1, 1).setFontWeight('bold').setFontColor('#0D313F'); shA.getRange(1, 2, INC_AYUDA.length, 1).setWrap(true); hechos.push('Hoja AYUDA actualizada.'); }
+  // 4) Acceso de servicio «MIPyV»
+  const shAc = pBC_().getSheetByName('ACCESOS'), HA = shAc.getRange(5, 1, 1, shAc.getLastColumn()).getValues()[0].map(h => limpio_(h)), jN = HA.indexOf('APELLIDO_Y_NOMBRE'), jC = HA.indexOf('CLAVE');
+  const ya = pTabla_(shAc, HA.length).find(r => sinTildes_(r.v[jN]) === sinTildes_(INC.SERVICIO_MIPYV));
+  if (ya) hechos.push('El acceso de servicio «MIPyV» ya existía (fila ' + ya.fila + '): no se tocó su clave.');
+  else {
+    const o = { APELLIDO_Y_NOMBRE: INC.SERVICIO_MIPYV, ROL: 'Servicio', ESTABLECIMIENTOS: 'HZT', MODULOS: 'Incendio', ESTADO: 'Activo', OBSERVACIONES: 'Puente de la aplicación MIPyV al módulo de incendio (29/10/2026). Solo controles y extintores de la red Trelew sin HMH.' };
+    const fila = Math.max(shAc.getLastRow(), 5) + 1; shAc.getRange(fila, 1, 1, HA.length).setValues([HA.map(h => o[h] == null ? '' : o[h])]);
+    const letras = 'abcdefghjkmnpqrstuvwxyz', clave = Array.from({ length: 4 }, () => letras[Math.floor(Math.random() * letras.length)]).join('') + '-' + String(100000 + Math.floor(Math.random() * 900000));
+    accClaveGuardar_(shAc, fila, jC, '', INC.SERVICIO_MIPYV, clave); CacheService.getScriptCache().remove('accesos');
+    hechos.push('Acceso de servicio «MIPyV» creado en ACCESOS (fila ' + fila + '). CLAVE PARA MIPyV › PORTAL_CLAVE: ' + clave);
+  }
+  CacheService.getScriptCache().remove('inc_tablero');
+  hechos.forEach(h => Logger.log(h));
+  return hechos;
+}
 const INC_AYUDA = [
   ['Ayuda · Módulo 10 · Protección contra incendios', ''],
   ['Qué es', 'El inventario de extintores de la red y su control mensual. Versión 0: red Trelew (HZT y sus sitios, HMH) y HSST con sus CAPS.'],
-  ['Desde dónde se carga', 'Portal HyS › 10 · Incendio (Higiene y Seguridad: todo). Aplicación «Mi establecimiento» › Incendio (las personas con el módulo Incendio en BASE COMÚN › ACCESOS). También se puede cargar y corregir acá, en cada hoja.'],
-  ['SITIOS_INC', 'Cada lugar con extintores y quiénes hacen el control: HMH (Belén, Melani, SOMI y MAREM); HZT, sede ex ADOS (con Adolescencia, PROSATE, Consultorios Externos e Internación de Salud Mental), CAPS, dispositivos y ambulancias de la red Trelew (Belén, Melani y Javier Tramaleo); HSST y sus CAPS (a definir).'],
+  ['Desde dónde se carga', 'Portal HyS › 7 · Protección contra incendios (Higiene y Seguridad: todo). Aplicación «Mi establecimiento» › Incendio (las personas con el módulo Incendio en BASE COMÚN › ACCESOS). Aplicación MIPyV (Javier Tramaleo, red Trelew sin HMH): pasa por las mismas reglas que «Mi establecimiento». También se puede cargar y corregir acá, en cada hoja.'],
+  ['Números de cada extintor', 'ID: lo pone el sistema (EXT-HZT-001). N.º de puesto (columna NRO_EXTINTOR): el número del cartel donde va colgado; solo números, único en el establecimiento y obligatorio. N.º de inventario: el de la chapita patrimonial; no puede repetirse ni ser igual al de puesto. Si no tiene chapita: s/d.'],
+  ['Plantas', 'Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias).'],
+  ['SITIOS_INC', 'Cada lugar con extintores y quiénes hacen el control: HMH (Belén, Melani, SOMI y MAREM); HZT, Sede ex ADOS, CAPS, dispositivos (Casa Tutelada, UGD - Ex APT…) y ambulancias de la red Trelew (Belén, Melani y Javier Tramaleo); HSST y sus CAPS (a definir). DEPENDENCIAS: si un edificio tiene varias (Sede ex ADOS: Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental y Áreas comunes), van separadas por «·» y el sector de cada extintor se elige de esa lista. Se pueden agregar o cambiar acá.'],
   ['EXTINTORES', 'Una fila por extintor. La carga inicial salió de la planilla «Inventario de Extintores»; lo que había que revisar quedó escrito en OBSERVACIONES (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes).'],
   ['CONTROLES', 'Control mensual de cada extintor: en su lugar, acceso libre, manómetro, precinto y señalización, más 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Cada control actualiza el último control del extintor.'],
   ['Avisos', 'Carga vencida o que vence en 30 días; prueba hidráulica vencida; sin control en los últimos 3 meses (el control es mensual, pero la alarma aparece recién a los 3 meses). Se ven en el portal (10 · Incendio y «Requiere atención»).'],
@@ -111,7 +174,7 @@ function incSembrarSitios_(sh) {
   const filas = [['HMH', 'HMH', 'Edificio', INC.RESP_HMH, 'Sí', '', new Date()]];
   const T = (s, t) => filas.push(['HZT', s, t, INC.RESP_TRELEW, 'Sí', '', new Date()]);
   T('HZT Central', 'Edificio'); T('Sede ex ADOS', 'Dispositivo'); T('Centro de Día', 'Dispositivo');
-  ['CIT', 'Casa de convivencia', 'Hilando Caminos', 'Pichi Anai'].forEach(s => T(s, 'Dispositivo')); T('Ambulancias', 'Ambulancias');
+  ['CIT', 'Casa Tutelada', 'Hilando Caminos', 'Pichi Anai', 'UGD - Ex APT'].forEach(s => T(s, 'Dispositivo')); T('Ambulancias', 'Ambulancias');
   try { pTabla_(pBC_().getSheetByName('SITIOS'), 5).forEach(r => { const c = limpio_(r.v[0]), s = limpio_(r.v[1]), t = limpio_(r.v[4]);
     if (c === 'HZT' && t === 'CAPS') T(s, 'CAPS');
     if (c === 'HSST') filas.push(['HSST', s, t === 'CAPS' ? 'CAPS' : 'Edificio', 's/d (a definir)', 'Sí', '', new Date()]); }); } catch (e) {}
@@ -126,7 +189,7 @@ function incSembrarSitios_(sh) {
 // (busca por establecimiento + N.º de inventario + ubicación).
 const INC_PESTANAS = { 'HMH': ['HMH', 'HMH'], 'HZT': ['HZT', 'HZT Central'], 'AMBULANCIAS': ['HZT', 'Ambulancias'], 'EX ADOS': ['HZT', 'Sede ex ADOS'],
   'ADOLECENCIA': ['HZT', 'Sede ex ADOS', 'Adolescencia'], 'ADOLESCENCIA': ['HZT', 'Sede ex ADOS', 'Adolescencia'], 'PICHI ANAI': ['HZT', 'Pichi Anai'],
-  'CASA DE CONVIVENCIA': ['HZT', 'Casa de convivencia'], 'CIT': ['HZT', 'CIT'], 'HILANDO CAMINOS': ['HZT', 'Hilando Caminos'], 'CENTRO DE DIA': ['HZT', 'Centro de Día'], 'CAPS': ['HZT', '*'] };
+  'CASA DE CONVIVENCIA': ['HZT', 'Casa Tutelada'], 'CASA TUTELADA': ['HZT', 'Casa Tutelada'], 'CIT': ['HZT', 'CIT'], 'HILANDO CAMINOS': ['HZT', 'Hilando Caminos'], 'CENTRO DE DIA': ['HZT', 'Centro de Día'], 'CAPS': ['HZT', '*'] };
 const INC_CAPS = { amaya: 'Amaya', corradi: 'Corradi', constitucion: 'Constitución', 'la loma': 'La Loma', sarmiento: 'Sarmiento', echepare: 'Etchepare', etchepare: 'Etchepare',
   'villa italia': 'Villa Italia', 'planta de gas': 'Planta de Gas', 'don bosco': 'Don Bosco', 'tiro federal': 'Tiro Federal', franzetti: 'San Martín', 'san martin': 'San Martín' };
 function incFechaFuente_(v) {   // fecha de la planilla de origen → { iso, nota }
@@ -213,10 +276,53 @@ function incEstadoExt_(e, hoy) {
   return { carga: carga, prueba: prueba, control: control, baja: fuera, conObs: obs };
 }
 function incDatos_() {
-  const sit = incLeer_('SITIOS_INC', INC.H_SIT).filter(s => s.ACTIVO !== 'No').map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO), SITIO: limpio_(s.SITIO) }));
+  const dep = incDependencias_();
+  const sit = incLeer_('SITIOS_INC', INC.H_SIT).filter(s => s.ACTIVO !== 'No').map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO), SITIO: limpio_(s.SITIO) }))
+    .map(s => Object.assign(s, { DEPENDENCIAS: dep[s.ESTABLECIMIENTO + '|' + sinTildes_(s.SITIO)] || [] }));
   const ext = incLeer_('EXTINTORES', INC.H_EXT).map(e => Object.assign(e, { ESTABLECIMIENTO: limpio_(e.ESTABLECIMIENTO), SITIO: limpio_(e.SITIO) }));
   return { sit: sit, ext: ext };
 }
+// SITIOS_INC › DEPENDENCIAS (se busca por el nombre de la columna; separadas por «·»): «HZT|sede ex ados» → ['Adolescencia', …]
+function incDependencias_() {
+  const sh = pInc_().getSheetByName('SITIOS_INC'), out = {}; if (!sh) return out;
+  const H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(h => limpio_(h)), j = H.indexOf('DEPENDENCIAS'); if (j < 0) return out;
+  pTabla_(sh, H.length).forEach(r => { const l = String(r.v[j] || '').split(/\s*[·;]\s*/).map(limpio_).filter(Boolean); if (l.length) out[limpio_(r.v[0]) + '|' + sinTildes_(r.v[1])] = l; });
+  return out;
+}
+
+// ------------------------------------------------------------------ REGLAS COMUNES (portal, «Mi establecimiento» y MIPyV · 29/10/2026)
+const incFechaOk_ = iso => !!iso && iso >= INC.FECHA_MIN && iso <= INC.FECHA_MAX;
+const incSinNro_ = v => sinTildes_(v).replace(/[\s.\-]/g, '');
+// Revisa un extintor nuevo (e = null) o corregido (e = como estaba) antes de guardarlo. o = cómo va a quedar. L = todos los extintores. sitDep = dependencias del lugar.
+// Devuelve null si está bien, o { ok: false, codigo, mensaje } con lo que hay que corregir, en lenguaje claro.
+function incValidar_(o, e, L, sitDep) {
+  const cambia = k => !e || limpio_(o[k]) !== limpio_(e[k]), cod = limpio_(o.ESTABLECIMIENTO);
+  const otros = L.filter(z => z.ID !== (e && e.ID) && limpio_(z.ESTABLECIMIENTO) === cod && !/baja/i.test(z.ESTADO));
+  const donde = z => z.ID + ' (' + [z.SITIO, z.PLANTA, z.SECTOR, z.UBICACION].filter(Boolean).join(' · ') + ')';
+  const nro = limpio_(o.NRO_EXTINTOR);
+  if (cambia('NRO_EXTINTOR')) {
+    if (!nro) return { ok: false, codigo: 'puesto', mensaje: 'Falta el N.º de puesto: es el número del cartel donde está colgado el extintor.' };
+    if (!/^\d{1,3}$/.test(nro)) return { ok: false, codigo: 'puesto', mensaje: 'El N.º de puesto lleva solo números (hasta 3 cifras): es el del cartel, no el de la chapita de inventario.' };
+    const r = otros.find(z => String(Number(limpio_(z.NRO_EXTINTOR))) === String(Number(nro)));
+    if (r) return { ok: false, codigo: 'puesto', mensaje: 'El puesto ' + nro + ' ya lo tiene ' + donde(r) + '. Revisá el cartel; si cambiaron el extintor de lugar, avisale a Higiene y Seguridad.' };
+  }
+  const inv = incSinNro_(o.NRO_INVENTARIO);
+  if (cambia('NRO_INVENTARIO') && inv && !/^s\/?d/.test(inv)) {
+    if (nro && inv === incSinNro_(nro)) return { ok: false, codigo: 'inventario', mensaje: 'El N.º de inventario quedó igual al de puesto. El de inventario es el de la chapita patrimonial; el de puesto, el del cartel. Si no tiene chapita, poné s/d.' };
+    const r = otros.find(z => incSinNro_(z.NRO_INVENTARIO) === inv);
+    if (r) return { ok: false, codigo: 'inventario', mensaje: 'Ese N.º de inventario ya está cargado en ' + donde(r) + '. Si es el mismo extintor, buscalo en la lista; si se mudó, avisale a Higiene y Seguridad.' };
+  }
+  if (cambia('PLANTA') && limpio_(o.PLANTA) && INC.PLANTAS.indexOf(limpio_(o.PLANTA)) < 0) return { ok: false, codigo: 'datos', mensaje: 'La planta tiene que ser una de estas: ' + INC.PLANTAS.join(', ') + '.' };
+  if (sitDep && sitDep.length && (cambia('SECTOR') || cambia('SITIO')) && !sitDep.some(d => sinTildes_(d) === sinTildes_(o.SECTOR)))
+    return { ok: false, codigo: 'lugar', mensaje: 'En ' + o.SITIO + ' el sector es una de estas dependencias: ' + sitDep.join(', ') + '.' };
+  for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
+    const v = o[k]; if (!v || /^s\/d/i.test(String(v)) || !cambia(k)) continue;
+    const iso = incISO_(v); if (!incFechaOk_(iso)) return { ok: false, codigo: 'fecha', mensaje: nom + ' tiene que ser una fecha entre 2020 y 2040. Revisá el año en la tarjeta.' };
+  }
+  return null;
+}
+// Marca de un envío de MIPyV ([id_origen]) en CAMBIOS u OBSERVACIONES: si la aplicación reintenta, no se duplica
+const incMarca_ = x => x && x.id_origen ? '[' + String(x.id_origen).replace(/[\[\]]/g, '') + ']' : '';
 function incResumen_(l, hoy) {
   const u = l.filter(e => !/baja/i.test(e.ESTADO)), v = u.map(e => incEstadoExt_(e, hoy)), c = k => v.filter(x => x[k[0]] === k[1]).length;
   const fechas = (campo, k, est) => u.filter((e, i) => v[i][k] === est).map(e => incISO_(e[campo])).filter(Boolean).sort();
@@ -257,16 +363,18 @@ function incDetalle_(cod, sitio) {
   const ids = {}; ext.forEach(e => ids[e.ID] = true);
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
-    listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS } };
+    listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: INC.PLANTAS, chequeos: INC.CHEQUEOS, fotos: INC.FOTOS,
+      puesto: 'N.º de puesto: el número del cartel donde va colgado el extintor (solo números, único en el establecimiento).', inventario: 'N.º de inventario: el de la chapita patrimonial pegada en el extintor. Si no tiene, s/d.' } };
 }
 // Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
-// MIPyV (Javier Tramaleo). En el alta los datos y las 3 fotos son obligatorios (pedido de Belén 14/10/2026). La corrección (con ID) es solo del portal.
-const INC_REQ_ALTA = [['SITIO', 'el lugar'], ['PLANTA', 'la planta'], ['SECTOR', 'el sector o servicio'], ['UBICACION', 'dónde está exactamente'], ['TIPO', 'el tipo'],
-  ['AGENTE', 'el agente extintor'], ['CAPACIDAD_KG', 'la capacidad (kg)'], ['NRO_INVENTARIO', 'el N.º de inventario (si no tiene, «s/d»)'], ['VTO_CARGA', 'el vencimiento de la carga (está en la tarjeta)']];
-// Desde la aplicación (codPermitido) también se puede corregir el nombre (N.º del extintor) y la ubicación (lugar, planta, sector,
+// MIPyV (Javier Tramaleo, acceso de servicio «MIPyV»). En el alta los datos y las 3 fotos son obligatorios (pedido de Belén 14/10/2026).
+// Desde el 29/10/2026 el N.º de puesto también es obligatorio y todo pasa por incValidar_ (las mismas reglas para todos).
+const INC_REQ_ALTA = [['SITIO', 'el lugar'], ['NRO_EXTINTOR', 'el N.º de puesto (el del cartel)'], ['PLANTA', 'la planta'], ['SECTOR', 'el sector o servicio'], ['UBICACION', 'dónde está exactamente'], ['TIPO', 'el tipo'],
+  ['AGENTE', 'el agente extintor'], ['CAPACIDAD_KG', 'la capacidad (kg)'], ['NRO_INVENTARIO', 'el N.º de inventario de la chapita (si no tiene, «s/d»)'], ['VTO_CARGA', 'el vencimiento de la carga (está en la tarjeta)']];
+// Desde la aplicación (codPermitido) también se puede corregir el N.º de puesto y la ubicación (lugar, planta, sector,
 // ubicación): queda «Pendiente» de verificar por HyS, con el cambio anotado en CAMBIOS. Lo que carga o corrige HyS desde el portal queda verificado.
-const INC_EDIT_APP = [['NRO_EXTINTOR', 'Nombre o N.º'], ['SITIO', 'Lugar'], ['PLANTA', 'Planta'], ['SECTOR', 'Sector'], ['UBICACION', 'Ubicación']];
-const INC_NOMBRES = { NRO_EXTINTOR: 'Nombre o N.º', NRO_CHAPA: 'N.º de chapa', SITIO: 'Lugar', PLANTA: 'Planta', SECTOR: 'Sector', UBICACION: 'Ubicación', TIPO: 'Tipo', AGENTE: 'Agente',
+const INC_EDIT_APP = [['NRO_EXTINTOR', 'N.º de puesto'], ['SITIO', 'Lugar'], ['PLANTA', 'Planta'], ['SECTOR', 'Sector'], ['UBICACION', 'Ubicación']];
+const INC_NOMBRES = { NRO_EXTINTOR: 'N.º de puesto', NRO_CHAPA: 'N.º de chapa', SITIO: 'Lugar', PLANTA: 'Planta', SECTOR: 'Sector', UBICACION: 'Ubicación', TIPO: 'Tipo', AGENTE: 'Agente',
   CAPACIDAD_KG: 'Capacidad', NRO_INVENTARIO: 'N.º de inventario', VTO_CARGA: 'Vencimiento de la carga', PRUEBA_HIDRAULICA_VENCE: 'Prueba hidráulica', ESTADO: 'Estado', OBSERVACIONES: 'Observaciones' };
 // Anota los cambios (lo más nuevo primero) en la columna CAMBIOS
 function incAnotarCambio_(o, antes, quien, extra) {
@@ -277,37 +385,39 @@ function incAnotarCambio_(o, antes, quien, extra) {
   return true;
 }
 function incExtGuardar_(x, quien, codPermitido) {
-  const cod = limpio_(x.ESTABLECIMIENTO), L = incLeer_('EXTINTORES', INC.H_EXT); let e = x.ID ? L.find(o => o.ID === x.ID) : null;
-  if (x.ID && !e) return { ok: false, mensaje: 'No encontré ese extintor.' };
-  if (codPermitido && e) {   // corrección desde la aplicación: solo nombre y ubicación, de este establecimiento
-    if (limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, mensaje: 'Ese extintor no es de este establecimiento.' };
+  const cod = limpio_(x.ESTABLECIMIENTO), L = incLeer_('EXTINTORES', INC.H_EXT), marca = incMarca_(x); let e = x.ID ? L.find(o => o.ID === x.ID) : null;
+  if (marca) { const ya = L.find(z => String(z.CAMBIOS || '').indexOf(marca) >= 0); if (ya) return { ok: true, duplicado: true, id: ya.ID }; }   // MIPyV reintentó un envío que ya había llegado
+  if (x.ID && !e) return { ok: false, codigo: 'no_existe', mensaje: 'Ese extintor (' + x.ID + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista y buscalo de nuevo.' };
+  if (codPermitido && e) {   // corrección desde la aplicación: solo N.º de puesto y ubicación, de este establecimiento
+    if (limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese extintor no es de este establecimiento.' };
     const y = { ID: e.ID, ESTABLECIMIENTO: codPermitido }; INC_EDIT_APP.forEach(c => { if (c[0] in x) y[c[0]] = x[c[0]]; });
-    if (!limpio_(y.SITIO || e.SITIO) || ('SECTOR' in y && !limpio_(y.SECTOR)) || ('UBICACION' in y && !limpio_(y.UBICACION))) return { ok: false, mensaje: 'El lugar, el sector y la ubicación no pueden quedar vacíos.' };
-    if (y.SITIO && !incDatos_().sit.some(s => s.ESTABLECIMIENTO === codPermitido && sinTildes_(s.SITIO) === sinTildes_(y.SITIO))) return { ok: false, mensaje: 'Ese lugar no está en la lista del establecimiento.' };
+    if (!limpio_(y.SITIO || e.SITIO) || ('SECTOR' in y && !limpio_(y.SECTOR)) || ('UBICACION' in y && !limpio_(y.UBICACION))) return { ok: false, codigo: 'datos', mensaje: 'El lugar, el sector y la ubicación no pueden quedar vacíos.' };
+    if (y.SITIO && !incDatos_().sit.some(s => s.ESTABLECIMIENTO === codPermitido && sinTildes_(s.SITIO) === sinTildes_(y.SITIO))) return { ok: false, codigo: 'lugar', mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
     x = y;
   }
-  const sitio = limpio_(x.SITIO || (e && e.SITIO)); if (!cod || !sitio) return { ok: false, mensaje: 'Faltan el establecimiento y el lugar.' };
-  if (codPermitido && cod !== codPermitido) return { ok: false, mensaje: 'Desde la aplicación solo se pueden agregar extintores de este establecimiento.' };
+  const sitio = limpio_(x.SITIO || (e && e.SITIO)); if (!cod || !sitio) return { ok: false, codigo: 'lugar', mensaje: 'Faltan el establecimiento y el lugar.' };
+  if (codPermitido && cod !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Desde la aplicación solo se pueden agregar extintores de este establecimiento.' };
+  const D = incDatos_(), sit = D.sit.find(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(sitio));
   const fotos = x.fotos || {};
   if (!e) {   // alta: todo obligatorio
-    if (!incDatos_().sit.some(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(sitio))) return { ok: false, mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
-    const faltan = INC_REQ_ALTA.filter(r => !limpio_(x[r[0]])).map(r => r[1]); if (faltan.length) return { ok: false, mensaje: 'Falta completar: ' + faltan.join(', ') + '.' };
-    if (!/^s\/d/i.test(x.VTO_CARGA) && !incISO_(x.VTO_CARGA)) return { ok: false, mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
-    const sinFoto = INC.FOTOS.filter(f => !/^data:image\//.test(String(fotos[f[0]] || ''))).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
-    const inv = sinTildes_(x.NRO_INVENTARIO).replace(/\s+/g, '');
-    const rep = /^s\/?d/.test(inv) ? null : L.find(z => limpio_(z.ESTABLECIMIENTO) === cod && !/baja/i.test(z.ESTADO) && sinTildes_(z.NRO_INVENTARIO).replace(/\s+/g, '') === inv);
-    if (rep) return { ok: false, mensaje: 'Ese N.º de inventario ya está cargado: ' + rep.ID + ' (' + [rep.SITIO, rep.SECTOR, rep.UBICACION].filter(Boolean).join(' · ') + '). Si es el mismo extintor, buscalo en la lista; si se mudó, avisale a Higiene y Seguridad.' };
+    if (!sit) return { ok: false, codigo: 'lugar', mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
+    const faltan = INC_REQ_ALTA.filter(r => !limpio_(x[r[0]])).map(r => r[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta completar: ' + faltan.join(', ') + '.' };
+    if (!/^s\/d/i.test(x.VTO_CARGA) && !incISO_(x.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
+    const sinFoto = INC.FOTOS.filter(f => !/^data:image\//.test(String(fotos[f[0]] || ''))).map(f => f[1]); if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
   }
   const o = e ? Object.assign({}, e) : { ID: 'EXT-' + cod + '-' + ('00' + (L.filter(z => limpio_(z.ESTABLECIMIENTO) === cod).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3), ESTADO: 'Operativo' };
   ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x && (e || x[k] !== '')) o[k] = limpio_(x[k]); });
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
   if (!e && !o.PRUEBA_HIDRAULICA_VENCE) o.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ULTIMO_CONTROL'].forEach(k => { if (o[k] && !(o[k] instanceof Date) && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
-  const et = o.ID + (o.NRO_EXTINTOR ? ' n.º ' + o.NRO_EXTINTOR : '') + ' · ' + o.SITIO, sub = ['Altas', incHoy_().slice(0, 7)];
+  // Mismas reglas para todos (29/10/2026): puesto, inventario, planta, sector de la dependencia y fechas
+  const sitFinal = D.sit.find(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(o.SITIO));
+  const mal = incValidar_(o, e, L, sitFinal ? sitFinal.DEPENDENCIAS : []); if (mal) return mal;
+  const et = o.ID + (o.NRO_EXTINTOR ? ' puesto ' + o.NRO_EXTINTOR : '') + ' · ' + o.SITIO, sub = ['Altas', incHoy_().slice(0, 7)];
   INC.FOTOS.forEach(f => { if (/^data:image\//.test(String(fotos[f[0]] || ''))) o[f[0]] = incFoto_(cod, fotos[f[0]], sub, et + ' · ' + f[1]); });
   if (!e) o.OBSERVACIONES = 'Alta ' + incHoy_() + ' · ' + quien + '.' + (o.OBSERVACIONES ? ' ' + o.OBSERVACIONES : '');
-  const cambio = e ? incAnotarCambio_(o, e, quien, INC.FOTOS.some(f => fotos[f[0]]) ? 'fotos nuevas' : '') : incAnotarCambio_(o, null, quien, 'Alta');
-  if (e && codPermitido && !cambio) return { ok: false, mensaje: 'No cambiaste nada.' };
+  const cambio = e ? incAnotarCambio_(o, e, quien, [INC.FOTOS.some(f => fotos[f[0]]) ? 'fotos nuevas' : '', marca].filter(Boolean).join(' ')) : incAnotarCambio_(o, null, quien, 'Alta' + (marca ? ' ' + marca : ''));
+  if (e && codPermitido && !cambio) return { ok: false, codigo: 'datos', mensaje: 'No cambiaste nada.' };
   o.VERIFICACION = codPermitido ? 'Pendiente' : 'Verificado ' + incTxt_(incHoy_()) + ' · ' + quien;   // lo que carga HyS desde el portal ya está verificado
   o.ACTUALIZADO = new Date(); delete o.fila; delete o.est;
   incEscribir_('EXTINTORES', INC.H_EXT, e ? e.fila : null, o);
@@ -493,25 +603,34 @@ function incVerificar_(ids, quien) {
 }
 // Control mensual de un extintor: 5 verificaciones y 3 fotos obligatorias. Actualiza el último control del extintor.
 function incControlGuardar_(x, quien, codPermitido) {
-  const L = incLeer_('EXTINTORES', INC.H_EXT), e = L.find(o => o.ID === x.ID_EXTINTOR); if (!e) return { ok: false, mensaje: 'Elegí un extintor de la lista.' };
-  if (codPermitido && limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, mensaje: 'Ese extintor no es de este establecimiento.' };
+  // Envío de MIPyV con id_origen: el control queda con ese ID; si la aplicación reintenta, no se duplica (29/10/2026)
+  const idOrigen = String(x.id_origen || '').replace(/[^\w\-]/g, '');
+  if (idOrigen && incLeer_('CONTROLES', INC.H_CON).some(c => c.ID === 'CTL-' + idOrigen)) return { ok: true, duplicado: true, id: 'CTL-' + idOrigen };
+  const L = incLeer_('EXTINTORES', INC.H_EXT), e = L.find(o => o.ID === x.ID_EXTINTOR);
+  if (!e) return { ok: false, codigo: 'no_existe', mensaje: x.ID_EXTINTOR ? 'Ese extintor (' + x.ID_EXTINTOR + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista.' : 'Elegí un extintor de la lista.' };
+  if (/baja/i.test(e.ESTADO || '')) return { ok: false, codigo: 'no_existe', mensaje: 'Ese extintor (' + e.ID + ') está dado de baja: no se controla.' };
+  if (codPermitido && limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese extintor no es de este establecimiento.' };
   // «Todo OK» (19/10/2026): control rápido de un solo toque, sin fotos. Las 5 verificaciones son «Sí», sin problemas, y se conservan los vencimientos cargados.
   // No se acepta si la carga está vencida: ese caso va por el control completo (vencimiento, problemas y fotos).
   const todoOk = x.todoOk === true || x.todoOk === 'true';
   if (todoOk) { INC.CHEQUEOS.forEach(c => x[c[0]] = 'Sí'); x.PROBLEMAS = []; x.VTO_CARGA = incISO_(e.VTO_CARGA) || ''; x.PRUEBA_HIDRAULICA_VENCE = incISO_(e.PRUEBA_HIDRAULICA_VENCE) || 's/d (revisar)';
-    const f0 = incISO_(x.FECHA) || incHoy_(); if (!x.VTO_CARGA || x.VTO_CARGA < f0) return { ok: false, mensaje: 'La carga está vencida o sin fecha: hacé el control completo (con vencimiento, problemas y fotos).' }; }
-  const faltan = INC.CHEQUEOS.filter(c => !/^(Sí|No)$/.test(x[c[0]] || '')).map(c => c[1]); if (faltan.length) return { ok: false, mensaje: 'Falta responder: ' + faltan.join(', ') + '.' };
-  const sinFoto = todoOk ? [] : INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
-  const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' n.º ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
+    const f0 = incISO_(x.FECHA) || incHoy_(); if (!x.VTO_CARGA || x.VTO_CARGA < f0) return { ok: false, codigo: 'datos', mensaje: 'La carga está vencida o sin fecha: hacé el control completo (con vencimiento, problemas y fotos).' }; }
+  const faltan = INC.CHEQUEOS.filter(c => !/^(Sí|No)$/.test(x[c[0]] || '')).map(c => c[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta responder: ' + faltan.join(', ') + '.' };
+  const sinFoto = todoOk ? [] : INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
+  const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' puesto ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
+  // Vencimientos: fechas entre 2020 y 2040 (antes de guardar las fotos, para no dejar fotos sueltas si hay que corregir)
+  if (!todoOk) for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
+    const v = x[k]; if (!v || /^s\/d/i.test(String(v))) continue; if (!incFechaOk_(incISO_(v))) return { ok: false, codigo: 'fecha', mensaje: nom + ' tiene que ser una fecha entre 2020 y 2040. Revisá el año en la tarjeta.' };
+  }
   const fotos = {}; if (!todoOk) INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));   // «Todo OK»: sin fotos, quedan las del último control
   // Vencimientos leídos en el control (pedido de Belén 14/10/2026): carga obligatoria (de la tarjeta), prueba hidráulica si figura
   const vto = /^s\/d/i.test(x.VTO_CARGA || '') ? '' : incISO_(x.VTO_CARGA) || '', ph = /^s\/d/i.test(x.PRUEBA_HIDRAULICA_VENCE || '') ? 's/d (revisar)' : incISO_(x.PRUEBA_HIDRAULICA_VENCE) || '';
-  if (!vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
+  if (!vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, codigo: 'fecha', mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
   const probs = (Array.isArray(x.PROBLEMAS) ? x.PROBLEMAS : String(x.PROBLEMAS || '').split(' · ')).map(limpio_).filter(p => INC.PROBLEMAS.indexOf(p) >= 0);
   if (vto && vto < fecha && probs.indexOf('Carga vencida') < 0) probs.push('Carga vencida');
   if (!vto && probs.indexOf('Sin tarjeta (marbete) o ilegible') < 0) probs.push('Sin tarjeta (marbete) o ilegible');
   const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
-  const c = { ID: 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
+  const c = { ID: idOrigen ? 'CTL-' + idOrigen : 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
     ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES) || (todoOk ? 'Todo OK (control rápido, sin fotos)' : ''), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · '),
     VTO_CARGA: vto ? incFecha_(vto) : 's/d (no se lee)', PRUEBA_HIDRAULICA_VENCE: ph && ph !== 's/d (revisar)' ? incFecha_(ph) : ph };
   INC.CHEQUEOS.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
@@ -554,8 +673,15 @@ function incPortal_(accion, x) {
 function incRed_(d, acc) {
   if (!PropertiesService.getScriptProperties().getProperty(INC.P_LIBRO)) return { ok: false, mensaje: 'El módulo de incendio todavía no está habilitado.' };
   const x = d.datos || {}, cod = limpio_(d.est);
+  // MIPyV (29/10/2026): acceso de servicio «MIPyV». Lo carga el operario de MIPyV (Javier Tramaleo); su nombre viene en x.operario.
+  // Solo puede ver la lista, cargar controles y agregar o corregir extintores (no marca resueltos ni carga novedades).
+  const esMipyv = !!(acc && acc.servicio && sinTildes_(acc.servicio) === sinTildes_(INC.SERVICIO_MIPYV));
+  if (esMipyv) {
+    if (!/^i_(datos|control|ext_alta|ext_editar)$/.test(d.accion)) return { ok: false, codigo: 'permiso', mensaje: 'Desde MIPyV solo se cargan controles y extintores.' };
+    x.quien = limpio_(x.operario || 'Operario MIPyV') + (limpio_(x.operario_acompanante) ? ' (con ' + limpio_(x.operario_acompanante) + ')' : '') + ' · MIPyV';
+  }
   // Empresas de servicio (SOMI, MAREM): cada registro lleva quién lo hizo (DNI cruzado con la base de personal) · IncendioServicios.gs
-  if (acc && acc.servicio && /^i_(control|ext_alta|ext_editar|resolver|recorrida|novedad|nov_resolver)$/.test(d.accion)) {
+  if (!esMipyv && acc && acc.servicio && /^i_(control|ext_alta|ext_editar|resolver|recorrida|novedad|nov_resolver)$/.test(d.accion)) {
     const idn = incSrvIdentidad_(x.identidad, acc, cod); if (!idn.ok) return idn; x.quien = idn.quien;
   }
   const quien = x.quien || 'Mi establecimiento';
