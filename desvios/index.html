@@ -96,6 +96,9 @@ const ESTS = {
 };
 const EST = (new URLSearchParams(location.search).get('e') || 'HMH').toUpperCase() in ESTS ? (new URLSearchParams(location.search).get('e') || 'HMH').toUpperCase() : 'HMH';
 const API = ESTS[EST].api;
+// 29/10/2026: ?embed=1 = dentro de «Mi establecimiento» (HSST): sin encabezado propio
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) { const st = document.createElement('style'); st.textContent = 'header{display:none!important}'; document.head.appendChild(st); }
 // 29/10/2026 (Belén): el HSST usa los colores de la Secretaría de Salud, como «Mi establecimiento» (la paleta azul es solo HZT/HMH)
 if (EST === 'HSST') { const R = document.documentElement.style; R.setProperty('--gris', '#343A40'); R.setProperty('--az', '#21708C'); R.setProperty('--nar', '#FF682C'); R.setProperty('--pa', '#5894A7'); const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.setAttribute('content', '#343A40'); }
 const RESIDUOS = ['Biopatogénico (bolsa roja)', 'Cortopunzante', 'Común / RSU (bolsa negra)', 'Reciclable (bolsa verde)', 'Químico / especial (bolsa amarilla)', 'Medicamentos / ampollas', 'No se puede saber'];
