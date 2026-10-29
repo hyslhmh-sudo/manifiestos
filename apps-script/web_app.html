@@ -2573,7 +2573,23 @@ async function desvLista(fresco) {
     catch (e) { b.disabled = false; alert(navigator.onLine ? e.message : 'Sin señal: probá de nuevo cuando vuelva la conexión.'); } });
   miVolver(); window.scrollTo(0, 0);
 }
-Object.assign(ACT, { desvLista: () => { F = null; desvLista(); }, desvAct: () => desvLista(true), desvCargar: () => { window.open(desvCargaUrl(), '_blank', 'noopener'); } });
+Object.assign(ACT, { desvLista: () => { F = null; desvLista(); }, desvAct: () => desvLista(true), desvCargar: () => { if (desvHsst()) desvCargarAca(); else window.open(desvCargaUrl(), '_blank', 'noopener'); } });
+// 29/10/2026 (Belén): en el HSST el desvío se carga dentro de «Mi establecimiento» (lugar de carga único). La página de desvíos va
+// embebida (?embed=1) y ya sabe quién carga: se toma de la sesión (DNI y clave personal) y se busca en OPERARIOS por el nombre.
+async function desvCargarAca() {
+  VISTA = 'mi'; MIV = { f: () => desvCargarAca() }; vista('wide'); F = null;
+  const pref = 'desv_HSST_', P = SES && SES.persona;
+  if (P && P.propia && P.nombre) {
+    const norm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+    let L = null; try { L = JSON.parse(localStorage.getItem(pref + 'listas') || 'null'); } catch (e) {}
+    if (!L || !(L.operarios || []).some(o => norm(o.nombre) === norm(P.nombre))) { try { const r = await fetch(DESV_API_HSST, { redirect: 'follow' }).then(x => x.json()); if (r && r.ok) { L = r; localStorage.setItem(pref + 'listas', JSON.stringify(r)); } } catch (e) {} }
+    const o = L && (L.operarios || []).find(x => norm(x.nombre) === norm(P.nombre));
+    if (o) try { localStorage.setItem(pref + 'yo', JSON.stringify({ cod: o.cod, nombre: o.nombre, empresa: o.empresa, dni3: String(P.dni || '').replace(/\D/g, '').slice(-3) })); } catch (e) {}
+  }
+  $('app').innerHTML = miTit('Cargar un desvío', 'Lugar, qué viste y fotos. Queda registrado en el sistema; no se mandan correos.') +
+    '<iframe src="' + DESV_CARGA + '?e=HSST&embed=1" title="Cargar un desvío" style="width:100%;height:calc(100vh - 230px);min-height:520px;border:1px solid var(--line);border-radius:12px;background:#fff" allow="camera"></iframe>';
+  bar('<button class="btn sec" data-act="inicio">Volver al inicio</button><button class="btn pri" data-act="desvLista">Mis desvíos</button>'); window.scrollTo(0, 0);
+}
 
 // ---------------- Desvíos: supervisión (supervisor de Star Union · módulo «Desvíos» · DesviosAcciones.gs › dacSupervision_)
 let DSUP = null, DSUPF = { op: '', dias: '30', ver: 'abiertos' };
@@ -2687,7 +2703,7 @@ const AYG = [
   { m: '', t: 'Fotos y PDF que se lean', p: ['Documento completo, con los cuatro bordes, derecho y de frente, apoyado sobre una mesa.', 'Buena luz, sin sombras, reflejos ni dedos encima.', 'Que se lean el número, la fecha, las cantidades y las firmas al agrandar.', 'Varias hojas: escanealas como un solo PDF (Google Drive › + › Escanear). Hasta 6 MB.', 'Después de guardar, abrilo con «Ver» desde «Mis registros» para comprobarlo.'] },
   { m: 'Residuos', t: 'Cargar un manifiesto', p: ['Inicio › Residuos › «Cargar un manifiesto». Son 4 pasos: Retiro, Residuos, Control del papel y Revisión.', 'Número tal como está impreso (solo números) y fecha de recolección.', 'Completá solo las corrientes que figuran (Y1 bolsa roja, Y3 medicamentos): contenedor, cantidad y tamaño; los dm³ se calculan solos.', 'Revisá el resumen, corregí lo que haga falta y tocá «Guardar manifiesto».'] },
   { m: '', est: 'HSST', t: 'Referente del HSST: qué ves', p: ['Entrás con tu DNI y tu clave personal (te la da Higiene y Seguridad).', '1 · Residuos: manifiestos, certificados y desvíos. 2 · Agua: «Tanques y cisternas» (relevamiento cada 3 meses y lista de tanques), limpiezas, Formulario 2, análisis e informes del laboratorio. 7 · Incendio: «Control de extintores».', 'Las auditorías, los diagnósticos y las hojas para imprimir de las evaluaciones los maneja Higiene y Seguridad: no aparecen en tu pantalla.'] },
-  { m: 'Residuos', t: 'Desvíos (HSST)', p: ['Solo en el Hospital Santa Teresita: Inicio › 1 · Residuos › «Cargar un desvío» abre la página de carga con los lugares del HSST (internación, servicios y un punto por CAPS). Elegí tu nombre, los 3 últimos números del DNI, el lugar, qué viste y sacá fotos.', '«Mis desvíos»: todo lo cargado, lo que revisó Higiene y Seguridad y lo que hay que verificar en el lugar («Corregido» o «Sigue igual»).', 'No se mandan correos. Si la página no abre, se puede cargar a mano en la planilla de desvíos del HSST.'] },
+  { m: 'Residuos', t: 'Desvíos (HSST)', p: ['Solo en el Hospital Santa Teresita: Inicio › 1 · Residuos › «Cargar un desvío» abre, dentro de esta misma pantalla, la carga con los lugares del HSST (internación, servicios y un punto por CAPS). Ya sabe quién sos: elegí el lugar, marcá qué viste y sacá fotos.', '«Mis desvíos»: todo lo cargado, lo que revisó Higiene y Seguridad y lo que hay que verificar en el lugar («Corregido» o «Sigue igual»).', 'No se mandan correos. Si la página no abre, se puede cargar a mano en la planilla de desvíos del HSST.'] },
   { m: 'Residuos', t: 'Foto del manifiesto: plazo', p: ['Se puede guardar sin foto, pero hay que subirla antes del día 10 del mes siguiente: «Mis registros» › «Subir foto», o con el lote .zip del mes.', 'Desde 2027, si no se sube a tiempo, no se pueden cargar manifiestos nuevos.'] },
   { m: 'Residuos', t: 'Certificado de tratamiento', p: ['Inicio › Residuos › «Cargar un certificado»: uno por mes, cubre todos los retiros del mes.', 'Empresa, mes y año, número y fecha de tratamiento; la cantidad tratada por corriente (dm³ o kg) es opcional; la foto es obligatoria desde 2027.', '«Ver avance por mes» muestra qué meses tienen retiros y certificado.'] },
   { m: 'Residuos', t: 'Enviar escaneados (lote .zip)', p: ['Desde una computadora: poné los escaneos del mes en una carpeta (si cada archivo se llama con el número de manifiesto, se une solo).', 'Clic derecho › Enviar a › Carpeta comprimida (.zip); hasta 20 MB cada una.', 'Inicio › Residuos › «Enviar escaneados», elegí mes y año, la carpeta, y «Enviar». No cierres hasta ver el resultado.'] },

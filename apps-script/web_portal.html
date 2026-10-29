@@ -4355,7 +4355,7 @@ async function accesosPantalla(fresco) {
     (/desconocida/i.test(ACCPD.error || ACCPD.mensaje || '') ? '<section class="card peq">Falta publicar la versión del sistema que trae esta pantalla. Mientras tanto, los accesos se manejan en BASE COMÚN › ACCESOS.</section>' : ''));
   const D = ACCPD, F = ACCPF, todas = D.filas;
   const est = p => /^activ/i.test(p.ESTADO) ? 'Activo' : /^baja/i.test(p.ESTADO) ? 'Baja' : 'Pendiente';
-  const listo = p => est(p) === 'Activo' && !!p.CLAVE && !!accpDni(p.DNI);
+  const listo = p => est(p) === 'Activo' && !!p.CLAVE && (!!accpDni(p.DNI) || /servicio/i.test(p.ROL || ''));   // 29/10/2026: SOMI, MAREM y MIPyV entran sin DNI, con clave de servicio
   const chip = p => listo(p) ? '<span class="chip ok">Activo</span>' : est(p) === 'Activo' ? '<span class="chip wa">Activo sin clave</span>' : est(p) === 'Baja' ? '<span class="chip gr">Baja</span>' : '<span class="chip pa">Pendiente</span>';
   const vis = todas.filter(p => (!F.estado || est(p) === F.estado) && (!F.q || (p.APELLIDO_Y_NOMBRE + ' ' + p.DNI + ' ' + p.ROL + ' ' + p.ESTABLECIMIENTOS + ' ' + p.MODULOS).toLowerCase().indexOf(F.q.toLowerCase()) >= 0));
   const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
