@@ -885,7 +885,7 @@ function inicio() {
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
-  const P = MI ? MI.pendientes.filter(p => !TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) : [], ir = { agua_alta: 'aguaInv', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
+  const P = MI ? MI.pendientes.filter(p => !TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) : [], ir = { agua_alta: 'aguaInv', agua_insp: 'aguaInsp', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
     '<p class="mu" style="margin-top:-6px">Hola, <b>' + esc(SES.persona.nombre) + '</b> · ' + (SES.persona.propia ? '' : '<button class="link" data-act="quienCarga">Cambiar de persona</button> · ') + '<button class="link" data-act="cambiarEst">Cambiar de establecimiento</button></p>' +
@@ -902,7 +902,7 @@ function inicio() {
       (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
       (puede('Residuos') ? tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') : '') + '</div>' : '') +
-    (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto del formulario F-AGU-01') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
+    (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaInsp', 'Relevamiento de tanques', 'Cada 3 meses: tapa, fisuras, sedimento, ventilación…') + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto o el PDF del ' + aguaF1() + ' firmado') + (SES.est === 'HSST' ? tile('aguaForm2', 'Personal designado (Formulario 2)', MI && MI.form2 ? 'Cargado el ' + fechaTxt(MI.form2.cargado) + ' · subir uno nuevo si cambió' : 'Subir el registro firmado del personal que limpia los tanques') : '') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y canillas', 'Ver, cambiar o agregar') + (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
     (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + (maudHys() ? tile('plInsp', 'Inspección del trabajo de los operarios', 'Higiene y Seguridad: control en el lugar, con puntos críticos y fotos') : '') + '</div>' : '') +
     (puede('Cocina') || puede('Relevamiento de cocina') ? '<h2>4 · Cocina</h2><div class="menu">' + (puede('Cocina') ? tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') : '') + (puede('Relevamiento de cocina') ? tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') : '') + '</div>' : '') +   // 14.70: se habilitan aparte
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>5 · Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + tile('rxForms', 'Formularios del dosímetro', 'F-RAD-01 alta, F-RAD-02 baja y F-RAD-03 novedad: con los datos del trabajador o en blanco') + '</div>' : '') +
@@ -910,7 +910,7 @@ function inicio() {
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>8 · Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Capacitaciones') >= 0 ? '<h2>9 · Capacitaciones</h2><div class="menu">' + tile('qPers', 'Personas', 'Correo, teléfono y cambios de servicio o función', true) + tile('qAlta', 'Agregar persona nueva', 'Ingresos, residentes, tercerizados') + tile('qJef', 'Jefaturas y servicios', 'Responsable, correos e interno de cada servicio') + tile('qMails', 'Cargar lista de mails', 'Pegar una lista y revisar antes de cargar') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Notas') >= 0 ? '<h2>10 · Notas</h2><div class="menu">' + tile('notaRec', 'Registrar una nota recibida', 'Notas que llegan de otros servicios, con su escaneo', true) + tile('notaSeg', 'Envío y respuesta', 'Cuándo se envió una nota del servicio y qué respondieron') + '</div>' : '') +
-    '<h2>' + (puede('Documentos') ? '10 · Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'F-AGU-01, F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + (SES.servicio ? '' : tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado')) + '</div>' +
+    '<h2>' + (puede('Documentos') ? '10 · Documentos y cargas' : 'Mis cargas') + '</h2><div class="menu">' + (puede('Documentos') ? tile('formularios', 'Formularios para imprimir', 'Limpieza de tanques (' + aguaF1() + '), F-PLG-02 a 04 y procesos de referencia') + tile('contratos', 'Contratos y documentación', 'Contrato de residuos y otros documentos compartidos') + tile('docs', 'Manuales, guías, POE, protocolos y PTS', 'Los del establecimiento, para ver o cargar') : '') + tile('consulta', 'Mis cargas', (pend ? pend + ' por enviar · ' : '') + 'Lo que falta enviar') + (SES.servicio ? '' : tile('registros', 'Mis registros', 'Ver, corregir o anular lo cargado')) + '</div>' +
     '<p class="mu" style="font-size:13px">Datos del sistema al ' + (MI ? fechaTxt(MI.hoy) : '—') + ' · <button class="link" data-act="actualizar">Actualizar</button></p>';
   bar(null); window.scrollTo(0, 0);
 }
@@ -1300,7 +1300,8 @@ function aguaInv() {
   VISTA = 'mi'; MIV = { f: aguaInv }; vista('wide'); if (miSinDatos()) return;
   const T = MI.tanques, P = MI.puntos, chip = e => '<span class="tag ' + miEstTxt[e][1] + '">' + miEstTxt[e][0] + '</span>';
   $('app').innerHTML = miTit('Mis tanques y canillas', 'Se cargan una sola vez: después cada limpieza y cada análisis usan estos datos. Limpieza: ' + esc(MI.poe.limpieza) + ' · Muestras: ' + esc(MI.poe.muestra) + '.') +
-    '<h2>Tanques y cisternas</h2>' + (T.length ? '<div class="lista">' + T.map(t => '<div class="item"><div><b>' + esc(t.codigo) + ' · ' + esc(t.tipo || 'Tanque') + '</b><small>' + esc([t.ubicacion, t.capacidad ? nf(t.capacidad) + ' l' : '', t.acceso].filter(Boolean).join(' · ')) + '<br>' + (t.ultima ? 'Última limpieza: ' + fechaTxt(t.ultima) + ' · próxima: ' + fechaTxt(t.proxima) : 'Sin limpieza registrada') + '</small>' +
+    '<h2>Tanques y cisternas</h2>' + (T.length ? '<div class="lista">' + T.map(t => '<div class="item"><div><b>' + esc(t.codigo) + ' · ' + esc(t.tipo || 'Tanque') + '</b><small>' + esc([t.ubicacion, t.capacidad ? nf(t.capacidad) + ' l' : '', t.acceso].filter(Boolean).join(' · ')) + '<br>' + (t.ultima ? 'Última limpieza: ' + fechaTxt(t.ultima) + ' · próxima: ' + fechaTxt(t.proxima) : 'Sin limpieza registrada') +
+      (t.insp ? '<br>Último relevamiento: ' + fechaTxt(t.insp.fecha) + ' · ' + esc(t.insp.resultado) + ' · próximo: ' + fechaTxt(t.insp.proxima) : '<br>Sin relevamiento de estado') + '</small>' +
       '<button class="link" data-act="aguaEditT" data-arg="' + esc(t.codigo) + '">Cambiar datos</button></div>' + chip(t.estado) + '</div>').join('') + '</div>' : '<p class="mu">Todavía no hay tanques cargados.</p>') +
     '<div class="menu"><button class="big" data-act="aguaEditT" data-arg=""><b>+ Agregar tanque o cisterna</b><span>El código lo pone el sistema</span></button></div>' +
     '<h2>Canillas donde se toman las muestras</h2>' + (P.length ? '<div class="lista">' + P.map(p => '<div class="item"><div><b>' + esc(p.codigo) + ' · ' + esc(p.ubicacion) + '</b><small>' + (p.bact ? 'Bacteriológico: ' + fechaTxt(p.bact) + ' (vence ' + fechaTxt(p.venceBact) + ')' : 'Sin análisis registrado') + (p.ultimo ? '<br>Último resultado: ' + esc(p.ultimo) : '') + '</small>' +
@@ -1347,37 +1348,89 @@ async function guardarInv(tipo) {
 }
 
 // ------------------------------------------------------------------ Agua: limpieza y análisis
+// Formulario de limpieza de cada red: HSST (red Rawson) usa el Formulario 1 del POE-HSST-AGU-001; el resto, el F-AGU-01 (29/10/2026)
+const aguaF1 = () => SES && SES.est === 'HSST' ? 'Formulario 1' : 'F-AGU-01';
+// Agua al 20 % de la capacidad y 2 mL de lavandina 5,5 % por litro de agua cargada (110 ppm), como en el formulario
+function aguaDosis(t) { if (!F || F._dosisDe === t.codigo) return; F._dosisDe = t.codigo; const cap = Number(String(t.capacidad || '').replace(/\./g, '').replace(',', '.'));
+  if (cap > 0) { F.AGUA_L = String(Math.round(cap * 0.2)); F.LAVANDINA_ML = String(Math.round(cap * 0.2) * 2); } else { F.AGUA_L = ''; F.LAVANDINA_ML = ''; } }
 function aguaLimpieza() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
   if (!MI.tanques.length) return aguaInv();
-  const propio = /^propio/i.test(MI.poe.limpieza), cargado = /https?:/.test(MI.poe.limpieza);
+  const propio = /^propio/i.test(MI.poe.limpieza), cargado = /https?:/.test(MI.poe.limpieza), f1 = aguaF1();
   F = F && F._f === 'lim' ? F : { _f: 'lim', CODIGO_TANQUE: (MI.tanques.find(t => t.estado !== 'aldia') || MI.tanques[0]).codigo, FECHA: hoyISO(), PROCEDIMIENTO: propio ? 'POE propio' : 'Proceso provincial',
-    DESINFECTANTE: 'Lavandina concentrada', CONCENTRACION_GL: '55', TAPA: 'Sí, en condiciones', MUESTRA_TOMADA: 'Sí' };
+    TAPA: 'Sí, en condiciones', MUESTRA_TOMADA: 'Pendiente', HORAS_CERRADO: '6' };
   MIV = { f: aguaLimpieza }; VISTA = 'mi'; vista('form');
-  const t = MI.tanques.find(x => x.codigo === F.CODIGO_TANQUE) || MI.tanques[0];
-  $('app').innerHTML = miTit('Registrar limpieza de tanque', 'Completá el formulario F-AGU-01 en papel, firmalo y sacale una foto.') + fErr +
+  const t = MI.tanques.find(x => x.codigo === F.CODIGO_TANQUE) || MI.tanques[0]; aguaDosis(t);
+  $('app').innerHTML = miTit('Registrar limpieza de tanque', 'Completá el ' + f1 + ' en papel durante la limpieza, firmalo y sacale una foto (hasta 5) o subí el PDF escaneado.') + fErr +
     fSel('CODIGO_TANQUE', '¿Qué tanque o cisterna?', MI.tanques.map(x => [x.codigo, x.codigo + ' · ' + (x.ubicacion || x.tipo) + ' · ' + miEstTxt[x.estado][0]])) +
-    '<div class="notice ok" style="background:var(--cl);color:var(--tx)"><b>Datos guardados de ' + esc(t.codigo) + '</b><br>' + esc([t.tipo, t.ubicacion, t.capacidad ? nf(t.capacidad) + ' litros' : '', t.uso, 'acceso: ' + (t.acceso || 's/d'), 'tapa: ' + (t.tapa || 's/d')].filter(Boolean).join(' · ')) +
+    '<div class="notice ok" style="background:var(--cl);color:var(--tx)"><b>Datos guardados de ' + esc(t.codigo) + '</b><br>' + esc([t.tipo, t.ubicacion, t.capacidad ? nf(t.capacidad) + ' litros' : 'capacidad s/d', t.uso, 'acceso: ' + (t.acceso || 's/d'), 'tapa: ' + (t.tapa || 's/d')].filter(Boolean).join(' · ')) +
       '<br><button class="link" data-act="aguaEditT" data-arg="' + esc(t.codigo) + '">Cambiar datos del tanque</button></div>' +
     fInp('FECHA', 'Fecha de la limpieza', 'date') + fSeg('PROCEDIMIENTO', 'Procedimiento usado', ['Proceso provincial', 'POE propio']) +
     (F.PROCEDIMIENTO === 'POE propio' ? (cargado ? '<p class="mu">POE propio ya cargado: ' + esc(MI.poe.limpieza.split(' · ')[0]) + '. Si cambió de versión, subí la nueva abajo.</p>' : '<div class="notice">Es la primera vez con el POE propio: subí una copia (foto o PDF). Queda guardado para las próximas.</div>') +
-      '<div class="grid2">' + fInp('POE_CODIGO', 'Código del POE', 'text', 'Ej.: POE-AGU-001') + fInp('POE_VERSION', 'Versión', 'text', 'Ej.: 2') + '</div>' + fFoto('poe', 'Copia del POE propio', cargado ? 'Solo si cambió de versión' : 'Foto o PDF') : '') +
+      '<div class="grid2">' + fInp('POE_CODIGO', 'Código del POE', 'text', SES.est === 'HSST' ? 'Ej.: POE-HSST-AGU-001' : 'Ej.: POE-AGU-001') + fInp('POE_VERSION', 'Versión', 'text', 'Ej.: 01') + '</div>' + fFoto('poe', 'Copia del POE propio', cargado ? 'Solo si cambió de versión' : 'Foto o PDF') : '') +
     '<div class="grid2">' + fInp('HORA_CORTE', 'Hora de corte', 'time') + fInp('HORA_REHABILITACION', 'Hora de rehabilitación', 'time') + '</div>' +
-    '<div class="grid2">' + fInp('HORAS_CERRADO', 'Horas con el sistema cerrado', 'number', 'Mínimo 6') + fInp('VOLUMEN_L', 'Lavandina usada (litros)', 'number', 'Ref.: 1,5 l cada 1.000 l') + '</div>' +
-    '<div class="grid2">' + fInp('DESINFECTANTE', 'Desinfectante') + fInp('CONCENTRACION_GL', 'Concentración (g de cloro por litro)', 'number') + '</div>' +
-    '<div class="grid2">' + fInp('CLORO_PPM', 'Cloro libre residual (ppm)', 'number', '0,2 a 0,6') + fInp('TURBIDEZ_NTU', 'Turbidez (NTU), si se midió', 'number', 'Menos de 1') + '</div>' +
-    fSeg('TAPA', 'Tapa al terminar', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSeg('MUESTRA_TOMADA', '¿Se tomaron las muestras posteriores?', ['Sí', 'Pendiente']) +
-    fFoto('foto', 'Foto del formulario F-AGU-01 firmado', 'Obligatoria') + fTxt('OBSERVACIONES', 'Novedades (opcional)', 'Fisuras, sedimentos, reparaciones necesarias…');
+    '<h2>Desinfección (como en el formulario)</h2>' +
+    '<div class="grid2">' + fInp('AGUA_L', 'Agua cargada (litros)', 'number', 'El 20 % de la capacidad', 'Capacidad × 0,2') + fInp('LAVANDINA_ML', 'Lavandina 5,5 % (mL)', 'number', '2 mL por litro de agua', 'Litros de agua × 2') + '</div>' +
+    fInp('HORAS_CERRADO', 'Horas con el sistema cerrado', 'number', 'Mínimo ' + aguaMinH()) +
+    '<p class="mu" style="font-size:13px;margin-top:-4px">El cloro libre residual no se mide acá: lo mide el Departamento Provincial de Saneamiento Básico (DPSB) cuando toma la muestra.</p>' +
+    fSeg('TAPA', 'Tapa al terminar', ['Sí, en condiciones', 'Deficiente', 'No tiene']) + fSeg('MUESTRA_TOMADA', 'Análisis después de la limpieza', ['Ya se pidió', 'Pendiente', 'No corresponde esta vez']) +
+    fFoto('foto', 'Foto o PDF del ' + f1 + ' firmado', 'Obligatorio · hasta 5 fotos o un PDF') + fTxt('OBSERVACIONES', 'Novedades (opcional)', 'Lo que no se pudo hacer, fisuras, sedimentos, reparaciones necesarias…');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarLimpieza">Guardar</button>');
 }
+// Tiempo de contacto mínimo: 6 h (proceso provincial y POE del HSST); 3 h con el POE-AGU-001 de la red Trelew (se recomiendan 6)
+const aguaMinH = () => F && F.PROCEDIMIENTO === 'POE propio' && SES.est !== 'HSST' ? 3 : 6;
 function guardarLimpieza() {
-  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto del formulario F-AGU-01 firmado.');
+  const f1 = aguaF1();
+  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF del ' + f1 + ' firmado.');
   if (F.PROCEDIMIENTO === 'POE propio' && !/https?:/.test(MI.poe.limpieza) && !F.poe) return miErr('Falta la copia del POE propio (es la primera vez).');
-  if (F.HORAS_CERRADO && Number(F.HORAS_CERRADO) < 6) return miErr('El sistema tiene que quedar cerrado al menos 6 horas.');
-  const d = Object.assign({}, F); delete d.foto; delete d.fotoNombre; delete d.fotoMas; delete d.poe; delete d.poeNombre; delete d.poeMas; delete d._f;
+  if (!F.AGUA_L || !F.LAVANDINA_ML) return miErr('Faltan los litros de agua cargada y los mL de lavandina (están en el ' + f1 + ').');
+  if (F.HORAS_CERRADO && Number(String(F.HORAS_CERRADO).replace(',', '.')) < aguaMinH()) return miErr('El sistema tiene que quedar cerrado al menos ' + aguaMinH() + ' horas.');
+  const d = Object.assign({}, F); ['foto', 'fotoNombre', 'fotoMas', 'poe', 'poeNombre', 'poeMas', '_f', '_dosisDe'].forEach(k => delete d[k]);
   d.archivo = miArch(F, 'foto'); if (F.poe) d.poe = miArch(F, 'poe');
   encolarMi('m_limpieza', d, 'Limpieza de ' + F.CODIGO_TANQUE);
 }
+// Relevamiento de estado cada 3 meses (POE de limpieza de tanques: inspección visual trimestral). Mismas preguntas que la app MIP
+// y que el punto 7 del formulario de limpieza. Si algo está mal, el sistema dice si hace falta limpiar, reparar o las dos cosas.
+const AGUA_INSP_P = [['FISURAS', '¿Tiene fisuras o pierde agua?'], ['OXIDO', '¿Tiene óxido o está deteriorado?'], ['SEDIMENTO', '¿Se ve barro o sedimento en el fondo?'], ['OLOR_TURBIDEZ', '¿El agua tiene olor raro o se ve turbia?'],
+  ['FLOTANTE_OK', '¿El flotante y las válvulas andan bien?'], ['VENTILACION_MALLA', '¿La ventilación tiene malla?'], ['INSECTOS', '¿Hay insectos, nidos o restos de animales?'], ['ACCESO_SEGURO', '¿Se puede llegar al tanque de forma segura?']];
+function aguaInsp() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  if (!MI.tanques.length) return aguaInv();
+  F = F && F._f === 'insp' ? F : { _f: 'insp', CODIGO_TANQUE: (MI.tanques.find(t => !t.insp || t.insp.proxima < hoyISO()) || MI.tanques[0]).codigo, FECHA: hoyISO() };
+  MIV = { f: aguaInsp }; VISTA = 'mi'; vista('form');
+  const t = MI.tanques.find(x => x.codigo === F.CODIGO_TANQUE) || MI.tanques[0];
+  $('app').innerHTML = miTit('Relevamiento de tanques', 'Cada 3 meses, mirar cada tanque o cisterna. Si hay barro, olor, agua turbia o bichos, se limpia aunque no toque.') + fErr +
+    fSel('CODIGO_TANQUE', '¿Qué tanque o cisterna?', MI.tanques.map(x => [x.codigo, x.codigo + ' · ' + (x.ubicacion || x.tipo) + (x.insp ? ' · relevado ' + fechaTxt(x.insp.fecha) : ' · sin relevamiento')])) +
+    '<div class="notice ok" style="background:var(--cl);color:var(--tx)"><b>' + esc(t.codigo) + '</b> · ' + esc([t.tipo, t.ubicacion, t.capacidad ? nf(t.capacidad) + ' litros' : ''].filter(Boolean).join(' · ')) +
+      (t.insp ? '<br>Último relevamiento: ' + fechaTxt(t.insp.fecha) + ' · ' + esc(t.insp.resultado) : '') + '</div>' +
+    fInp('FECHA', 'Fecha del relevamiento', 'date') + fSeg('TAPA', '¿Cómo está la tapa?', ['Sí, en condiciones', 'Deficiente', 'No tiene']) +
+    AGUA_INSP_P.map(q => fSeg(q[0], q[1], ['Sí', 'No'])).join('') +
+    fFoto('foto', 'Fotos (opcional)', 'Hasta 5: tapa, interior, lo que esté mal') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Qué hay que arreglar, dónde…');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarInsp">Guardar</button>');
+}
+function guardarInsp() {
+  if (!F.FECHA) return miErr('Falta la fecha.'); if (!F.TAPA) return miErr('Falta responder cómo está la tapa.');
+  const f = AGUA_INSP_P.filter(q => !F[q[0]]); if (f.length) return miErr('Falta responder: ' + f.map(q => q[1].toLowerCase()).join(' '));
+  const d = Object.assign({}, F); ['foto', 'fotoNombre', 'fotoMas', '_f'].forEach(k => delete d[k]); d.archivo = miArch(F, 'foto');
+  encolarMi('m_inspeccion', d, 'Relevamiento de ' + F.CODIGO_TANQUE);
+}
+// Formulario 2: registro de personal designado y capacitado para la limpieza de tanques, firmado. El nuevo reemplaza al anterior.
+function aguaForm2() {
+  if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
+  F = F && F._f === 'f2' ? F : { _f: 'f2', FECHA: hoyISO() };
+  MIV = { f: aguaForm2 }; VISTA = 'mi'; vista('form'); const ya = MI.form2;
+  $('app').innerHTML = miTit('Personal designado (Formulario 2)', 'El registro de las personas que designó la Dirección para limpiar los tanques, con su capacitación. Se completa en papel, se firma y se sube acá.') + fErr +
+    (ya ? '<div class="notice ok"><b>Último cargado:</b> ' + fechaTxt(ya.cargado) + ' · <a href="' + esc(ya.url) + '" target="_blank" rel="noopener">Ver</a><br>Si cambió el personal o venció una capacitación, subí el nuevo: reemplaza al anterior.</div>' : '<div class="notice">Todavía no se cargó. Antes de la primera limpieza, completalo y subilo.</div>') +
+    fInp('FECHA', 'Fecha del formulario', 'date') + fFoto('foto', 'Foto o PDF del Formulario 2 firmado', 'Obligatorio · hasta 5 fotos o un PDF') + fTxt('OBSERVACIONES', 'Observaciones (opcional)');
+  bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarForm2">Guardar</button>');
+}
+function guardarForm2() {
+  if (!F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF del Formulario 2 firmado.');
+  const d = Object.assign({}, F); ['foto', 'fotoNombre', 'fotoMas', '_f'].forEach(k => delete d[k]); d.archivo = miArch(F, 'foto');
+  encolarMi('m_form2', d, 'Formulario 2');
+}
+// Al cambiar de tanque en la limpieza o el relevamiento, se vuelve a dibujar (datos guardados y cuenta de la dosis)
+document.addEventListener('change', e => { const s = e.target; if (s.dataset && s.dataset.f === 'CODIGO_TANQUE' && F && MIV && (MIV.f === aguaLimpieza || MIV.f === aguaInsp)) { F.CODIGO_TANQUE = s.value; MIV.f(); } });
 function aguaAnalisis() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
   if (!MI.puntos.length) return aguaInv();
@@ -1448,7 +1501,8 @@ function guardarPlagaReg() {
 // ------------------------------------------------------------------ Documentos
 function formularios() {
   VISTA = 'mi'; MIV = { f: formularios }; vista('wide'); if (miSinDatos()) return;
-  const L = MI.formularios || [];
+  // Cada red ve su formulario de limpieza de tanques: HSST (red Rawson) el Formulario 1 y 2; la red Trelew, el F-AGU-01-T (29/10/2026)
+  const L = (MI.formularios || []).filter(f => !(/red rawson|hsst/i.test(f.nombre) && SES.est !== 'HSST') && !(/red trelew/i.test(f.nombre) && SES.est === 'HSST'));
   const rx = SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 || maudHys();   // F-RAD-01 a 03 en blanco (RadFormularios.gs, 25/10/2026)
   $('app').innerHTML = miTit('Formularios para imprimir', 'Se descargan, se completan en papel, se firman y se suben por foto desde cada carga.') +
     (rx ? '<h2>Radiaciones · dosímetro personal</h2><div class="lista">' + Object.keys(RX_FORMS).map(k => '<div class="item"><div><b>' + RX_FORMS[k][0] + ' · ' + esc(RX_FORMS[k][1].charAt(0).toUpperCase() + RX_FORMS[k][1].slice(1)) + '</b><small>En blanco, dos copias (Personal y Higiene y Seguridad)' + (k === 'alta' ? ', con el anexo de compromiso de uso' : '') + '</small></div>' +
@@ -1690,7 +1744,7 @@ function regCorregir(i) {
   }
   if (r.tipo === 'certificado') { const m = String(d.mes || '').split('-'); return nuevoCertificado({ tipo: 'certificado', idLocal: idNuevo(), empresa: d.empresa, mesM: m[1] || '', mesA: m[0] || '', mes: d.mes, ncert: d.ncert, ftrat: d.ftrat, res: d.res || [], _ftrat: d.ftrat ? d.ftrat.split('-').reverse().join('/') : '', foto: '', fotoUrl: r.url || '', reemplaza: r.id }); }
   const base = { _corr: true, fotoUrl: r.url || '', reemplaza: r.id };
-  if (r.tipo === 'limpieza') { F = Object.assign({ _f: 'lim' }, toma(['CODIGO_TANQUE', 'FECHA', 'PROCEDIMIENTO', 'HORA_CORTE', 'HORA_REHABILITACION', 'HORAS_CERRADO', 'DESINFECTANTE', 'CONCENTRACION_GL', 'VOLUMEN_L', 'CLORO_PPM', 'TURBIDEZ_NTU', 'TAPA', 'MUESTRA_TOMADA', 'OBSERVACIONES']), base); return aguaLimpieza(); }
+  if (r.tipo === 'limpieza') { F = Object.assign({ _f: 'lim' }, toma(['CODIGO_TANQUE', 'FECHA', 'PROCEDIMIENTO', 'HORA_CORTE', 'HORA_REHABILITACION', 'HORAS_CERRADO', 'TAPA', 'MUESTRA_TOMADA', 'OBSERVACIONES']), { AGUA_L: d.VOLUMEN_L || '', LAVANDINA_ML: (String(d.DESINFECTANTE || '').match(/(\d+)\s*mL/) || [])[1] || '', _dosisDe: d.CODIGO_TANQUE }, base); return aguaLimpieza(); }
   if (r.tipo === 'analisis') { F = Object.assign({ _f: 'ana' }, toma(['CODIGO_PUNTO', 'FECHA_TOMA', 'TIPO', 'MOTIVO', 'LABORATORIO', 'CLORO_PPM', 'RESULTADO', 'FECHA_RESULTADO', 'OBSERVACIONES']), base); return aguaAnalisis(); }
   if (r.tipo === 'plaga') { F = Object.assign({ _f: d.TIPO }, toma(['TIPO', 'CASO', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'SECTOR', 'ACCIONES', 'QUIMICO', 'PRODUCTO', 'RESULTADO', 'DECISION', 'PROXIMA_REVISION', 'OBSERVACIONES']), base); return plagaReg(d.TIPO); }
   if (r.tipo === 'caso') { F = Object.assign({ _f: 'avi' }, toma(['ESTABLECIMIENTO', 'SITIO', 'SECTOR', 'FECHA', 'PLAGA', 'EVIDENCIA', 'CANTIDAD', 'OBSERVACIONES']), { _corr: true, fotoUrl: r.url || '', CASO_EDITAR: r.id }); return plagaAviso(); }
@@ -2481,7 +2535,9 @@ const AYG = [
   { m: 'Residuos', t: 'Desvíos del recorrido (Star Union)', p: ['Inicio › Residuos › «Desvíos del recorrido»: lo que registran los operarios de Star Union en el recorrido de retiro de residuos del HMH (bolsas en el piso, bolsa equivocada, cortopunzantes sueltos, contenedores llenos…).', 'Arriba ves los totales y dónde se repite más. Abajo, cada registro con su foto. Podés filtrar por lugar, por días o buscar una palabra.', 'En «contenedor lleno» y «residuo fuera de contenedor» el operario dice por qué pasó. Si no había lugar en ningún contenedor, el registro aparece como «Faltan contenedores»: el problema es la cantidad de contenedores del lugar, no la práctica del servicio. Arriba ves cuántos hay por cada causa.', 'En «segregación incorrecta» y «bolsa incorrecta» la página le recuerda al operario que todo residuo que sale de un aislamiento por enfermedad infectocontagiosa, incluida la comida, es biopatogénico, y le pregunta si venía de un aislamiento. Si dice que sí, el registro lleva la etiqueta «Aislamiento infectocontagioso»: si estaba en bolsa roja, no es un error. En el aislamiento inverso o protector los residuos se separan como siempre.', 'Cada carga llega también por correo en el momento a la secretaría de HyS y a los supervisores de Star Union (Federico Obelar y Eduardo Mengozzi); las que tienen cortopunzantes o una lesión llegan como URGENTE. A los supervisores les llega sin la evaluación de HyS.', 'Si tenés el módulo «Desvíos» (supervisor de Star Union): «Desvíos: supervisión» muestra todo lo que cargan los operarios, las acciones de HyS (las que hay que seguir con la empresa, arriba), la adhesión de cada operario y los desvíos por semana. Cada lunes llega además un resumen por correo.', '«Para verificar en el lugar»: los desvíos en los que Higiene y Seguridad ya tomó una medida. Cuando pases por el lugar, tocá «Corregido» (se cierra) o «Sigue igual» (HyS lo vuelve a revisar).', 'Es solo para ver: la revisión (origen, gravedad, acciones) la hace Higiene y Seguridad en la planilla del registro.'] },
   { m: 'Residuos', t: 'Informar una novedad de residuos', p: ['Inicio › Residuos › «Informar una novedad»: para lo que se ve mal en una recorrida (bolsa equivocada, cortopunzante fuera del descartador, descartador lleno, depósito abierto, la empresa no retiró, etc.).', 'Elegí el lugar, escribí el sector, qué viste y qué residuo es, y contalo en pocas palabras. La foto es opcional, pero ayuda mucho: que no aparezcan pacientes ni datos personales.', 'Mirá sin tocar: nunca abras una bolsa cerrada. Si es urgente (derrame, agujas sueltas, depósito desbordado), avisá también en el momento a Higiene y Seguridad.', '«Novedades de residuos»: lo abierto (primero lo de residuos peligrosos) y lo resuelto. Cuando se corrige, tocá «Resuelta» y contá qué se hizo.', 'No envía correos: Higiene y Seguridad las ve en el sistema.'] },
   { m: 'Agua', t: 'Tanques, cisternas y canillas', p: ['Inicio › Agua › «Mis tanques y canillas». Se cargan una sola vez; para cambiar algo, «Cambiar datos». Necesita señal.'] },
-  { m: 'Agua', t: 'Limpieza de tanque', p: ['Completá y hacé firmar el formulario F-AGU-01.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento y datos del formulario (mínimo 6 horas cerrado).', 'La foto del F-AGU-01 firmado es obligatoria.'] },
+  { m: 'Agua', t: 'Relevamiento de tanques (cada 3 meses)', p: ['Inicio › Agua › «Relevamiento de tanques»: elegí el tanque o cisterna, la fecha, cómo está la tapa y respondé las 8 preguntas (fisuras, óxido, sedimento, olor o turbidez, flotante y válvulas, malla de ventilación, bichos, acceso seguro).', 'El sistema dice si está conforme, si hay que limpiarlo o si hay que repararlo. Si pide limpieza, se limpia aunque no toque.', 'Las fotos son opcionales (hasta 5). A los 3 meses aparece como pendiente.'] },
+  { m: 'Agua', t: 'Limpieza de tanque', p: ['Formularios para imprimir: el de tu red (HSST: Formulario 1 del POE-HSST-AGU-001; red Trelew: F-AGU-01-T). Se completa en papel durante la limpieza y se firma.', 'Inicio › Agua › «Registrar limpieza de tanque»: tanque, fecha, procedimiento, horas, litros de agua cargada (el 20 % de la capacidad) y mL de lavandina 5,5 % (2 mL por litro de agua). El sistema propone la cuenta según la capacidad del tanque.', 'Mínimo 6 horas cerrado (3 h con el POE-AGU-001 de la red Trelew). El cloro no se mide: lo mide el DPSB cuando toma la muestra.', 'Es obligatorio adjuntar el formulario firmado: hasta 5 fotos o un PDF.'] },
+  { m: 'Agua', t: 'Personal designado (Formulario 2)', p: ['Inicio › Agua › «Personal designado (Formulario 2)»: subí el registro firmado de las personas que designó la Dirección para limpiar los tanques, con su capacitación (hasta 5 fotos o un PDF).', 'Si cambia el personal o vence una capacitación, subí uno nuevo: reemplaza al anterior y queda en «Manuales, guías, POE, protocolos y PTS».'] },
   { m: 'Agua', t: 'Informes del laboratorio', p: ['Inicio › Agua › «Informes del laboratorio»: abre la carpeta de Drive con los PDF de los análisis y los remitos del laboratorio provincial, ordenados por establecimiento y por fecha.', 'HMH: su carpeta. HZT: la de la red Trelew (hospital, dependencias y CAPS). HSST: la de la red Rawson (hospital, Playa Unión y CAPS). Las dos redes no se mezclan.', 'Si no abre, pedí acceso a Higiene y Seguridad: la carpeta es del servicio.'] },
   { m: 'Agua', t: 'Análisis de agua y NO APTA', p: ['Inicio › Agua › «Cargar análisis de agua»: canilla, tipo, motivo, fecha, laboratorio y resultado, con la foto o el PDF del informe.', 'Si todavía no llegó el informe: «Pendiente»; cuando llegue, cargalo de nuevo con el resultado.', 'NO APTA: avisá a Higiene y Seguridad en el día. Hay que limpiar y tomar una nueva muestra en no más de 15 días hábiles.'] },
   { m: 'Plagas', t: 'Plagas', p: ['«Registrar intervención» (F-PLG-02, con su foto) abre el caso si es nuevo. Después se cargan los seguimientos (F-PLG-03) con su foto. La recorrida preventiva (F-PLG-04) no necesita caso.', 'El caso se cierra con dos revisiones seguidas sin actividad.'] },
@@ -2680,7 +2736,7 @@ Object.assign(ACT, { qPers: () => { F = null; QR = null; qPers(); }, qPersIr: ()
 Object.assign(ACT, {
   actualizar: () => { actualizarConfig(false); sincronizar(); miCargar(false); },
   irDiag: () => irDiag(), irDiagRes: () => irDiag('#diagnostico'), irAud: () => irDiag('#auditoria'), aguaInv: () => { F = null; aguaInv(); }, aguaInformes: () => aguaInformes(), aguaEditT: b => aguaEditT(b.dataset.arg), aguaEditP: b => aguaEditP(b.dataset.arg), guardarInv: b => guardarInv(b.dataset.arg),
-  aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
+  aguaLimpieza: () => { F = null; aguaLimpieza(); }, guardarLimpieza: () => guardarLimpieza(), aguaInsp: () => { F = null; aguaInsp(); }, guardarInsp: () => guardarInsp(), aguaForm2: () => { F = null; aguaForm2(); }, guardarForm2: () => guardarForm2(), aguaAnalisis: () => { F = null; aguaAnalisis(); }, guardarAnalisis: () => guardarAnalisis(),
   plagaAviso: () => { F = null; plagaAviso(); }, guardarAviso: () => guardarAviso(), plagaInter: () => { F = null; plagaReg('Intervención'); }, plagaSeg: () => { F = null; plagaReg('Seguimiento'); }, plagaRec: () => { F = null; plagaReg('Recorrida'); },
   guardarPlagaReg: () => guardarPlagaReg(), accidente: () => { F = null; accidente(); }, guardarAccidente: () => guardarAccidente(), siniestros: () => siniestros(true), sinF: b => { SINF = b.dataset.arg; siniestros(); }, sinVer: b => sinVer(b.dataset.arg), sinNov: b => { F = null; sinNov(b.dataset.arg); }, guardarNov: () => guardarNov(),
   sinCorr: b => sinCorr(b.dataset.arg), sinVolverVer: () => { F = null; SIN_VER ? sinVer(SIN_VER) : siniestros(); }, sinNovCorr: b => sinNovCorr(b.dataset.arg), sinAnular: b => { F = null; sinAnular(b.dataset.arg); },
