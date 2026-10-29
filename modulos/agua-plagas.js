@@ -72,7 +72,7 @@ function aguaLabCard(lab, labError) {
   AGL.lab = Array.isArray(lab) ? lab : [];
   const b = (u, t, pri) => '<a class="btn' + (pri ? ' pri' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="margin:0 6px 6px 0">' + t + '</a>';
   const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:10px">' + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
-    b('https://drive.google.com/file/d/1FpmfodUSL0-E_8Q7urXqkpmiKbQI4A2x/view', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
+    b('https://hyslhmh-sudo.github.io/manifiestos/mipyv/F-AGU-01-T.pdf', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
     '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
     '1) El establecimiento limpia y desinfecta tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
