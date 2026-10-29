@@ -34,7 +34,7 @@
  *    que «Mi establecimiento». Cada envío trae su id_origen: si MIPyV reintenta, no se duplica.
  *  - N.º de puesto (el cartel, columna NRO_EXTINTOR): obligatorio en el alta, solo números (1 a 3 cifras) y único en el establecimiento.
  *    El N.º de inventario (la chapita) no puede ser igual al de puesto (para que no se crucen) ni estar repetido.
- *  - Plantas por establecimiento (INC.PLANTAS_EST): HMH planta baja, planta alta y terraza; HZT subsuelo, planta baja, 1er a 3er piso, Única (CAPS) y Vehículo (ambulancias).
+ *  - Plantas por establecimiento (INC.PLANTAS_EST): HMH planta baja, planta alta y terraza; HZT subsuelo, planta baja, 1er a 3er piso, Única (CAPS) y Vehículo (ambulancias); HSST y sus CAPS planta baja y planta alta.
  *  - Fechas de vencimiento entre 2020 y 2040.
  *  - Lugares con dependencias (SITIOS_INC › DEPENDENCIAS, separadas por «·»; hoy Sede ex ADOS): el sector se elige de esa lista.
  *  - «Casa de convivencia» pasa a llamarse «Casa Tutelada»; se agrega «UGD - Ex APT». Ejecutar una vez actualizarModuloIncendio29oct().
@@ -68,7 +68,7 @@ const INC = {
   PLANTAS: ['Subsuelo', 'Planta baja', 'Planta alta', '1er piso', '2do piso', '3er piso', 'Terraza', 'Única', 'Vehículo'],   // todas las plantas posibles (lista de la columna PLANTA)
   // Plantas de cada establecimiento (Belén, 29/10/2026): HMH planta baja, planta alta y terraza; red HZT hasta 3 plantas más subsuelo (HZT, sede ex ADOS),
   // Única en los CAPS de una planta y Vehículo en ambulancias. Un establecimiento que no está acá usa PLANTAS_OTROS.
-  PLANTAS_EST: { HMH: ['Planta baja', 'Planta alta', 'Terraza'], HZT: ['Subsuelo', 'Planta baja', '1er piso', '2do piso', '3er piso', 'Única', 'Vehículo'] },
+  PLANTAS_EST: { HMH: ['Planta baja', 'Planta alta', 'Terraza'], HZT: ['Subsuelo', 'Planta baja', '1er piso', '2do piso', '3er piso', 'Única', 'Vehículo'], HSST: ['Planta baja', 'Planta alta'] },   // HSST y sus CAPS: planta baja y alta (Belén, 29/10/2026)
   PLANTAS_OTROS: ['Subsuelo', 'Planta baja', 'Planta alta', '1er piso', '2do piso', '3er piso', 'Terraza', 'Única', 'Vehículo'],
   FECHA_MIN: '2020-01-01', FECHA_MAX: '2040-12-31',   // rango aceptado para los vencimientos (evita años mal tipeados, como 0027)
   SERVICIO_MIPYV: 'MIPyV',   // nombre del acceso de servicio de MIPyV en BASE COMÚN › ACCESOS
@@ -166,7 +166,7 @@ const INC_AYUDA = [
   ['Qué es', 'El inventario de extintores de la red y su control mensual. Versión 0: red Trelew (HZT y sus sitios, HMH) y HSST con sus CAPS.'],
   ['Desde dónde se carga', 'Portal HyS › 7 · Protección contra incendios (Higiene y Seguridad: todo). Aplicación «Mi establecimiento» › Incendio (las personas con el módulo Incendio en BASE COMÚN › ACCESOS). Aplicación MIPyV (Javier Tramaleo, red Trelew sin HMH): pasa por las mismas reglas que «Mi establecimiento». También se puede cargar y corregir acá, en cada hoja.'],
   ['Números de cada extintor', 'ID: lo pone el sistema (EXT-HZT-001). N.º de puesto (columna NRO_EXTINTOR): el número del cartel donde va colgado; solo números, único en el establecimiento y obligatorio. N.º de inventario: el de la chapita patrimonial; no puede repetirse ni ser igual al de puesto. Si no tiene chapita: s/d.'],
-  ['Plantas', 'HMH: Planta baja, Planta alta y Terraza. Red HZT: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias). Se cambian en Incendio.gs › INC.PLANTAS_EST.'],
+  ['Plantas', 'HMH: Planta baja, Planta alta y Terraza. Red HZT: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias). HSST y sus CAPS: Planta baja y Planta alta. Se cambian en Incendio.gs › INC.PLANTAS_EST.'],
   ['SITIOS_INC', 'Cada lugar con extintores y quiénes hacen el control: HMH (Belén, Melani, SOMI y MAREM); HZT, Sede ex ADOS, CAPS, dispositivos (Casa Tutelada, UGD - Ex APT…) y ambulancias de la red Trelew (Belén, Melani y Javier Tramaleo); HSST y sus CAPS (a definir). DEPENDENCIAS: si un edificio tiene varias (Sede ex ADOS: Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental y Áreas comunes), van separadas por «·» y el sector de cada extintor se elige de esa lista. Se pueden agregar o cambiar acá.'],
   ['EXTINTORES', 'Una fila por extintor. La carga inicial salió de la planilla «Inventario de Extintores»; lo que había que revisar quedó escrito en OBSERVACIONES (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes).'],
   ['CONTROLES', 'Control mensual de cada extintor: en su lugar, acceso libre, manómetro, precinto y señalización, más 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Cada control actualiza el último control del extintor.'],
