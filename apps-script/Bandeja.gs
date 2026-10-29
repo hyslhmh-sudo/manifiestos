@@ -25,11 +25,12 @@ const BJ_TIPOS = {
   NOMINA_PERSONAL: { titulo: 'Nómina de personal', para: 'Servicio de Personal',
     ayuda: 'Una fila por trabajador del establecimiento (toda la dotación). Completá o corregí CUIL, fecha de ingreso, lugar, servicio o sector, función o puesto y tareas habituales. Si alguien ya no trabaja, poné «Baja» en Estado. Para agregar a alguien, usá una fila vacía al final con su DNI. Estos datos se usan para la Nómina de Trabajadores Expuestos (NTE, Res. SRT 37/2010).',
     cols: [['DNI', 'DNI', 0], ['APELLIDOS', 'Apellidos', 0], ['NOMBRES', 'Nombres', 0], ['CUIL', 'CUIL (sin guiones)', 1], ['FECHA_INGRESO', 'Fecha de ingreso (dd/mm/aaaa)', 1], ['SITIO', 'Lugar (edificio, CAPS o dispositivo)', 1], ['SERVICIO', 'Servicio o sector', 1], ['FUNCION', 'Función o puesto', 1], ['TAREAS', 'Tareas habituales', 1], ['VINCULO', 'Vínculo (planta, contratado, tercerizado…)', 1], ['EMAIL', 'Correo', 1], ['TELEFONO', 'Teléfono', 1], ['ESTADO', 'Estado (Activo · Licencia · Baja)', 1]] },
-  // 29/10/2026 (pedido de Belén): el libro sirve para MAPEAR los tanques, cisternas y canillas y RELEVAR EL ESTADO de cada tanque.
-  // Sin código (lo pone el sistema: va en la última columna, oculta, solo para reconocer los que ya están), sin «quién lo limpia» y sin frecuencia de limpieza.
-  INVENTARIO_AGUA: { titulo: 'Inventario de agua: tanques, cisternas y canillas', para: 'Referente del establecimiento, Mantenimiento o HyS',
-    ayuda: 'Una fila por tanque o cisterna y una fila por canilla de muestreo. En «Registro» elegí «Tanque o cisterna» o «Canilla». Para agregar uno nuevo usá una fila vacía. Si un dato no se conoce, escribí «s/d (revisar)». Columnas de ESTADO (solo tanques y cisternas): mirá cada uno y respondé Sí o No; con eso queda registrado el relevamiento de estado. La limpieza y los análisis se cargan después en la app «Mi establecimiento» › Agua.',
-    cols: [['REGISTRO', 'Registro (Tanque o cisterna · Canilla)', 1], ['SITIO', 'Sitio (edificio, dispositivo o CAPS)', 1], ['UBICACION', 'Ubicación dentro del sitio', 1], ['TIPO', 'Tipo (Tanque elevado · Cisterna · Tanque de bombeo · Otro)', 1], ['USO', 'Uso (tanque: Consumo humano · Consumo y reserva de incendio · Reserva de incendio · Riego · Mixto; canilla: Bebida · Cocina · Higiene · Mixto)', 1], ['CAPACIDAD_L', 'Capacidad en litros (tanques)', 1], ['MATERIAL', 'Material (tanques, opcional)', 1], ['ACCESO', 'Acceso (Escalera fija · Escalera móvil · Espacio confinado · A nivel · Otro)', 1], ['TANQUE_ASOCIADO', 'Tanque que la abastece (canillas)', 1], ['FUENTE', 'Fuente (canillas: Red pública · Pozo · Camión cisterna · Otra)', 1], ['ESTADO', 'En uso (tanque: Activo · Fuera de uso; canilla: Activo · Equipo (solo físico-químico) · Muestra única · Fuera de uso)', 1],
+  // 29/10/2026 (pedido de Belén): el libro sirve para MAPEAR los tanques y cisternas y RELEVAR EL ESTADO de cada uno.
+  // Sin canillas (los puntos de muestreo los asigna Higiene y Seguridad), sin código (lo pone el sistema: va en la última columna, oculta,
+  // solo para reconocer los que ya están), sin «quién lo limpia» y sin frecuencia de limpieza.
+  INVENTARIO_AGUA: { titulo: 'Inventario y estado de tanques y cisternas', para: 'Referente del establecimiento, Mantenimiento o HyS',
+    ayuda: 'Una fila por tanque o cisterna. Para agregar uno nuevo usá una fila vacía. Si un dato no se conoce, escribí «s/d (revisar)». Columnas de ESTADO: mirá cada tanque o cisterna y respondé Sí o No; con eso queda registrado el relevamiento de estado. Las canillas donde se toman las muestras las asigna Higiene y Seguridad. La limpieza se carga después en la app «Mi establecimiento» › Agua.',
+    cols: [['SITIO', 'Sitio (edificio, dispositivo o CAPS)', 1], ['UBICACION', 'Ubicación dentro del sitio', 1], ['TIPO', 'Tipo (Tanque elevado · Cisterna · Tanque de bombeo · Otro)', 1], ['USO', 'Uso (Consumo humano · Consumo y reserva de incendio · Reserva de incendio · Riego · Mixto)', 1], ['CAPACIDAD_L', 'Capacidad en litros', 1], ['MATERIAL', 'Material (opcional)', 1], ['ACCESO', 'Acceso (Escalera fija · Escalera móvil · Espacio confinado · A nivel · Otro)', 1], ['ESTADO', 'En uso (Activo · Fuera de uso)', 1],
       ['FECHA_RELEVAMIENTO', 'ESTADO · Fecha en que se miró (dd/mm/aaaa)', 1], ['TAPA', 'ESTADO · Tapa (Sí, en condiciones · Deficiente · No tiene)', 1], ['FISURAS', 'ESTADO · ¿Tiene fisuras o pierde agua? (Sí · No)', 1], ['OXIDO', 'ESTADO · ¿Tiene óxido o está deteriorado? (Sí · No)', 1], ['SEDIMENTO', 'ESTADO · ¿Se ve barro o sedimento en el fondo? (Sí · No)', 1], ['OLOR_TURBIDEZ', 'ESTADO · ¿El agua tiene olor raro o se ve turbia? (Sí · No)', 1], ['FLOTANTE_OK', 'ESTADO · ¿El flotante y las válvulas andan bien? (Sí · No)', 1], ['VENTILACION_MALLA', 'ESTADO · ¿La ventilación tiene malla? (Sí · No)', 1], ['INSECTOS', 'ESTADO · ¿Hay insectos, nidos o restos de animales? (Sí · No)', 1], ['ACCESO_SEGURO', 'ESTADO · ¿Se puede llegar de forma segura? (Sí · No)', 1],
       ['OBSERVACIONES', 'Observaciones (qué hay que arreglar, etc.)', 1], ['CODIGO', 'Código del sistema (no tocar)', 0]] },
   DATOS_ESTABLECIMIENTO: { titulo: 'Datos del establecimiento', para: 'Dirección', vertical: true,
@@ -118,8 +119,7 @@ function bjGenerar_(x) {
   } else if (x.tipo === 'INVENTARIO_AGUA') {
     const G = miGrupo_(cod), val = (o, k) => o[k] == null ? '' : o[k];
     const BJ_EST = ['FECHA_RELEVAMIENTO', 'TAPA', 'FISURAS', 'OXIDO', 'SEDIMENTO', 'OLOR_TURBIDEZ', 'FLOTANTE_OK', 'VENTILACION_MALLA', 'INSECTOS', 'ACCESO_SEGURO'];   // el estado se releva de nuevo cada vez
-    miLeer_('RESERVORIOS').filter(r => G.cods.indexOf(r.ESTABLECIMIENTO) >= 0).forEach(r => filas.push(tipo.cols.map(c => c[0] === 'REGISTRO' ? 'Tanque o cisterna' : c[0] === 'CODIGO' ? r.CODIGO_TANQUE : BJ_EST.indexOf(c[0]) >= 0 ? '' : val(r, c[0]))));
-    miLeer_('PUNTOS_MUESTREO').filter(r => G.cods.indexOf(r.ESTABLECIMIENTO) >= 0).forEach(r => filas.push(tipo.cols.map(c => c[0] === 'REGISTRO' ? 'Canilla' : c[0] === 'CODIGO' ? r.CODIGO_PUNTO : val(r, c[0]))));
+    miLeer_('RESERVORIOS').filter(r => G.cods.indexOf(r.ESTABLECIMIENTO) >= 0).forEach(r => filas.push(tipo.cols.map(c => c[0] === 'CODIGO' ? r.CODIGO_TANQUE : BJ_EST.indexOf(c[0]) >= 0 ? '' : val(r, c[0]))));
   } else if (x.tipo === 'DATOS_ESTABLECIMIENTO') {
     const sh = pBC_().getSheetByName('ESTABLECIMIENTOS'), H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(String), r = pTabla_(sh, H.length).find(r => limpio_(r.v[0]) === cod);
     filas = tipo.campos.map(c => [c[1], r ? bjVal_(r.v[H.indexOf(c[0])]) : '', '']);
@@ -140,8 +140,8 @@ function bjGenerar_(x) {
     if (n) sh.getRange(5, 1, n, tipo.cols.length).setWrap(true).setVerticalAlignment('top');
     if (x.tipo === 'INVENTARIO_AGUA') { const lista = (col, v) => sh.getRange(5, col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(v, true).setAllowInvalid(true).build());
       const ix = k => tipo.cols.findIndex(c => c[0] === k) + 1;
-      lista(ix('REGISTRO'), ['Tanque o cisterna', 'Canilla']); lista(ix('TIPO'), ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']); lista(ix('ACCESO'), ['Escalera fija', 'Escalera móvil', 'Espacio confinado', 'A nivel', 'Otro']);
-      lista(ix('FUENTE'), ['Red pública', 'Pozo', 'Camión cisterna', 'Otra']); lista(ix('ESTADO'), ['Activo', 'Fuera de uso', 'Equipo (solo físico-químico)', 'Muestra única']); lista(ix('TAPA'), ['Sí, en condiciones', 'Deficiente', 'No tiene']);
+      lista(ix('TIPO'), ['Tanque elevado', 'Cisterna', 'Tanque de bombeo', 'Otro']); lista(ix('ACCESO'), ['Escalera fija', 'Escalera móvil', 'Espacio confinado', 'A nivel', 'Otro']);
+      lista(ix('ESTADO'), ['Activo', 'Fuera de uso']); lista(ix('TAPA'), ['Sí, en condiciones', 'Deficiente', 'No tiene']);
       ['FISURAS', 'OXIDO', 'SEDIMENTO', 'OLOR_TURBIDEZ', 'FLOTANTE_OK', 'VENTILACION_MALLA', 'INSECTOS', 'ACCESO_SEGURO'].forEach(k => lista(ix(k), ['Sí', 'No']));
       // Grupos: MAPEO (qué hay y dónde) y ESTADO (relevamiento, solo tanques y cisternas); el código del sistema queda oculto al final
       const e0 = ix('FECHA_RELEVAMIENTO'), e1 = ix('ACCESO_SEGURO'), cc = ix('CODIGO');
@@ -244,11 +244,9 @@ function bjProponer_(meta, filas, origen, archivo) {
       return x; };
     const resumen = x => 'Relevamiento del ' + x.FECHA.split('-').reverse().join('/') + ' · tapa ' + x.TAPA.toLowerCase() + (QS.some(k => x[k] !== ({ FLOTANTE_OK: 1, VENTILACION_MALLA: 1, ACCESO_SEGURO: 1 }[k] ? 'Sí' : 'No')) ? ' · con observaciones' : ' · sin problemas');
     filas.forEach((f, i) => {
-      const o = {}; T.cols.forEach((c, j) => o[c[0]] = String(f[j] || '').trim()); if (!T.cols.some(c => c[0] !== 'REGISTRO' && c[0] !== 'CODIGO' && o[c[0]])) return;
-      const esC = /canilla/i.test(o.REGISTRO) ? 1 : /tanque|cisterna/i.test(o.REGISTRO) ? 0 : (/^[A-Z0-9]+-P\d+$/.test(o.CODIGO) ? 1 : /-[TC]\d+$/.test(o.CODIGO) ? 0 : -1), quien = (esC ? 'Canilla ' : 'Tanque ') + (o.CODIGO || 'nuevo (fila ' + (i + 5) + ')');
-      if (esC < 0) { errores.push('Fila ' + (i + 5) + ': falta elegir en «Registro» si es tanque o cisterna, o canilla.'); return; }
+      const o = {}; T.cols.forEach((c, j) => o[c[0]] = String(f[j] || '').trim()); if (!T.cols.some(c => c[0] !== 'CODIGO' && o[c[0]])) return;
+      const esC = 0, quien = 'Tanque ' + (o.CODIGO || 'nuevo (fila ' + (i + 5) + ')');   // el libro es solo de tanques y cisternas (las canillas las asigna HyS)
       if (!esC && o.CAPACIDAD_L && !/^\d+$/.test(o.CAPACIDAD_L.replace(/[.\s]/g, ''))) { if (!bjVacio_(o.CAPACIDAD_L)) errores.push(quien + ': la capacidad «' + o.CAPACIDAD_L + '» debe ser un número de litros.'); }
-      if (!esC && o.FRECUENCIA_LIMPIEZA_MESES && !/^(6|12)$/.test(o.FRECUENCIA_LIMPIEZA_MESES)) errores.push(quien + ': la frecuencia de limpieza es 12 o 6 meses.');
       const ed = esC ? EDP : EDT, ex = o.CODIGO ? (esC ? pto : tan).find(r => r[esC ? 'CODIGO_PUNTO' : 'CODIGO_TANQUE'] === o.CODIGO) : null;
       if (o.CODIGO && !ex) { errores.push(quien + ': ese código no existe en este establecimiento.'); return; }
       if (!ex) { if (!o.UBICACION) { errores.push(quien + ': falta la ubicación.'); return; }

@@ -100,7 +100,8 @@ function miRed_(d) {
   switch (d.accion) {
     case 'm_tablero': return miTablero_(cod);
     case 'm_reservorio': return conLock_(() => miGuardarInv_(cod, 'RESERVORIOS', 'CODIGO_TANQUE', /cisterna/i.test(x.TIPO) ? 'C' : 'T', x));
-    case 'm_punto': return conLock_(() => miGuardarInv_(cod, 'PUNTOS_MUESTREO', 'CODIGO_PUNTO', 'P', x));
+    // Los puntos de muestreo (canillas) los asigna Higiene y Seguridad desde la ficha de cada dependencia, no el referente ni Mantenimiento (29/10/2026)
+    case 'm_punto': return maestra ? conLock_(() => miGuardarInv_(cod, 'PUNTOS_MUESTREO', 'CODIGO_PUNTO', 'P', x)) : { ok: false, mensaje: 'Los puntos de muestreo (canillas) los asigna Higiene y Seguridad.' };
     case 'm_limpieza': return conLock_(() => corr('limpieza', () => miLimpieza_(cod, x, quien)));
     case 'm_analisis': return conLock_(() => corr('analisis', () => miAnalisis_(cod, x, quien)));
     case 'm_inspeccion': return conLock_(() => miInspeccion_(cod, x, quien));   // relevamiento de estado cada 3 meses (29/10/2026)
@@ -312,7 +313,7 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
     .map(r => ({ nombre: limpio_(r.v[1]), rol: limpio_(r.v[4]), telefono: limpio_(r.v[7]) })).filter(p => p.nombre);
   // Agua: tanques
   const T = de(miLeer_('RESERVORIOS')).filter(t => !/fuera/i.test(t.ESTADO)), Pm = de(miLeer_('PUNTOS_MUESTREO')).filter(p => !/fuera/i.test(p.ESTADO));
-  if (!T.length) pend('wa', 'agua', 'Cargá tus tanques, cisternas y canillas', 'Se hace una sola vez; después cada limpieza y análisis usan esos datos.', 'agua_alta');
+  if (!T.length) pend('wa', 'agua', 'Cargá tus tanques y cisternas', 'Se hace una sola vez; después cada relevamiento y cada limpieza usan esos datos.', 'agua_alta');
   // Relevamiento de estado cada 3 meses (AGUA_INSPECCIONES, también lo carga la app MIP en la red Trelew)
   const INS = {}; de(miLeer_('AGUA_INSPECCIONES')).forEach(i => { if (!INS[i.CODIGO_TANQUE] || i.FECHA > INS[i.CODIGO_TANQUE].FECHA) INS[i.CODIGO_TANQUE] = i; });
   const tanques = T.map(t => { const prox = t.PROXIMA_LIMPIEZA || (t.ULTIMA_LIMPIEZA ? miSumarMeses_(t.ULTIMA_LIMPIEZA, t.FRECUENCIA_LIMPIEZA_MESES || 12) : ''), d = miDias_(prox);
