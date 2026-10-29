@@ -345,6 +345,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
     <section class="screen active" data-step="home">
       <div class="step-title">¿Qué vas a registrar?</div>
       <div class="step-sub">Tocá el módulo</div>
+      <div id="extFallidos" style="display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FBE4E1;border:2px solid #C0453A;color:#5A1A13;cursor:pointer"></div>
       <button class="module-card mipyv" type="button" id="goMipyv">
         <span id="iconBug"></span>
         <div>
@@ -371,6 +372,13 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
         <div>
           <div class="mc-title">Tanques y cisternas</div>
           <div class="mc-sub" id="tqHomeSub">Relevamiento y limpieza · red Trelew</div>
+        </div>
+      </button>
+      <button class="module-card ext" type="button" id="goExtTabla">
+        <span class="mc-emoji">📋</span>
+        <div>
+          <div class="mc-title">Extintores cargados</div>
+          <div class="mc-sub">Ver la lista: puesto, lugar, inventario y vencimientos</div>
         </div>
       </button>
       <div id="tqBorradorAviso" style="display:none;margin:0 0 16px;padding:14px;border-radius:14px;background:#FFF4D6;border:2px solid #E0A800;color:#3B2F00"></div>
@@ -735,7 +743,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.10.28d";
+const APP_VERSION = "2026.10.29a";
 </script>
 <script>
 // ============================================================
@@ -1058,7 +1066,7 @@ const EMOJI_TAREA_HYS = [
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos); Tanques y cisternas para el relevamiento cada 3 meses y el registro de cada limpieza de tanques (red Trelew). Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
+  home: "Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos); Tanques y cisternas para el relevamiento cada 3 meses y el registro de cada limpieza de tanques (red Trelew); Extintores cargados para mirar la lista de extintores de la red Trelew. Si aparece un cuadro rojo «No se pudo enviar», tocalo: dice qué rechazó la planilla y deja corregirlo o descartarlo. Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
   "t-main": "TANQUES Y CISTERNAS (red Trelew, sin el HMH). 1) Elegí el lugar. 2) Si el tanque no está en la lista, tocá «➕ Agregar un tanque o cisterna»: dónde está, tipo, para qué se usa, capacidad, cómo se llega, cómo está y al menos una foto. Queda con un código (por ejemplo HZT-T01 o HZT-C01) cuando se envía. 3) Cada 3 meses tocá el tanque › «🔍 Relevamiento de estado»: tapa, 8 preguntas de Sí o No y una foto. Si hay barro, olor, agua turbia o bichos, hay que limpiarlo aunque no toque. 4) Cada vez que limpiás un tanque: descargá el «F-AGU-01-T» (PDF) e imprimilo, seguí los pasos, completalo y firmalo; después tocá el tanque › «🧽 Registrar una limpieza», completá los datos y sacale una foto al formulario firmado (las 2 hojas). Para desinfectar se carga solo el 20 % del tanque (1.000 L → 200 L de agua) y en esa agua va lavandina al 5,5 %: 2 mL por litro (200 L → 400 mL). El cloro no se mide: lo mide Saneamiento (DPSB). 5) «📘 Cómo se limpia un tanque» tiene el resumen de nuestro protocolo y anda sin señal. Avisos: ⚠️ vencido o hay que limpiar, ⏰ toca pronto, ✅ al día. Lo que cargás se guarda en el celular y se manda solo con señal; si la app se cierra al sacar una foto, en el inicio aparece «Seguir con el formulario». El papel firmado se entrega a Belén.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
@@ -1090,7 +1098,7 @@ const AYUDA_TEXTOS = {
   "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
   "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
   "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
-  "h-extintores": "Tocá cada extintor de la lista y contestá las 5 preguntas con Sí o No. Mirá la tarjeta y poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, hasta cuándo vale la prueba hidráulica. Después sacá las 3 fotos: 1) de lejos, que se vea el extintor y todo alrededor; 2) la tarjeta con la fecha, que se lea; 3) la chapita con el número de inventario. Si querés, escribí un comentario (es opcional). Si dice ⚠️ la carga está vencida; si dice ⏰ vence en menos de 30 días. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: completá todos los datos (planta, sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario y vencimiento de la carga) y sacá las 3 fotos; todo es obligatorio. Si el nombre o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el nombre o dónde está»: cambiá el nombre o N.º, el lugar, la planta, el sector o dónde está, y tocá «Guardar la corrección». Belén lo revisa y lo verifica. Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. En los kilos podés escribir 5, 2,5 o 5 kg. Lo que cargás se guarda solo en el celular. Si al sacar una foto la app se cierra o vuelve al inicio, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común del celular y después tocá el casillero y elegí «🖼️ Elegir del teléfono».",
+  "h-extintores": "Tocá cada extintor de la lista. Si está todo bien (en su lugar, se puede agarrar, aguja en verde, precinto y cartel) y la carga está vigente, tocá «✅ Todo OK»: un toque y sin fotos. Si algo está mal, o la carga está vencida o sin fecha, contestá las 5 preguntas con Sí o No, poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, la prueba hidráulica, y sacá las 3 fotos: 1) de lejos, que se vea el extintor, el cartel y todo alrededor; 2) la tarjeta con la fecha; 3) la chapita con el número de inventario. Cada extintor tiene DOS números distintos: el N.º de puesto es el del cartel donde va colgado (solo números, no se repite) y el N.º de inventario es el de la chapita pegada en el extintor (si no tiene, s/d). No los cruces. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: N.º de puesto, planta (subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias), sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario, vencimiento de la carga y 3 fotos; todo es obligatorio. En la Sede ex ADOS el sector es la dependencia (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes): si entraste por una de ellas, ya viene puesta. Si el puesto o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el N.º de puesto o dónde está»; Belén lo verifica. «📋 Ver todos los extintores cargados» muestra la lista completa (rojo: carga vencida; amarillo: vence en 30 días). Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. Si al mandar la planilla no acepta algo (por ejemplo, un puesto repetido), en el inicio aparece un cuadro rojo «No se pudo enviar»: tocalo, leé el motivo y corregilo o descartalo. Si la app se cierra al sacar una foto, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común y después elegí «🖼️ Elegir del teléfono».",
   "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
   "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
   "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
@@ -2761,7 +2769,21 @@ function actualizarCuentaLugares() {
 // Cada extintor: 5 preguntas Sí/No y 3 fotos obligatorias. Se manda al sistema HyS
 // (planilla PROTECCIÓN CONTRA INCENDIOS) como registros «control_extintor».
 const escX = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-let EXTINTORES_CAT = [];   // [{id, lugares:[id_establecimiento], nro, planta, sector, ubicacion, tipo, kg, inv, vto, ultimo}]
+let EXTINTORES_CAT = [];   // [{id, lugares:[id_establecimiento], sitio, nro (N.º de puesto), planta, sector, ubicacion, tipo, agente, kg, inv, vto, ph, ultimo, resultado, cargo}]
+let EXTINTORES_LUG = {};   // { id_lugar: { cod, sitio, dep, deps:[dependencias del sitio], plantas } } (Incendio_MIPyV.gs, 29/10/2026)
+const lugarInc = (idLugar) => EXTINTORES_LUG[idLugar] || { cod: "", sitio: "", dep: "", deps: [], plantas: [] };
+// Fotos de ejemplo del N.º de puesto (el cartel) y del N.º de inventario (la chapita); si todavía no están, no se muestran
+const EXT_EJEMPLO = { puesto: "https://hyslhmh-sudo.github.io/manifiestos/img/ejemplo-puesto.jpg", inventario: "https://hyslhmh-sudo.github.io/manifiestos/img/ejemplo-inventario.jpg" };
+const extEjemplo = (k) => `<img src="${EXT_EJEMPLO[k]}" alt="Ejemplo" onerror="this.remove()" style="display:block;max-width:200px;max-height:130px;border-radius:10px;margin:6px 0 4px;border:1px solid var(--gris-borde)">`;
+// Lo mismo que revisa el Portal HyS, para avisar antes de mandar (29/10/2026)
+function extRevisar(d) {
+  const n = String(d.NRO_EXTINTOR || "").trim(), inv = String(d.NRO_INVENTARIO || "").replace(/[\s.\-]/g, "");
+  const out = [];
+  if (n && !/^\d{1,3}$/.test(n)) out.push("el N.º de puesto lleva solo números (es el del cartel)");
+  if (n && inv && inv === n) out.push("el inventario quedó igual al puesto (revisá que no estén cruzados)");
+  ["VTO_CARGA", "PRUEBA_HIDRAULICA_VENCE"].forEach(k => { const v = String(d[k] || ""); if (/^\d{4}-/.test(v) && (v < "2020-01-01" || v > "2040-12-31")) out.push((k === "VTO_CARGA" ? "la fecha de la carga" : "la fecha de la prueba hidráulica") + " tiene que ser entre 2020 y 2040"); });
+  return out;
+}
 const extintoresList = document.getElementById("extintoresList");
 const PREGUNTAS_EXTINTOR = [
   ["EN_LUGAR", "¿Está en su lugar?"],
@@ -2793,9 +2815,11 @@ async function extFotoPoner(file) {
 }
 function controlVacio(e) { const r = {}; PREGUNTAS_EXTINTOR.forEach(([k]) => r[k] = null); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = "");
   const iso = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : "";
-  return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false }; }
+  return { resp: r, fotos: f, obs: "", vto: iso(e && e.vto), ph: iso(e && e.ph), noSeLee: false, todoOk: false }; }
+// «Todo OK» (29/10/2026, como en «Mi establecimiento»): un toque, sin fotos, si la carga está vigente. Si algo está mal, el control completo.
+const puedeTodoOk = (e) => /^\d{4}-\d{2}-\d{2}/.test((e && e.vto) || "") && e.vto >= new Date().toISOString().slice(0, 10);
 // Completo: 5 respuestas, 3 fotos y el vencimiento de la carga (o «No se lee»)
-function controlCompleto(c) { return !!c && PREGUNTAS_EXTINTOR.every(([k]) => c.resp[k] !== null) && FOTOS_EXTINTOR.every(([k]) => !!c.fotos[k]) && (!!c.vto || !!c.noSeLee); }
+function controlCompleto(c) { if (c && c.todoOk) return true; return !!c && PREGUNTAS_EXTINTOR.every(([k]) => c.resp[k] !== null) && FOTOS_EXTINTOR.every(([k]) => !!c.fotos[k]) && (!!c.vto || !!c.noSeLee); }
 // Lo que falta para poder guardar el control (se muestra en el botón)
 function controlFaltan(c) {
   const f = [], sinResp = PREGUNTAS_EXTINTOR.filter(([k]) => !c || c.resp[k] === null).length;
@@ -2806,9 +2830,9 @@ function controlFaltan(c) {
   return f;
 }
 function textoBotonControl(c) { return controlCompleto(c) ? "Listo, guardar este extintor" : "Falta: " + controlFaltan(c).join(", "); }
-function controlEmpezado(c) { return !!c && (PREGUNTAS_EXTINTOR.some(([k]) => c.resp[k] !== null) || FOTOS_EXTINTOR.some(([k]) => !!c.fotos[k])); }
+function controlEmpezado(c) { return !!c && (!!c.todoOk || PREGUNTAS_EXTINTOR.some(([k]) => c.resp[k] !== null) || FOTOS_EXTINTOR.some(([k]) => !!c.fotos[k])); }
 const extintoresDe = (idLugar) => EXTINTORES_CAT.filter(e => (e.lugares || []).indexOf(idLugar) >= 0);
-function extNombre(e) { const ed = tareaHys.ediciones && tareaHys.ediciones[e.id], nro = ed ? ed.NRO_EXTINTOR : e.nro; return (nro ? "N.º " + nro : e.id) + " · " + [e.tipo, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" "); }
+function extNombre(e) { const ed = tareaHys.ediciones && tareaHys.ediciones[e.id], nro = ed ? ed.NRO_EXTINTOR : e.nro; return (nro ? "Puesto " + nro : e.id) + " · " + [e.tipo, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" "); }
 function extintoresListo() {
   const cs = Object.keys(tareaHys.controles).map(k => tareaHys.controles[k]);
   if (cs.some(c => controlEmpezado(c) && !controlCompleto(c))) return false;   // uno a medias
@@ -2818,9 +2842,14 @@ function extintoresListo() {
 }
 function renderExtintores() {
   extintoresList.innerHTML = "";
+  const verTodos = document.createElement("button");   // tabla de consulta (extintores.js, 29/10/2026)
+  verTodos.type = "button"; verTodos.className = "ext-agregar"; verTodos.style.marginBottom = "12px";
+  verTodos.innerHTML = "📋 Ver todos los extintores cargados";
+  verTodos.onclick = () => { if (typeof extTablaAbrir === "function") extTablaAbrir("tabla"); };
+  extintoresList.appendChild(verTodos);
   const mes = new Date().toISOString().slice(0, 7);
   tareaHys.lugares.forEach(l => {
-    const lista = extintoresDe(l.id);
+    const lista = extintoresDe(l.id).slice().sort((a, b) => (Number(a.nro) || 9999) - (Number(b.nro) || 9999));
     const card = document.createElement("div");
     card.className = "ext-card";
     const hechos = lista.filter(e => controlCompleto(tareaHys.controles[e.id])).length;
@@ -2833,7 +2862,7 @@ function renderExtintores() {
       const fila = document.createElement("button");
       fila.type = "button";
       fila.className = "ext-fila" + (ok ? " ok" : "") + (extAbierto === e.id ? " abierta" : "");
-      fila.innerHTML = `<span class="ext-ico">${ok ? "✅" : yaMes ? "☑️" : "🧯"}</span><span class="ext-txt"><b>${extNombre(e)}</b><small>${escX(tareaHys.ediciones[e.id] ? [tareaHys.ediciones[e.id].SECTOR, tareaHys.ediciones[e.id].UBICACION].filter(Boolean).join(" · ") : [e.sector, e.ubicacion].filter(Boolean).join(" · ")) || "&nbsp;"}</small>${tareaHys.ediciones[e.id] ? '<small class="ext-vto wa">✏️ Corregido (lo verifica Higiene y Seguridad)</small>' : ""}${avisoVto(e)}${yaMes && !ok ? "<small>Ya controlado este mes</small>" : ""}</span>`;
+      fila.innerHTML = `<span class="ext-ico">${ok ? "✅" : yaMes ? "☑️" : "🧯"}</span><span class="ext-txt"><b>${extNombre(e)}</b>${c && c.todoOk ? '<small class="ext-vto">✅ Todo OK (sin fotos)</small>' : ""}<small>${escX(tareaHys.ediciones[e.id] ? [tareaHys.ediciones[e.id].SECTOR, tareaHys.ediciones[e.id].UBICACION].filter(Boolean).join(" · ") : [e.sector, e.ubicacion].filter(Boolean).join(" · ")) || "&nbsp;"}</small>${tareaHys.ediciones[e.id] ? '<small class="ext-vto wa">✏️ Corregido (lo verifica Higiene y Seguridad)</small>' : ""}${avisoVto(e)}${yaMes && !ok ? "<small>Ya controlado este mes</small>" : ""}</span>`;
       fila.onclick = () => { extAbierto = extAbierto === e.id ? null : e.id; altaAbierta = null; if (!tareaHys.controles[e.id]) tareaHys.controles[e.id] = controlVacio(e); renderExtintores(); };
       card.appendChild(fila);
       if (extAbierto === e.id) card.appendChild(panelControl(e, l));
@@ -2862,18 +2891,34 @@ function panelControl(e, l) {
   const panel = document.createElement("div");
   panel.className = "ext-panel";
   const ed = tareaHys.ediciones[e.id];
-  let html = `<button type="button" class="ext-editar">✏️ ${ed ? "Corrección guardada · tocá para cambiarla" : "Corregir el nombre o dónde está"}</button>`;
+  let html = `<button type="button" class="ext-editar">✏️ ${ed ? "Corrección guardada · tocá para cambiarla" : "Corregir el N.º de puesto o dónde está"}</button>`;
   if (c.editando) {
     const v = ed || { NRO_EXTINTOR: e.nro || "", lugar_id: l.id, PLANTA: e.planta || "", SECTOR: e.sector || "", UBICACION: e.ubicacion || "" };
     c.borrador = c.borrador || Object.assign({}, v);
     const b = c.borrador;
-    html += `<div class="ext-edicion"><div class="ext-preg">Nombre o N.º del extintor</div><input class="ext-inp" data-ed="NRO_EXTINTOR" value="${escX(b.NRO_EXTINTOR)}" placeholder="Ej.: 12, o Extintor del office">
+    const lg = lugarInc(b.lugar_id);
+    const sectorHtml = lg.dep ? `<div class="ext-preg">Dependencia</div><div class="step-sub" style="margin:0 0 8px"><b>${escX(lg.dep)}</b></div>`
+      : lg.deps.length ? `<div class="ext-preg">Dependencia (sector)</div><div class="ext-opc" data-ed="SECTOR">${lg.deps.map(x => `<button type="button" class="${b.SECTOR === x ? "on" : ""}" data-valor="${escX(x)}">${escX(x)}</button>`).join("")}</div>`
+      : `<div class="ext-preg">Sector o servicio</div><input class="ext-inp" data-ed="SECTOR" value="${escX(b.SECTOR)}">`;
+    html += `<div class="ext-edicion"><div class="ext-preg">N.º de puesto (el número del cartel)</div><input class="ext-inp" data-ed="NRO_EXTINTOR" inputmode="numeric" maxlength="3" value="${escX(b.NRO_EXTINTOR)}" placeholder="Ej.: 12">${extEjemplo("puesto")}
       <div class="ext-preg">¿En qué lugar está?</div><select class="ext-inp" data-ed="lugar_id">${ESTABLECIMIENTOS.map(x => `<option value="${escX(x.id)}"${x.id === b.lugar_id ? " selected" : ""}>${escX(x.nombre)}</option>`).join("")}</select>
       <div class="ext-preg">Planta</div><div class="ext-opc" data-ed="PLANTA">${plantasDe(b.lugar_id, b.PLANTA).map(x => `<button type="button" class="${b.PLANTA === x ? "on" : ""}" data-valor="${escX(x)}">${escX(x)}</button>`).join("")}</div>
-      <div class="ext-preg">Sector o servicio</div><input class="ext-inp" data-ed="SECTOR" value="${escX(b.SECTOR)}">
+      ${sectorHtml}
       <div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-ed="UBICACION" value="${escX(b.UBICACION)}">
       <button type="button" class="ext-listo ext-ed-ok">Guardar la corrección</button><button type="button" class="ext-quitar ext-ed-no">${ed ? "Deshacer la corrección" : "Cancelar"}</button></div>`;
   }
+  if (c.todoOk) {   // con «Todo OK» no se muestra la corrección (primero se deshace)
+    html = `<div class="ext-preg" style="margin-top:14px">✅ Marcaste «Todo OK»: en su lugar, se puede agarrar, aguja en verde, precinto y cartel. Va sin fotos.</div>
+      <button type="button" class="ext-quitar ext-todook-no">Deshacer «Todo OK» (hacer el control completo)</button>
+      <div class="ext-preg" style="margin-top:16px">Comentario (opcional)</div><textarea class="ext-com" rows="2" placeholder="Algo que quieras contar de este extintor">${escX(c.obs || "")}</textarea>`;
+    panel.innerHTML = html;
+    panel.querySelector(".ext-com").oninput = (ev) => { c.obs = ev.target.value; };
+    panel.querySelector(".ext-todook-no").onclick = () => { c.todoOk = false; renderExtintores(); };
+    return panel;
+  }
+  html += puedeTodoOk(e)
+    ? `<button type="button" class="ext-listo ext-todook" style="margin:12px 0 4px">✅ Todo OK · está todo bien (un toque, sin fotos)</button><div class="step-sub" style="margin:0 0 6px">Si algo está mal, contestá abajo y sacá las 3 fotos.</div>`
+    : `<div class="step-sub" style="margin:10px 0 6px">${/^\d{4}-/.test(e.vto || "") ? "La carga está vencida" : "No hay fecha de carga"}: hacé el control completo (preguntas, fecha y 3 fotos).</div>`;
   PREGUNTAS_EXTINTOR.forEach(([k, preg]) => {
     html += `<div class="ext-preg">${preg}</div><div class="sino" data-campo="${k}">
       <button type="button" class="si${c.resp[k] === "Sí" ? " on" : ""}" data-valor="Sí">Sí</button>
@@ -2894,6 +2939,7 @@ function panelControl(e, l) {
   html += `<button type="button" class="ext-listo"${controlCompleto(c) ? "" : " disabled"}>${escX(textoBotonControl(c))}</button>`;
   panel.innerHTML = html;
   panel.querySelector(".ext-com").oninput = (ev) => { c.obs = ev.target.value; };
+  const bOk = panel.querySelector(".ext-todook"); if (bOk) bOk.onclick = () => { c.todoOk = true; c.editando = false; extAbierto = null; renderExtintores(); borradorGuardar(); };
   const actListo = () => { const b = panel.querySelector(".ext-listo:not(.ext-ed-ok)"), ok = controlCompleto(c); b.disabled = !ok; b.textContent = textoBotonControl(c); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelector(".ext-vto-inp").onchange = panel.querySelector(".ext-vto-inp").oninput = (ev) => { c.vto = ev.target.value; actListo(); };
   panel.querySelector(".ext-ph-inp").onchange = panel.querySelector(".ext-ph-inp").oninput = (ev) => { c.ph = ev.target.value; };
@@ -2908,9 +2954,11 @@ function panelControl(e, l) {
   if (c.editando) {
     const b = c.borrador;
     panel.querySelectorAll("input[data-ed], select[data-ed]").forEach(i => { i.oninput = i.onchange = () => { b[i.dataset.ed] = i.value; if (i.dataset.ed === "lugar_id") renderExtintores(); }; });
-    panel.querySelectorAll(".ext-opc[data-ed] button").forEach(x => { x.onclick = () => { b.PLANTA = x.dataset.valor; renderExtintores(); }; });
+    panel.querySelectorAll(".ext-opc[data-ed] button").forEach(x => { x.onclick = () => { b[x.closest(".ext-opc").dataset.ed] = x.dataset.valor; renderExtintores(); }; });
     panel.querySelector(".ext-ed-ok").onclick = () => {
+      const lgb = lugarInc(b.lugar_id); if (lgb.dep) b.SECTOR = lgb.dep;
       if (!String(b.SECTOR || "").trim() || !String(b.UBICACION || "").trim()) { alert("El sector y dónde está no pueden quedar vacíos."); return; }
+      const malEd = extRevisar(b); if (malEd.length) { alert("Revisá: " + malEd.join("; ") + "."); return; }
       const lug = ESTABLECIMIENTOS.find(x => x.id === b.lugar_id);
       tareaHys.ediciones[e.id] = Object.assign({}, b, { lugar_nombre: lug ? lug.nombre : b.lugar_id });
       c.editando = false; c.borrador = null; renderExtintores();
@@ -2934,24 +2982,25 @@ function avisoVto(e) {
 // Plantas de cada lugar: salen de la columna «plantas» de la hoja establecimientos
 // (separadas por coma, ej.: «Subsuelo, Planta baja, 1er piso, 2do piso»).
 // Si un lugar no la tiene cargada, se ofrecen las opciones generales.
-const PLANTAS_POR_DEFECTO = ["Baja", "Alta", "Subsuelo", "Única"];
+// Desde el 29/10/2026 las plantas son las del Portal HyS (vienen con la lista de lugares); estas quedan si no hay señal todavía.
+const PLANTAS_POR_DEFECTO = ["Subsuelo", "Planta baja", "1er piso", "2do piso", "3er piso", "Única", "Vehículo"];
 function listaPlantas(v) { return String(v == null ? "" : v).split(/[,;]/).map(x => x.trim()).filter(x => x && x.toLowerCase() !== "s/d"); }
 function plantasDe(idLugar, valorActual) {
-  const e = ESTABLECIMIENTOS.find(x => x.id === idLugar);
-  const lista = (e && e.plantas && e.plantas.length ? e.plantas : PLANTAS_POR_DEFECTO).slice();
+  const lg = lugarInc(idLugar);
+  const lista = (lg.plantas && lg.plantas.length ? lg.plantas : PLANTAS_POR_DEFECTO).slice();
   if (valorActual && lista.indexOf(valorActual) < 0) lista.push(valorActual); // que se vea lo que ya estaba cargado
   return lista;
 }
 const CAMPOS_ALTA = [
-  ["PLANTA", "¿En qué planta está?", "botones", ["Baja", "Alta", "Subsuelo", "Única"]],
-  ["SECTOR", "Sector o servicio", "texto", "Ej.: Guardia, sala de espera"],
+  ["NRO_EXTINTOR", "N.º de puesto (el número del cartel)", "puesto", "Ej.: 12 · solo números"],
+  ["PLANTA", "¿En qué planta está?", "botones", PLANTAS_POR_DEFECTO],
+  ["SECTOR", "Sector o servicio", "sector", "Ej.: Guardia, sala de espera"],
   ["UBICACION", "¿Dónde está exactamente?", "texto", "Ej.: en la pared, al lado de la puerta"],
   ["TIPO", "Tipo (está escrito en el extintor)", "botones", ["ABC", "BC", "K", "Otro"]],
   ["AGENTE", "¿Qué tiene adentro?", "botones", ["PQS", "CO2", "Agua", "AFFF (espuma)", "HCFC 123", "Acetato de potasio"]],
   ["CAPACIDAD_KG", "¿De cuántos kilos?", "numero", "Ej.: 5"],
-  ["NRO_INVENTARIO", "N.º de inventario (la chapita)", "texto", "Si no tiene, escribí s/d"],
+  ["NRO_INVENTARIO", "N.º de inventario (la chapita)", "inventario", "El de la chapita patrimonial · si no tiene, s/d"],
   ["VTO_CARGA", "¿Hasta cuándo dura la carga? (está en la tarjeta)", "fecha", ""],
-  ["NRO_EXTINTOR", "N.º del extintor (opcional)", "texto", "Si tiene un número pintado o en un cartel", true],
 ];
 let altaN = 0;
 function altaVacia(l) { const d = {}; CAMPOS_ALTA.forEach(([k]) => d[k] = ""); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = ""); return { uid: "A" + (++altaN) + "-" + Date.now(), lugar: { id: l.id, nombre: l.nombre }, datos: d, fotos: f, obs: "" }; }
@@ -2962,7 +3011,7 @@ function altaFaltan(a) {
   const f = CAMPOS_ALTA.filter(([k, , , , opc]) => !opc && !altaValor(a, k)).map(([, tit]) => tit.replace(/[¿?]/g, "").replace(/\s*\(.*\)\s*/, "").trim().toLowerCase());
   const sinFoto = FOTOS_EXTINTOR.filter(([k]) => !a.fotos[k]).length;
   if (sinFoto) f.push(sinFoto === 1 ? "1 foto" : sinFoto + " fotos");
-  return f;
+  return f.concat(extRevisar(a.datos));
 }
 function altaCompleta(a) { return altaFaltan(a).length === 0; }
 function textoBotonAlta(a) { return altaCompleta(a) ? "Listo, guardar este extintor nuevo" : "Falta: " + altaFaltan(a).join(", "); }
@@ -2970,8 +3019,17 @@ function panelAlta(a) {
   const panel = document.createElement("div");
   panel.className = "ext-panel";
   let html = `<div class="step-sub" style="margin:8px 0 0">Completá todo y sacá las 3 fotos. Es obligatorio.</div>`;
+  const lg = lugarInc(a.lugar.id);
+  if (lg.dep) a.datos.SECTOR = lg.dep;   // entró por una dependencia (p. ej. Vacunatorio)
   CAMPOS_ALTA.forEach(([k, tit, tipo, x]) => {
+    if (tipo === "sector") {
+      if (lg.dep) { html += `<div class="ext-preg">Dependencia</div><div class="step-sub" style="margin:0 0 8px"><b>${escX(lg.dep)}</b></div>`; return; }
+      if (lg.deps.length) { html += `<div class="ext-preg">Dependencia (sector)</div><div class="ext-opc" data-campo="SECTOR">` + lg.deps.map(v => `<button type="button" class="${a.datos.SECTOR === v ? "on" : ""}" data-valor="${escX(v)}">${escX(v)}</button>`).join("") + `</div>`; return; }
+      tipo = "texto";
+    }
     html += `<div class="ext-preg">${tit}</div>`;
+    if (tipo === "puesto") { html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("puesto")}`; return; }
+    if (tipo === "inventario") { html += `<input class="ext-inp" data-campo="${k}" type="text" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("inventario")}`; return; }
     const opciones = k === "PLANTA" ? plantasDe(a.lugar.id, a.datos.PLANTA) : x;
     if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + opciones.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
     else html += `<input class="ext-inp" data-campo="${k}" type="${tipo === "fecha" ? "date" : "text"}"${tipo === "numero" ? ' inputmode="decimal"' : ""} value="${escX(a.datos[k] || "")}" placeholder="${escX(x || "")}">`;
@@ -2996,7 +3054,7 @@ function panelAlta(a) {
   panel.querySelector(".ext-quitar").onclick = () => { if (confirm("¿Quitar este extintor nuevo? Se borra lo que cargaste.")) { tareaHys.altas = tareaHys.altas.filter(x => x !== a); altaAbierta = null; renderExtintores(); } };
   return panel;
 }
-function altaNombre(a) { return "Nuevo · " + [a.datos.TIPO, a.datos.AGENTE, a.datos.CAPACIDAD_KG ? a.datos.CAPACIDAD_KG + " kg" : ""].filter(Boolean).join(" ") + " · " + [a.datos.SECTOR, a.datos.UBICACION].filter(Boolean).join(", ") + " · inventario " + a.datos.NRO_INVENTARIO; }
+function altaNombre(a) { return "Nuevo · puesto " + (a.datos.NRO_EXTINTOR || "s/d") + " · " + [a.datos.TIPO, a.datos.AGENTE, a.datos.CAPACIDAD_KG ? a.datos.CAPACIDAD_KG + " kg" : ""].filter(Boolean).join(" ") + " · " + [a.datos.SECTOR, a.datos.UBICACION].filter(Boolean).join(", ") + " · inventario " + a.datos.NRO_INVENTARIO; }
 
 // Texto del control de extintores: una línea por extintor controlado (va a "detalle")
 // y lo que está mal (va a "hallazgos").
@@ -3006,6 +3064,7 @@ function textoExtintores() {
     extintoresDe(l.id).forEach(e => {
       const c = tareaHys.controles[e.id]; if (!controlCompleto(c)) return;
       const fx = (v) => v ? v.split("-").reverse().join("/") : "";
+      if (c.todoOk) { lineas.push(`${l.nombre} · ${extNombre(e)} (${e.id}): Todo OK (control rápido, sin fotos)` + (c.obs && c.obs.trim() ? " · Comentario: " + c.obs.trim() : "")); return; }
       lineas.push(`${l.nombre} · ${extNombre(e)} (${e.id}): ` + PREGUNTAS_EXTINTOR.map(([k, p]) => p.replace(/[¿?]/g, "").replace(/ \(.*\)/, "") + " " + c.resp[k]).join(" · ") + " · carga hasta " + (c.noSeLee ? "no se lee" : fx(c.vto)) + (c.ph ? " · prueba hidráulica hasta " + fx(c.ph) : "") + " · 3 fotos" + (c.obs && c.obs.trim() ? " · Comentario: " + c.obs.trim() : ""));
       const hoyIso = new Date().toISOString().slice(0, 10);
       if (!c.noSeLee && c.vto && c.vto < hoyIso) problemas.push(`${l.nombre} · ${extNombre(e)}: carga vencida (${fx(c.vto)})`);
@@ -3014,7 +3073,7 @@ function textoExtintores() {
       if (mal.length) problemas.push(`${l.nombre} · ${extNombre(e)}: ${mal.join("; ")}`);
     });
     extintoresDe(l.id).forEach(e => { const ed = tareaHys.ediciones[e.id]; if (!ed) return;
-      lineas.push(`${l.nombre} · ${e.id}: corrección de nombre o ubicación → ` + [ed.NRO_EXTINTOR ? "N.º " + ed.NRO_EXTINTOR : "", ed.lugar_nombre, ed.PLANTA ? "planta " + ed.PLANTA.toLowerCase() : "", ed.SECTOR, ed.UBICACION].filter(Boolean).join(" · "));
+      lineas.push(`${l.nombre} · ${e.id}: corrección de puesto o ubicación → ` + [ed.NRO_EXTINTOR ? "puesto " + ed.NRO_EXTINTOR : "", ed.lugar_nombre, ed.PLANTA ? "planta " + ed.PLANTA.toLowerCase() : "", ed.SECTOR, ed.UBICACION].filter(Boolean).join(" · "));
     });
     tareaHys.altas.filter(a => a.lugar.id === l.id && altaCompleta(a)).forEach(a => {
       lineas.push(`${l.nombre} · ${altaNombre(a)}: agregado al inventario con 3 fotos` + (a.obs && a.obs.trim() ? " · Comentario: " + a.obs.trim() : ""));
@@ -3029,9 +3088,9 @@ function registrosControlExtintores(idTarea) {
     const c = tareaHys.controles[id]; if (!controlCompleto(c)) return;
     const d = { id_control: idTarea + "-E" + (i + 1), id_tarea: idTarea, ID_EXTINTOR: id, fecha: new Date().toISOString(),
       operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
-      fotos_base64: FOTOS_EXTINTOR.map(([k]) => c.fotos[k]), OBSERVACIONES: (c.obs || "").trim(),
-      VTO_CARGA: c.noSeLee ? "s/d (no se lee)" : c.vto, PRUEBA_HIDRAULICA_VENCE: c.ph || "" };
-    PREGUNTAS_EXTINTOR.forEach(([k]) => d[k] = c.resp[k]);
+      fotos_base64: c.todoOk ? [] : FOTOS_EXTINTOR.map(([k]) => c.fotos[k]), OBSERVACIONES: (c.obs || "").trim(), todoOk: !!c.todoOk,
+      VTO_CARGA: c.todoOk ? "" : c.noSeLee ? "s/d (no se lee)" : c.vto, PRUEBA_HIDRAULICA_VENCE: c.todoOk ? "" : c.ph || "" };
+    PREGUNTAS_EXTINTOR.forEach(([k]) => d[k] = c.todoOk ? "Sí" : c.resp[k]);
     out.push({ tipo: "control_extintor", data: d });
   });
   return out;
@@ -3390,9 +3449,14 @@ async function trySync(manual) {
       if (resp && resp.ok === true) {
         await colaBorrar(item.qid);
         enviados++;
+      } else if (resp && resp.codigo === "no_existe" && /extintor/.test(item.tipo || "")) {
+        // el extintor ya no está en el sistema HyS (lo dieron de baja o lo borraron): no tiene arreglo, se descarta y se avisa (29/10/2026)
+        await colaBorrar(item.qid);
+        if (typeof extDescartadoGuardar === "function") extDescartadoGuardar(item, resp.mensaje);
       } else {
         item.intentos = (item.intentos || 0) + 1;
-        item.ultimo_error = (resp && resp.error) || "Error desconocido";
+        item.ultimo_error = (resp && (resp.mensaje || resp.error)) || "Error desconocido";
+        item.codigo_error = (resp && resp.codigo) || "";
         await colaActualizar(item);
         if (idTrabajo) trabajosTrabados.add(idTrabajo);
       }
@@ -3412,6 +3476,7 @@ async function trySync(manual) {
   if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enviados} registro(s)`);
   else if (sinRed) showSyncFeedback(`Sin señal — quedan ${quedan} pendientes, se reintenta solo`);
   else showSyncFeedback(`Quedan ${quedan} pendientes — se reintenta más tarde`);
+  if (typeof extFallidosAviso === "function") extFallidosAviso();   // aviso «No se pudo enviar» en el inicio (extintores.js)
 }
 
 function showSyncFeedback(msg) {
@@ -3527,6 +3592,7 @@ function convertirCatalogos(d) {
     });
   }
   if (Array.isArray(d.extintores)) out.extintores = d.extintores;
+  if (d.extintores_lugares && typeof d.extintores_lugares === "object") out.extintores_lugares = d.extintores_lugares;   // lugar → sitio y dependencia (29/10/2026)
   if (d.tanques && Array.isArray(d.tanques.tanques)) out.tanques = d.tanques;   // tanques y cisternas (Tanques_MIPyV.gs)
   if (Array.isArray(d.tipos_tarea)) {
     out.tipos_tarea = d.tipos_tarea.map(texto).filter(Boolean);
@@ -3558,6 +3624,8 @@ function aplicarCatalogos(c) {
   reemplazarLista(CAPS_SANEAMIENTO, ESTABLECIMIENTOS.filter(e => e.tipo === "CAP"));
   reemplazarLista(TIPOS_TAREA_HYS, c.tipos_tarea);
   if (Array.isArray(c.extintores)) EXTINTORES_CAT = c.extintores;
+  if (c.extintores_lugares && typeof c.extintores_lugares === "object") EXTINTORES_LUG = c.extintores_lugares;
+  if (typeof extTablaRefrescar === "function") extTablaRefrescar();   // tabla de extintores cargados (extintores.js)
   // volver a dibujar las grillas con las listas nuevas
   renderOperarios();
   renderEstablecimientos();
@@ -4263,6 +4331,167 @@ function tqEntrar() { tq = { vista: "lugares", lugar: null, codigo: null, form: 
 try { const g = JSON.parse(localStorage.getItem("mipyv_catalogos_v1") || "null"); if (g && g.catalogos && g.catalogos.tanques) TANQUES_CAT = g.catalogos.tanques; } catch (e) { }
 tqPintarHome();
 tqAvisoHome();
+</script>
+<script>
+// ============================================================
+// EXTINTORES CARGADOS y ENVÍOS QUE NO SE PUDIERON MANDAR — red Trelew sin HMH (29/10/2026, pedido de Belén)
+//  · «Extintores cargados»: tabla de consulta de todo lo que está en el sistema HyS (módulo 7 · Protección contra
+//    incendios), con filtro por lugar, buscador y colores: rojo carga vencida, amarillo vence en 30 días.
+//    Solo se mira: para cargar o corregir se usa «Otra tarea de Higiene y Seguridad» › «Control de extintores».
+//  · «No se pudo enviar»: lo que la planilla rechazó, con el motivo en lenguaje claro y tres botones: corregir
+//    (los datos del extintor), reintentar o descartar. Lo de extintores que ya no existen se descarta solo y se avisa.
+// Los datos salen de los catálogos (Incendio_MIPyV.gs › extintoresParaApp_), que se actualizan con señal.
+// ============================================================
+const EXT_DESC_KEY = "mipyv_ext_descartados_v1";
+const extHoyIso = () => new Date().toISOString().slice(0, 10);
+const extEn30 = () => new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+const extF = (iso) => /^\d{4}-\d{2}-\d{2}/.test(iso || "") ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + "/" + iso.slice(0, 4) : "—";
+let extVista = { abierta: false, modo: "tabla", lugar: "", buscar: "", corrigiendo: null };
+
+// ---------- panel que tapa la pantalla (se abre desde el inicio o desde el control de extintores)
+const extPanel = document.createElement("div");
+extPanel.id = "extPanel";
+extPanel.style.cssText = "display:none;position:fixed;inset:0;z-index:60;background:#F4F7F8;overflow:auto;-webkit-overflow-scrolling:touch";
+document.body.appendChild(extPanel);
+const extCss = document.createElement("style");
+extCss.textContent = `
+#extPanel .xp-top{position:sticky;top:0;z-index:2;background:var(--azul-humphreys);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}
+#extPanel .xp-top b{font-size:1.1rem;flex:1}
+#extPanel .xp-top button{background:#fff;color:var(--azul-humphreys);border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700}
+#extPanel .xp-body{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
+#extPanel .xp-fil{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+#extPanel .xp-fil select,#extPanel .xp-fil input{flex:1 1 200px;min-height:46px;border:2px solid var(--gris-borde);border-radius:12px;padding:8px 10px;font:inherit;background:#fff}
+#extPanel .xp-cnt{font-size:.9rem;margin:0 0 8px;opacity:.85}
+#extPanel .xp-tabla{overflow-x:auto;background:#fff;border-radius:14px;border:1px solid var(--gris-borde)}
+#extPanel table{border-collapse:collapse;width:100%;min-width:860px;font-size:.88rem}
+#extPanel th{position:sticky;top:0;background:var(--azul-claro);text-align:left;padding:8px;border-bottom:2px solid var(--gris-borde);white-space:nowrap}
+#extPanel td{padding:8px;border-bottom:1px solid var(--gris-borde);vertical-align:top}
+#extPanel tr.venc td{background:#FBE4E1}
+#extPanel tr.porv td{background:#FFF4D6}
+#extPanel .xp-ley{font-size:.82rem;margin:8px 0 0;opacity:.8}
+#extPanel .xp-item{background:#fff;border:1px solid var(--gris-borde);border-radius:14px;padding:12px 14px;margin:0 0 10px}
+#extPanel .xp-item .msg{background:#FBE4E1;color:#7A231B;border-radius:10px;padding:8px 10px;margin:8px 0}
+#extPanel .xp-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#extPanel .xp-btns button{min-height:44px;border-radius:12px;border:2px solid var(--azul-humphreys);background:#fff;color:var(--azul-humphreys);font:inherit;font-weight:700;padding:8px 12px}
+#extPanel .xp-btns button.pri{background:var(--azul-humphreys);color:#fff}
+#extPanel .xp-btns button.no{border-color:var(--rojo-no);color:var(--rojo-no)}
+#extPanel .xp-campo{margin:8px 0}
+#extPanel .xp-campo label{display:block;font-weight:700;font-size:.9rem;margin-bottom:4px}
+#extPanel .xp-campo input{width:100%;min-height:44px;border:2px solid var(--gris-borde);border-radius:10px;padding:8px 10px;font:inherit}
+.module-card.ext{background:linear-gradient(135deg,#7A3B2E,#B0563E);}
+`;
+document.head.appendChild(extCss);
+const escE = (t) => String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function extTablaAbrir(modo) { extVista.abierta = true; extVista.modo = modo || "tabla"; extVista.corrigiendo = null; extPanel.style.display = "block"; extPanel.scrollTop = 0; extRender(); }
+function extTablaCerrar() { extVista.abierta = false; extPanel.style.display = "none"; extFallidosAviso(); }
+function extTablaRefrescar() { if (extVista.abierta && extVista.modo === "tabla") extRender(); }
+
+// Nombre del lugar o dependencia de cada extintor (para el filtro): «Sede ex ADOS · Vacunatorio», «Amaya»…
+function extLugarTxt(e) { const lg = (e.lugares || []).map(id => EXTINTORES_LUG[id]).find(Boolean); return e.sitio + (lg && lg.deps && lg.deps.length && e.sector ? " · " + e.sector : ""); }
+
+async function extRender() {
+  if (!extVista.abierta) return;
+  if (extVista.modo === "fallidos") return extRenderFallidos();
+  const todos = EXTINTORES_CAT.slice();
+  const lugares = Array.from(new Set(todos.map(extLugarTxt))).sort((a, b) => a.localeCompare(b, "es"));
+  if (extVista.lugar && lugares.indexOf(extVista.lugar) < 0) extVista.lugar = "";
+  const q = extVista.buscar.trim().toLowerCase();
+  const L = todos.filter(e => (!extVista.lugar || extLugarTxt(e) === extVista.lugar) && (!q || [e.nro, e.inv, e.sector, e.ubicacion, e.sitio, e.id].join(" ").toLowerCase().indexOf(q) >= 0))
+    .sort((a, b) => extLugarTxt(a).localeCompare(extLugarTxt(b), "es") || (Number(a.nro) || 9999) - (Number(b.nro) || 9999));
+  const hoy = extHoyIso(), lim = extEn30();
+  const venc = L.filter(e => /^\d{4}-/.test(e.vto) && e.vto < hoy).length, porv = L.filter(e => /^\d{4}-/.test(e.vto) && e.vto >= hoy && e.vto <= lim).length;
+  const sinCtl = L.filter(e => String(e.ultimo || "").slice(0, 7) !== hoy.slice(0, 7)).length;
+  let guardado = ""; try { const g = JSON.parse(localStorage.getItem(CATALOGOS_KEY) || "null"); if (g && g.fecha) guardado = new Date(g.fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch (x) {}
+  extPanel.innerHTML = `<div class="xp-top"><b>🧯 Extintores cargados</b><button type="button" id="xpCerrar">Cerrar</button></div><div class="xp-body">
+    <div class="xp-fil"><select id="xpLugar"><option value="">Todos los lugares (${todos.length})</option>${lugares.map(l => `<option value="${escE(l)}"${l === extVista.lugar ? " selected" : ""}>${escE(l)} (${todos.filter(e => extLugarTxt(e) === l).length})</option>`).join("")}</select>
+    <input id="xpBuscar" type="search" placeholder="Buscar puesto, inventario, sector…" value="${escE(extVista.buscar)}"></div>
+    <div class="xp-cnt"><b>${L.length}</b> extintor(es)${venc ? ` · <b style="color:var(--rojo-no)">${venc} con la carga vencida</b>` : ""}${porv ? ` · <b style="color:#8A5A00">${porv} vencen en 30 días</b>` : ""} · ${sinCtl} sin control este mes${guardado ? ` · lista del ${guardado}` : ""}</div>
+    ${L.length ? `<div class="xp-tabla"><table><thead><tr><th>Puesto</th><th>Lugar · sector</th><th>Planta</th><th>Dónde está</th><th>Tipo · agente · kg</th><th>N.º de inventario</th><th>Carga vence</th><th>Último control</th><th>Cargó</th></tr></thead><tbody>
+      ${L.map(e => { const cl = /^\d{4}-/.test(e.vto) && e.vto < hoy ? "venc" : /^\d{4}-/.test(e.vto) && e.vto <= lim ? "porv" : "";
+        return `<tr class="${cl}"><td><b>${escE(e.nro || "s/d")}</b></td><td>${escE(e.sitio)}${e.sector ? "<br><small>" + escE(e.sector) + "</small>" : ""}</td><td>${escE(e.planta || "s/d")}</td><td>${escE(e.ubicacion || "s/d")}</td>
+          <td>${escE([e.tipo, e.agente, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" · ") || "s/d")}</td><td>${escE(e.inv || "s/d")}</td><td>${extF(e.vto)}${cl === "venc" ? " ⚠️" : cl === "porv" ? " ⏰" : ""}</td>
+          <td>${extF(e.ultimo)}${e.resultado ? "<br><small>" + escE(String(e.resultado).replace(/\s*\(MIPyV\)/, "").slice(0, 60)) + "</small>" : ""}</td><td><small>${escE(e.cargo || "s/d")}${e.alta ? "<br>" + escE(e.alta) : ""}${/^pendiente/i.test(e.verificacion) ? "<br>falta verificar (HyS)" : ""}</small></td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="xp-item">Todavía no hay extintores cargados${extVista.lugar || q ? " con ese filtro" : ""}. Se cargan en «Otra tarea de Higiene y Seguridad» › «Control de extintores» › «Agregar un extintor que no está en la lista».</div>`}
+    <div class="xp-ley">Rojo: carga vencida. Amarillo: vence en 30 días. Lo recién cargado aparece cuando se envía y la lista se actualiza con señal.</div>
+    <div class="xp-btns"><button type="button" class="pri" id="xpAct">🔄 Actualizar la lista</button></div></div>`;
+  extPanel.querySelector("#xpCerrar").onclick = extTablaCerrar;
+  extPanel.querySelector("#xpLugar").onchange = (ev) => { extVista.lugar = ev.target.value; extRender(); };
+  const bus = extPanel.querySelector("#xpBuscar");
+  bus.oninput = (ev) => { extVista.buscar = ev.target.value; clearTimeout(extRender._t); extRender._t = setTimeout(() => { extRender(); const b = extPanel.querySelector("#xpBuscar"); if (b) { b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); };
+  extPanel.querySelector("#xpAct").onclick = async (ev) => { ev.target.disabled = true; ev.target.textContent = "Actualizando…"; await actualizarCatalogosDesdePlanilla(); try { const g = JSON.parse(localStorage.getItem(CATALOGOS_KEY) || "null"); if (g && g.catalogos) { if (Array.isArray(g.catalogos.extintores)) EXTINTORES_CAT = g.catalogos.extintores; if (g.catalogos.extintores_lugares) EXTINTORES_LUG = g.catalogos.extintores_lugares; } } catch (x) {} extRender(); };
+}
+
+// ---------- lo que no se pudo enviar
+const EXT_TIPOS = { control_extintor: "Control de extintor", alta_extintor: "Extintor nuevo", editar_extintor: "Corrección de extintor", tarea_hys: "Tarea de Higiene y Seguridad", visita: "Visita MIPyV", hallazgo: "Hallazgo", trabajo_nuevo: "Trabajo de saneamiento", avance: "Avance de saneamiento", cierre_trabajo: "Cierre de trabajo", alta_tanque: "Tanque nuevo", editar_tanque: "Corrección de tanque", inspeccion_tanque: "Relevamiento de tanque", limpieza_tanque: "Limpieza de tanque" };
+const EXT_CAMPOS = [["NRO_EXTINTOR", "N.º de puesto (el del cartel, solo números)"], ["NRO_INVENTARIO", "N.º de inventario (la chapita; si no tiene, s/d)"], ["PLANTA", "Planta"], ["SECTOR", "Sector o dependencia"], ["UBICACION", "¿Dónde está exactamente?"], ["VTO_CARGA", "Vencimiento de la carga (aaaa-mm-dd)"], ["PRUEBA_HIDRAULICA_VENCE", "Vencimiento de la prueba hidráulica (aaaa-mm-dd)"]];
+function extResumen(it) {
+  const d = it.data || {}, e = EXTINTORES_CAT.find(x => x.id === d.ID_EXTINTOR);
+  if (it.tipo === "alta_extintor") return (d.lugar_nombre || "") + " · puesto " + (d.NRO_EXTINTOR || "s/d") + " · " + [d.TIPO, d.CAPACIDAD_KG ? d.CAPACIDAD_KG + " kg" : ""].filter(Boolean).join(" ") + " · inventario " + (d.NRO_INVENTARIO || "s/d");
+  if (/extintor/.test(it.tipo)) return (e ? (e.nro ? "Puesto " + e.nro + " · " : "") + e.sitio + (e.sector ? " · " + e.sector : "") : "") + " (" + (d.ID_EXTINTOR || "") + ")";
+  return d.establecimiento || d.lugar_nombre || d.id_establecimiento || "";
+}
+function extDescartadoGuardar(item, mensaje) {
+  let L = []; try { L = JSON.parse(localStorage.getItem(EXT_DESC_KEY) || "[]"); } catch (x) {}
+  L.unshift({ fecha: new Date().toISOString(), tipo: item.tipo, resumen: extResumen(item), mensaje: mensaje || "El extintor ya no está en la lista.", visto: false });
+  try { localStorage.setItem(EXT_DESC_KEY, JSON.stringify(L.slice(0, 30))); } catch (x) {}
+}
+async function extFallidos() { try { return (await colaListar()).filter(it => it.ultimo_error); } catch (x) { return []; } }
+async function extFallidosAviso() {
+  const box = document.getElementById("extFallidos"); if (!box) return;
+  const F = await extFallidos(); let D = []; try { D = JSON.parse(localStorage.getItem(EXT_DESC_KEY) || "[]").filter(d => !d.visto); } catch (x) {}
+  if (!F.length && !D.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  box.innerHTML = `<b>⚠️ ${F.length ? F.length + (F.length === 1 ? " registro no se pudo enviar" : " registros no se pudieron enviar") : ""}${F.length && D.length ? " · " : ""}${D.length ? D.length + " descartado(s) solo(s)" : ""}</b><br><span style="font-size:.9rem">Tocá para ver qué pasó y corregirlo.</span>`;
+  box.onclick = () => extTablaAbrir("fallidos");
+}
+async function extRenderFallidos() {
+  const F = await extFallidos(); let D = []; try { D = JSON.parse(localStorage.getItem(EXT_DESC_KEY) || "[]"); } catch (x) {}
+  const c = extVista.corrigiendo;
+  let h = `<div class="xp-top"><b>⚠️ No se pudo enviar</b><button type="button" id="xpCerrar">Cerrar</button></div><div class="xp-body">`;
+  if (!F.length) h += `<div class="xp-item">✅ No hay nada trabado: todo lo que quedó en el celular se manda solo cuando hay señal.</div>`;
+  else h += `<p class="xp-cnt">La planilla no aceptó estos registros. Leé el motivo: si es un dato mal cargado, tocá «Corregir»; si ya no hace falta, «Descartar».</p>`;
+  F.forEach(it => {
+    const d = it.data || {}, ext = /extintor/.test(it.tipo), corr = c === it.qid;
+    h += `<div class="xp-item"><b>${escE(EXT_TIPOS[it.tipo] || it.tipo)}</b><br><small>${escE(extResumen(it))}${it.agregado ? " · cargado el " + extF(String(it.agregado).slice(0, 10)) : ""}${it.intentos ? " · " + it.intentos + " intento(s)" : ""}</small>
+      <div class="msg">${escE(it.ultimo_error)}</div>`;
+    if (corr) {
+      EXT_CAMPOS.filter(([k]) => k in d || (it.tipo === "alta_extintor" && k !== "PRUEBA_HIDRAULICA_VENCE")).forEach(([k, t]) => {
+        h += `<div class="xp-campo"><label>${escE(t)}</label><input data-k="${k}" value="${escE(d[k] || "")}"${k === "NRO_EXTINTOR" ? ' inputmode="numeric" maxlength="3"' : ""}></div>`; });
+      h += `<div class="xp-btns"><button type="button" class="pri" data-guardar="${escE(it.qid)}">Guardar y volver a enviar</button><button type="button" data-cancelar="1">Cancelar</button></div>`;
+    } else {
+      h += `<div class="xp-btns">${ext && it.tipo !== "control_extintor" || it.tipo === "control_extintor" && it.codigo_error === "fecha" ? `<button type="button" class="pri" data-corregir="${escE(it.qid)}">✏️ Corregir</button>` : ""}<button type="button" data-reintentar="1">🔄 Reintentar ahora</button><button type="button" class="no" data-descartar="${escE(it.qid)}">🗑️ Descartar</button></div>`;
+    }
+    h += `</div>`;
+  });
+  if (D.length) {
+    h += `<h3 style="margin:18px 0 8px">Descartados solos (el extintor ya no estaba en la lista)</h3>`;
+    D.slice(0, 10).forEach(x => { h += `<div class="xp-item"><b>${escE(EXT_TIPOS[x.tipo] || x.tipo)}</b><br><small>${escE(x.resumen)} · ${extF(String(x.fecha).slice(0, 10))}</small><div class="msg" style="background:#EAF1F2;color:var(--texto)">${escE(x.mensaje)} Si el extintor sigue en el lugar, cargalo de nuevo con «Agregar un extintor que no está en la lista».</div></div>`; });
+    h += `<div class="xp-btns"><button type="button" data-visto="1">Entendido, sacar el aviso</button></div>`;
+  }
+  h += `</div>`;
+  extPanel.innerHTML = h;
+  extPanel.querySelector("#xpCerrar").onclick = extTablaCerrar;
+  extPanel.querySelectorAll("[data-corregir]").forEach(b => b.onclick = () => { extVista.corrigiendo = Number(b.dataset.corregir) || b.dataset.corregir; extRender(); });
+  extPanel.querySelectorAll("[data-cancelar]").forEach(b => b.onclick = () => { extVista.corrigiendo = null; extRender(); });
+  extPanel.querySelectorAll("[data-reintentar]").forEach(b => b.onclick = async () => { b.disabled = true; b.textContent = "Enviando…"; await trySync(true); extRender(); });
+  extPanel.querySelectorAll("[data-descartar]").forEach(b => b.onclick = async () => {
+    if (!confirm("¿Descartar este registro? Se borra del celular y no se manda. No se puede deshacer.")) return;
+    await colaBorrar(Number(b.dataset.descartar) || b.dataset.descartar); await updateQueueBadge(); extRender(); });
+  extPanel.querySelectorAll("[data-guardar]").forEach(b => b.onclick = async () => {
+    const it = F.find(x => String(x.qid) === String(b.dataset.guardar)); if (!it) return;
+    extPanel.querySelectorAll("input[data-k]").forEach(i => { it.data[i.dataset.k] = i.value.trim(); });
+    const mal = extRevisar(it.data); if (mal.length) { alert("Revisá: " + mal.join("; ") + "."); return; }
+    it.ultimo_error = ""; it.codigo_error = ""; await colaActualizar(it); extVista.corrigiendo = null;
+    b.disabled = true; b.textContent = "Enviando…"; await trySync(true); extRender(); });
+  extPanel.querySelectorAll("[data-visto]").forEach(b => b.onclick = () => {
+    try { localStorage.setItem(EXT_DESC_KEY, JSON.stringify(D.map(x => Object.assign(x, { visto: true })))); } catch (x) {}
+    extRender(); extFallidosAviso(); });
+}
+
+// ---------- botones del inicio
+document.getElementById("goExtTabla") && document.getElementById("goExtTabla").addEventListener("click", () => extTablaAbrir("tabla"));
+extFallidosAviso();
 </script>
 </body>
 </html>
