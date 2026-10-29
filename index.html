@@ -2915,7 +2915,8 @@ document.addEventListener('change', e => {
 
 // ------------------------------------------------------------------ Arranque
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-if (SES && SES.persona && SES.persona.funcion !== 'Referente de residuos' && !SES.persona.red && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
+if (SES && SES.persona && !SES.persona.propia && SES.persona.funcion !== 'Referente de residuos' && !SES.persona.red && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
+// 29/10/2026: quien entra con DNI y clave personal (propia) no vuelve a «¿Quién sos?» al recargar la página
 if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); miCargar(true); } else if (SES) quienCarga(); else ingreso();
 
 </script>
