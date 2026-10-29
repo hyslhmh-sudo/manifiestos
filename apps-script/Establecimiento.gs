@@ -341,7 +341,7 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
     .map(r => ({ nombre: limpio_(r.v[1]), rol: limpio_(r.v[4]), telefono: limpio_(r.v[7]) })).filter(p => p.nombre);
   // Agua: tanques
   const T = de(miLeer_('RESERVORIOS')).filter(t => !/fuera/i.test(t.ESTADO)), Pm = de(miLeer_('PUNTOS_MUESTREO')).filter(p => !/fuera/i.test(p.ESTADO));
-  if (!T.length) pend('wa', 'agua', 'Cargá tus tanques y cisternas', 'Se hace una sola vez; después cada relevamiento y cada limpieza usan esos datos.', 'agua_alta');
+  if (!T.length) pend('wa', 'agua', 'Cargá tus tanques y cisternas', 'Con la hoja de relevamiento por dependencia que completa Mantenimiento: se carga una dependencia por vez y quedan el mapeo y el estado.', 'agua_alta');
   // Relevamiento de estado cada 3 meses (AGUA_INSPECCIONES, también lo carga la app MIP en la red Trelew)
   const sinRel = [], sinLim = [];
   const INS = {}; de(miLeer_('AGUA_INSPECCIONES')).forEach(i => { if (!INS[i.CODIGO_TANQUE] || i.FECHA > INS[i.CODIGO_TANQUE].FECHA) INS[i.CODIGO_TANQUE] = i; });
