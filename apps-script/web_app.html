@@ -899,7 +899,7 @@ function inicio() {
     (maudVe() || impVe() ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + (maudVe() ? tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las evaluaciones de HyS del establecimiento (Res. SRT 905/2015), por tema: fecha, estado y resultado', true) : '') +   // MiAuditorias.gs (23/10/2026)
       (impVe() ? tile('miImp', 'Hojas para imprimir', 'En blanco para completar en papel, o completadas · adjuntar la hoja firmada') : '') + '</div>' : '') +   // Imprimir.gs (23/10/2026)
     (puede('Residuos') || puede('Diagnóstico') || puede('Auditoría') || (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0) ? '<h2>1 · Residuos</h2><div class="menu">' +
-      (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto') + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') : '') +
+      (SES.modulos && SES.modulos.indexOf('Desvíos') >= 0 ? tile('desvSup', 'Desvíos: supervisión', 'Lo que cargan los operarios de Star Union, las acciones de HyS y la adhesión de cada operario', true) : '') + (puede('Residuos') ? tile('nuevoManifiesto', 'Cargar un manifiesto', 'Cuando la empresa retira los residuos', true) + tile('nuevoCertificado', 'Cargar un certificado', 'Cuando llega el certificado de tratamiento') + (SES.est === 'HSST' ? '' : tile('resNov', 'Informar una novedad', 'Algo mal en una recorrida: bolsa equivocada, cortopunzante suelto, depósito…') + tile('resNovLista', 'Novedades de residuos', 'Lo que está abierto y lo resuelto'))   /* en el HSST las novedades se cargan como desvíos (29/10/2026) */ + (['HMH', 'HZT'].indexOf(SES.est) >= 0 ? tile('desvLista', 'Desvíos del recorrido (Star Union)', 'Lo que registran los operarios al retirar residuos en el HMH') : '') + (SES.est === 'HSST' ? tile('desvCargar', 'Cargar un desvío', 'Algo mal con los residuos en un servicio o en un CAPS: con foto', true) + tile('desvLista', 'Mis desvíos', 'Lo cargado, lo que revisó HyS y lo que hay que verificar') : '') : '') +
       (puede('Diagnóstico') ? tile('irDiagRes', 'Diagnóstico de residuos', 'Relevamiento completo del establecimiento, con fotos') : '') + (puede('Auditoría') ? tile('irAud', 'Auditoría interna', 'Recorrida corta cada 3 meses, desde el celular') : '') +   // 14.69: cada uno se habilita aparte en Accesos
       (puede('Residuos') ? tile('avance', 'Ver avance por mes', 'Retiros y certificados registrados') + tile('registrosRes', 'Mis manifiestos', 'Ver, corregir, anular o subir la foto que falta') + tile('lote', 'Enviar escaneados (lote del mes)', 'Carpeta .zip de un mes') : '') + '</div>' : '') +
     (puede('Agua') ? '<h2>2 · Agua</h2><div class="menu">' + tile('aguaRelDep', 'Relevamiento por dependencia', 'Cada 3 meses: cargar la hoja ' + AGUA_F3() + ' completa (mapeo y estado de todos los tanques)') + tile('aguaHojaRelev', 'Hoja de relevamiento para imprimir', 'Una por dependencia, para Mantenimiento') + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto o el PDF del ' + aguaF1() + ' firmado') + (SES.est === 'HSST' ? tile('aguaForm2', 'Personal designado (Formulario 2)', MI && MI.form2 ? 'Cargado el ' + fechaTxt(MI.form2.cargado) + ' · subir uno nuevo si cambió' : 'Subir el registro firmado del personal que limpia los tanques') : '') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + tile('aguaInv', 'Mis tanques y cisternas', 'Ver, cambiar o agregar · las canillas de muestreo las asigna HyS') + (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
@@ -2476,18 +2476,24 @@ Object.assign(ACT, { resNov: () => resNov(), resNovGuardar: () => resNovGuardar(
 // ------------------------------------------------------------------ 1 · Residuos › Desvíos del recorrido (versión 0, 22/10/2026)
 // Lo que registran los operarios de Star Union en el recorrido de retiro del HMH (planilla «DESVÍOS RESIDUOS HMH · Registro (v0)»,
 // Apps Script propio). Solo lectura. Se entra con la misma clave de Mi establecimiento: el Apps Script de desvíos la comprueba con el Sistema HyS.
-const DESV_API = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
+const DESV_API_HMH = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
+const DESV_API_HSST = 'https://script.google.com/macros/s/AKfycbyvDGN5cYxmXFkr-5wIjHRM2INyscCYUADiXKw2qTcE0yOTpdfMXdgFAJx5O2LFlqk-qA/exec';   // 29/10/2026: planilla «DESVÍOS RESIDUOS HSST · Registro (v0)» (el referente del HSST ve y carga)
+const desvHsst = () => SES && SES.est === 'HSST';
+const desvApi = () => desvHsst() ? DESV_API_HSST : DESV_API_HMH;
+const desvCargaUrl = () => DESV_CARGA + (desvHsst() ? '?e=HSST' : '');
 const DESV_CARGA = 'https://hyslhmh-sudo.github.io/manifiestos/desvios/';
-const DESV_EST = ['HMH', 'HZT'];
+const DESV_EST = ['HMH', 'HZT', 'HSST'];
 let DESV = null, DESVF = { punto: '', dias: '30', q: '' };
 async function desvLista(fresco) {
   VISTA = 'mi'; MIV = { f: () => desvLista() }; vista('wide');
+  if (DESV && DESV._est !== SES.est) DESV = null;
   if (!DESV || fresco) {
+    if (/^PENDIENTE/.test(desvApi())) { $('app').innerHTML = miTit('Desvíos del recorrido') + '<div class="notice">Todavía no está habilitado para este establecimiento. Consultá con Higiene y Seguridad.</div>'; miVolver(); return; }
     $('app').innerHTML = miTit('Desvíos del recorrido') + '<p class="mu">Cargando…</p>'; bar(null);
     try {
-      const r = await fetch(DESV_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow',
+      const r = await fetch(desvApi(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow',
         body: JSON.stringify({ accion: 'registros', est: SES.est, dni: SES.dni || '', clave: SES.clave }) }).then(x => x.json());
-      if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); DESV = r;
+      if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo leer.'); DESV = r; DESV._est = SES.est;
     } catch (e) { $('app').innerHTML = miTit('Desvíos del recorrido') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(navigator.onLine ? e.message : 'Sin señal: probá de nuevo cuando vuelva la conexión.') + '</div>'; miVolver(); return; }
   }
   const R = DESV.resumen || {}, dias = Number(DESVF.dias || 0), lim = dias ? Date.now() - dias * 86400000 : 0, q = DESVF.q.toLowerCase();
@@ -2507,7 +2513,7 @@ async function desvLista(fresco) {
     (o.VERIFICAR === 'Sí' ? '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="tag wa">Para verificar</span><button class="btn pri" style="padding:8px 10px" data-dver="' + esc(o.ID) + '" data-dres="Corregido">Corregido</button><button class="btn" style="padding:8px 10px" data-dver="' + esc(o.ID) + '" data-dres="Persiste">Sigue igual</button></div>'
       : o.CERRADO === 'Sí' ? '<span class="tag ok">Cerrado</span>' : '<span class="tag ' + (o.ORIGEN_HYS ? 'ok' : 'wa') + '">' + (o.ORIGEN_HYS ? 'Revisado' : 'Sin revisar') + '</span>') + '</div>';
   const aVer = (DESV.registros || []).filter(o => o.VERIFICAR === 'Sí').reverse();
-  $('app').innerHTML = miTit('Desvíos del recorrido', 'Lo que registran los operarios de Star Union al retirar residuos en el HMH. Cada carga también llega por correo a la secretaría de HyS y a los supervisores de Star Union.') +
+  $('app').innerHTML = miTit('Desvíos del recorrido', desvHsst() ? 'Lo que registra el referente en la internación, los servicios y los CAPS del HSST. No se mandan correos: todo queda acá y en la planilla de desvíos del HSST. <a href="' + desvCargaUrl() + '" target="_blank" rel="noopener"><b>Cargar un desvío</b></a>' : 'Lo que registran los operarios de Star Union al retirar residuos en el HMH. Cada carga también llega por correo a la secretaría de HyS y a los supervisores de Star Union.') +
     '<div class="ficha"><div><span>Registros (total)</span><b>' + (R.total || 0) + '</b></div><div><span>Últimos 30 días</span><b>' + (R.ultimos30 || 0) + '</b></div>' +
     '<div><span>Cortopunzantes o lesión</span><b>' + (R.cortopunzantesOLesion || 0) + '</b></div><div><span>Por falta de contenedores</span><b>' + (R.faltanContenedores || 0) + '</b></div><div><span>Sin revisar por HyS</span><b>' + (R.sinRevisarHyS || 0) + '</b></div></div>' +
     ((R.porCausa || []).length ? '<h2>Por qué pasa <span class="mu" style="font-weight:400;font-size:13px">(contenedor lleno o residuo fuera de contenedor)</span></h2><div class="lista">' + R.porCausa.map(c => '<div class="item"><div><b>' + esc(c.k) + '</b></div><span class="tag ' + (/^No había lugar/.test(c.k) ? 'wa' : '') + '">' + c.n + '</span></div>').join('') + '</div>' : '') +
@@ -2517,7 +2523,7 @@ async function desvLista(fresco) {
     '<div class="field"><select id="desvDias">' + [['7', 'Últimos 7 días'], ['30', 'Últimos 30 días'], ['90', 'Últimos 90 días'], ['0', 'Todo']].map(x => '<option value="' + x[0] + '"' + (DESVF.dias === x[0] ? ' selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>' +
     '<div class="field"><input id="desvQ" placeholder="Buscar (ej.: aguja, quirófano)" value="' + esc(DESVF.q) + '"></div>' +
     (L.length ? '<div class="lista">' + L.slice(0, 150).map(item).join('') + '</div>' + (L.length > 150 ? '<p class="mu">Se muestran 150 de ' + L.length + '. Usá los filtros.</p>' : '') : '<div class="notice ok">No hay registros con estos filtros.</div>') +
-    '<p class="mu" style="font-size:13px">Actualizado: ' + esc(DESV.actualizado || '') + ' · <button class="link" data-act="desvAct">Actualizar</button> · <a href="' + DESV_CARGA + '" target="_blank" rel="noopener">Página de carga de los operarios</a></p>';
+    '<p class="mu" style="font-size:13px">Actualizado: ' + esc(DESV.actualizado || '') + ' · <button class="link" data-act="desvAct">Actualizar</button> · <a href="' + desvCargaUrl() + '" target="_blank" rel="noopener">' + (desvHsst() ? 'Página de carga de desvíos' : 'Página de carga de los operarios') + '</a></p>';
   const re = () => { const y = window.scrollY; desvLista(); window.scrollTo(0, y); };
   $('desvPunto').onchange = e => { DESVF.punto = e.target.value; re(); };
   $('desvDias').onchange = e => { DESVF.dias = e.target.value; re(); };
@@ -2525,14 +2531,14 @@ async function desvLista(fresco) {
   document.querySelectorAll('[data-dver]').forEach(b => b.onclick = async () => {
     const res = b.dataset.dres; if (!confirm(res === 'Corregido' ? '¿Se corrigió? El desvío se cierra.' : '¿Sigue igual? Higiene y Seguridad lo vuelve a revisar.')) return;
     b.disabled = true;
-    try { const r = await fetch(DESV_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow',
-        body: JSON.stringify({ accion: 'verificar', est: SES.est, dni: SES.dni || '', clave: SES.clave, ids: [b.dataset.dver], resultado: res, quien: SES.nombre || SES.persona || '' }) }).then(x => x.json());
+    try { const r = await fetch(desvApi(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, redirect: 'follow',
+        body: JSON.stringify({ accion: 'verificar', est: SES.est, dni: SES.dni || '', clave: SES.clave, ids: [b.dataset.dver], resultado: res, quien: (SES.persona && SES.persona.nombre) || SES.nombre || '' }) }).then(x => x.json());
       if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo guardar.');
       DESV = null; await desvLista(true); }
     catch (e) { b.disabled = false; alert(navigator.onLine ? e.message : 'Sin señal: probá de nuevo cuando vuelva la conexión.'); } });
   miVolver(); window.scrollTo(0, 0);
 }
-Object.assign(ACT, { desvLista: () => { F = null; desvLista(); }, desvAct: () => desvLista(true) });
+Object.assign(ACT, { desvLista: () => { F = null; desvLista(); }, desvAct: () => desvLista(true), desvCargar: () => { window.open(desvCargaUrl(), '_blank', 'noopener'); } });
 
 // ---------------- Desvíos: supervisión (supervisor de Star Union · módulo «Desvíos» · DesviosAcciones.gs › dacSupervision_)
 let DSUP = null, DSUPF = { op: '', dias: '30', ver: 'abiertos' };

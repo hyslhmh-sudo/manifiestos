@@ -68,7 +68,7 @@
   <p><b>Para qué es:</b> para registrar lo que ves mal en el recorrido de retiro de residuos (bolsas en el piso, bolsa del color equivocado, agujas o vidrios sueltos, contenedor lleno, etc.).</p>
   <ol>
     <li>Elegí tu nombre y escribí los <b>3 últimos números de tu DNI</b>. El teléfono te recuerda para la próxima.</li>
-    <li>Elegí el <b>lugar</b> del recorrido (planta baja o alta). Si escaneaste el QR del depósito, ya aparece elegido.</li>
+    <li>Elegí el <b>sector</b> y después el <b>lugar</b>. Si escaneaste el QR del lugar, ya aparece elegido.</li>
     <li>Marcá <b>qué viste</b> (podés marcar varias cosas) y qué residuo es.</li>
     <li>Si marcaste <b>contenedor lleno</b> o <b>residuo fuera de contenedor</b>, contá <b>por qué</b>: si no había lugar en ningún contenedor, el problema es que faltan contenedores, no la gente del servicio.</li>
     <li>Si marcaste <b>segregación incorrecta</b> o <b>bolsa incorrecta</b>, fijate si venía de una habitación con <b>aislamiento</b>: si es por una enfermedad infectocontagiosa, todo lo que sale de ahí, incluida la comida, va en bolsa roja (no es un error).</li>
@@ -89,7 +89,13 @@
 // Guarda en la planilla «DESVÍOS RESIDUOS HMH · Registro (v0)» a través de su Apps Script.
 // Si GitHub no anda, la misma página se abre desde Google: URL de la app web + ?p=carga
 // ==================================================================
-const API = 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec';
+// 29/10/2026: también el HSST (Rawson), con su propia planilla «DESVÍOS RESIDUOS HSST · Registro (v0)»: esta página + ?e=HSST
+const ESTS = {
+  HMH: { api: 'https://script.google.com/macros/s/AKfycbwb-2oRk1rl97XUaTspz5VBU0RpVDVGuj2cYGN_MRoiaPd9t_l3cx4VFmW-2G1A6xwRSA/exec', nombre: 'HMH', sub: 'Registro del recorrido de retiro', aviso: true },
+  HSST: { api: 'https://script.google.com/macros/s/AKfycbyvDGN5cYxmXFkr-5wIjHRM2INyscCYUADiXKw2qTcE0yOTpdfMXdgFAJx5O2LFlqk-qA/exec', nombre: 'HSST', sub: 'Registro de desvíos · Hospital Santa Teresita y CAPS', aviso: false }
+};
+const EST = (new URLSearchParams(location.search).get('e') || 'HMH').toUpperCase() in ESTS ? (new URLSearchParams(location.search).get('e') || 'HMH').toUpperCase() : 'HMH';
+const API = ESTS[EST].api;
 const RESIDUOS = ['Biopatogénico (bolsa roja)', 'Cortopunzante', 'Común / RSU (bolsa negra)', 'Reciclable (bolsa verde)', 'Químico / especial (bolsa amarilla)', 'Medicamentos / ampollas', 'No se puede saber'];
 const GRAV = ['Baja', 'Media', 'Alta', 'Crítica'];
 const SEGRE = ['Residuo peligroso (bolsa roja, cortopunzante, químico o medicamento) en bolsa común o reciclable', 'Residuo común o reciclable en la bolsa equivocada', 'No sé'];
@@ -98,9 +104,11 @@ const PORTAL_RES = 'https://hyslhmh-sudo.github.io/residuos-hmh/';
 const CAUSAS = ['No había lugar: todos los contenedores estaban llenos', 'Había lugar en otro contenedor y no lo usaron', 'Contenedor roto, sin tapa o sin bolsa', 'Hacía mucho que no se retiraba', 'No sé'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-const LS = { get: (k, d) => { try { const v = localStorage.getItem('desv_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set: (k, v) => { try { localStorage.setItem('desv_' + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };   // false = no hay lugar en el teléfono
-let L = LS.get('listas', null), YO = LS.get('yo', null), F = null, PISO = 'Planta baja';
+const PREF = 'desv_' + (EST === 'HMH' ? '' : EST + '_');   // cada establecimiento guarda lo suyo en el teléfono
+const LS = { get: (k, d) => { try { const v = localStorage.getItem(PREF + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set: (k, v) => { try { localStorage.setItem(PREF + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };   // false = no hay lugar en el teléfono
+let L = LS.get('listas', null), YO = LS.get('yo', null), F = null, PISO = '';
+const pisosDe = () => { const v = []; (L && L.puntos || []).forEach(x => { if (x.piso && x.piso !== 's/d' && v.indexOf(x.piso) < 0) v.push(x.piso); }); return v; };
 const QR = new URLSearchParams(location.search).get('p');   // ?p=PB-06 (QR pegado en el punto)
 
 function bar(html) { $('bar').hidden = !html; $('barIn').innerHTML = html || ''; }
@@ -154,8 +162,9 @@ function datosSeg() { const it = Object.keys(F.seg).map(id => ({ id: id, resulta
 function puntoDe(cod) { return (L.puntos || []).find(p => p.cod === cod); }
 function pantallaCarga(err) {
   $('quienTop').textContent = YO.nombre + ' · ' + (YO.empresa || '');
-  const p = puntoDe(F.punto), pisos = ['Planta baja', 'Planta alta', 's/d'];
-  const lugares = (L.puntos || []).filter(x => x.piso === PISO || (PISO === 's/d' && pisos.indexOf(x.piso) < 0));
+  const pisos = pisosDe(); if (!PISO) PISO = pisos[0] || 's/d';
+  const p = puntoDe(F.punto);
+  const lugares = (L.puntos || []).filter(x => x.piso === PISO || (PISO === 's/d' && (x.piso === 's/d' || pisos.indexOf(x.piso) < 0)));
   const chips = (k, arr, multi) => '<div class="chips">' + arr.map(v => { const val = typeof v === 'string' ? v : v.tipo, urg = typeof v === 'object' && v.urgente;
     const sel = multi ? F[k].indexOf(val) >= 0 : F[k] === val;
     return '<button type="button" class="' + (sel ? 'sel ' : '') + (urg ? 'urg' : '') + '" data-k="' + k + '" data-v="' + esc(val) + '" data-m="' + (multi ? 1 : 0) + '">' + esc(val) + '</button>'; }).join('') + '</div>';
@@ -164,7 +173,7 @@ function pantallaCarga(err) {
     '<h1>Registrar un desvío</h1><p class="mu">La fecha y la hora se guardan solas.</p>' + (err ? '<div class="notice er">' + esc(err) + '</div>' : '') +
     '<h2>1 · ¿Dónde?</h2>' +
     (p ? '<div class="elegido"><div><b>' + esc(p.servicio) + '</b><br><span class="mu">' + esc(p.piso + ' · ' + p.ubicacion) + '</span></div><button class="link" id="cambiarP">Cambiar</button></div>'
-       : '<div class="pisos">' + ['Planta baja', 'Planta alta', 'Otro'].map(x => '<button type="button" class="' + ((x === 'Otro' ? 's/d' : x) === PISO ? 'sel' : '') + '" data-piso="' + (x === 'Otro' ? 's/d' : x) + '">' + x + '</button>').join('') + '</div>' +
+       : '<div class="pisos">' + pisos.concat(['Otro']).map(x => '<button type="button" class="' + ((x === 'Otro' ? 's/d' : x) === PISO ? 'sel' : '') + '" data-piso="' + (x === 'Otro' ? 's/d' : x) + '">' + x + '</button>').join('') + '</div>' +
          '<div class="lista">' + lugares.map(x => '<button type="button" data-punto="' + esc(x.cod) + '"><b>' + esc(x.servicio) + '</b><span>' + esc(x.ubicacion) + '</span></button>').join('') + '</div>') +
     (p ? revisarAntes(p.cod) : '') +
     '<div class="field"><label class="lab" for="detalle">Más precisión del lugar (opcional)</label><input id="detalle" value="' + esc(F.detalle) + '" placeholder="Ej.: al lado del ascensor, tacho del fondo"></div>' +
@@ -305,13 +314,15 @@ function otraVez() { return '<div style="display:flex;flex-direction:column;gap:
 function activarOtraVez() { const pto = F.punto; $('otro').onclick = () => nuevo(); $('mismo').onclick = () => { nuevo(); F.punto = pto; pantallaCarga(); }; }
 function listo(r) {
   bar(null);
-  $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Enviado. Registro ' + esc(r.id) + '.</b><br>Higiene y Seguridad ya recibió el aviso' + (r.urgente ? ' como <b>URGENTE</b>' : '') + '. Gracias.</div>' + otraVez();
+  $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Enviado. Registro ' + esc(r.id) + '.</b><br>' + (ESTS[EST].aviso ? 'Higiene y Seguridad ya recibió el aviso' + (r.urgente ? ' como <b>URGENTE</b>' : '') : 'Quedó registrado y Higiene y Seguridad lo ve en el sistema' + (r.urgente ? ' como <b>URGENTE</b>' : '')) + '. Gracias.</div>' + otraVez();
   activarOtraVez(); window.scrollTo(0, 0);
 }
 
 $('btnAyuda').onclick = () => $('dlgAyuda').showModal();
 window.addEventListener('online', () => { red(); vaciarCola(); }); window.addEventListener('offline', red);
 (async function inicio() {
+  if (EST !== 'HMH') { document.title = 'Desvíos en residuos · ' + ESTS[EST].nombre; document.querySelector('header b').textContent = 'Desvíos en residuos · ' + ESTS[EST].nombre; $('quienTop').textContent = ESTS[EST].sub; }
+  if (/^PENDIENTE/.test(API)) { $('app').innerHTML = '<div class="notice er" style="margin-top:24px">La página de desvíos de este establecimiento todavía no está habilitada. Consultá con Higiene y Seguridad.</div>'; return; }
   red(); const ok = await listas(); if (!ok) return;
   vaciarCola(); if (YO && (L.operarios || []).some(o => o.cod === YO.cod)) nuevo(); else pantallaQuien();
 })();
