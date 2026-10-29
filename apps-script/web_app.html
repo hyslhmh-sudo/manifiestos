@@ -1546,6 +1546,7 @@ function guardarRelDep() {
 }
 // Al cambiar de tanque en la limpieza o el relevamiento, se vuelve a dibujar (datos guardados y cuenta de la dosis)
 document.addEventListener('change', e => { const s = e.target; if (s.dataset && s.dataset.f === 'CODIGO_TANQUE' && F && MIV && (MIV.f === aguaLimpieza || MIV.f === aguaInsp)) { F.CODIGO_TANQUE = s.value; MIV.f(); }
+  if (s.dataset && s.dataset.f === 'SITIO' && F && MIV && MIV.f === formIncEdit) { F.SITIO = s.value; if (incDeps(F.SITIO).length && incDeps(F.SITIO).indexOf(F.SECTOR) < 0) F.SECTOR = ''; MIV.f(); }
   if (s.dataset && s.dataset.f === 'SITIO' && F && MIV && (MIV.f === aguaRelDep || MIV.f === aguaHojaRelev)) { F.SITIO = s.value; if (MIV.f === aguaRelDep) aguaRelArmar(); MIV.f(); } });
 function aguaAnalisis() {
   if (!MI) { VISTA = 'mi'; vista('form'); return miSinDatos(); }
@@ -2100,7 +2101,23 @@ async function rxGuardarReact() {
 // Cada extintor: 5 verificaciones (Sí · No) y 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario).
 let INCX = null, INCSIT = '';
 const INC_CHQ = [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manómetro en verde (o peso correcto si es CO2)'], ['PRECINTO', 'Precinto y seguro colocados'], ['SENALIZACION', 'Señalización completa']];
-const INC_FOT = [['FOTO_PANORAMICA', '1 · Foto panorámica', 'El extintor y su entorno: que se vea dónde está, la señal y el acceso.'], ['FOTO_MARBETE', '2 · Foto del marbete', 'La tarjeta del extintor con la fecha de carga, legible.'], ['FOTO_INVENTARIO', '3 · Foto del N.º de inventario', 'La chapa o etiqueta con el número, legible.']];
+const INC_FOT = [['FOTO_PANORAMICA', '1 · Foto panorámica', 'El extintor y su entorno: que se vea dónde está, el cartel con el N.º de puesto, la señal y el acceso.'], ['FOTO_MARBETE', '2 · Foto del marbete', 'La tarjeta del extintor con la fecha de carga, legible.'], ['FOTO_INVENTARIO', '3 · Foto del N.º de inventario', 'La chapita patrimonial con el número, legible.']];
+// 29/10/2026: N.º de puesto (el cartel) y N.º de inventario (la chapita) separados, con foto de ejemplo; sector de una lista en los lugares con dependencias (Sede ex ADOS).
+const INC_EJ = { puesto: 'https://hyslhmh-sudo.github.io/manifiestos/img/ejemplo-puesto.jpg', inventario: 'https://hyslhmh-sudo.github.io/manifiestos/img/ejemplo-inventario.jpg' };
+const incEj = k => '<img src="' + INC_EJ[k] + '" alt="Ejemplo" onerror="this.remove()" style="display:block;max-width:220px;max-height:140px;border-radius:10px;margin:-6px 0 14px;border:1px solid #DDE3E6">';
+const incDeps = sitio => ((INCX.sitios.find(s => s.SITIO === sitio) || {}).DEPENDENCIAS || []);
+const incPuestoTxt = e => e.NRO_EXTINTOR ? 'Puesto ' + e.NRO_EXTINTOR : e.ID;
+// Sector: si el lugar tiene dependencias (SITIOS_INC › DEPENDENCIAS) se elige de la lista; si no, se escribe
+const incCampoSector = (ph) => { const d = incDeps(F.SITIO); return d.length ? fSeg('SECTOR', 'Dependencia (sector)', d) : fInp('SECTOR', 'Sector o servicio', 'text', ph || ''); };
+const incCampoPuesto = () => '<div class="field">' + fLab('N.º de puesto (el número del cartel)', 'Solo números. Es el cartel donde va colgado el extintor, no la chapita.') + '<input data-f="NRO_EXTINTOR" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="' + esc(F.NRO_EXTINTOR || '') + '" placeholder="Ej.: 12"></div>' + incEj('puesto');
+const incCampoInv = () => fInp('NRO_INVENTARIO', 'N.º de inventario (la chapita)', 'text', 'El número de la chapita patrimonial', 'Si no tiene chapita, escribí s/d') + incEj('inventario');
+function incRevisar() {   // lo mismo que revisa el sistema, para avisar antes de mandar
+  const n = String(F.NRO_EXTINTOR || '').trim(), inv = String(F.NRO_INVENTARIO || '').replace(/[\s.\-]/g, '');
+  if (n && !/^\d{1,3}$/.test(n)) return 'El N.º de puesto lleva solo números (hasta 3): es el del cartel, no el de la chapita.';
+  if (n && inv && inv === n) return 'El N.º de inventario quedó igual al de puesto. El de inventario es el de la chapita; el de puesto, el del cartel.';
+  for (const [k, t] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) { const v = String(F[k] || ''); if (v && /^\d{4}/.test(v) && (v < '2020' || v > '2040-12-31')) return t + ' tiene que ser entre 2020 y 2040. Revisá el año.'; }
+  return '';
+}
 async function incLista(fresco) {
   VISTA = 'mi'; MIV = { f: () => incLista() }; vista('wide');
   if (!INCX || fresco) {
@@ -2117,18 +2134,18 @@ async function incLista(fresco) {
       '<p class="mu" style="font-size:13px"><button class="link" data-act="incAct">Actualizar la lista</button></p>';
     miVolver(); window.scrollTo(0, 0); return;
   }
-  const L = INCX.extintores.filter(e => e.SITIO === INCSIT && !e.est.baja), hechos = L.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
+  const L = INCX.extintores.filter(e => e.SITIO === INCSIT && !e.est.baja).sort((a, b) => (Number(a.NRO_EXTINTOR) || 9999) - (Number(b.NRO_EXTINTOR) || 9999)), hechos = L.filter(e => String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes).length;
   // Carga vencida o que vence en 30 días: se marca siempre, además del control del mes
   const tag = e => '<span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' + (e.falla ? '<span class="tag er">Con problema</span>' : '') + (e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : e.est.carga === 'porvencer' ? '<span class="tag wa">Vence ' + fechaTxt(e.VTO_CARGA) + '</span>' : '') +
     (String(e.ULTIMO_CONTROL || '').slice(0, 7) === mes ? '<span class="tag ok">Controlado</span>' : '<span class="tag wa">Falta control</span>') + '</span>';
   $('app').innerHTML = miTit(INCSIT, 'Tocá un extintor para cargar su control. ' + hechos + ' de ' + L.length + ' controlados este mes.') +
-    (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' · ' + esc([e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' ')) + '</b><small>' +
-      esc([e.PLANTA ? 'Planta ' + String(e.PLANTA).toLowerCase() : '', e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') + '</small></div>' + tag(e) + '</button>').join('') + '</div>' : '<p class="mu">No hay extintores cargados en este lugar. Si hay alguno, agregalo con el botón de abajo.</p>') +
+    (L.length ? '<div class="lista">' + L.map(e => '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(incPuestoTxt(e)) + ' · ' + esc([e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''].filter(Boolean).join(' ')) + '</b><small>' +
+      esc([/^(baja|alta)$/i.test(e.PLANTA || '') ? 'Planta ' + String(e.PLANTA).toLowerCase() : e.PLANTA, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') + '</small></div>' + tag(e) + '</button>').join('') + '</div>' : '<p class="mu">No hay extintores cargados en este lugar. Si hay alguno, agregalo con el botón de abajo.</p>') +
     '<div class="menu" style="margin-top:12px"><button class="big" data-act="incAlta"><b>➕ Agregar un extintor</b><span>Si hay uno que no está en la lista: sus datos y 3 fotos</span></button></div>' +
     '<p class="mu" style="font-size:13px">' + (S.length > 1 ? '<button class="link" data-act="incSit" data-arg="">Cambiar de lugar</button> · ' : '') + '<button class="link" data-act="incAct">Actualizar la lista</button></p>';
   miVolver(); window.scrollTo(0, 0);
 }
-// Corregir el nombre (N.º) y la ubicación de un extintor (Incendio.gs › i_ext_editar). Queda pendiente de verificar por Higiene y Seguridad.
+// Corregir el N.º de puesto y la ubicación de un extintor (Incendio.gs › i_ext_editar). Queda pendiente de verificar por Higiene y Seguridad.
 function incEdit() {
   const e = F._e; F = { _f: 'incEdit', _e: e, ID: e.ID, NRO_EXTINTOR: e.NRO_EXTINTOR || '', SITIO: e.SITIO || '', PLANTA: e.PLANTA || '', SECTOR: e.SECTOR || '', UBICACION: e.UBICACION || '' };
   MIV = { f: formIncEdit }; formIncEdit();
@@ -2136,13 +2153,14 @@ function incEdit() {
 function formIncEdit() {
   VISTA = 'mi'; vista('form'); const e = F._e, L = INCX.listas;
   $('app').innerHTML = miTit('Corregir extintor', esc(e.ID + (e.NRO_INVENTARIO ? ' · inventario ' + e.NRO_INVENTARIO : '')) + ' · cambiá lo que esté mal') + fErr +
-    fInp('NRO_EXTINTOR', 'Nombre o N.º del extintor', 'text', 'Ej.: 12, o «Extintor del office»') + fSel('SITIO', 'Lugar', INCX.sitios.map(s => s.SITIO)) +
-    fSeg('PLANTA', 'Planta', L.plantas) + fInp('SECTOR', 'Sector o servicio', 'text') + fInp('UBICACION', '¿Dónde está exactamente?', 'text') +
+    incCampoPuesto() + fSel('SITIO', 'Lugar', INCX.sitios.map(s => s.SITIO)) +
+    fSeg('PLANTA', 'Planta', L.plantas) + incCampoSector() + fInp('UBICACION', '¿Dónde está exactamente?', 'text') +
     '<p class="mu" style="font-size:13px">Higiene y Seguridad recibe el cambio y lo verifica.</p>';
   bar('<button class="btn sec" data-act="incEditVolver">Cancelar</button><button class="btn pri" data-act="incEditGuardar">Guardar cambios</button>');
 }
 async function incEditGuardar() {
   if (!String(F.SECTOR || '').trim() || !String(F.UBICACION || '').trim()) return miErr('El sector y la ubicación no pueden quedar vacíos.');
+  const rev = incRevisar(); if (rev) return miErr(rev);
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   if (SES.servicio && !F._ident) return pedirIdentidad(incEditGuardar);
   const d = { ID: F.ID, quien: SES.persona.nombre, identidad: F._ident || null }; ['NRO_EXTINTOR', 'SITIO', 'PLANTA', 'SECTOR', 'UBICACION'].forEach(k => d[k] = String(F[k] || '').trim());
@@ -2156,7 +2174,7 @@ async function incEditGuardar() {
 function incResolver() { const e = F._e; F = { _f: 'incResolver', _e: e, RESOLUCION: '' }; MIV = { f: formIncResolver }; formIncResolver(); }
 function formIncResolver() {
   VISTA = 'mi'; vista('form'); const e = F._e;
-  $('app').innerHTML = miTit('Problema resuelto', esc((e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID + ' · ' + (e.falla.PROBLEMAS || ''))) + fErr + fTxt('RESOLUCION', 'Qué se hizo (opcional)', 'Ej.: se recargó, se repuso, se cambió el precinto');
+  $('app').innerHTML = miTit('Problema resuelto', esc((e.NRO_EXTINTOR ? 'Puesto ' + e.NRO_EXTINTOR + ' · ' : '') + e.ID + ' · ' + (e.falla.PROBLEMAS || ''))) + fErr + fTxt('RESOLUCION', 'Qué se hizo (opcional)', 'Ej.: se recargó, se repuso, se cambió el precinto');
   bar('<button class="btn sec" data-act="incEditVolver">Cancelar</button><button class="btn pri" data-act="incResolverGuardar">Marcar resuelto</button>');
 }
 async function incResolverGuardar() {
@@ -2173,19 +2191,20 @@ function incAlta() { F = { _f: 'incAlta', SITIO: INCSIT }; MIV = { f: formIncAlt
 function formIncAlta() {
   VISTA = 'mi'; vista('form'); const L = INCX.listas;
   $('app').innerHTML = miTit('Agregar un extintor', esc(INCSIT) + ' · completá todo y sacá las 3 fotos') + fErr +
-    fSeg('PLANTA', 'Planta', L.plantas) + fInp('SECTOR', 'Sector o servicio', 'text', 'Ej.: Guardia, Farmacia, Pasillo central') +
+    incCampoPuesto() +
+    fSeg('PLANTA', 'Planta', L.plantas) + incCampoSector('Ej.: Guardia, Farmacia, Pasillo central') +
     fInp('UBICACION', '¿Dónde está exactamente?', 'text', 'Ej.: en la pared, al lado de la puerta del office') +
     fSeg('TIPO', 'Tipo (está escrito en el extintor)', L.tipos) + fSel('AGENTE', 'Agente extintor', [['', 'Elegí…']].concat(L.agentes.filter(a => a !== 's/d'))) +
     fInp('CAPACIDAD_KG', 'Capacidad (kg)', 'number', 'Ej.: 5') +
-    fInp('NRO_INVENTARIO', 'N.º de inventario', 'text', 'El número de la chapita', 'Si no tiene, escribí s/d') +
+    incCampoInv() +
     fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete)') +
-    fInp('NRO_EXTINTOR', 'N.º del extintor (opcional)', 'text', 'Si tiene un número pintado o en un cartel') +
     fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica (opcional)', 'date') +
     '<h2>3 fotos obligatorias</h2>' + INC_FOT.map(f => fFoto(f[0], f[1], f[2], 1)).join('') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Algo que convenga saber de este extintor');
   bar('<button class="btn sec" data-act="incVolver">Cancelar</button><button class="btn pri" data-act="incAltaGuardar">Agregar</button>');
 }
 async function incAltaGuardar() {
   const faltan = (INCX.listas.requeridos || []).filter(r => !String(F[r[0]] || '').trim()).map(r => r[1]); if (faltan.length) return miErr('Falta completar: ' + faltan.join(', ') + '.');
+  const rev = incRevisar(); if (rev) return miErr(rev);
   const sinF = INC_FOT.filter(f => !/^data:image\//.test(F[f[0]] || '')).map(f => f[1].replace(/^\d · /, '')); if (sinF.length) return miErr('Faltan las fotos: ' + sinF.join(', ') + '. Son obligatorias las 3 (tienen que ser fotos, no PDF).');
   if (!navigator.onLine) return miErr('Para guardar hace falta señal.');
   if (SES.servicio && !F._ident) return pedirIdentidad(incAltaGuardar);
@@ -2196,7 +2215,7 @@ async function incAltaGuardar() {
   const antes = ESPERA_MS; ESPERA_MS = 180000;
   try { const r = await api('i_ext_alta', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
     F = null; INCX = null; vista('form');
-    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Extintor agregado: ' + esc(r.id) + '.</b><br>Ya está en el inventario con sus 3 fotos. Higiene y Seguridad lo ve en el portal.</div>' +
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Extintor agregado: ' + esc(r.id) + ' (puesto ' + esc(d.NRO_EXTINTOR) + ').</b><br>Ya está en el inventario con sus 3 fotos. Higiene y Seguridad lo ve en el portal.</div>' +
       '<div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b><span>' + esc(INCSIT) + '</span></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Agregar'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo con señal más estable.' : x.message); }
 }
@@ -2207,8 +2226,8 @@ function incCtl(id) {
 }
 function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
-  $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'extintor N.º ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
-    '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el nombre o la ubicación de este extintor</button></p>' +
+  $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'puesto ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
+    '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir el N.º de puesto o la ubicación de este extintor</button></p>' +
     (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Va en el correo a SOMI y Mantenimiento (uno solo con todos los extintores) cada 3 días hasta que se marque resuelto.<br>' + (INCX && INCX.puedeResolver === false ? '' : '<button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button>') + '</div>' : '') +
     incTodoOkBloque(e) +
     fInp('FECHA', 'Fecha del control', 'date') + INC_CHQ.map(c => fSeg(c[0], c[1], ['Sí', 'No'])).join('') +
@@ -2327,7 +2346,7 @@ async function incNov() {
   if (!INCX && navigator.onLine) { try { const r = await api('i_datos', {}); if (r.ok) INCX = r; } catch (e) {} }
   formIncNov();
 }
-const incExtEtiqueta = e => ((e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + ' — ' + [e.SECTOR, e.UBICACION].filter(Boolean).join(' — ')).replace(/·/g, '-');   // sin «·» (fChk separa con «·»)
+const incExtEtiqueta = e => ((e.NRO_EXTINTOR ? 'Puesto ' + e.NRO_EXTINTOR : e.ID) + ' — ' + [e.SECTOR, e.UBICACION].filter(Boolean).join(' — ')).replace(/·/g, '-');   // sin «·» (fChk separa con «·»)
 function formIncNov() {
   VISTA = 'mi'; vista('form'); const L = INCX ? INCX.extintores.filter(e => !e.est.baja) : [];
   $('app').innerHTML = miTit('Informar una novedad', 'Protección contra incendios. Si hay fuego o humo, primero avisá según el plan de emergencia; esto se carga después.') + fErr +
@@ -2671,7 +2690,7 @@ const AYG = [
   { m: 'Radiaciones', t: 'Eventos de radiaciones', p: ['Inicio › Radiaciones › «Eventos» › «+ Registrar un evento»: extravío de dosímetro, dosímetro dañado o no devuelto, registro anormal o exposición accidental.', 'Un extravío deja el dosímetro de la persona como «Extraviado». Cuando llegue el nuevo, en «Personal con dosímetro» › «Actualizar datos», cargá el número nuevo y marcá «Dosímetro repuesto».', 'Avisá a Higiene y Seguridad en el día: la exposición accidental se notifica de inmediato a la autoridad (Dto. 6320/68, art. 20).'] },
   { m: 'Documentos', t: 'Formularios, contratos y documentos', p: ['«Formularios para imprimir» y «Contratos y documentación»: «Ver» o «Descargar».', '«Manuales, guías, POE, protocolos y PTS»: «Abrir» para leer; «+ Cargar un documento» para subir uno nuevo, solo en PDF, con nombre completo, tipo, código, versión, vigencia y vencimiento.', 'Si cargás uno con el mismo código o nombre, el anterior queda «Reemplazado».'] },
   { m: 'Notas', t: 'Notas recibidas y envío y respuesta', p: ['Inicio › Notas › «Registrar una nota recibida»: fecha, número, quién la manda, asunto, si requiere respuesta y el escaneo de todas las hojas.', '«Envío y respuesta»: tocá una nota para registrar cuándo se envió y qué respondieron. Revisala una vez por semana.', 'Se abre en otra pestaña con la cuenta de Google habilitada por Higiene y Seguridad.'] },
-  { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Si falta un extintor en la lista: «Agregar un extintor» (todos los datos y 3 fotos). Si el nombre o el lugar están mal: «Corregir el nombre o la ubicación» (Higiene y Seguridad lo verifica).', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
+  { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Cada extintor tiene dos números distintos: el N.º de puesto, que es el del cartel donde va colgado (solo números, no se repite en el establecimiento), y el N.º de inventario, que es el de la chapita patrimonial pegada en el extintor (si no tiene, s/d). No se cruzan: el sistema avisa si el puesto ya está usado, si el inventario se repite o si los dos quedaron iguales.', 'Si falta un extintor en la lista: «Agregar un extintor» (puesto, planta, sector, ubicación, tipo, agente, kilos, inventario, vencimiento y 3 fotos). Plantas: subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias. En Sede ex ADOS el sector se elige de la lista de dependencias (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes). Las fechas van entre 2020 y 2040.', 'Si el puesto o el lugar están mal: «Corregir» (Higiene y Seguridad lo verifica).', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
   { m: 'Plagas', t: 'Inspección del trabajo de los operarios (Higiene y Seguridad)', p: ['Solo con la clave de Higiene y Seguridad: Inicio › 3 · Plagas › «Inspección del trabajo de los operarios».', 'Elegí la visita de MIPyV que vas a controlar (o «Sin visita de MIPyV» si es otra empresa), completá sector y quién hizo el trabajo, y contestá cada punto con Sí, No o No aplica. Cada «No» lleva una nota; un «No» en un punto crítico deja la inspección «No conforme».', 'Queda en la BASE COMÚN (PLAGAS_REGISTROS y PLAGAS_INSP_RESP), se ve en el portal y en «Auditorías y diagnósticos por tema», y si elegiste una visita de MIPyV la marca como revisada. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.'] },
