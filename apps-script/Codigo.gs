@@ -544,6 +544,3 @@ function fotosBloqueo_(est, ss) {
   return 'No se pueden cargar manifiestos nuevos: faltan las fotos de ' + v.map(p => p.n + ' manifiesto(s) de ' + p.nombre).join(' y ') +
     '. Subilas desde «Mis registros» (botón «Subir foto») o enviá el lote .zip del mes. Si hay un motivo, avisá a Higiene y Seguridad.';
 }
-
-// ------------------------------------------------------------------ PRUEBA DESDE EL EDITOR
-function probarConfig() { Logger.log('Clave HMH correcta: ' + claveOk_('HMH', 'Houssay1887')); Logger.log(JSON.stringify(config_('HMH')).slice(0, 2000)); }
