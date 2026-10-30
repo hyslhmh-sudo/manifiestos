@@ -23,6 +23,7 @@
   textarea.c { min-height: 80px; }
   .btn { border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; min-height: 50px; width: 100%; background: var(--az); color: #fff; }
   .btn.sec { background: #fff; color: var(--az); border: 1px solid var(--az); }
+  #irIns:not([hidden]) { display: flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; margin: 10px 0; }
   .btn:disabled { opacity: .55; cursor: default; }
   .btn:focus-visible, input.c:focus-visible, select.c:focus-visible, .pub:focus-visible, .si button:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
   .si { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
@@ -36,6 +37,14 @@
   .error { background: var(--erbg); color: var(--er); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-weight: 600; }
   .ok { background: var(--okbg); color: var(--ok); border-radius: 12px; padding: 14px; font-weight: 700; }
   .aviso { background: var(--pa2); color: var(--az); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .frase { text-align: center; padding: 44px 18px 40px; border-radius: 18px; background: #F7FBFC; border: 2px solid #5894A7; min-height: 46vh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 28px; }
+  .frase img { width: 100%; max-width: 480px; height: auto; display: block; mix-blend-mode: multiply; }
+  .frase p { margin: 0; max-width: 440px; font-size: 25px; font-weight: 800; color: #0D313F; line-height: 1.35; }
+  .chico { font-size: 13.5px; }
+  .chico .ok, .chico .listo { font-size: 13.5px; padding: 10px 12px; }
+  .chico .listo b { font-size: 15px; }
+  .tarjeta { border: 2px solid #5894A7; border-radius: 12px; padding: 12px; background: #F7FBFC; color: #1B2A31; }
+  .tarjeta b { color: #0D313F; }
   .pie { border-top: 1px solid var(--ln); padding: 12px 16px 16px; text-align: center; }
   .pie img { width: 240px; max-width: 100%; height: auto; }
   .barra { height: 8px; border-radius: 999px; background: #E4EAED; overflow: hidden; } .barra i { display: block; height: 100%; background: var(--pa); width: 0; transition: width .2s; }
@@ -67,6 +76,7 @@
   <div class="pasos" aria-hidden="true"><i id="p1" class="on"></i><i id="p2"></i><i id="p3"></i></div>
   <div class="cuerpo">
     <div id="err" class="error" role="alert" hidden></div>
+    <a id="irIns" class="btn" target="_top" hidden>Ir a la inscripción</a>
 
     <section id="s1" hidden>
       <div style="display:flex;flex-direction:column;gap:14px">
@@ -79,6 +89,7 @@
           <label class="f" for="paisDoc"><span>País del documento</span><select class="c" id="paisDoc"></select></label>
           <label class="f" for="nroDoc"><span>Número de documento</span><input class="c" id="nroDoc" autocomplete="off"></label>
         </div>
+        <label class="f" id="lPal" for="pal" hidden><span>Palabra clave del encuentro <em>la dijimos durante la clase</em></span><input class="c" id="pal" autocomplete="off" autocapitalize="none" placeholder="Escribila acá"></label>
         <button class="btn" type="button" id="b1">Continuar</button>
         <span class="mu" style="font-size:12.5px">Tus datos se usan solo para registrar la capacitación y emitir tu constancia.</span>
       </div>
@@ -125,6 +136,10 @@
       </div>
     </section>
 
+    <!-- Después de inscribirse: próxima clase abierta y cierre -->
+    <section id="sSig" hidden><div style="display:flex;flex-direction:column;gap:14px" id="sigBox"></div></section>
+    <section id="sFin" hidden><div style="display:flex;flex-direction:column;gap:14px" id="finBox"></div></section>
+
     <!-- Autoadministrada: videos con control de lo visto -->
     <section id="sVid" hidden>
       <div style="display:flex;flex-direction:column;gap:14px">
@@ -153,7 +168,7 @@
     </section>
     <section id="sYa" hidden>
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="ok" id="yaTxt">Ya estás inscripta/o en este dictado.</div>
+        <div class="ok" id="yaTxt">Ya estás inscripto en este dictado.</div>
         <span class="mu peq">Si no vas a poder asistir, avisanos acá: así el lugar queda libre para otra persona.</span>
         <label class="f" for="motivo"><span>Motivo <em>optativo</em></span><input class="c" id="motivo" maxlength="300" placeholder="Ej.: tengo guardia ese día"></label>
         <button class="btn sec" type="button" id="bAnular">No voy a poder asistir</button>
@@ -187,16 +202,17 @@
 </div>
 <script>
   const K = <?!= JSON.stringify(k) ?>, C = <?!= JSON.stringify(c) ?>, D = <?!= JSON.stringify(d) ?>, AV = <?!= JSON.stringify(av) ?>;
-  // I y MODO pueden cambiar: si se abre el link de asistencia antes de la clase y el dictado tiene inscripción previa, la página pasa sola a la inscripción
+  // I y MODO: ?i= abre la inscripción; ?d= es el link del certificado (registro de asistencia). Desde el 25/10/2026 el link del certificado
+  // abierto antes de la clase ya no pasa solo a la inscripción: avisa cuándo abre y, si la inscripción está abierta, muestra el botón «Ir a la inscripción»
   let I = <?!= JSON.stringify(i) ?>, MODO = I ? 'inscripcion' : 'registro';
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   let L = null, CAP = null, conDni = true, buscado = null, modo = 'nuevo', pub = '', ABIERTA = null, INS = null, datos = null, EV = null, resp = {}, actual = 0, encuestaPend = false, idDicEnc = '', CERT = '', CERT_TIT = '';
   const pasos = n => ['p1', 'p2', 'p3'].forEach((p, i) => $(p).classList.toggle('on', i < n));
-  const ver = id => { ['s1', 's2a', 's2b', 's2c', 's3', 'sIns', 'sYa', 'sEv', 'sRes', 'sEnc', 'sVid'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); };
+  const ver = id => { ['s1', 's2a', 's2b', 's2c', 's3', 'sIns', 'sYa', 'sEv', 'sRes', 'sEnc', 'sVid', 'sSig', 'sFin'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); };
   const error = t => { $('err').textContent = t || ''; $('err').hidden = !t; if (t) window.scrollTo(0, 0); };
   const llamar = (fn, arg, ok, btn) => { if (btn) btn.disabled = true; error('');
-    google.script.run.withSuccessHandler(r => { if (btn) btn.disabled = false; if (!r || r.ok === false) return error((r && r.error) || 'No se pudo completar. Probá de nuevo.'); ok(r); })
+    google.script.run.withSuccessHandler(r => { if (btn) btn.disabled = false; if (!r || r.ok === false) { if (r && r.clave) { pasos(1); ver('s1'); } return error((r && r.error) || 'No se pudo completar. Probá de nuevo.'); } ok(r); })
       .withFailureHandler(e => { if (btn) btn.disabled = false; error('No se pudo conectar. Revisá tu conexión y probá de nuevo.'); })[fn](arg); };
 
   const listo = (L0) => { if ($('espera')) $('espera').hidden = true; L = L0; $('paisDoc').innerHTML = L.paises.filter(p => p !== 'Argentina').map(p => '<option>' + esc(p) + '</option>').join(''); ver('s1'); };
@@ -204,7 +220,7 @@
       INS = r; const x = r.dictado;
       $('cCod').textContent = 'INSCRIPCIÓN · CAPACITACIÓN HyS'; $('cNom').textContent = x.nombre + (x.programa ? ' · programa completo (' + x.programa + ' encuentros)' : x.encuentro ? ' · encuentro ' + x.encuentro : '');
       $('cSub').textContent = [(x.programa ? 'Empieza el ' : '') + x.fecha + (x.hora ? ' · ' + x.hora + ' h' : ''), x.modalidad, x.lugar && !/virtual/i.test(x.lugar) && x.lugar !== 's/d' ? x.lugar : ''].filter(Boolean).join(' · ');
-      if (!r.abierta) error(r.texto + ' Si ya estabas inscripta/o y no vas a poder asistir, poné tu documento para avisarnos.');
+      if (!r.abierta) error(r.texto + ' Si ya estabas inscripto y no vas a poder asistir, poné tu documento para avisarnos.');
       listo(r.listas);
   };
   if (MODO === 'inscripcion') {
@@ -216,10 +232,11 @@
     google.script.run.withSuccessHandler(r => {
       if (!r || !r.ok) { if ($('espera')) $('espera').hidden = true; $('cNom').textContent = 'Capacitación no encontrada'; return error(r && r.error); }
       CAP = r.cap; ABIERTA = r.abierta; VIDS = r.videos || [];
-      // Link de asistencia abierto antes de la clase: si el dictado tiene inscripción abierta, se muestra la inscripción
+      if ($('lPal')) $('lPal').hidden = !(ABIERTA && ABIERTA.abierta && ABIERTA.clave);   // 29/10/2026: palabra clave del encuentro
+      // Link del certificado abierto antes de la clase: si el dictado tiene inscripción abierta, se ofrece el botón «Ir a la inscripción»
       if (D && !AV && ABIERTA && !ABIERTA.abierta && /se abre/i.test(ABIERTA.texto || '') && !r.yaProbado) {
         google.script.run.withSuccessHandler(ri => {
-          if (ri && ri.ok && ri.abierta) { I = D; MODO = 'inscripcion'; return mostrarInscripcion(ri); }
+          if (ri && ri.ok && ri.abierta) { r.yaProbado = true; r.inscAbierta = true; return seguirRegistro(r); }
           r.yaProbado = true; seguirRegistro(r);
         }).withFailureHandler(() => { r.yaProbado = true; seguirRegistro(r); }).inscInicio(D);
         return;
@@ -232,7 +249,7 @@
       if (AV) { $('cSub').textContent = [VIDS.length > 1 ? VIDS.length + ' videos' : 'Video', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : '', r.evaluacion ? 'con evaluación' : 'sin evaluación'].filter(Boolean).join(' · '); if (!ABIERTA.abierta) error(ABIERTA.texto); return listo(r.listas); }
       $('cSub').textContent = [CAP.encuentros > 1 ? (ABIERTA.abierta && ABIERTA.idDictado !== 'PERMANENTE' ? 'Encuentro ' + ABIERTA.encuentro + ' de ' + CAP.encuentros : CAP.encuentros + ' encuentros') : '', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : '', ABIERTA.texto].filter(Boolean).join(' · ');
       // Registro cerrado (todavía no abrió o ya cerró): no se muestra el formulario, para que nadie crea que quedó registrado
-      if (ABIERTA && !ABIERTA.abierta) { if ($('espera')) $('espera').hidden = true; $('cSub').textContent = [CAP.encuentros > 1 ? CAP.encuentros + ' encuentros' : '', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : ''].filter(Boolean).join(' · '); return error((/se abre/i.test(ABIERTA.texto || '') ? 'Todavía no se puede registrar la asistencia. ' : '') + ABIERTA.texto); }
+      if (ABIERTA && !ABIERTA.abierta) { if ($('espera')) $('espera').hidden = true; $('cSub').textContent = [CAP.encuentros > 1 ? CAP.encuentros + ' encuentros' : '', CAP.carga && CAP.carga !== 's/d' ? CAP.carga + ' h' : ''].filter(Boolean).join(' · '); if (/se abre/i.test(ABIERTA.texto || '')) { $('cCod').textContent = 'CERTIFICADO · CAPACITACIÓN HyS'; if (r.inscAbierta) { $('irIns').href = 'https://hyslhmh-sudo.github.io/capacitaciones/?i=' + encodeURIComponent(D); $('irIns').hidden = false; } return error('Este es el link del certificado: sirve para registrar la asistencia el día de la clase y todavía no está abierto. ' + ABIERTA.texto + (r.inscAbierta ? ' Si todavía no te inscribiste, tocá «Ir a la inscripción».' : '')); } return error(ABIERTA.texto); }
       listo(r.listas);
   }
 
@@ -240,11 +257,12 @@
   $('dniNo').onclick = () => { conDni = false; $('dniNo').classList.add('on'); $('dniSi').classList.remove('on'); $('lDni').hidden = true; $('ext').hidden = false; };
   const docActual = () => conDni ? { pais: 'Argentina', doc: $('dni').value } : { pais: $('paisDoc').value, doc: $('nroDoc').value };
   $('b1').onclick = () => {
+    if (MODO !== 'inscripcion' && $('lPal') && !$('lPal').hidden && !$('pal').value.trim()) return error('Escribí la palabra clave del encuentro: la dijimos durante la clase.');
     buscado = docActual();
     if (MODO === 'inscripcion') buscado.i = I;
     llamar(MODO === 'inscripcion' ? 'inscBuscar' : 'regBuscar', buscado, r => {
       pasos(2);
-      if (r.inscripta) { $('yaTxt').textContent = 'Ya estás inscripta/o en este dictado' + (r.modalidadElegida ? ' (' + String(r.modalidadElegida).toLowerCase() + ')' : '') + '. ¡Te esperamos!'; return ver('sYa'); }
+      if (r.inscripta) { $('yaTxt').textContent = 'Ya estás inscripto en este dictado' + (r.modalidadElegida ? ' (' + String(r.modalidadElegida).toLowerCase() + ')' : '') + '. ¡Te esperamos!'; return ver('sYa'); }
       if (MODO === 'inscripcion' && !INS.abierta) return error(INS.texto);
       if (r.encontrado) {
         modo = 'conocido';
@@ -314,6 +332,7 @@
   function guardar(d, btn) {
     Object.assign(d, buscado, { k: K, c: C, d: D, i: I, av: AV, origen: /qr/i.test(location.search) ? 'qr' : 'link' });
     if (MODO === 'inscripcion') { datos = d; return pasoInscripcion(); }
+    if ($('pal')) d.palabra = ($('pal').value || '').trim();
     llamar('regGuardar', d, r => {
       pasos(3); datos = d; $('fin').textContent = r.mensaje; $('cerrar').hidden = false;
       if (r.certificado) { CERT = r.certificado; CERT_TIT = 'Descargar mi constancia'; } mostrarCert();
@@ -349,12 +368,56 @@
     if (INS.cupoLleno && ops.length === 1 && /virtual/i.test(ops[0])) error('Se completó el cupo presencial' + (INS.cupo ? ' (' + INS.cupo + ' lugares)' : '') + ': la inscripción sigue abierta para participar en forma virtual, por Zoom.');
     pasos(3); ver('sIns');
   }
-  $('bIns').onclick = () => !modElegida ? error('Elegí cómo vas a participar: presencial o virtual.') : llamar('inscGuardar', Object.assign({}, datos, { modalidad: modElegida, consulta: $('consulta').value.trim() }), r => { $('fin').textContent = r.mensaje; $('bEval').hidden = true; ver('s3'); }, $('bIns'));
+  $('bIns').onclick = () => !modElegida ? error('Elegí cómo vas a participar: presencial o virtual.') : llamar('inscGuardar', Object.assign({}, datos, { modalidad: modElegida, consulta: $('consulta').value.trim() }), r => despuesDeInscribir(r), $('bIns'));
   $('bInsVolver').onclick = () => ver(modo === 'conocido' ? 's2a' : 's2c');
   $('bAnular').onclick = () => {
     if (!confirm('¿Anulamos tu inscripción? El lugar queda libre para otra persona.')) return;
     llamar('inscAnularPropia', Object.assign({}, buscado, { i: I, motivo: $('motivo').value.trim() }), r => { $('fin').textContent = r.mensaje; $('bEval').hidden = true; ver('s3'); }, $('bAnular'));
   };
+
+  // ---------- Después de inscribirse: próxima clase abierta híbrida del año y pantalla de cierre (30/10/2026)
+  let SIG = null, FRASE = '', MSJ1 = '';
+  function despuesDeInscribir(r) {
+    MSJ1 = r.mensaje; FRASE = r.frase || FRASE; SIG = r.siguiente || null;
+    if (SIG) return ofrecerSiguiente();
+    cierreInscripcion([MSJ1]);
+  }
+  function ofrecerSiguiente() {
+    const lugar = SIG.lugar && SIG.lugar !== 's/d' ? SIG.lugar : '';
+    $('sigBox').innerHTML = '<div class="ok">' + esc(MSJ1) + '</div>' +
+      '<h3>Próxima capacitación abierta</h3>' +
+      '<div class="tarjeta"><b>' + esc(SIG.nombre) + '</b><br>' + (SIG.resumen ? '<span class="peq">' + esc(SIG.resumen) + '</span><br>' : '') + esc(SIG.fecha + ' · ' + SIG.hora + (SIG.horaFin ? ' a ' + SIG.horaFin : '') + ' h' + (lugar ? ' · ' + lugar : '')) +
+      '<br><span class="mu peq">Híbrida: presencial o virtual por Zoom' + (SIG.cupoLleno ? ' (presencial completo: queda la opción virtual)' : '') + '</span></div>' +
+      '<span>¿Querés inscribirte también?</span>' +
+      '<button class="btn" type="button" id="bSigSi">Sí, inscribirme</button><button class="btn sec" type="button" id="bSigNo">No, gracias</button>';
+    $('bSigSi').onclick = formSiguiente; $('bSigNo').onclick = () => cierreInscripcion([MSJ1]);
+    pasos(3); ver('sSig');
+  }
+  function formSiguiente() {
+    let mod = SIG.opciones.length === 1 ? SIG.opciones[0] : '';
+    const lugar = SIG.lugar && SIG.lugar !== 's/d' ? SIG.lugar : '';
+    $('sigBox').innerHTML = '<h3>' + esc(SIG.nombre) + '</h3>' + (SIG.resumen ? '<span class="peq">' + esc(SIG.resumen) + '</span>' : '') + '<span class="mu peq">' + esc(SIG.fecha + ' · ' + SIG.hora + ' h') + '</span>' +
+      '<div><span style="font-size:13.5px;font-weight:700">¿Cómo vas a participar?</span><div class="si" id="sigMod">' +
+      SIG.opciones.map(o => '<button type="button" data-v="' + esc(o) + '"' + (SIG.opciones.length === 1 ? ' class="on"' : '') + '>' + (/virtual/i.test(o) ? 'Virtual · por Zoom' : 'Presencial' + (lugar ? ' · ' + esc(lugar) : '')) + '</button>').join('') + '</div></div>' +
+      '<label class="f" for="sigCons"><span>Consulta previa sobre esta capacitación <em>optativa · la lee quien da la clase</em></span><textarea class="c" id="sigCons" maxlength="1500" placeholder="Si tenés una duda o un tema que te gustaría que se trate, escribilo acá."></textarea></label>' +
+      '<button class="btn" type="button" id="bSigOk">Confirmar inscripción</button><button class="btn sec" type="button" id="bSigVolver">Volver</button>';
+    $('sigMod').querySelectorAll('button').forEach(b => b.onclick = () => { $('sigMod').querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); mod = b.dataset.v; error(''); });
+    $('bSigVolver').onclick = ofrecerSiguiente;
+    $('bSigOk').onclick = () => !mod ? error('Elegí cómo vas a participar: presencial o virtual.') :
+      llamar('inscGuardar', Object.assign({}, datos, { i: SIG.i, modalidad: mod, consulta: $('sigCons').value.trim() }), r => cierreInscripcion([MSJ1, r.mensaje]), $('bSigOk'));
+    ver('sSig');
+  }
+  function cierreInscripcion(msjs) {
+    const logo = document.querySelector('.pie img'), dos = msjs.filter(Boolean).length > 1;
+    $('cCod').textContent = 'INSCRIPCIÓN CONFIRMADA';
+    $('cNom').textContent = dos ? 'Quedaste inscripto en las dos capacitaciones' : 'Quedaste inscripto';
+    if ($('cSub')) $('cSub').textContent = dos ? (INS.dictado.nombre + ' · ' + SIG.nombre) : INS.dictado.nombre;
+    document.querySelectorAll('.pie').forEach(p => p.hidden = true);
+    $('finBox').innerHTML = '<div class="frase"><p>' + esc(FRASE || 'Tu participación es muy importante para crear ambientes laborales seguros y saludables.') + '</p>' + (logo ? '<img alt="HySL · Hospitales más seguros para las personas" src="' + logo.src + '">' : '') + '</div>' +
+      '<div class="chico" style="display:flex;flex-direction:column;gap:8px">' + msjs.filter(Boolean).map(m => '<div class="ok">' + esc(m) + '</div>').join('') + '</div>' +
+      '<span class="mu peq" style="text-align:center">Podés cerrar esta página.</span>';
+    pasos(0); ver('sFin');
+  }
 
   // ---------- Evaluación
   $('bEval').onclick = () => iniciarEval($('bEval'));
