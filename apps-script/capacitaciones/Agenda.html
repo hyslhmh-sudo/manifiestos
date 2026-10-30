@@ -58,6 +58,12 @@
   .hora:focus-visible { outline: 3px solid var(--pa); outline-offset: 2px; }
   .fila { display: flex; gap: 8px; } .fila > * { flex: 1; }
   .norma { font-size: 12.5px; color: var(--mu); border-top: 1px solid var(--ln); padding-top: 10px; }
+  .frase { text-align: center; padding: 44px 18px 40px; border-radius: 18px; background: #F7FBFC; border: 2px solid #5894A7; min-height: 46vh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 28px; }
+  .frase img { width: 100%; max-width: 480px; height: auto; display: block; }
+  .frase p { margin: 0; max-width: 440px; font-size: 25px; font-weight: 800; color: #0D313F; line-height: 1.35; }
+  .chico { font-size: 13.5px; }
+  .chico .ok, .chico .listo { font-size: 13.5px; padding: 10px 12px; }
+  .chico .listo b { font-size: 15px; }
   .pie { border-top: 1px solid var(--ln); padding: 12px 16px 16px; text-align: center; }
   .pie img { width: 240px; max-width: 100%; height: auto; }
   [hidden] { display: none !important; }
@@ -97,7 +103,7 @@
   function inicio() {
     vista('<h3>¿Cómo vas a participar?</h3>' +
       opc('id="oYo"', 'person', 'Me anoto yo', 'Elijo una clase abierta y voy por mi cuenta') +
-      opc('id="oSrv"', 'groups', 'Anoto a mi servicio', 'Soy jefe/a, coordinador/a o a cargo (A/C) y reservo un horario para el equipo') +
+      opc('id="oSrv"', 'groups', 'Anoto a mi servicio', 'Soy jefe, coordinador o a cargo (A/C) y reservo un horario para el equipo') +
       '<span class="mu peq">Para cancelar, usá el link que te llega por correo.</span>', 1);
     $('oYo').onclick = () => { modo = 'yo'; clases(); };
     $('oSrv').onclick = () => { modo = 'srv'; jefDni(); };
@@ -165,12 +171,49 @@
       Object.assign(d, { apellidos: $('ape').value.trim(), nombres: $('nom').value.trim(), servicio: $('srvY').value.trim(), lugar: $('lug').value === 'Otro' ? $('lugOtro').value.trim() : $('lug').value });
       if (!d.apellidos || !d.nombres || !d.servicio || !d.lugar) return error('Completá apellido, nombre, dónde trabajás y servicio.');
     }
-    llamar('agAnotarme', d, r => {
-      vista('<div class="listo"><b>' + (r.ya ? 'Ya estabas anotada/o' : '¡Listo, quedaste anotada/o!') + '</b>' + esc(clase.nombre) + '<br>' + esc(clase.fecha + ' · ' + clase.hora + ' h') + '<br><b>' + esc((r.clase && r.clase.modalidadTxt) || modal) + '</b></div>' +
-        '<span class="peq">Te mandamos la confirmación a <b>' + esc(correo) + '</b>. Te vamos a recordar por correo 7, 2 y 1 día antes. ' + (((r.clase && r.clase.modalidad) || modal) === 'Virtual' ? 'Participás por Zoom: el link y el de asistencia van en los correos.' : 'El día de la clase registrás tu asistencia con el QR del aula.') + '</span>' +
-        '<span class="peq mu">Si no podés ir, cancelá desde el link del correo así el lugar queda para otra persona.</span><button class="btn sec" id="bIni">Volver al inicio</button>', 3);
-      $('bIni').onclick = recargar;
-    }, $('bAnot'), 'Anotando…');
+    llamar('agAnotarme', d, r => despuesAgenda(r, correo), $('bAnot'), 'Anotando…');
+  }
+
+  // ---------------------------------------------------------------- Después de anotarse: próxima clase abierta y cierre (30/10/2026)
+  let FRASE = '';
+  function despuesAgenda(r, correo) {
+    const m = (r.clase && r.clase.modalidad) || modal;
+    const resumen = '<div class="listo"><b>' + (r.ya ? 'Ya estabas anotado' : '¡Listo, quedaste anotado!') + '</b>' + esc(clase.nombre) + '<br>' + esc(clase.fecha + ' · ' + clase.hora + ' h') + '<br><b>' + esc((r.clase && r.clase.modalidadTxt) || modal) + '</b></div>' +
+      '<span class="peq">Te mandamos la confirmación a <b>' + esc(correo) + '</b>. Te vamos a recordar por correo 7, 2 y 1 día antes. ' + (m === 'Virtual' ? 'Participás por Zoom: el link y el de asistencia van en los correos.' : 'El día de la clase registrás tu asistencia con el QR del aula.') + '</span>' +
+      '<span class="peq mu">Si no podés ir, cancelá desde el link del correo así el lugar queda para otra persona.</span>';
+    FRASE = r.frase || FRASE;
+    if (r.siguiente) return ofrecerAg(r.siguiente, resumen, correo);
+    finAg([resumen]);
+  }
+  function ofrecerAg(sig, resumen, correo) {
+    const lugar = sig.lugar && sig.lugar !== 's/d' ? sig.lugar : '';
+    vista(resumen + '<h3>Próxima capacitación abierta</h3>' +
+      '<div class="sug"><b>' + esc(sig.nombre) + '</b><br>' + (sig.resumen ? '<span class="peq">' + esc(sig.resumen) + '</span><br>' : '') + '<span class="peq">' + esc(sig.fecha + ' · ' + sig.hora + (sig.horaFin ? ' a ' + sig.horaFin : '') + ' h' + (lugar ? ' · ' + lugar : '')) +
+      '<br>Híbrida: presencial o virtual por Zoom' + (sig.cupoLleno ? ' (presencial completo: queda la opción virtual)' : '') + '</span></div>' +
+      '<span>¿Querés anotarte también?</span><button class="btn" id="bSigSi">Sí, anotarme</button><button class="btn sec" id="bSigNo">No, gracias</button>', 3);
+    $('bSigSi').onclick = () => formAg(sig, resumen, correo); $('bSigNo').onclick = () => finAg([resumen]);
+  }
+  function formAg(sig, resumen, correo) {
+    let mod = sig.opciones.length === 1 ? sig.opciones[0] : '';
+    const lugar = sig.lugar && sig.lugar !== 's/d' ? sig.lugar : '';
+    vista('<div class="quien"><span class="mu peq">Próxima capacitación</span><br><b>' + esc(sig.nombre) + '</b><br>' + (sig.resumen ? '<span class="peq">' + esc(sig.resumen) + '</span><br>' : '') + '<span class="peq">' + esc(sig.fecha + ' · ' + sig.hora + ' h') + ' · híbrida (presencial o por Zoom)</span></div>' +
+      '<span style="font-size:14px;font-weight:700">¿Cómo vas a participar? <b style="color:var(--er)">*</b></span>' +
+      sig.opciones.map(o => opc('data-m="' + o + '"', /virtual/i.test(o) ? 'videocam' : 'meeting_room', o, /virtual/i.test(o) ? 'Por Zoom, desde donde estés' : esc(lugar))).join('') +
+      '<label class="f" for="sigCons"><span>Consulta sobre esta capacitación <em>optativa · la lee quien da la clase</em></span><textarea class="c" id="sigCons" maxlength="1500" placeholder="Si tenés una duda o un tema que te gustaría que se trate, escribilo acá."></textarea></label>' +
+      '<button class="btn" id="bSigOk">Anotarme</button><button class="btn link" id="bSigVol">Volver</button>', 3);
+    $('vista').querySelectorAll('[data-m]').forEach(b => { if (b.dataset.m === mod) b.classList.add('on'); b.onclick = () => { $('vista').querySelectorAll('[data-m]').forEach(y => y.classList.remove('on')); b.classList.add('on'); mod = b.dataset.m; error(''); }; });
+    $('bSigVol').onclick = () => ofrecerAg(sig, resumen, correo);
+    $('bSigOk').onclick = () => !mod ? error('Elegí cómo vas a participar: presencial o virtual.') :
+      llamar('agAnotarme', { dni: dni, id: sig.turno, correo: correo, modalidad: mod, consulta: $('sigCons').value.trim() }, r2 => finAg([resumen,
+        '<div class="listo"><b>' + (r2.ya ? 'Ya estabas anotado' : '¡Listo, también quedaste anotado!') + '</b>' + esc(sig.nombre) + '<br>' + esc(sig.fecha + ' · ' + sig.hora + ' h') + '<br><b>' + esc((r2.clase && r2.clase.modalidadTxt) || mod) + '</b></div><span class="peq">La confirmación de esta clase también te llega por correo.</span>']), $('bSigOk'), 'Anotando…');
+  }
+  function finAg(partes) {
+    const logo = document.querySelector('.pie img');
+    document.querySelectorAll('.pie').forEach(p => p.hidden = true);
+    vista('<div class="frase">' + (logo ? '<img alt="HySL · Hospitales más seguros para las personas" src="' + logo.src + '">' : '') + '<p>' + esc(FRASE || 'Tu participación es muy importante para crear ambientes laborales seguros y saludables.') + '</p></div>' +
+      '<div class="chico col" style="gap:8px">' + partes.join('') + '</div>' +
+      '<button class="btn sec" id="bIni">Volver al inicio</button>', 3);
+    $('bIni').onclick = () => { document.querySelectorAll('.pie').forEach(p => p.hidden = false); recargar(); };
   }
 
   // ---------------------------------------------------------------- Anoto a mi servicio
