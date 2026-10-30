@@ -288,7 +288,8 @@ async function sincronizar() {
   ENVIANDO = true; pintarRed();
   for (const c of COLA.filter(x => x.estado === 'pendiente')) {
     try {
-      const res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave, dni: c.dni || (SES && SES.est === c.est && SES.clave === c.clave ? SES.dni || '' : '') });
+      const antes = ESPERA_MS; if (c.tipo === 'm_relev_dep') ESPERA_MS = 180000;   // 30/10/2026: varios tanques en una carga: puede tardar más de 25 s
+      let res; try { res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave, dni: c.dni || (SES && SES.est === c.est && SES.clave === c.clave ? SES.dni || '' : '') }); } finally { ESPERA_MS = antes; }
       if (res.ok) { COLA = COLA.filter(x => x.datos.idLocal !== c.datos.idLocal); }
       else if (res.error === 'interno') { /* se reintenta luego */ }
       else { c.estado = 'error'; c.mensaje = res.mensaje || res.error; }
@@ -1396,6 +1397,7 @@ function guardarLimpieza() {
 }
 // Relevamiento de estado cada 3 meses (POE de limpieza de tanques: inspección visual trimestral). Mismas preguntas que la app MIP
 // y que el punto 7 del formulario de limpieza. Si algo está mal, el sistema dice si hace falta limpiar, reparar o las dos cosas.
+const aguaOpc = c => c === 'VENTILACION_MALLA' ? ['Sí', 'No', 'No corresponde'] : ['Sí', 'No'];   // 30/10/2026: hay tanques sin ventilación con malla (p. ej. a nivel en el HMH)
 const AGUA_INSP_P = [['FISURAS', '¿Tiene fisuras o pierde agua?'], ['OXIDO', '¿Tiene óxido o está deteriorado?'], ['SEDIMENTO', '¿Se ve barro o sedimento en el fondo?'], ['OLOR_TURBIDEZ', '¿El agua tiene olor raro o se ve turbia?'],
   ['FLOTANTE_OK', '¿El flotante y las válvulas andan bien?'], ['VENTILACION_MALLA', '¿La ventilación tiene malla?'], ['INSECTOS', '¿Hay insectos, nidos o restos de animales?'], ['ACCESO_SEGURO', '¿Se puede llegar al tanque de forma segura?']];
 function aguaInsp() {
@@ -1409,7 +1411,7 @@ function aguaInsp() {
     '<div class="notice ok" style="background:var(--cl);color:var(--tx)"><b>' + esc(t.codigo) + '</b> · ' + esc([t.tipo, t.ubicacion, t.capacidad ? nf(t.capacidad) + ' litros' : ''].filter(Boolean).join(' · ')) +
       (t.insp ? '<br>Último relevamiento: ' + fechaTxt(t.insp.fecha) + ' · ' + esc(t.insp.resultado) : '') + '</div>' +
     fInp('FECHA', 'Fecha del relevamiento', 'date') + fSeg('TAPA', '¿Cómo está la tapa?', ['Sí, en condiciones', 'Deficiente', 'No tiene']) +
-    AGUA_INSP_P.map(q => fSeg(q[0], q[1], ['Sí', 'No'])).join('') +
+    AGUA_INSP_P.map(q => fSeg(q[0], q[1], aguaOpc(q[0]))).join('') +
     fFoto('foto', 'Fotos (opcional)', 'Hasta 5: tapa, interior, lo que esté mal') + fTxt('OBSERVACIONES', 'Observaciones (opcional)', 'Qué hay que arreglar, dónde…');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarInsp">Guardar</button>');
 }
@@ -1462,7 +1464,7 @@ function aguaHojaImp() {
   const filas = [['MAPEO: qué hay y dónde', null], ['Código del sistema', t => t ? '<b>' + e(t.codigo) + '</b>' : '<span class="gris">nuevo</span>'], ['¿Dónde está? (ej.: techo de la cocina, patio del fondo)', t => t ? e(t.ubicacion) : ''],
     ['Tipo', t => cx(AGUA_REL_OPC.TIPO, t && t.tipo)], ['Uso', t => cx(['Consumo humano', 'Consumo e incendio', 'Incendio', 'Riego'], t && (t.uso === 'Consumo y reserva de incendio' ? 'Consumo e incendio' : t.uso === 'Reserva de incendio' ? 'Incendio' : t.uso))],
     ['Capacidad (litros)', t => t && t.capacidad ? nf(t.capacidad) + ' L' : ''], ['Material', t => cx(AGUA_REL_OPC.MATERIAL, t && t.material)], ['Acceso', t => cx(AGUA_REL_OPC.ACCESO, t && t.acceso)], ['¿Está en uso?', () => sn],
-    ['ESTADO: mirá cada uno y marcá', null], ['Tapa', () => cx(['Bien', 'Deficiente', 'No tiene'])]].concat(AGUA_INSP_P.map(q => [q[1], () => sn])).concat([['Observaciones (qué hay que arreglar)', () => '']]);
+    ['ESTADO: mirá cada uno y marcá', null], ['Tapa', () => cx(['Bien', 'Deficiente', 'No tiene'])]].concat(AGUA_INSP_P.map(q => [q[1], () => q[0] === 'VENTILACION_MALLA' ? sn + ' <span class="op">☐ No corresponde</span>' : sn])).concat([['Observaciones (qué hay que arreglar)', () => '']]);
   let html = '';
   for (let h = 0; h < hojas; h++) {
     const cols = []; for (let i = 0; i < porHoja; i++) cols.push(L[h * porHoja + i] || null);
@@ -1511,7 +1513,7 @@ function aguaRelDep() {
       fInp(k('UBICACION'), '¿Dónde está?', 'text', 'Ej.: techo de la cocina, patio del fondo') + fs(k('TIPO'), 'Tipo', AGUA_REL_OPC.TIPO) + fs(k('USO'), 'Uso', AGUA_REL_OPC.USO) +
       '<div class="grid2">' + fInp(k('CAPACIDAD_L'), 'Capacidad (litros)', 'number', 's/d si no se sabe') + fSel(k('MATERIAL'), 'Material', [['', 's/d']].concat(AGUA_REL_OPC.MATERIAL)) + '</div>' +
       fSel(k('ACCESO'), 'Acceso', AGUA_REL_OPC.ACCESO) + fs(k('ESTADO'), '¿Está en uso?', ['Activo', 'Fuera de uso']) +
-      (F[k('ESTADO')] === 'Fuera de uso' ? '<p class="mu">Fuera de uso: no se carga el estado.</p>' : '<h3 style="margin:12px 0 4px;color:var(--az,#0D313F)">Estado</h3>' + fs(k('TAPA'), 'Tapa', AGUA_REL_OPC.TAPA) + AGUA_INSP_P.map(q => fs(k(q[0]), q[1], ['Sí', 'No'])).join('')) +
+      (F[k('ESTADO')] === 'Fuera de uso' ? '<p class="mu">Fuera de uso: no se carga el estado.</p>' : '<h3 style="margin:12px 0 4px;color:var(--az,#0D313F)">Estado</h3>' + fs(k('TAPA'), 'Tapa', AGUA_REL_OPC.TAPA) + AGUA_INSP_P.map(q => fs(k(q[0]), q[1], aguaOpc(q[0]))).join('')) +
       fTxt(k('OBSERVACIONES'), 'Observaciones (opcional)', 'Qué hay que arreglar…') + '</div>');
   }
   $('app').innerHTML = miTit('Relevamiento por dependencia', 'Cargá la hoja ' + AGUA_F3() + ' completa de una dependencia: el mapeo y el estado de cada tanque o cisterna, en el mismo orden de las columnas.') + fErr +

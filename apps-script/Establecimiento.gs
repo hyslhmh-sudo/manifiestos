@@ -202,17 +202,18 @@ function miInspeccion_(cod, x, quien) {
   if (!R) return { ok: false, mensaje: 'Elegí un tanque o cisterna de la lista.' };
   const fecha = /^\d{4}-\d{2}-\d{2}/.test(x.FECHA || '') ? x.FECHA.slice(0, 10) : miHoy_();
   if (!/^(Sí, en condiciones|Deficiente|No tiene)$/.test(x.TAPA || '')) return { ok: false, mensaje: 'Falta responder cómo está la tapa.' };
-  const falta = MI_INSP.filter(q => !/^(Sí|No)$/.test(x[q[0]] || '')); if (falta.length) return { ok: false, mensaje: 'Faltan ' + falta.length + ' respuesta(s) del relevamiento.' };
+  const falta = MI_INSP.filter(q => !/^(Sí|No|No corresponde)$/.test(x[q[0]] || ''));   // 30/10/2026: «No corresponde» (p. ej. malla en tanques sin ventilación) if (falta.length) return { ok: false, mensaje: 'Faltan ' + falta.length + ' respuesta(s) del relevamiento.' };
   let limpiar = false, reparar = x.TAPA !== 'Sí, en condiciones'; const prob = reparar ? ['tapa ' + x.TAPA.toLowerCase()] : [];
-  MI_INSP.forEach(q => { if (x[q[0]] !== q[1]) { prob.push(q[3]); if (q[2] === 'limpieza') limpiar = true; else reparar = true; } });
+  MI_INSP.forEach(q => { if (x[q[0]] !== q[1] && x[q[0]] !== 'No corresponde') { prob.push(q[3]); if (q[2] === 'limpieza') limpiar = true; else reparar = true; } });
   const resultado = limpiar && reparar ? 'Requiere limpieza y reparación' : limpiar ? 'Requiere limpieza' : reparar ? 'Requiere reparación' : 'Conforme';
-  const L = miLeer_('AGUA_INSPECCIONES'), id = miId_('INS', R.ESTABLECIMIENTO, L, 'ID');
+  // 30/10/2026: si ya hay un relevamiento de ese tanque con esa fecha (por ejemplo, un reenvío), se reemplaza en vez de duplicarlo
+  const L = miLeer_('AGUA_INSPECCIONES'), prev = L.find(i => i.CODIGO_TANQUE === R.CODIGO_TANQUE && String(i.FECHA).slice(0, 10) === fecha), id = prev ? prev.ID : miId_('INS', R.ESTABLECIMIENTO, L, 'ID');
   const fotos = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + R.CODIGO_TANQUE + '_' + fecha }, x.archivo)) : (x.fotoUrl || '');
   const o = { ID: id, FECHA: fecha, ESTABLECIMIENTO: R.ESTABLECIMIENTO, SITIO: R.SITIO, CODIGO_TANQUE: R.CODIGO_TANQUE, TAPA: x.TAPA, CLORO_MG_L: 'Lo mide el DPSB', RESULTADO: resultado,
     PROXIMA_INSPECCION: miSumarMeses_(fecha, 3), FOTOS: fotos, QUIEN: quien + ' · Mi establecimiento', CARGADO: miHoy_(),
     OBSERVACIONES: [prob.length ? 'Problemas: ' + prob.join('; ') + '.' : '', String(x.OBSERVACIONES || '').trim()].filter(Boolean).join(' ') };
   MI_INSP.forEach(q => o[q[0]] = x[q[0]]);
-  miAgregar_('AGUA_INSPECCIONES', o);
+  if (prev) miCambiar_('AGUA_INSPECCIONES', prev.fila, o); else miAgregar_('AGUA_INSPECCIONES', o);
   miCambiar_('RESERVORIOS', R.fila, { TAPA: x.TAPA, ACTUALIZADO: miHoy_() });
   return { ok: true, id: id, resultado: resultado, aviso: resultado === 'Conforme' ? '' : resultado + ': ' + prob.join(', ') + '.' };
 }
@@ -228,7 +229,7 @@ function miRelevDep_(cod, x, quien) {
     if (t.CODIGO_TANQUE && !R.some(r => r.CODIGO_TANQUE === t.CODIGO_TANQUE && G.cods.indexOf(r.ESTABLECIMIENTO) >= 0)) return { ok: false, mensaje: n + ': no encontré ' + t.CODIGO_TANQUE + '.' };
     if (!String(t.UBICACION || '').trim()) return { ok: false, mensaje: n + ': falta la ubicación.' };
     if (t.ESTADO !== 'Fuera de uso') { if (!/^(Sí, en condiciones|Deficiente|No tiene)$/.test(t.TAPA || '')) return { ok: false, mensaje: n + ': falta la tapa.' };
-      if (MI_INSP.some(q => !/^(Sí|No)$/.test(t[q[0]] || ''))) return { ok: false, mensaje: n + ': faltan respuestas del estado.' }; }
+      if (MI_INSP.some(q => !/^(Sí|No|No corresponde)$/.test(t[q[0]] || ''))) return { ok: false, mensaje: n + ': faltan respuestas del estado.' }; }
   }
   const url = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + String(x.SITIO || 'dependencia').replace(/\s+/g, '_') + '_' + fecha }, x.archivo)) : '';
   const quien2 = quien + (x.RELEVO ? ' (relevó: ' + x.RELEVO + ')' : ''), res = [];
