@@ -59,7 +59,7 @@
   .fila { display: flex; gap: 8px; } .fila > * { flex: 1; }
   .norma { font-size: 12.5px; color: var(--mu); border-top: 1px solid var(--ln); padding-top: 10px; }
   .frase { text-align: center; padding: 44px 18px 40px; border-radius: 18px; background: #F7FBFC; border: 2px solid #5894A7; min-height: 46vh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 28px; }
-  .frase img { width: 100%; max-width: 480px; height: auto; display: block; }
+  .frase img { width: 100%; max-width: 480px; height: auto; display: block; mix-blend-mode: multiply; }
   .frase p { margin: 0; max-width: 440px; font-size: 25px; font-weight: 800; color: #0D313F; line-height: 1.35; }
   .chico { font-size: 13.5px; }
   .chico .ok, .chico .listo { font-size: 13.5px; padding: 10px 12px; }
@@ -210,7 +210,7 @@
   function finAg(partes) {
     const logo = document.querySelector('.pie img');
     document.querySelectorAll('.pie').forEach(p => p.hidden = true);
-    vista('<div class="frase">' + (logo ? '<img alt="HySL · Hospitales más seguros para las personas" src="' + logo.src + '">' : '') + '<p>' + esc(FRASE || 'Tu participación es muy importante para crear ambientes laborales seguros y saludables.') + '</p></div>' +
+    vista('<div class="frase"><p>' + esc(FRASE || 'Tu participación es muy importante para crear ambientes laborales seguros y saludables.') + '</p>' + (logo ? '<img alt="HySL · Hospitales más seguros para las personas" src="' + logo.src + '">' : '') + '</div>' +
       '<div class="chico col" style="gap:8px">' + partes.join('') + '</div>' +
       '<button class="btn sec" id="bIni">Volver al inicio</button>', 3);
     $('bIni').onclick = () => { document.querySelectorAll('.pie').forEach(p => p.hidden = false); recargar(); };
