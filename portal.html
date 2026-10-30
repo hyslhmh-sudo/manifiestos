@@ -413,7 +413,7 @@ function marco(activo, contenido) {
     '<div class="titu mod">Más</div>' +
     it('#imprimir', 'print', 'Hojas para imprimir') +   // en blanco y completadas (modulos/imprimir.js, 23/10/2026)
     '<button class="it" id="btnAyudaNav" type="button"><span class="ms" aria-hidden="true">help</span>Ayuda y buscador de ayuda</button>' +
-    grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') +
+    grp('herr', 'build', 'Herramientas', ext(en.general, 'Libro general de residuos') + ext(en.baseComun, 'Base común') + ext(en.baseTrabajadores, 'Base de trabajadores') + ext(APP_URL, 'Mi establecimiento') + ext('https://hyslhmh-sudo.github.io/manifiestos/desvios/', 'Desvíos · carga de los operarios de Star Union (HMH)') +   // 30/10/2026, pedido de Belén
     (RESPALDO ? '<div class="pr" style="color:#fff">Estás en el portal de respaldo (servido por Google)</div>' : ext(API_URL + '?p=portal', 'Portal de respaldo (sin GitHub)')) +
     ext(API_URL + '?p=app', 'Mi establecimiento · respaldo') + ext(API_URL + '?p=diagnostico', 'Referentes · respaldo') + ext(API_URL + '?p=mipyv', 'MIPyV · respaldo')) +
     '<div class="pie">Coordinación HyS · <button class="link" style="color:#fff" id="btnSalir">Salir</button><div style="font-size:11px;margin-top:6px;color:#A9C6D1">Portal ' + esc(VERSION_PORTAL) + (LS.get('verSrv', '') && LS.get('verSrv', '') !== VERSION_PORTAL ? '<br><b style="color:#FFD27A">Apps Script en versión ' + esc(LS.get('verSrv', '')) + ': falta instalar o publicar algo</b>' : '') + '</div></div></nav><main id="main">' + contenido + '</main></div>' +
