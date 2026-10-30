@@ -1517,7 +1517,7 @@ function aguaRelDep() {
   $('app').innerHTML = miTit('Relevamiento por dependencia', 'Cargá la hoja ' + AGUA_F3() + ' completa de una dependencia: el mapeo y el estado de cada tanque o cisterna, en el mismo orden de las columnas.') + fErr +
     fSel('SITIO', 'Dependencia', MI.sitios || ['s/d (revisar)']) + '<div class="grid2">' + fInp('FECHA', 'Fecha del relevamiento', 'date') + fInp('RELEVO', 'Relevó (nombre y función)', 'text', 'Ej.: Juan Pérez, Mantenimiento') + '</div>' +
     bloques.join('') + '<p class="mu" style="font-size:13px">Cargá una tarjeta por cada columna completa de la hoja, en el mismo orden. Si la hoja tiene más columnas, tocá «+ Agregar otro tanque o cisterna».</p><div class="menu"><button class="big" data-act="aguaRelMas"><b>+ Agregar otro tanque o cisterna</b><span>Uno que todavía no estaba cargado</span></button></div>' +
-    fFoto('foto', 'Foto o PDF de la hoja firmada', 'Obligatorio · hasta 5 fotos o un PDF');
+    fFoto('foto', 'Foto o PDF de la hoja firmada', 'Opcional · hasta 5 fotos o un PDF');
   bar('<button class="btn sec" data-act="inicio">Cancelar</button><button class="btn pri" data-act="guardarRelDep">Guardar todo</button>');
 }
 // Arma los bloques con los tanques ya cargados de la dependencia elegida (si no hay, uno en blanco)
@@ -1534,7 +1534,7 @@ function aguaRelQuitar(i) {   // solo los nuevos; corre los siguientes un lugar
   Object.keys(F).filter(k => k.indexOf('T' + (F._n - 1) + '_') === 0).forEach(k => delete F[k]); F._n = Math.max(1, F._n - 1); aguaRelDep();
 }
 function guardarRelDep() {
-  if (!F.FECHA) return miErr('Falta la fecha del relevamiento.'); if (!F.foto && !F.fotoUrl) return miErr('Falta la foto o el PDF de la hoja firmada.');
+  if (!F.FECHA) return miErr('Falta la fecha del relevamiento.');   // la foto de la hoja es opcional (30/10/2026)
   const T = [];
   for (let i = 0; i < F._n; i++) {
     const g = x => F['T' + i + '_' + x] || '', o = { CODIGO_TANQUE: g('CODIGO') };

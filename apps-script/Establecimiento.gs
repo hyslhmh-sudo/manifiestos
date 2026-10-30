@@ -221,7 +221,7 @@ function miInspeccion_(cod, x, quien) {
 function miRelevDep_(cod, x, quien) {
   const L = Array.isArray(x.tanques) ? x.tanques : [], G = miGrupo_(cod), R = miLeer_('RESERVORIOS');
   if (!L.length) return { ok: false, mensaje: 'No hay tanques en la hoja.' };
-  if (!(x.archivo && x.archivo.base64)) return { ok: false, mensaje: 'Falta la foto o el PDF de la hoja firmada.' };
+  // 30/10/2026 (Belén): la foto o el PDF de la hoja firmada es opcional
   const fecha = /^\d{4}-\d{2}-\d{2}/.test(x.FECHA || '') ? x.FECHA.slice(0, 10) : miHoy_();
   for (let i = 0; i < L.length; i++) {
     const t = L[i], n = 'Columna ' + (i + 1);
@@ -230,7 +230,7 @@ function miRelevDep_(cod, x, quien) {
     if (t.ESTADO !== 'Fuera de uso') { if (!/^(Sí, en condiciones|Deficiente|No tiene)$/.test(t.TAPA || '')) return { ok: false, mensaje: n + ': falta la tapa.' };
       if (MI_INSP.some(q => !/^(Sí|No)$/.test(t[q[0]] || ''))) return { ok: false, mensaje: n + ': faltan respuestas del estado.' }; }
   }
-  const url = miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + String(x.SITIO || 'dependencia').replace(/\s+/g, '_') + '_' + fecha }, x.archivo));
+  const url = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + String(x.SITIO || 'dependencia').replace(/\s+/g, '_') + '_' + fecha }, x.archivo)) : '';
   const quien2 = quien + (x.RELEVO ? ' (relevó: ' + x.RELEVO + ')' : ''), res = [];
   L.forEach(t => {
     const inv = { SITIO: x.SITIO || '', UBICACION: t.UBICACION, TIPO: t.TIPO || '', USO: t.USO || '', CAPACIDAD_L: t.CAPACIDAD_L || '', MATERIAL: t.MATERIAL || '', ACCESO: t.ACCESO || '', ESTADO: t.ESTADO || 'Activo', quien: quien2 };
