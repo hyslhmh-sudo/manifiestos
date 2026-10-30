@@ -33,7 +33,9 @@ const avEsc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&"
 const avFecha = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); return m ? m[3] + "/" + m[2] : ""; };
 
 // Lo llama actualizarCatalogosDesdePlanilla (app.js) con lo que devolvió la planilla
+const AVISOS_MSJ_KEY = "mipyv_mensaje_inicio_v1";   // 30/10/2026: mensaje de HyS en la pantalla de inicio (planilla › configuracion › mensaje_inicio)
 function avisosDatos(datos) {
+  if (datos && typeof datos.mensaje_inicio === "string") { avGuardar(AVISOS_MSJ_KEY, { texto: datos.mensaje_inicio }); avisosPintar(); }
   if (!datos || !Array.isArray(datos.casos)) return;
   avGuardar(AVISOS_KEY, { fecha: new Date().toISOString(), casos: datos.casos });   // las solicitudes no vuelven a la app: su evaluación la ve solo HyS
   // los cierres que la planilla ya registró no hace falta seguir ocultándolos a mano
@@ -50,12 +52,19 @@ function avisosCasos() {
 function avisosPintar() {
   const box = document.getElementById("avisosHome"); if (!box) return;
   const casos = avisosCasos(), urg = casos.filter((c) => c.urgente);
-  box.innerHTML = (urg.length
+  box.innerHTML = avMensajeHtml() + (urg.length
     ? `<button type="button" class="av-urgente" data-av="casos"><span class="av-emo">⚠️</span><span><b>Revisar urgente: ${urg.length} caso${urg.length > 1 ? "s" : ""}</b><small>Tocá para indicar si quedó resuelto</small></span></button>`
     : casos.length ? `<button type="button" class="av-suave" data-av="casos"><span class="av-emo">📋</span><span><b>${casos.length} caso${casos.length > 1 ? "s" : ""} abierto${casos.length > 1 ? "s" : ""}</b><small>Al día. Tocá para verlos o cerrarlos</small></span></button>` : "");
   const sol = document.getElementById("goSolicitudes");
   if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
   box.querySelectorAll("[data-av=casos]").forEach((b) => (b.onclick = () => avCasosLista()));
+}
+
+// Mensaje de HyS (texto con formato de WhatsApp: *negrita*, viñetas «•»). Se cambia o se borra desde la planilla.
+function avMensajeHtml() {
+  const m = avLeer(AVISOS_MSJ_KEY, null), txt = m && String(m.texto || "").trim(); if (!txt) return "";
+  const lin = txt.split(/\r?\n/).map((l) => avEsc(l).replace(/\*([^*]+)\*/g, "<b>$1</b>"));
+  return `<div class="av-msj"><div class="av-msj-t">📌 Mensaje de Higiene y Seguridad</div>` + lin.map((l) => l.trim() ? `<div class="av-msj-l${/^\s*•/.test(l) ? " av-msj-v" : ""}">${l}</div>` : `<div class="av-msj-sep"></div>`).join("") + `</div>`;
 }
 
 // ---------- Ventana propia (encima de la app) ----------
@@ -223,6 +232,7 @@ function avSolForm(yo, tipo) {
   st.textContent = `
 #avisosHome:empty{display:none}#avisosHome{margin:0 0 14px}
 .av-urgente,.av-suave,.av-grande,.av-caso,.av-tile{width:100%;border:none;font-family:inherit;text-align:left;display:flex;gap:14px;align-items:center;border-radius:18px;padding:16px;margin:0 0 12px;cursor:pointer}
+.av-msj{background:#FFF7E0;border:2px solid #E0B44C;border-radius:18px;padding:14px 16px;margin:0 0 14px;color:#2B2B2B;font-size:.95rem;line-height:1.4}.av-msj-t{font-size:.8rem;font-weight:700;color:#8A6400;margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}.av-msj b{color:#0D313F}.av-msj-v{padding-left:6px}.av-msj-sep{height:8px}
 .av-urgente{background:#B4361F;color:#fff;animation:avLatido 1.6s ease-in-out infinite}.av-suave{background:#EAF1F2;color:#0D313F}
 @keyframes avLatido{0%,100%{box-shadow:0 0 0 0 rgba(180,54,31,.5)}50%{box-shadow:0 0 0 8px rgba(180,54,31,0)}}
 .av-urgente b,.av-suave b,.av-grande b{display:block;font-size:1.08rem}.av-urgente small,.av-suave small,.av-grande small{display:block;font-size:.85rem;opacity:.9;font-weight:600}

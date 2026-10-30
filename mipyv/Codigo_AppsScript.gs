@@ -486,6 +486,7 @@ function doGet(e) {
 
   // tipos de tarea de HyS (solo esa lista de la hoja configuracion: los correos no se publican)
   out.tipos_tarea = tiposTareaHys(ss);
+  try { out.mensaje_inicio = mensajeInicio(ss); } catch (err) { out.mensaje_inicio = ""; }   // 30/10/2026: mensaje de HyS en el inicio de la app
   // casos abiertos (con vencimiento), solicitudes a HyS y cierres recientes (Casos_Solicitudes_MIPyV.gs, 25/10/2026)
   // (las solicitudes y los cierres NO se publican acá: la evaluación la ve solo HyS en el portal)
   try { out.casos = casosParaApp_(ss); } catch (err) { out.casos_error = String(err.message || err); }
@@ -498,6 +499,17 @@ function doGet(e) {
 
 
   return respuesta(out);
+}
+
+// Mensaje de HyS en la pantalla de inicio de la app (30/10/2026, pedido de Belén). Hoja "configuracion": fila con
+// "mensaje_inicio" en la columna clave y el texto en valor (admite varias líneas y *negrita* como en WhatsApp).
+// Para sacarlo, borrar el texto (o la fila). Si hay varias filas, se muestran una debajo de otra.
+function mensajeInicio(ss) {
+  const sh = ss.getSheetByName(SHEET_CONFIG);
+  if (!sh) return "";
+  return sh.getDataRange().getValues().slice(1)
+    .filter((r) => String(r[0]).trim() === "mensaje_inicio" && String(r[1]).trim() !== "")
+    .map((r) => String(r[1]).trim()).join("\n\n");
 }
 
 function tiposTareaHys(ss) {
