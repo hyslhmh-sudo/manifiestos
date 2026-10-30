@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-25 · 5.16';
+const VERSION_CAP = '2026-10-30 · 5.22';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -66,13 +66,14 @@ function menuAyuda() {
     '<p><b>Actualizar tablero ahora</b>: recalcula el tablero y lo escribe en la hoja TABLERO. El portal lo guarda ' + MIN_CACHE + ' minutos.</p>' +
     '<p><b>Procesar CARGA_MANUAL</b>: pasa a REGISTROS lo anotado a mano cuando el portal no funcionó.</p>' +
     '<p><b>Completar filas cargadas a mano</b>: si el portal no anda, cargá la capacitación en CATALOGO, las preguntas en PREGUNTAS o el dictado en DICTADOS (código, fecha dd/mm/aaaa, hora, modalidad, lugar; en LINK_INSCRIPCION escribí Sí si lleva inscripción). Esta opción les pone código, links, QR, ventana de 48 h y cupo.</p>' +
-    '<p><b>Dictados y sus links</b>: lista los dictados recientes y próximos con el link de registro, el de inscripción y el QR.</p>' +
+    '<p><b>Dictados y sus links</b>: lista los dictados recientes y próximos con el link y el QR del certificado y, si lleva, el link y el QR de inscripción.</p>' +
     '<p><b>Anular una inscripción desde el libro</b>: en INSCRIPCIONES poné ESTADO = Anulada, escribí el MOTIVO y en ANULADA_POR «HyS».</p>' +
     '<p><b>Certificados</b>: cada asistencia o aprobación recibe un código CHYS al registrarse; el PDF se arma la primera vez que alguien lo descarga y queda en la carpeta CERTIFICADOS_HYS. «Dar código a los pendientes» sirve para lo cargado por CARGA_MANUAL. «Cerrar un programa» emite la aprobación (asistencia mínima + evaluación final) o la participación. «PDF de la fila seleccionada»: parate en una fila de la hoja CERTIFICADOS. Para anular: ESTADO = Anulado y el motivo en MOTIVO_ANULACION (nunca borrar la fila).</p>' +
     '<p><b>Agenda</b>: la página pública es ' + AGENDA_WEB + '. Cada persona se anota a una clase abierta con DNI y correo; las jefaturas, coordinaciones y A/C reservan un horario para su servicio con su DNI. Si quien reserva no está en JEFATURAS o faltan menos de ' + HS_CONFIRMA + ' h, queda Pendiente y lo confirmás vos. «Abrir horarios» genera los horarios dentro de las franjas de la hoja FRANJAS. Si cargás a mano una reserva o clase abierta en AGENDA, usá «Completar filas cargadas a mano». Nunca se borra una fila: ESTADO y MOTIVO.</p>' +
     '<p><b>Recordatorios</b>: salen solos 7, 2 y 1 día antes desde ' + CORREO_HYS + ' (también la confirmación y el aviso si suspendés). Cada envío queda en _MENSAJES. Necesitan «Enviar como» configurado en el Gmail de esta cuenta.</p>' +
     '<p><b>Cumplimiento</b>: se calcula con la nómina de HZT y HMH de la base de trabajadores, la MATRIZ y los REGISTROS vigentes. «Recalcular ahora» actualiza las hojas CUMPLIMIENTO y CUMPLIMIENTO_PERSONAS. Los nombres de servicio se agrupan con SERVICIOS_EQUIV y cada servicio se asigna a su jefatura con JEFATURAS.</p>' +
     '<p><b>Links del registro nuevo</b>: abre el registro de cada capacitación para probarlo.</p>' +
+    '<p><b>Al terminar una inscripción</b>: la página ofrece la próxima clase abierta híbrida del año (no programas, no la misma capacitación, no una en la que la persona ya está inscripta). Si acepta, elige presencial o virtual y puede dejar una consulta, que queda en esa capacitación. La última pantalla muestra el logo de HySL y una frase que rota; las frases se cambian en _LISTAS, columna FRASES_CIERRE. Debajo del nombre de la próxima clase va el resumen breve de CATALOGO › RESUMEN (si dice s/d, no se muestra).</p>' +
     '<p><b>Clave</b>: no hay que configurar nada. El libro le pregunta al portal si la clave con la que entraste es correcta.</p>' +
     '<p><b>Si el portal no funciona</b>: la hoja TABLERO tiene los mismos datos. Las altas, dictados y asistencias se anotan en CATALOGO, DICTADOS y CARGA_MANUAL (ver hoja INICIO).</p>' +
     '<p><b>Avisos</b>: solo sobre lo cargado desde el ' + AVISOS_DESDE.split('-').reverse().join('/') + '. Lo anterior queda como histórico.</p>' +
@@ -525,6 +526,7 @@ function regInicio(k, c, d, av) {
     const hv = horasVideo_(cap.codigo); if (hv) cap.carga = hv;
     ab = /^activ/i.test(cap.estado || '') ? { abierta: true, idDictado: VIDEO_DIC, encuentro: 1, texto: 'Autoadministrada', video: true } : { abierta: false, texto: 'Esta capacitación no está activa.' };
   } else ab = dic ? aperturaDictado_(dic, cap.estado) : estadoApertura_(cap.codigo, r[i('SIEMPRE_ABIERTA')], cap.estado);
+  if (ab && ab.abierta && !ab.video) ab.clave = !!claveDictado_(ab.idDictado);   // 29/10/2026: la página pide la palabra clave solo si el dictado la tiene
   const ev = /evaluaci/i.test(cap.registro) ? evalDe_(cap.codigo, evTok) : null;
   return { ok: true, cap: cap, abierta: ab, evaluacion: ev ? ev.ID_EVALUACION : '', listas: listasRegistro_(), videos: videos ? videos.map(v => ({ id: v.id, titulo: v.titulo })) : null };
 }
@@ -670,11 +672,22 @@ function guardarPersona_(d) {
 
 // ------------------------------------------------------------------ Guardar el registro de asistencia
 // Devuelve siguiente: 'listo' | 'evaluacion' | 'cerrada'; y encuesta = true si el dictado tuvo inscripción previa.
+// Palabra clave de asistencia (29/10/2026, pedido de Belén): si el dictado tiene PALABRA_CLAVE en la hoja DICTADOS, el registro de asistencia la pide.
+// Vacía = no se pide (las demás capacitaciones no cambian). Se compara sin mayúsculas, tildes ni espacios, y nunca se envía al navegador.
+function claveNorm_(s) { return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ''); }
+function claveDictado_(idDictado) {
+  if (!idDictado || idDictado === 'PERMANENTE' || idDictado === VIDEO_DIC) return '';
+  const D = tabla_('DICTADOS'), c = D.i('PALABRA_CLAVE'); if (c < 0) return '';
+  const x = D.filas.find(f => f[D.i('ID_DICTADO')] === idDictado);
+  return x ? claveNorm_(x[c]) : '';
+}
 function regGuardar(d) {
   const lock = LockService.getScriptLock(); lock.waitLock(25000);
   try {
     const ini = regInicio(d.k, d.c, d.d, d.av); if (!ini.ok) return ini;
     const cap = ini.cap, ab = ini.abierta;
+    const palabra = ab.abierta && !ab.video ? claveDictado_(ab.idDictado) : '';   // 29/10/2026: palabra clave del encuentro
+    if (palabra && claveNorm_(d.palabra) !== palabra) return { ok: false, clave: true, error: 'La palabra clave no es correcta. La dijimos durante el encuentro: revisá cómo se escribe y probá de nuevo.' };
     const per = guardarPersona_(d); if (per.error) return { ok: false, error: per.error };
     const doc = per.doc, encuesta = !!ab.inscripcion;
     const soloEval = /evaluaci/i.test(cap.registro) && !/encuentro/i.test(cap.registro);
@@ -1176,19 +1189,19 @@ function resumenDictado_(o) {
   const v = ventana_(o);
   return { id: o.ID_DICTADO, codigo: o.CODIGO, encuentro: o.ENCUENTRO_N, fecha: dma_(isoDe_(o.FECHA)), hora: hhmm_(o.HORA_INICIO), horaFin: hhmm_(o.HORA_FIN), modalidad: o.MODALIDAD, lugar: o.LUGAR, servicios: o.SERVICIO_DESTINO,
     organizador: o.ORGANIZADOR, institucion: o.INSTITUCION, disertantes: o.DISERTANTES, firmantes: o.FIRMANTES, abre: fmt_(v.abre), cierra: fmt_(v.cierra), link: linkPub_('d=' + encodeURIComponent(o.ID_DICTADO)), qr: qrDe_(linkPub_('d=' + encodeURIComponent(o.ID_DICTADO))),
-    linkInscripcion: vacio_(o.LINK_INSCRIPCION) ? '' : linkPub_('i=' + encodeURIComponent(o.ID_DICTADO)), cierreInscripcion: o.CIERRE_INSCRIPCION, cupo: o.CUPO_PRESENCIAL, estado: o.ESTADO, observaciones: o.OBSERVACIONES };
+    linkInscripcion: vacio_(o.LINK_INSCRIPCION) ? '' : linkPub_('i=' + encodeURIComponent(o.ID_DICTADO)), qrInscripcion: vacio_(o.LINK_INSCRIPCION) ? '' : qrDe_(linkPub_('i=' + encodeURIComponent(o.ID_DICTADO))), cierreInscripcion: o.CIERRE_INSCRIPCION, cupo: o.CUPO_PRESENCIAL, estado: o.ESTADO, observaciones: o.OBSERVACIONES };
 }
 function textoWhatsapp_(cap, o) {
   // Un solo link por mensaje, para que nadie use el equivocado:
-  // antes de la clase, si hay inscripción previa abierta, va el de inscripción; si no, el de registro de asistencia.
+  // antes de la clase, si hay inscripción previa abierta, va el de inscripción; si no, el del certificado (registro de asistencia).
   const lineas = ['*Capacitación de Higiene y Seguridad*', cap.NOMBRE + (num_(o.ENCUENTRO_N) > 0 && num_(cap.ENCUENTROS) > 1 ? ' · encuentro ' + o.ENCUENTRO_N + ' de ' + cap.ENCUENTROS : ''),
     'Día: ' + dma_(isoDe_(o.FECHA)) + (hhmm_(o.HORA_INICIO) ? ' · ' + hhmm_(o.HORA_INICIO) + ' h' : ''), 'Modalidad: ' + o.MODALIDAD + (vacio_(o.LUGAR) || /virtual/i.test(o.LUGAR) ? '' : ' · ' + o.LUGAR), ''];
   const v = ventana_(o), ahora = new Date(), id = encodeURIComponent(o.ID_DICTADO);
   const cierreIns = !vacio_(o.CIERRE_INSCRIPCION) ? fechaHora_(o.CIERRE_INSCRIPCION) : v.abre;
   if (!vacio_(o.LINK_INSCRIPCION) && ahora < v.abre && ahora < cierreIns) {
-    lineas.push('Inscribite acá (cierra el ' + fmt_(cierreIns) + ' o al completarse el cupo):', linkPub_('i=' + id), '', 'El día de la clase comparto el link para registrar la asistencia.');
+    lineas.push('Inscribite acá (cierra el ' + fmt_(cierreIns) + ' o al completarse el cupo):', linkPub_('i=' + id), '', 'El día de la clase comparto el link del certificado, para registrar la asistencia.');
   } else {
-    lineas.push('Registrá tu asistencia acá (se abre el ' + fmt_(v.abre) + ' y cierra el ' + fmt_(v.cierra) + '):', linkPub_('d=' + id));
+    lineas.push('Link del certificado: registrá tu asistencia acá (se abre el ' + fmt_(v.abre) + ' y cierra el ' + fmt_(v.cierra) + '):', linkPub_('d=' + id));
   }
   lineas.push('', 'Al abrir el link, la página puede tardar entre 10 y 30 segundos en cargar. Es normal: no la cierres.');
   return lineas.join('\n');
@@ -1210,8 +1223,11 @@ function completarDictado_(D, o, cap) {
   const abre = fechaHora_(dma_(fIso) + ' ' + (hhmm_(o.HORA_INICIO) || '00:00'));
   if (vacio_(o.ABRE)) o.ABRE = fmt_(abre);
   if (vacio_(o.CIERRA)) o.CIERRA = fmt_(new Date(abre.getTime() + HS_VENTANA * 3600e3));
-  o.LINK = linkReg_('d=' + o.ID_DICTADO); o.QR = qrDe_(o.LINK); o.LINK_PARA_COMPARTIR = o.LINK;
-  if (siNo_(o.LINK_INSCRIPCION) || /^http/.test(String(o.LINK_INSCRIPCION))) { o.LINK_INSCRIPCION = linkReg_('i=' + o.ID_DICTADO); if (vacio_(o.CIERRE_INSCRIPCION)) o.CIERRE_INSCRIPCION = o.ABRE; }
+  // LINK y QR: certificado (registro de asistencia, ?d=). LINK_INSCRIPCION y QR_INSCRIPCION: inscripción previa (?i=), si la lleva.
+  // LINK_PARA_COMPARTIR: lo primero que se comparte (link público): la inscripción si la lleva; si no, el certificado.
+  o.LINK = linkReg_('d=' + o.ID_DICTADO); o.QR = qrDe_(o.LINK);
+  if (siNo_(o.LINK_INSCRIPCION) || /^http/.test(String(o.LINK_INSCRIPCION))) { o.LINK_INSCRIPCION = linkReg_('i=' + o.ID_DICTADO); o.QR_INSCRIPCION = qrDe_(linkPub_('i=' + encodeURIComponent(o.ID_DICTADO))); if (vacio_(o.CIERRE_INSCRIPCION)) o.CIERRE_INSCRIPCION = o.ABRE; }
+  o.LINK_PARA_COMPARTIR = /^http/.test(String(o.LINK_INSCRIPCION || '')) ? linkPub_('i=' + encodeURIComponent(o.ID_DICTADO)) : linkPub_('d=' + encodeURIComponent(o.ID_DICTADO));
   if (vacio_(o.CUPO_PRESENCIAL)) o.CUPO_PRESENCIAL = /^virtual/i.test(o.MODALIDAD) ? 'sin cupo' : capacidad_(o.LUGAR);
   if (vacio_(o.ESTADO)) o.ESTADO = 'Programado';
   if (vacio_(o.VERSION)) o.VERSION = cap ? cap.VERSION : '1';
@@ -1312,7 +1328,7 @@ function inscInicio(i) {
   const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === i);
   if (!r) return { ok: false, error: 'No encontramos esta inscripción. Revisá el link.' };
   const o = obj_(D, r), cap = capDe_(o.CODIGO) || {};
-  if (vacio_(o.LINK_INSCRIPCION)) return { ok: false, error: 'Este dictado no tiene inscripción previa: el día de la clase vas a poder registrar tu asistencia.' };
+  if (vacio_(o.LINK_INSCRIPCION)) return { ok: false, error: 'Este dictado no tiene inscripción previa: el día de la clase registrás tu asistencia con el link del certificado.' };
   const I = tabla_('INSCRIPCIONES'), k = cupoModalidad_(o.ID_DICTADO, o.CUPO_PRESENCIAL, o.MODALIDAD, I), cupo = k.cupo, v = ventana_(o);
   const cierre = !vacio_(o.CIERRE_INSCRIPCION) ? fechaHora_(o.CIERRE_INSCRIPCION) : v.abre;
   const lleno = k.presLleno, hib = k.hibrida, virt = k.virtual;
@@ -1333,13 +1349,13 @@ function inscBuscar(q) {
   r.inscripta = k >= 0; if (k >= 0) r.modalidadElegida = I.filas[k][I.i('MODALIDAD_ELEGIDA')];
   return r;
 }
-function inscGuardar(d) {
+function inscGuardarBase_(d) {
   return conLock_(() => {
     const ini = inscInicio(d.i); if (!ini.ok) return ini;
     if (!ini.abierta) return { ok: false, error: ini.texto };
     const per = guardarPersona_(d); if (per.error) return { ok: false, error: per.error };
     const I = tabla_('INSCRIPCIONES');
-    if (inscripcionDe_(I, d.i, per.doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas inscripta/o en este dictado.' };
+    if (inscripcionDe_(I, d.i, per.doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas inscripto en este dictado.' };
     const mod = ini.opciones.indexOf(d.modalidad) >= 0 ? d.modalidad : ini.opciones[0];
     if (ini.hibrida && ini.opciones.length > 1 && ini.opciones.indexOf(d.modalidad) < 0) return { ok: false, error: 'Elegí cómo vas a participar: presencial o virtual.' };
     if (mod === 'Presencial' && ini.cupoLleno) return { ok: false, error: 'Se completó el cupo presencial: podés inscribirte en forma virtual.' };
@@ -1352,10 +1368,59 @@ function inscGuardar(d) {
     if (mod === 'Presencial') cupoCambio_(d.i, ini.dictado.modalidad, ini.cupo, ini.cupoLleno);
     let aviso = '';
     if (correoOk_(correo)) { try { if (confirmarInscripcion_(d.i, correo, token, mod, ini.programa)) aviso = ' Te mandamos la confirmación a ' + correo + '.'; } catch (e) { /* la inscripción ya quedó guardada */ } }
-    if (ini.programa) return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') en el programa completo: ' + ini.programa + ' encuentros, desde el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. Antes de cada encuentro te llega un recordatorio por correo; el día de cada clase registrás tu asistencia con el link o el QR.' + aviso };
-    return { ok: true, mensaje: 'Listo, quedaste inscripta/o (' + mod.toLowerCase() + ') para el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. ' + (mod === 'Virtual' ? 'Participás por Zoom' : 'Te esperamos en ' + (ini.dictado.lugar || 'el aula')) + '; el día de la clase registrás tu asistencia con el link o el QR.' + aviso };
+    if (ini.programa) return { ok: true, mensaje: 'Listo, quedaste inscripto (' + mod.toLowerCase() + ') en el programa completo: ' + ini.programa + ' encuentros, desde el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. Antes de cada encuentro te llega un recordatorio por correo; el día de cada clase registrás tu asistencia con el link o el QR.' + aviso };
+    return { ok: true, mensaje: 'Listo, quedaste inscripto (' + mod.toLowerCase() + ') para el ' + ini.dictado.fecha + (ini.dictado.hora ? ' a las ' + ini.dictado.hora : '') + '. ' + (mod === 'Virtual' ? 'Participás por Zoom' : 'Te esperamos en ' + (ini.dictado.lugar || 'el aula')) + '; el día de la clase registrás tu asistencia con el link o el QR.' + aviso };
   });
 }
+// 30/10/2026: al terminar la inscripción se ofrece la próxima clase abierta híbrida del año y se muestra la frase de cierre
+function inscGuardar(d) {
+  const r = inscGuardarBase_(d);
+  if (r && r.ok) { r.siguiente = proximaAbierta_(d.i, idDoc_(d)); r.frase = fraseCierre_(); }
+  return r;
+}
+
+// ------------------------------------------------------------------ Próxima clase abierta y frase de cierre (30/10/2026)
+// Se ofrece la clase abierta HÍBRIDA más cercana del año calendario, con inscripción abierta. No se ofrecen programas,
+// la misma capacitación que se acaba de anotar ni una en la que la persona ya está inscripta. Si no hay ninguna, no se muestra nada.
+// La consulta que la persona escriba en esa segunda inscripción queda guardada en ESA capacitación (su propio ID_DICTADO).
+const FRASES_CIERRE = [
+  'Tu participación es muy importante para crear ambientes laborales seguros y saludables.',
+  'Cada vez que te capacitás, el hospital se vuelve un lugar más seguro para todos.',
+  'Cuidarte en el trabajo también es cuidar a tus compañeros y a los pacientes.',
+  'La prevención empieza con vos. Gracias por sumarte.',
+  'Un trabajador informado es un trabajador protegido. Gracias por participar.'
+];
+// Las frases se cambian desde la hoja _LISTAS, columna FRASES_CIERRE (una por fila). Si la columna no existe o está vacía, se usan las de arriba.
+function fraseCierre_() {
+  let l = [];
+  try { l = listaCol_(tabla_('_LISTAS'), 'FRASES_CIERRE'); } catch (e) { /* sin la columna */ }
+  if (!l.length) l = FRASES_CIERRE;
+  return l[Math.floor(Math.random() * l.length)];
+}
+function proximaAbierta_(idActual, doc) {
+  try {
+    const ahora = new Date(), anio = Utilities.formatDate(ahora, ZONA, 'yyyy');
+    const D = tabla_('DICTADOS'), I = tabla_('INSCRIPCIONES'), dic = {};
+    D.filas.forEach(r => { const o = obj_(D, r); if (o.ID_DICTADO) dic[o.ID_DICTADO] = o; });
+    const actual = dic[idActual] || {};
+    const cands = turnos_().filter(t => t.ESTADO === 'Clase abierta' && /h[ií]brida/i.test(t.MODALIDAD || '') && t.inicio > ahora
+      && Utilities.formatDate(t.inicio, ZONA, 'yyyy') === anio && !/^no/i.test(t.PUBLICADO) && t.ID_DICTADO && t.ID_DICTADO !== idActual && t.CODIGO !== actual.CODIGO)
+      .sort((a, b) => a.inicio - b.inicio);
+    for (const t of cands) {
+      const o = dic[t.ID_DICTADO]; if (!o || vacio_(o.LINK_INSCRIPCION) || /cancel|suspend/i.test(o.ESTADO)) continue;
+      const cap = capDe_(t.CODIGO) || {};
+      if (/programa/i.test(cap.TIPO_ACTIVIDAD || '') || num_(cap.ENCUENTROS) > 1) continue;   // los programas no se ofrecen
+      const cierre = !vacio_(o.CIERRE_INSCRIPCION) ? fechaHora_(o.CIERRE_INSCRIPCION) : ventana_(o).abre;
+      if (ahora > cierre) continue;
+      if (doc && inscripcionDe_(I, o.ID_DICTADO, doc) >= 0) continue;
+      const k = cupoModalidad_(o.ID_DICTADO, o.CUPO_PRESENCIAL, o.MODALIDAD, I);
+      return { i: o.ID_DICTADO, turno: t.ID_TURNO, codigo: t.CODIGO, nombre: cap.NOMBRE || t.CODIGO, resumen: vacio_(cap.RESUMEN) ? '' : String(cap.RESUMEN).trim(), fecha: diaCorto_(isoDe_(t.FECHA)), hora: hhmm_(t.HORA_INICIO), horaFin: hhmm_(t.HORA_FIN),
+        lugar: vacio_(t.LUGAR) ? 's/d' : t.LUGAR, opciones: k.presLleno ? ['Virtual'] : ['Presencial', 'Virtual'], cupoLleno: k.presLleno, quedan: k.quedan };
+    }
+  } catch (e) { /* si algo falla, la inscripción termina igual, sin ofrecer otra clase */ }
+  return null;
+}
+
 function inscAnular_(d, por) {
   return conLock_(() => {
     const I = tabla_('INSCRIPCIONES');
@@ -1641,7 +1706,7 @@ function completarFilas_() {
 }
 function menuDictados() {
   const l = dictadosLista_({ dias: 30 }).lista;
-  const filas = l.map(x => '<tr><td>' + x.fecha + ' ' + (x.hora || '') + '</td><td>' + x.codigo + ' · ' + x.nombre + '</td><td>' + x.ahora + '</td><td><a target="_blank" href="' + x.link + '">registro</a>' + (x.linkInscripcion ? ' · <a target="_blank" href="' + x.linkInscripcion + '">inscripción</a>' : '') + ' · <a target="_blank" href="' + x.qr + '">QR</a></td><td>' + x.inscriptos + ' / ' + x.asistentes + '</td></tr>').join('');
+  const filas = l.map(x => '<tr><td>' + x.fecha + ' ' + (x.hora || '') + '</td><td>' + x.codigo + ' · ' + x.nombre + '</td><td>' + x.ahora + '</td><td>Certificado: <a target="_blank" href="' + x.link + '">link</a> · <a target="_blank" href="' + x.qr + '">QR</a>' + (x.linkInscripcion ? '<br>Inscripción: <a target="_blank" href="' + x.linkInscripcion + '">link</a> · <a target="_blank" href="' + x.qrInscripcion + '">QR</a>' : '') + '</td><td>' + x.inscriptos + ' / ' + x.asistentes + '</td></tr>').join('');
   const html = '<div style="font-family:Arial,sans-serif;font-size:13px"><p>Dictados de los últimos 30 días y próximos. Inscriptos / asistentes.</p><table style="border-collapse:collapse" cellpadding="4">' + (filas || '<tr><td>No hay dictados.</td></tr>') + '</table></div>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(760).setHeight(480), 'Dictados · links');
 }
@@ -1659,7 +1724,7 @@ const CERT_WEB = 'https://hyslhmh-sudo.github.io/capacitaciones/certificados.htm
 const PREFIJO_CERT = 'CHYS';                       // CHYS-2026-00001: distinto de CERT-/CONST- del sistema actual, que sigue emitiendo hasta el cambio
 const COLUMNAS_F6 = {
   CERTIFICADOS: ['NOMBRE', 'CORREO', 'ID_REGISTRO', 'ID_DICTADO', 'ENCUENTRO_N', 'NOTA', 'VENCE', 'EMITIDO', 'ARCHIVO_ID', 'MOTIVO_ANULACION', 'DETALLE'],
-  DICTADOS: ['DISERTANTES_DATOS', 'PROGRAMA_CERRADO']
+  DICTADOS: ['DISERTANTES_DATOS', 'PROGRAMA_CERRADO', 'PALABRA_CLAVE']
 };
 const TIPO_CERT = { apr: 'Aprobación', asi: 'Asistencia', prog: 'Aprobación de programa', part: 'Participación', dis: 'Disertante' };
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
