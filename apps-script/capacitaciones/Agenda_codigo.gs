@@ -381,7 +381,7 @@ function agPersona(dni) {
   const correo = [p && p.CORREO, b && b.EMAIL].map(x => String(x || '').trim()).find(correoOk_) || '';
   return { ok: true, encontrado: true, nombre: capitalizar_(nombre), detalle: [servicio, vacio_(est) ? '' : est].filter(Boolean).join(' · '), correo: correo };
 }
-function agAnotarme(d) {
+function agAnotarmeBase_(d) {
   return conLock_(() => {
     const doc = soloDni_(d.dni), correo = String(d.correo || '').trim();
     if (doc.length < 6 || doc.length > 9) return { ok: false, error: 'Revisá el DNI: escribilo sin puntos.' };
@@ -389,7 +389,7 @@ function agAnotarme(d) {
     const x = turnoDe_(d.id); if (!x.o || x.o.ESTADO !== 'Clase abierta') return { ok: false, error: 'Esa clase ya no está disponible. Elegí otra.' };
     const t = x.o, ini = inicioDe_(t.FECHA, t.HORA_INICIO); if (ini < new Date()) return { ok: false, error: 'Esa clase ya empezó.' };
     const I = tabla_('INSCRIPCIONES');
-    if (inscripcionDe_(I, t.ID_DICTADO, doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas anotada/o en esta clase.' };
+    if (inscripcionDe_(I, t.ID_DICTADO, doc) >= 0) return { ok: true, ya: true, mensaje: 'Ya estabas anotado en esta clase.' };
     // Modalidad: en las híbridas la persona elige; el cupo es solo presencial y la virtual sigue abierta
     const k = cupoModalidad_(t.ID_DICTADO, t.CUPO, t.MODALIDAD, I);
     const mod = k.virtual ? 'Virtual' : k.hibrida ? String(d.modalidad || '') : 'Presencial';
@@ -420,10 +420,23 @@ function agAnotarme(d) {
       ESTADO: 'Inscripta', ASISTIO: '', CANAL: 'Agenda', FECHA_ANULACION: '', ANULADA_POR: '', MOTIVO: '', CORREO: correo, TOKEN_CANCELAR: token, RECORDATORIOS: '', ID_TURNO: t.ID_TURNO }]);
     const cap = capDe_(t.CODIGO) || { NOMBRE: t.CODIGO };
     if (mod === 'Presencial') cupoCambio_(t.ID_DICTADO, t.MODALIDAD, t.CUPO, k.presLleno);
-    enviar_(correo, 'Quedaste anotada/o (' + mod.toLowerCase() + '): ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, token, 'confirmacion', 0, mod), 'Confirmación', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
-    return { ok: true, mensaje: '¡Listo, quedaste anotada/o!', clase: { nombre: cap.NOMBRE, fecha: diaCorto_(isoDe_(t.FECHA)), hora: hhmm_(t.HORA_INICIO), lugar: t.LUGAR, modalidad: mod, modalidadTxt: modalidadTxt_(mod, t.LUGAR) } };
+    enviar_(correo, 'Quedaste anotado (' + mod.toLowerCase() + '): ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, token, 'confirmacion', 0, mod), 'Confirmación', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
+    return { ok: true, mensaje: '¡Listo, quedaste anotado!', clase: { nombre: cap.NOMBRE, fecha: diaCorto_(isoDe_(t.FECHA)), hora: hhmm_(t.HORA_INICIO), lugar: t.LUGAR, modalidad: mod, modalidadTxt: modalidadTxt_(mod, t.LUGAR) } };
   });
 }
+// 30/10/2026: guarda la consulta (si la escribió, p. ej. al anotarse a la próxima clase ofrecida) y ofrece la próxima clase abierta híbrida del año
+function agAnotarme(d) {
+  const r = agAnotarmeBase_(d);
+  if (!r || !r.ok) return r;
+  const doc = soloDni_(d.dni), x = turnoDe_(d.id), idDic = x.o ? x.o.ID_DICTADO : '';
+  const cons = String(d.consulta || '').trim().slice(0, 1500);
+  if (cons && !r.ya && idDic) {
+    try { const I = tabla_('INSCRIPCIONES'), k = inscripcionDe_(I, idDic, doc); if (k >= 0) setCampos_(I, k, { CONSULTA_PREVIA: cons, ESTADO_CONSULTA: 'Pendiente' }); } catch (e) { /* la inscripción ya quedó guardada */ }
+  }
+  r.siguiente = proximaAbierta_(idDic, doc); r.frase = fraseCierre_();
+  return r;
+}
+
 // «Anoto a mi servicio»: reconoce a la jefatura por DNI y propone qué conviene dictar
 function agJefatura(dni) {
   const doc = soloDni_(dni); if (doc.length < 6 || doc.length > 9) return { ok: false, error: 'Revisá el DNI: escribilo sin puntos.' };
@@ -575,7 +588,7 @@ function confirmarInscripcion_(idDic, correo, token, mod, programa) {
   let t = turnos_().filter(y => y.ID_DICTADO === idDic && y.ESTADO === 'Clase abierta')[0];
   if (!t) { const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === idDic); if (!r) return false; t = obj_(D, r); }
   const cap = capDe_(t.CODIGO) || { NOMBRE: t.CODIGO, CODIGO: t.CODIGO };
-  return enviar_(correo, 'Quedaste inscripta/o (' + String(mod).toLowerCase() + '): ' + cap.NOMBRE + (programa ? ' · programa completo' : '') + ' · ' + diaCorto_(isoDe_(t.FECHA)),
+  return enviar_(correo, 'Quedaste inscripto (' + String(mod).toLowerCase() + '): ' + cap.NOMBRE + (programa ? ' · programa completo' : '') + ' · ' + diaCorto_(isoDe_(t.FECHA)),
     mailClase_(cap, t, token, 'confirmacion', 0, mod, programa), 'Confirmación', t.ID_TURNO || '', idDic, t.CODIGO);
 }
 function mailClase_(cap, t, token, tipo, dias, mod, programa) {
@@ -584,12 +597,12 @@ function mailClase_(cap, t, token, tipo, dias, mod, programa) {
   const cuando = DIAS_SEMANA[diaSemana_(isoDe_(t.FECHA))] + ' ' + dma_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h';
   const intro = tipo === 'recordatorio' ? (dias === 1 ? 'Te recordamos que <b>mañana</b> tenés esta capacitación.' : 'Te recordamos que en <b>' + dias + ' días</b> tenés esta capacitación.') :
     tipo === 'suspension' ? 'Te avisamos que esta clase <b>se suspendió</b>. Disculpá las molestias: podés anotarte en otra fecha desde la agenda.' :
-    programa ? 'Quedaste inscripta/o en el <b>programa completo</b> (' + programa + ' encuentros), en forma <b>' + mod.toLowerCase() + '</b>. Antes de cada encuentro te llega un recordatorio.' :
-    'Quedaste anotada/o en esta capacitación, en forma <b>' + mod.toLowerCase() + '</b>.';
+    programa ? 'Quedaste inscripto en el <b>programa completo</b> (' + programa + ' encuentros), en forma <b>' + mod.toLowerCase() + '</b>. Antes de cada encuentro te llega un recordatorio.' :
+    'Quedaste anotado en esta capacitación, en forma <b>' + mod.toLowerCase() + '</b>.';
   const asis = 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(t.ID_DICTADO || '');
   const como = mod === 'Virtual'
-    ? (zoom ? boton_('Entrar al Zoom', zoom) : '<p>El link de Zoom te llega en el recordatorio antes de la clase.</p>') + '<p>El día de la clase registrás tu asistencia con este link (se abre a la hora de la clase):</p>' + (t.ID_DICTADO ? boton_('Registrar asistencia', asis) : '')
-    : '<p>El día de la clase registrás tu asistencia con el QR o el link que se muestra en el aula.</p>';
+    ? (zoom ? boton_('Entrar al Zoom', zoom) : '<p>El link de Zoom te llega en el recordatorio antes de la clase.</p>') + '<p>El día de la clase registrás tu asistencia con el link del certificado (se abre a la hora de la clase):</p>' + (t.ID_DICTADO ? boton_('Link del certificado', asis) : '')
+    : '<p>El día de la clase registrás tu asistencia con el QR o el link del certificado que se muestra en el aula.</p>';
   const pie = tipo === 'suspension' ? boton_('Ver otras fechas', AGENDA_WEB) : como + '<p>' + boton_('Ver la agenda', AGENDA_WEB, true) + (token ? boton_('No puedo ir: cancelar', AGENDA_WEB + '?c=' + token, true) : '') + '</p>';
   return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', (programa ? 'Empieza el ' : '') + cuando], ['Modalidad', modalidadTxt_(mod, t.LUGAR)], ['Capacitación', cap.CODIGO + ' · ' + cap.NOMBRE]]) + pie);
 }
@@ -778,7 +791,7 @@ function mailPrograma_(cap, o, n, total, dias, mod) {
     'Te recordamos que <b>mañana</b> tenés el <b>encuentro ' + n + ' de ' + total + '</b> del programa.';
   const zoom = (String(o.OBSERVACIONES || '').match(/https?:\/\/[^\s·]*zoom[^\s·]*/i) || [''])[0];
   return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Modalidad', modalidadTxt_(/virtual/i.test(mod || '') || (/virtual/i.test(o.LUGAR + ' ' + o.MODALIDAD) && !/h[ií]brida/i.test(o.MODALIDAD)) ? 'Virtual' : 'Presencial', o.LUGAR)], ['Encuentro', n + ' de ' + total]]) +
-    (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con este link (se abre a la hora de la clase):</p>' + boton_('Registrar asistencia', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)));
+    (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con el link del certificado (se abre a la hora de la clase):</p>' + boton_('Link del certificado', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)));
 }
 // Cambiar el estado de un horario (siempre con motivo; nunca se borra)
 function agEstado_(d) {
