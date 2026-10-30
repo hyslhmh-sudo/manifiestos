@@ -2797,7 +2797,8 @@ async function capParticipantes(cod, fresco) {
     const c = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', cab = ['DNI', 'APELLIDO Y NOMBRE', 'CORREO', 'PUBLICO', 'ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'INSTITUCION', 'ULTIMA FECHA', 'PRIMERA FECHA', 'REGISTROS', 'ENCUENTROS', 'NOTA', 'APROBO', 'VENCE', 'VIGENTE', 'CERTIFICADOS', 'ORIGEN'];
     const filas = F.map(x => [x.dni, x.nombre, x.correo, x.publico, x.est, x.servicio, x.funcion, x.institucion, x.fecha, x.primera, x.registros, x.encuentros, x.nota, x.aprobo ? 'Sí' : 'No', x.vence, x.vigente ? 'Sí' : 'No', x.certificados.map(z => z.id).join(' · '), x.origen]);
     const blob = new Blob(['﻿' + [cab].concat(filas).map(f => f.map(c).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = ('Participantes ' + (r.nombre && r.nombre !== cod ? r.nombre + ' (' + cod + ')' : cod) + (CAPPA.anio ? ' ' + CAPPA.anio : '')).replace(/[\\/:*?"<>|]/g, '-') + '.csv';   // 23/10/2026: con el nombre document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    a.href = URL.createObjectURL(blob); a.download = ('Participantes ' + (r.nombre && r.nombre !== cod ? r.nombre + ' (' + cod + ')' : cod) + (CAPPA.anio ? ' ' + CAPPA.anio : '')).replace(/[\\/:*?"<>|]/g, '-') + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);   // 30/10/2026: la descarga había quedado dentro de un comentario y no se ejecutaba
   };
   box().querySelectorAll('tr.cl[data-p]').forEach(t => t.onclick = () => location.hash = '#capper/' + encodeURIComponent(t.dataset.p));
 }
