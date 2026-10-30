@@ -26,7 +26,7 @@ const FILES_TO_CACHE = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE.map((u) => new Request(u, { cache: "reload" }))))   // 30/10/2026: sin la caché del navegador, así no queda un archivo viejo con la versión nueva
   );
   self.skipWaiting();
 });
