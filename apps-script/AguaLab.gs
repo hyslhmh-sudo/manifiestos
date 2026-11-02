@@ -21,6 +21,9 @@
  *   de cada red y los datos fijos del remitente de la pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo, quién solicita).
  *   El portal arma con eso el enlace al formulario oficial del DPSB (no se modifica el formulario: solo se abre completo; el envío
  *   lo hace HyS) y llama a aguaLabSolicitar_() (acción p_agl_solicitar), que anota la fecha en la columna U «Solicitado el».
+ * 02/11/2026 · Aviso al establecimiento: aguaLabAviso_() (acción p_agl_aviso) deja un BORRADOR en Gmail (no lo envía) para el correo
+ *   de la columna Z del Tablero, con copia al Área Externa si es un CAPS de la red Trelew. Asunto, texto, copia y firma se cambian en
+ *   la pestaña «Formulario DPSB». Sale desde belenpellegrini.hys@gmail.com si Gmail lo tiene en «Enviar como».
  * No envía correos.
  */
 const AGUA_LAB_ID = '1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM';   // Drive › MÓDULO 3 · AGUA › INFORMES DE LABORATORIO · Agua
@@ -31,13 +34,13 @@ function aguaLab_() {
   [['Tablero Trelew', 'Trelew'], ['Tablero Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh) return;
     const n = sh.getLastRow() - 8; if (n < 1) return;
-    sh.getRange(9, 1, n, 25).getValues().forEach(r => {
+    sh.getRange(9, 1, n, 26).getValues().forEach(r => {
       const lugar = f(r[1]); if (!lugar) return;
       out.push({ red: red, grupo: f(r[0]), lugar: lugar, cod: red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT',
         ultimo: f(r[2]), muestras: Number(r[3]) || 0, noAptas: Number(r[4]) || 0, sinConclusion: Number(r[5]) || 0, estado: f(r[7]),
         bact: f(r[11]), fq: f(r[12]), parcial: f(r[13]), completo: f(r[14]), que: f(r[15]), limite: f(r[16]), aviso: f(r[17]),
         desde: f(r[18]), canillas: f(r[19]), solicitado: aguaLabIso_(r[20]),
-        form: { institucion: f(r[21]), direccion: f(r[22]), localidad: f(r[23]), tipoAgua: f(r[24]) }, rem: rem });
+        form: { institucion: f(r[21]), direccion: f(r[22]), localidad: f(r[23]), tipoAgua: f(r[24]) }, correo: /@/.test(f(r[25])) ? f(r[25]) : '', rem: rem });
       // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
       // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
       const x = out[out.length - 1], ult = aguaLabIso_(r[2]);
@@ -82,4 +85,46 @@ function aguaLabSolicitar_(x) {
   sh.getRange(9 + i, 21).setValue(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).setNumberFormat('dd/mm/yyyy');
   try { CacheService.getScriptCache().remove('p_tablero'); } catch (e) {}
   return { ok: true, fecha: m[3] + '/' + m[2] + '/' + m[1] };
+}
+
+// Acción p_agl_aviso: borrador en Gmail avisando al establecimiento (y al Área Externa si es CAPS Trelew) que se pidió el muestreo.
+// Datos: { red, lugar }. No envía nada: el borrador queda en Gmail para revisarlo y enviarlo.
+const AGUA_LAB_LOGO = '1DnztPPclcsCNA23DDlAF-90Uchf6QdzN';   // logo de HySL («Hospitales más seguros para las personas»)
+const AGUA_LAB_REMITENTE = 'belenpellegrini.hys@gmail.com';
+function aguaLabAviso_(x) {
+  const red = String(x.red || ''), lugar = String(x.lugar || '').trim();
+  if (!/^(Trelew|Rawson)$/.test(red) || !lugar) return { ok: false, mensaje: 'Faltan la red o el establecimiento.' };
+  const ss = SpreadsheetApp.openById(AGUA_LAB_ID), sh = ss.getSheetByName('Tablero ' + red); if (!sh) return { ok: false, mensaje: 'No está la pestaña Tablero ' + red + '.' };
+  const n = sh.getLastRow() - 8; if (n < 1) return { ok: false, mensaje: 'El tablero está vacío.' };
+  const V = sh.getRange(9, 1, n, 26).getDisplayValues(), r = V.find(z => String(z[1]).trim() === lugar);
+  if (!r) return { ok: false, mensaje: 'No encontré «' + lugar + '» en el Tablero ' + red + '.' };
+  // Plantilla (pestaña «Formulario DPSB», columnas A y B)
+  const T = {}, fd = ss.getSheetByName('Formulario DPSB');
+  if (fd && fd.getLastRow()) fd.getRange(1, 1, fd.getLastRow(), 2).getDisplayValues().forEach(z => { T[String(z[0]).trim()] = String(z[1]); });
+  const g = (k, d) => (T[k] != null && String(T[k]).trim() !== '' ? T[k] : d);
+  const comp = /COMPLETO|URGENTE/i.test(r[15]), tipo = comp ? 'completo' : 'parcial';
+  const sol = aguaLabIso_(r[20]), fecha = (sol || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd')).split('-').reverse().join('/');
+  let can = String(r[19] || '').split(' · ').map(c => c.trim()).filter(c => c && !/^s\/d/i.test(c));
+  if (comp) ['salida del tanque', 'canilla más alejada'].forEach(c => { if (!can.some(k => k.toLowerCase().indexOf(c) >= 0)) can.push(c); });
+  const rep = t => String(t).replace(/\{fecha\}/g, fecha).replace(/\{tipo\}/g, tipo).replace(/\{lugar\}/g, lugar).replace(/\{canillas\}/g, can.length ? can.join(', ') : 's/d')
+    .replace(/\{analisis\}/g, g(comp ? 'Texto {analisis} · completo' : 'Texto {analisis} · parcial', ''))
+    .replace(/\{antes\}/g, comp ? g('Texto {antes} · completo', '') : '');
+  const asunto = rep(g('Asunto del aviso', 'Muestreo de agua {tipo} · {lugar} · solicitado el {fecha}'));
+  const texto = rep(g('Texto del aviso', 'Les informo que el {fecha} solicité al DPSB el muestreo {tipo} de agua de {lugar}.')).replace(/\n{3,}/g, '\n\n').trim();
+  const firma = g('Firma', 'Belén Pellegrini\nServicio de Higiene y Seguridad Laboral · HZT / HMH\n' + AGUA_LAB_REMITENTE);
+  const para = /@/.test(r[25]) ? String(r[25]).trim() : '';
+  const cc = String(/^CAPS/i.test(r[0]) && red === 'Trelew' ? g('Copia a (CAPS Trelew)', '') : g('Copia a (otros)', '')).trim();
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  let logo = null; try { logo = DriveApp.getFileById(AGUA_LAB_LOGO).getBlob().setName('logo'); } catch (e) {}
+  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.5">' + esc(texto) + '<br><br>' + esc(firma) +
+    (logo ? '<br><br><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px">' : '') + '</div>';
+  const op = { htmlBody: html, name: 'Belén Pellegrini · Higiene y Seguridad Laboral' };
+  let desde = ''; try { const propia = Session.getEffectiveUser().getEmail().toLowerCase(); desde = propia === AGUA_LAB_REMITENTE || GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(AGUA_LAB_REMITENTE) >= 0 ? AGUA_LAB_REMITENTE : ''; } catch (e) {}
+  if (desde) op.from = desde; else op.replyTo = AGUA_LAB_REMITENTE;
+  if (cc) op.cc = cc; if (logo) op.inlineImages = { logo: logo };
+  const dr = GmailApp.createDraft(para, asunto, texto + '\n\n' + firma, op);
+  let url = 'https://mail.google.com/mail/'; try { url += '?authuser=' + encodeURIComponent(Session.getEffectiveUser().getEmail()); } catch (e) {}
+  url += '#drafts'; try { url += '?compose=' + dr.getMessage().getId(); } catch (e) {}
+  return { ok: true, url: url, para: para, cc: cc, asunto: asunto,
+    aviso: (para ? '' : 'No hay correo cargado para «' + lugar + '» (Tablero ' + red + ', columna Z): completá el destinatario en el borrador. ') + (desde ? '' : 'Gmail no tiene «Enviar como» ' + AGUA_LAB_REMITENTE + ': revisá el remitente.') };
 }

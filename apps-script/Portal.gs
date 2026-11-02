@@ -44,6 +44,7 @@ function portalAccion_(d) {
   if (/^p_resnov_/.test(d.accion)) return typeof rnovPortal_ === 'function' ? (rnovPortal_(d.accion, x, x.quien) || { ok: false, error: 'Acción desconocida.' }) : { ok: false, mensaje: 'Falta instalar ResiduosNovedades.gs.' };   // 1 · Residuos › novedades de residuos (22/10/2026)
   if (/^p_desv_/.test(d.accion)) return typeof dacPortal_ === 'function' ? (dacPortal_(d.accion, x, x.quien) || { ok: false, error: 'Acción desconocida.' }) : { ok: false, mensaje: 'Falta instalar DesviosAcciones.gs.' };   // 1 · Residuos › desvíos: acciones y seguimiento (22/10/2026)
   if (/^p_ges_/.test(d.accion)) return typeof gesPortal_ === 'function' ? gesPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Gestion.gs.' };   // 11 · Gestión (14.60)
+  if (d.accion === 'p_agl_aviso') return typeof aguaLabAviso_ === 'function' ? aguaLabAviso_(x) : { ok: false, mensaje: 'Falta actualizar AguaLab.gs.' };   // 2 · Agua › borrador de aviso al establecimiento (02/11/2026)
   if (d.accion === 'p_agl_solicitar') return typeof aguaLabSolicitar_ === 'function' ? aguaLabSolicitar_(x) : { ok: false, mensaje: 'Falta actualizar AguaLab.gs.' };   // 2 · Agua › pedido de muestreo al DPSB (02/11/2026)
   if (/^p_dat_/.test(d.accion)) return typeof datPortal_ === 'function' ? datPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Datos.gs.' };   // editor general (14.53)
   switch (d.accion) {

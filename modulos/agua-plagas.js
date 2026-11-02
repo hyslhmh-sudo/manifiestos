@@ -67,6 +67,16 @@ async function aglPedir(i) {
   const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar();
   toast('Formulario abierto con ' + u.n + (u.n > 1 ? ' muestras' : ' muestra') + '. Revisalo y tocá «Enviar» (si no aparece completo: «Borrar formulario» y volvé a tocar el botón). Quedó anotado «Solicitado el ' + r.fecha + '».');
 }
+// Borrador en Gmail (no se envía solo) avisando al establecimiento, y al Área Externa si es CAPS Trelew, que se pidió el muestreo.
+// Destinatario: columna Z del Tablero de la red. Texto, asunto, copias y firma: pestaña «Formulario DPSB» del libro.
+async function aglAviso(i) {
+  const x = AGL.lab[i]; if (!x) return;
+  const b = document.getElementById('aglAv' + i); if (b) { b.disabled = true; b.textContent = 'Armando el borrador…'; }
+  let r; try { r = await api('p_agl_aviso', { red: x.red, lugar: x.lugar }, 90000); } catch (e) { if (b) { b.disabled = false; b.textContent = '✉ Generar aviso por correo (borrador)'; } return; }
+  if (!r || !r.ok) { if (b) { b.disabled = false; b.textContent = '✉ Generar aviso por correo (borrador)'; } return toast((r && r.mensaje) || 'No se pudo armar el borrador.'); }
+  if (b) b.outerHTML = '<a class="btn sec" style="margin:2px 0 8px" href="' + esc(r.url) + '" target="_blank" rel="noopener">✉ Abrir el borrador en Gmail ↗</a>';
+  toast('Borrador listo en Gmail' + (r.para ? ' para ' + r.para : '') + (r.cc ? ', con copia a ' + r.cc : '') + '. No se envió: revisalo y envialo desde Gmail. ' + (r.aviso || ''));
+}
 function aguaInfCard() {
   const b = (u, t, pri) => '<a class="btn' + (pri ? '' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="display:inline-block;margin:4px 6px 4px 0">' + t + '</a>';
   return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Informes de laboratorio y remitos (PDF)</h2>' +
@@ -108,7 +118,7 @@ function aglPintar() {
       '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
       '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
       '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
-      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
+      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button> <button class="btn sec" style="margin:2px 0 8px" id="aglAv' + AGL.lab.indexOf(x) + '" onclick="aglAviso(' + AGL.lab.indexOf(x) + ')">✉ Generar aviso por correo (borrador)</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
       (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
       '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
@@ -136,6 +146,7 @@ function aguaLabCard(lab, labError) {
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
     '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico («Análisis Microbiológico» en el formulario), en las mismas canillas del último muestreo.<br>' +
     '<b>Más rápido</b>: tocá el establecimiento y «Pedir este muestreo al DPSB»: se abre el formulario del DPSB ya completo (remitente, dirección, una muestra por canilla, tipo de análisis y «Secretaría de Salud»). Revisalo, completá lo que falte y tocá «Enviar». El portal anota solo la fecha en «Solicitado el» y el lugar queda «Solicitado, esperando el resultado». Los datos se corrigen en la planilla: pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo) y columnas V a Y del Tablero de cada red (institución, dirección, localidad, tipo de agua).<br>' +
+    '<b>Aviso al establecimiento</b>: «✉ Generar aviso por correo (borrador)» deja en Gmail un borrador (no se envía solo) para el correo del establecimiento (columna Z del Tablero) con copia al Área Externa si es un CAPS de la red Trelew, avisando que se pidió el muestreo parcial o completo, los puntos, qué tienen que facilitar y, en el completo, la limpieza previa de tanques. El texto se cambia en la pestaña «Formulario DPSB».<br>' +
     '<b>Si lo pedís con el botón general</b> (formulario en blanco): después anotá la fecha en la planilla, pestaña del Tablero de la red, columna «Solicitado el».<br>' +
     '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
     'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). ' +
