@@ -16,22 +16,28 @@
  *   resultados» 10.1 (demanda programada cada 6 meses) y 10.7 (15 días hábiles); POE DPSB «Limpieza y desinfección de tanques»
  *   10.4.e (muestra post limpieza); Nota DPSB 34/26 (no se toman muestras sin limpieza previa de tanques y cisternas).
  * Red Trelew y red Rawson van separadas. El grupo «Otros» (fuera de la red de salud) se muestra pero no genera avisos.
+ * 02/11/2026 · Pedido al DPSB con el formulario ya completo:
+ *   aguaLab_() suma, por establecimiento, las columnas V (Institución), W (Dirección), X (Localidad) e Y (Tipo de agua) del Tablero
+ *   de cada red y los datos fijos del remitente de la pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo, quién solicita).
+ *   El portal arma con eso el enlace al formulario oficial del DPSB (no se modifica el formulario: solo se abre completo; el envío
+ *   lo hace HyS) y llama a aguaLabSolicitar_() (acción p_agl_solicitar), que anota la fecha en la columna U «Solicitado el».
  * No envía correos.
  */
 const AGUA_LAB_ID = '1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM';   // Drive › MÓDULO 3 · AGUA › INFORMES DE LABORATORIO · Agua
 
 function aguaLab_() {
-  const ss = SpreadsheetApp.openById(AGUA_LAB_ID), out = [];
+  const ss = SpreadsheetApp.openById(AGUA_LAB_ID), out = [], rem = aguaLabRemitente_(ss);
   const f = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'yyyy-MM-dd') : String(x == null ? '' : x).trim();
   [['Tablero Trelew', 'Trelew'], ['Tablero Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh) return;
     const n = sh.getLastRow() - 8; if (n < 1) return;
-    sh.getRange(9, 1, n, 21).getValues().forEach(r => {
+    sh.getRange(9, 1, n, 25).getValues().forEach(r => {
       const lugar = f(r[1]); if (!lugar) return;
       out.push({ red: red, grupo: f(r[0]), lugar: lugar, cod: red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT',
         ultimo: f(r[2]), muestras: Number(r[3]) || 0, noAptas: Number(r[4]) || 0, sinConclusion: Number(r[5]) || 0, estado: f(r[7]),
         bact: f(r[11]), fq: f(r[12]), parcial: f(r[13]), completo: f(r[14]), que: f(r[15]), limite: f(r[16]), aviso: f(r[17]),
-        desde: f(r[18]), canillas: f(r[19]), solicitado: aguaLabIso_(r[20]) });
+        desde: f(r[18]), canillas: f(r[19]), solicitado: aguaLabIso_(r[20]),
+        form: { institucion: f(r[21]), direccion: f(r[22]), localidad: f(r[23]), tipoAgua: f(r[24]) }, rem: rem });
       // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
       // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
       const x = out[out.length - 1], ult = aguaLabIso_(r[2]);
@@ -54,4 +60,26 @@ function aguaLabAcciones_(lab) {
     donde: x.lugar + ' · red ' + x.red, prioridad: /urgente/i.test(x.aviso) ? 'Alta' : '',
     aCargo: 'HyS (solicitud al DPSB) · establecimiento (limpieza de tanques)', limite: /^\d{4}-/.test(x.limite) ? x.limite : '',
     ref: 'Muestreo de agua', ir: '#agua' }));
+}
+
+// Datos fijos del remitente (pestaña «Formulario DPSB», columnas A «Dato» y B «Valor»). Se cambian desde la planilla.
+function aguaLabRemitente_(ss) {
+  const o = { cuit: '', responsable: '', contacto: '', correo: '', quien: 'Secretaría de Salud', comentarios: '' };
+  const K = { 'CUIT / CUIL': 'cuit', 'Responsable': 'responsable', 'Contacto': 'contacto', 'Correo': 'correo', 'Quién solicita': 'quien', 'Comentarios': 'comentarios' };
+  const sh = ss.getSheetByName('Formulario DPSB'); if (!sh || sh.getLastRow() < 1) return o;
+  sh.getRange(1, 1, sh.getLastRow(), 2).getDisplayValues().forEach(r => { const k = K[String(r[0]).trim()]; if (k) o[k] = String(r[1]).trim(); });
+  return o;
+}
+
+// Acción p_agl_solicitar: anota en la columna U («Solicitado el») la fecha del pedido al DPSB. Datos: { red, lugar, fecha (aaaa-mm-dd) }.
+function aguaLabSolicitar_(x) {
+  const red = String(x.red || ''), lugar = String(x.lugar || '').trim(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(x.fecha || ''));
+  if (!/^(Trelew|Rawson)$/.test(red) || !lugar || !m) return { ok: false, mensaje: 'Faltan la red, el establecimiento o la fecha.' };
+  const sh = SpreadsheetApp.openById(AGUA_LAB_ID).getSheetByName('Tablero ' + red); if (!sh) return { ok: false, mensaje: 'No está la pestaña Tablero ' + red + '.' };
+  const n = sh.getLastRow() - 8; if (n < 1) return { ok: false, mensaje: 'El tablero está vacío.' };
+  const i = sh.getRange(9, 2, n, 1).getDisplayValues().findIndex(r => String(r[0]).trim() === lugar);
+  if (i < 0) return { ok: false, mensaje: 'No encontré «' + lugar + '» en el Tablero ' + red + '.' };
+  sh.getRange(9 + i, 21).setValue(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).setNumberFormat('dd/mm/yyyy');
+  try { CacheService.getScriptCache().remove('p_tablero'); } catch (e) {}
+  return { ok: true, fecha: m[3] + '/' + m[2] + '/' + m[1] };
 }

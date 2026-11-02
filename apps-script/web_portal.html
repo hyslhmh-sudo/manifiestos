@@ -2022,6 +2022,53 @@ const AGUA_INF = {
   normativa: 'https://drive.google.com/drive/folders/16IyGjFyAi88I5jjL3AyI7JP0WLG4rinv',
   subir: 'https://drive.google.com/drive/folders/13iS2VTDBs-kEJqV22ajzA-GJhq2mRZdm'
 };
+// 02/11/2026 · Pedido al DPSB con el formulario ya completo (pedido de Belén). El formulario es del DPSB y no se modifica:
+// el portal solo lo abre con las respuestas puestas (enlace «prellenado» de Google Forms) y HyS revisa y toca «Enviar».
+// Datos: remitente fijo (pestaña «Formulario DPSB» del libro) + por establecimiento columnas V a Y del Tablero de la red
+// + canillas de la columna T (una muestra por canilla, hasta 15). Al tocar el botón se anota la fecha en «Solicitado el» (columna U).
+// Si el DPSB cambia el formulario, hay que volver a leer los números de cada pregunta (entry) y corregirlos acá.
+const DPSB_F = {
+  fecha: 1186279454, inst: 2111870154, cuit: 175538900, dir: 2024677151, loc: 2096231386, resp: 533756049, tel: 875354954, mail: 1239429880,
+  // por muestra: [tipo de agua, sitio de extracción, tipo de análisis, quién solicita, comentarios, ¿agregar otra muestra?]
+  m: [[549458807, 94448206, 1719214510, 206868652, 2002531151, 721840592], [1418029196, 1330399128, 1453115363, 1279699365, 1801264035, 747745880],
+    [1739784811, 1636891823, 518658779, 1865157304, 101644680, 1184098760], [50374443, 350687057, 645573317, 965210028, 1180197474, 2001140488],
+    [308426965, 1529038803, 1522451064, 1554352683, 1700542804, 640234800], [2104546687, 196894457, 1753586119, 953416996, 1483272887, 373487179],
+    [1939728059, 1224063812, 339244536, 47833572, 33089506, 1896804082], [393017351, 955700379, 1434918971, 477195987, 825334939, 465914831],
+    [1704014058, 2043547829, 1226479307, 1734097359, 204570487, 1384172559], [29315234, 1383569377, 86884826, 916558537, 659254430, 1522746475],
+    [891508598, 1562747881, 2137797123, 778132243, 1476659551, 1998557600], [1315392370, 1629157604, 292592864, 57290699, 1151016816, 1920854222],
+    [1603440026, 784735244, 285837361, 154327405, 75890766, 289742861], [571016040, 1860399489, 1053451175, 1824075450, 301250351, 1195431913],
+    [1183228118, 445689542, 1550130179, 1667664809, 1567811567, 0]],
+  micro: i => 'Análisis Microbiológico' + ([0, 1, 2, 4].indexOf(i) >= 0 ? '' : '.') + ' C.A.A. (recomendado por normativa cada 6 meses)',   // el DPSB lo escribió con y sin punto
+  ambos: 'Ambos - Análisis Microbiológico y Análisis Fisicoquímico'
+};
+function aglUrl(x) {
+  const r = x.rem || {}, f = x.form || {}, p = new URLSearchParams(), v = t => (t && !/^s\/d/i.test(t) ? t : ''), hoy = new Date();
+  const fecha = hoy.getFullYear() + '-' + ('0' + (hoy.getMonth() + 1)).slice(-2) + '-' + ('0' + hoy.getDate()).slice(-2);
+  const comp = /COMPLETO|URGENTE/.test(x.que);
+  let can = String(x.canillas || '').split(' · ').map(c => v(c.trim())).filter(Boolean);
+  if (comp) ['Salida del tanque', 'Canilla más alejada'].forEach(c => { if (!can.some(k => k.toLowerCase().indexOf(c.toLowerCase()) >= 0)) can.push(c); });
+  if (!can.length) can = [''];
+  can = can.slice(0, DPSB_F.m.length);
+  p.append('emailAddress', v(r.correo));
+  [['fecha', fecha], ['inst', v(f.institucion) || x.lugar], ['cuit', v(r.cuit)], ['dir', v(f.direccion)], ['loc', v(f.localidad)], ['resp', v(r.responsable)], ['tel', v(r.contacto)], ['mail', v(r.correo)]]
+    .forEach(([k, val]) => { if (val) p.append('entry.' + DPSB_F[k], val); });
+  can.forEach((c, i) => { const e = DPSB_F.m[i];
+    p.append('entry.' + e[0], v(f.tipoAgua) || 'Red que pasa por un tanque'); if (c) p.append('entry.' + e[1], c);
+    p.append('entry.' + e[2], comp ? DPSB_F.ambos : DPSB_F.micro(i)); p.append('entry.' + e[3], v(r.quien) || 'Secretaría de Salud');
+    if (v(r.comentarios)) p.append('entry.' + e[4], r.comentarios);
+    if (e[5]) p.append('entry.' + e[5], i < can.length - 1 ? 'Si' : 'No'); });
+  return { url: AGUA_INF.dpsb + '?usp=pp_url&' + p.toString().replace(/\+/g, '%20'), fecha: fecha, n: can.length };
+}
+async function aglPedir(i) {
+  const x = AGL.lab[i]; if (!x) return;
+  const u = aglUrl(x); window.open(u.url, '_blank', 'noopener');
+  let r; try { r = await api('p_agl_solicitar', { red: x.red, lugar: x.lugar, fecha: u.fecha }, 60000); } catch (e) { return; }
+  if (!r || !r.ok) return toast((r && r.mensaje) || 'No se pudo anotar la fecha: completala en la planilla, columna «Solicitado el».');
+  x.solicitado = u.fecha; x.aviso = 'Solicitado el ' + r.fecha + ' · esperando el resultado';
+  try { LS.set('tab', TB); } catch (e) {}
+  const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar();
+  toast('Formulario abierto con ' + u.n + (u.n > 1 ? ' muestras' : ' muestra') + '. Revisalo y tocá «Enviar». Quedó anotado «Solicitado el ' + r.fecha + '».');
+}
 function aguaInfCard() {
   const b = (u, t, pri) => '<a class="btn' + (pri ? '' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="display:inline-block;margin:4px 6px 4px 0">' + t + '</a>';
   return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Informes de laboratorio y remitos (PDF)</h2>' +
@@ -2063,6 +2110,7 @@ function aglPintar() {
       '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
       '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
       '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
+      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button><br>') +
       (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
       '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
@@ -2089,7 +2137,8 @@ function aguaLabCard(lab, labError) {
     '2) Higiene y Seguridad completa la «Solicitud de Muestreo de Agua para Análisis» (botón «Pedir muestreo al DPSB») pidiendo «Ambos» (microbiológico y fisicoquímico). Una muestra por canilla: al terminar cada una, «¿Desea agregar otra muestra?» Sí. ' +
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
     '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico («Análisis Microbiológico» en el formulario), en las mismas canillas del último muestreo.<br>' +
-    '<b>Después de pedirlo</b>: en la planilla de respaldo, pestaña del Tablero de la red, columna «Solicitado el», poné la fecha del pedido: el lugar deja de figurar para pedir y queda «Solicitado, esperando el resultado».<br>' +
+    '<b>Más rápido</b>: tocá el establecimiento y «Pedir este muestreo al DPSB»: se abre el formulario del DPSB ya completo (remitente, dirección, una muestra por canilla, tipo de análisis y «Secretaría de Salud»). Revisalo, completá lo que falte y tocá «Enviar». El portal anota solo la fecha en «Solicitado el» y el lugar queda «Solicitado, esperando el resultado». Los datos se corrigen en la planilla: pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo) y columnas V a Y del Tablero de cada red (institución, dirección, localidad, tipo de agua).<br>' +
+    '<b>Si lo pedís con el botón general</b> (formulario en blanco): después anotá la fecha en la planilla, pestaña del Tablero de la red, columna «Solicitado el».<br>' +
     '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
     'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). ' +
     '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.<br>' +
