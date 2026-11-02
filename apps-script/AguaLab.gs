@@ -26,17 +26,26 @@ function aguaLab_() {
   [['Tablero Trelew', 'Trelew'], ['Tablero Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh) return;
     const n = sh.getLastRow() - 8; if (n < 1) return;
-    sh.getRange(9, 1, n, 20).getValues().forEach(r => {
+    sh.getRange(9, 1, n, 21).getValues().forEach(r => {
       const lugar = f(r[1]); if (!lugar) return;
       out.push({ red: red, grupo: f(r[0]), lugar: lugar, cod: red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT',
         ultimo: f(r[2]), muestras: Number(r[3]) || 0, noAptas: Number(r[4]) || 0, sinConclusion: Number(r[5]) || 0, estado: f(r[7]),
         bact: f(r[11]), fq: f(r[12]), parcial: f(r[13]), completo: f(r[14]), que: f(r[15]), limite: f(r[16]), aviso: f(r[17]),
-        desde: f(r[18]), canillas: f(r[19]) });
+        desde: f(r[18]), canillas: f(r[19]), solicitado: aguaLabIso_(r[20]) });
+      // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
+      // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
+      const x = out[out.length - 1], ult = aguaLabIso_(r[2]);
+      if (x.solicitado && (!ult || x.solicitado > ult) && /urgente|vencido|pedir/i.test(x.aviso)) x.aviso = 'Solicitado el ' + x.solicitado.split('-').reverse().join('/') + ' · esperando el resultado';
     });
   });
   return out;
 }
 
+function aguaLabIso_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+  const s = String(v == null ? '' : v).trim(), m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+  return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
+}
 function aguaLabAcciones_(lab) {
   return (lab || []).filter(x => x.grupo !== 'Otros' && /urgente|vencido|pedir/i.test(x.aviso)).map(x => ({
     cod: x.cod, origen: 'Agua', vencida: /urgente|vencido/i.test(x.aviso), estado: x.aviso,
