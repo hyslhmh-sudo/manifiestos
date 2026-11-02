@@ -5,6 +5,7 @@
 // PDF de los informes y remitos del laboratorio provincial (DPSB), ordenados en Drive por red y establecimiento, más el tablero en Sheets.
 // Red Trelew y red Rawson van siempre separadas. Si cambia una carpeta, se corrige acá (y en index.html › AGUA_INF_MI).
 const AGUA_INF = {
+  dpsb: 'https://docs.google.com/forms/d/e/1FAIpQLSflMSFiY2bPi-LIN9eiY_hPVkcF1mmy2nAfUnMMM8B7D4U08Q/viewform',   // 02/11/2026: «Solicitud de Muestreo de Agua para Análisis» (Dirección Provincial Una Salud / DPSB)
   tablero: 'https://docs.google.com/spreadsheets/d/1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM/edit',
   raiz: 'https://drive.google.com/drive/folders/1nTlxXtSKwlJMIyjsMMucU1T2Jvt3R8Ta',
   trelew: 'https://drive.google.com/drive/folders/1AQq9kXOabvClIEGckl9iU1IDAQQP_r9D',
@@ -28,8 +29,8 @@ let AGL = { lab: [], red: '', ver: '' };
 function aglSet(k, v) { AGL[k] = AGL[k] === v ? '' : v; const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar(); }
 function aglPintar() {
   const fT = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? fechaTxt(v) : esc(v || 's/d');
-  const est = x => /urgente/i.test(x.aviso) ? 'urg' : /vencido/i.test(x.aviso) ? 'ven' : /pedir/i.test(x.aviso) ? 'aho' : 'ok';
-  const orden = { urg: 0, ven: 1, aho: 2, ok: 3 };
+  const est = x => /^solicitado/i.test(x.aviso) ? 'sol' : /urgente/i.test(x.aviso) ? 'urg' : /vencido/i.test(x.aviso) ? 'ven' : /pedir/i.test(x.aviso) ? 'aho' : 'ok';   // 02/11/2026: «Solicitado el …» (columna U del libro)
+  const orden = { urg: 0, ven: 1, aho: 2, sol: 3, ok: 4 };
   const L = AGL.lab.filter(x => x.grupo !== 'Otros' && (!AGL.red || x.red === AGL.red));
   const cuenta = f => { const t = L.filter(f), r = k => AGL.lab.filter(x => x.grupo !== 'Otros' && x.red === k).filter(f).length; return [t.length, AGL.red ? '' : 'Trelew ' + r('Trelew') + ' · Rawson ' + r('Rawson')]; };
   const kp = (ver, n, t, sub, color, bg) => '<a class="kpi2" role="button" tabindex="0" onclick="aglSet(\'ver\',\'' + ver + '\')" style="cursor:pointer' + (n && bg ? ';background:' + bg : '') + (AGL.ver === ver ? ';outline:3px solid var(--az);outline-offset:-3px' : '') + '"><span>' + t + '</span><b' + (n && color ? ' style="color:' + color + '"' : '') + '>' + n + '</b><small>' + sub + '</small></a>';
@@ -44,7 +45,7 @@ function aglPintar() {
   const tab = (v, t) => '<button class="btn ' + (AGL.red === v ? 'pri' : 'sec') + '" onclick="aglSet(\'red\',\'' + v + '\')">' + t + '</button>';
   const filtro = { ya: x => /urg|ven/.test(est(x)), aho: x => est(x) === 'aho', ok: x => est(x) === 'ok', noap: x => x.noAptas > 0, sind: x => !/^\d{4}/.test(x.ultimo || '') }[AGL.ver] || (x => est(x) !== 'ok');
   const lista = L.filter(filtro).sort((a, b) => orden[est(a)] - orden[est(b)] || (a.red === b.red ? 0 : a.red === 'Trelew' ? -1 : 1) || String(a.ultimo).localeCompare(String(b.ultimo)));
-  const color = { urg: 'er', ven: 'er', aho: 'wa', ok: 'ok' };
+  const color = { urg: 'er', ven: 'er', aho: 'wa', sol: 'ok', ok: 'ok' };
   const qTxt = x => /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' : /COMPLETO/.test(x.que) ? 'Completo · limpiar tanques antes' : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
   const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) && x.limite >= new Date().toISOString().slice(0, 10) ? 'hasta el ' + fT(x.limite) : 'ya';
   const fila = x => {
@@ -71,14 +72,15 @@ function aglPintar() {
 function aguaLabCard(lab, labError) {
   AGL.lab = Array.isArray(lab) ? lab : [];
   const b = (u, t, pri) => '<a class="btn' + (pri ? ' pri' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="margin:0 6px 6px 0">' + t + '</a>';
-  const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:10px">' + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
+  const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:10px">' + b(AGUA_INF.dpsb, '📝 Pedir muestreo al DPSB (formulario) ↗', 1) + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
     b('https://hyslhmh-sudo.github.io/manifiestos/mipyv/F-AGU-01-T.pdf', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
     '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
     '1) El establecimiento limpia y desinfecta tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
-    '2) Higiene y Seguridad completa la «Solicitud de análisis de agua» (Anexo III del POE del DPSB) pidiendo bacteriológico + físico-químico. ' +
+    '2) Higiene y Seguridad completa la «Solicitud de Muestreo de Agua para Análisis» (botón «Pedir muestreo al DPSB») pidiendo «Ambos» (microbiológico y fisicoquímico). Una muestra por canilla: al terminar cada una, «¿Desea agregar otra muestra?» Sí. ' +
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
-    '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico, en las mismas canillas del último muestreo, con la misma solicitud.<br>' +
+    '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico («Análisis Microbiológico» en el formulario), en las mismas canillas del último muestreo.<br>' +
+    '<b>Después de pedirlo</b>: en la planilla de respaldo, pestaña del Tablero de la red, columna «Solicitado el», poné la fecha del pedido: el lugar deja de figurar para pedir y queda «Solicitado, esperando el resultado».<br>' +
     '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
     'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). ' +
     '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.<br>' +
