@@ -51,8 +51,15 @@ function aglUrl(x) {
   return { url: AGUA_INF.dpsb + '?usp=pp_url&' + p.toString().replace(/\+/g, '%20'), fecha: fecha, n: can.length };
 }
 async function aglPedir(i) {
-  const x = AGL.lab[i]; if (!x) return;
-  const u = aglUrl(x); window.open(u.url, '_blank', 'noopener');
+  let x = AGL.lab[i]; if (!x) return;
+  let w = null;
+  if (!x.rem || !x.form) {   // datos guardados de antes de esta función: se leen de nuevo antes de abrir el formulario
+    w = window.open('about:blank', '_blank'); toast('Leyendo los datos del establecimiento…');
+    const red = x.red, lugar = x.lugar;
+    try { const t = await api('p_tablero', { fresco: true }, 240000); if (t && t.ok !== false && Array.isArray(t.lab)) { TB = t; LS.set('tab', TB); AGL.lab = t.lab; x = t.lab.find(y => y.red === red && y.lugar === lugar) || x; } } catch (e) {}
+  }
+  const u = aglUrl(x);
+  if (w) w.location.href = u.url; else window.open(u.url, '_blank', 'noopener');
   let r; try { r = await api('p_agl_solicitar', { red: x.red, lugar: x.lugar, fecha: u.fecha }, 60000); } catch (e) { return; }
   if (!r || !r.ok) return toast((r && r.mensaje) || 'No se pudo anotar la fecha: completala en la planilla, columna «Solicitado el».');
   x.solicitado = u.fecha; x.aviso = 'Solicitado el ' + r.fecha + ' · esperando el resultado';
