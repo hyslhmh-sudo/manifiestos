@@ -65,7 +65,7 @@ async function aglPedir(i) {
   x.solicitado = u.fecha; x.aviso = 'Solicitado el ' + r.fecha + ' · esperando el resultado';
   try { LS.set('tab', TB); } catch (e) {}
   const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar();
-  toast('Formulario abierto con ' + u.n + (u.n > 1 ? ' muestras' : ' muestra') + '. Revisalo y tocá «Enviar». Quedó anotado «Solicitado el ' + r.fecha + '».');
+  toast('Formulario abierto con ' + u.n + (u.n > 1 ? ' muestras' : ' muestra') + '. Revisalo y tocá «Enviar» (si no aparece completo: «Borrar formulario» y volvé a tocar el botón). Quedó anotado «Solicitado el ' + r.fecha + '».');
 }
 function aguaInfCard() {
   const b = (u, t, pri) => '<a class="btn' + (pri ? '' : ' sec') + '" href="' + u + '" target="_blank" rel="noopener" style="display:inline-block;margin:4px 6px 4px 0">' + t + '</a>';
@@ -108,7 +108,7 @@ function aglPintar() {
       '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
       '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
       '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
-      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button><br>') +
+      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
       (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
       '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
