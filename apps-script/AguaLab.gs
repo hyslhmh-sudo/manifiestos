@@ -61,7 +61,7 @@ function aguaLabAcciones_(lab) {
     que: (/COMPLETO/.test(x.que) ? 'Pedir muestreo COMPLETO (bacteriológico + físico-químico), antes limpiar tanques y cisternas'
       : /PARCIAL/.test(x.que) ? 'Pedir muestreo PARCIAL de 6 meses (solo bacteriológico)' : x.que),
     donde: x.lugar + ' · red ' + x.red, prioridad: /urgente/i.test(x.aviso) ? 'Alta' : '',
-    aCargo: 'HyS (solicitud al DPSB) · establecimiento (limpieza de tanques)', limite: /^\d{4}-/.test(x.limite) ? x.limite : '',
+    aCargo: 'HyS (limpieza de tanques y solicitud al DPSB)', limite: /^\d{4}-/.test(x.limite) ? x.limite : '',
     ref: 'Muestreo de agua', ir: '#agua' }));
 }
 

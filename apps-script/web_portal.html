@@ -2133,7 +2133,7 @@ function aglPintar() {
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
       '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
       (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
-      (comp ? '<br><b>Antes:</b> el establecimiento limpia y desinfecta tanques y cisternas (sin eso el DPSB no toma la muestra).' : '') + '</div></details>';
+      (comp ? '<br><b>Antes:</b> HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra).' : '') + '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
   const resto = AGL.ver ? [] : L.filter(x => est(x) === 'ok');
@@ -2150,16 +2150,16 @@ function aguaLabCard(lab, labError) {
     b('https://hyslhmh-sudo.github.io/manifiestos/mipyv/F-AGU-01-T.pdf', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
     '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
-    '1) El establecimiento limpia y desinfecta tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
+    '1) Higiene y Seguridad hace limpiar y desinfectar tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
     '2) Higiene y Seguridad completa la «Solicitud de Muestreo de Agua para Análisis» (botón «Pedir muestreo al DPSB») pidiendo «Ambos» (microbiológico y fisicoquímico). Una muestra por canilla: al terminar cada una, «¿Desea agregar otra muestra?» Sí. ' +
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
     '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico («Análisis Microbiológico» en el formulario), en las mismas canillas del último muestreo.<br>' +
     '<b>Más rápido</b>: tocá el establecimiento y «Pedir este muestreo al DPSB»: se abre el formulario del DPSB ya completo (remitente, dirección, una muestra por canilla, tipo de análisis y «Secretaría de Salud»). Revisalo, completá lo que falte y tocá «Enviar». El portal anota solo la fecha en «Solicitado el» y el lugar queda «Solicitado, esperando el resultado». Los datos se corrigen en la planilla: pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo) y columnas V a Y del Tablero de cada red (institución, dirección, localidad, tipo de agua).<br>' +
-    '<b>Aviso al establecimiento</b>: «✉ Generar aviso por correo (borrador)» deja en Gmail un borrador (no se envía solo) para el correo del establecimiento (columna Z del Tablero) con copia al Área Externa si es un CAPS de la red Trelew, avisando que se pidió el muestreo parcial o completo, los puntos, qué tienen que facilitar y, en el completo, la limpieza previa de tanques. El texto se cambia en la pestaña «Formulario DPSB».<br>' +
+    '<b>Aviso al establecimiento</b>: «✉ Generar aviso por correo (borrador)» deja en Gmail un borrador (no se envía solo) para el correo del establecimiento (columna Z del Tablero) con copia al Área Externa si es un CAPS de la red Trelew, avisando que se pidió el muestreo parcial o completo, los puntos y qué tienen que facilitar (la limpieza de tanques no se menciona: depende de HyS). El texto se cambia en la pestaña «Formulario DPSB».<br>' +
     '<b>Si lo pedís con el botón general</b> (formulario en blanco): después anotá la fecha en la planilla, pestaña del Tablero de la red, columna «Solicitado el».<br>' +
     '<b>Si sale NO APTA</b>: limpieza y desinfección y nueva muestra en no más de 15 días hábiles (POE DPSB 10.7).<br>' +
     'Avisos: el parcial aparece para pedir 30 días antes; el completo, 45 días antes (para dar tiempo a la limpieza). ' +
-    '<b>Depende de HyS</b>: la solicitud y el seguimiento. <b>Depende del establecimiento</b>: la limpieza de tanques, el transporte de la muestra y las reparaciones.<br>' +
+    '<b>Depende de HyS</b>: la limpieza y desinfección de tanques y cisternas, la solicitud al DPSB y el seguimiento. <b>Depende del establecimiento</b>: facilitar el acceso el día del muestreo y las reparaciones que hagan falta.<br>' +
     'Informes nuevos: subirlos a «Subir informes nuevos»; Claude los ordena, los carga y actualiza este tablero.</div></details>';
   const sinDatos = !AGL.lab.length;
   return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 2px;font-size:17px">Muestreos de laboratorio</h2>' +
