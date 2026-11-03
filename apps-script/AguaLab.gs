@@ -23,7 +23,8 @@
  *   lo hace HyS) y llama a aguaLabSolicitar_() (acción p_agl_solicitar), que anota la fecha en la columna U «Solicitado el».
  * 02/11/2026 · Aviso al establecimiento: aguaLabAviso_() (acción p_agl_aviso) deja un BORRADOR en Gmail (no lo envía) para el correo
  *   de la columna Z del Tablero, con copia al Área Externa si es un CAPS de la red Trelew. Asunto, texto, copia y firma se cambian en
- *   la pestaña «Formulario DPSB». Sale desde belenpellegrini.hys@gmail.com si Gmail lo tiene en «Enviar como».
+ *   la pestaña «Formulario DPSB». Si los tanques del sitio (columna AA) se limpiaron dentro del plazo, {limpieza} agrega la fecha y
+ *   quiénes la hicieron (AGUA_LIMPIEZAS › CARGO). Sale desde belenpellegrini.hys@gmail.com si Gmail lo tiene en «Enviar como».
  * 02/11/2026 · Tanques: columna AA del Tablero = sitio de BASE COMÚN › RESERVORIOS. Por establecimiento se informa cuántos
  *   tanques y cisternas en uso hay y cuántos se limpiaron en los últimos N días («Días de validez de la limpieza (completo)»,
  *   pestaña «Formulario DPSB»), para mostrar en el portal «Tanques limpios · listo para pedir el muestreo completo».
@@ -107,7 +108,7 @@ function aguaLabAviso_(x) {
   if (!/^(Trelew|Rawson)$/.test(red) || !lugar) return { ok: false, mensaje: 'Faltan la red o el establecimiento.' };
   const ss = SpreadsheetApp.openById(AGUA_LAB_ID), sh = ss.getSheetByName('Tablero ' + red); if (!sh) return { ok: false, mensaje: 'No está la pestaña Tablero ' + red + '.' };
   const n = sh.getLastRow() - 8; if (n < 1) return { ok: false, mensaje: 'El tablero está vacío.' };
-  const V = sh.getRange(9, 1, n, 26).getDisplayValues(), r = V.find(z => String(z[1]).trim() === lugar);
+  const V = sh.getRange(9, 1, n, Math.min(27, sh.getMaxColumns())).getDisplayValues(), r = V.find(z => String(z[1]).trim() === lugar);
   if (!r) return { ok: false, mensaje: 'No encontré «' + lugar + '» en el Tablero ' + red + '.' };
   // Plantilla (pestaña «Formulario DPSB», columnas A y B)
   const T = {}, fd = ss.getSheetByName('Formulario DPSB');
@@ -117,7 +118,27 @@ function aguaLabAviso_(x) {
   const sol = aguaLabIso_(r[20]), fecha = (sol || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd')).split('-').reverse().join('/');
   let can = String(r[19] || '').split(' · ').map(c => c.trim()).filter(c => c && !/^s\/d/i.test(c));
   if (comp) ['salida del tanque', 'canilla más alejada'].forEach(c => { if (!can.some(k => k.toLowerCase().indexOf(c) >= 0)) can.push(c); });
-  const rep = t => String(t).replace(/\{fecha\}/g, fecha).replace(/\{tipo\}/g, tipo).replace(/\{lugar\}/g, lugar).replace(/\{canillas\}/g, can.length ? can.join(', ') : 's/d')
+  // 02/11/2026: limpieza reciente de los tanques del sitio (columna AA): fecha y quiénes la hicieron, para el texto {limpieza}
+  let limpieza = '';
+  try {
+    const cod = red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT', sitio = String(r[26] || '').trim(), dias = Number(g('Días de validez de la limpieza (completo)', 30)) || 30;
+    const desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
+    if (sitio && typeof miLeer_ === 'function') {
+      const tq = miLeer_('RESERVORIOS').filter(t => t.ESTABLECIMIENTO === cod && t.SITIO === sitio && !/fuera|baja/i.test(t.ESTADO)).map(t => t.CODIGO_TANQUE);
+      const L = miLeer_('AGUA_LIMPIEZAS').filter(l => tq.indexOf(l.CODIGO_TANQUE) >= 0 && String(l.FECHA).slice(0, 10) >= desde);
+      if (L.length) {
+        const fechas = Array.from(new Set(L.map(l => String(l.FECHA).slice(0, 10)))).sort().map(v => v.split('-').reverse().join('/'));
+        const nom = c => String(c || '').replace(/\s*·.*$/, '').replace(/\s*\(con ([^)]+)\)/, ' y $1').replace(/\s*\([^)]*\)/g, '').trim();
+        const quienes = Array.from(new Set(L.map(l => nom(l.CARGO)).join(' y ').split(/\s+y\s+|,\s*/).map(x => x.trim()).filter(x => x && !/^s\/d/i.test(x))));
+        const lista = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1];
+        limpieza = String(g('Texto {limpieza}', 'Los tanques y cisternas de agua se limpiaron y desinfectaron el {fecha_limpieza}{quienes}.\n\n'))
+          .replace(/\{fecha_limpieza\}/g, lista(fechas)).replace(/\{quienes\}/g, quienes.length ? ' (' + lista(quienes) + ', Servicio de Higiene y Seguridad Laboral)' : '')
+          .replace(/\{cantidad\}/g, String(new Set(L.map(l => l.CODIGO_TANQUE)).size));
+        limpieza = limpieza.replace(/\s+$/, '') + '\n\n';
+      }
+    }
+  } catch (e) {}
+  const rep = t => String(t).replace(/\{limpieza\}/g, limpieza).replace(/\{fecha\}/g, fecha).replace(/\{tipo\}/g, tipo).replace(/\{lugar\}/g, lugar).replace(/\{canillas\}/g, can.length ? can.join(', ') : 's/d')
     .replace(/\{analisis\}/g, g(comp ? 'Texto {analisis} · completo' : 'Texto {analisis} · parcial', ''))
     .replace(/\{antes\}/g, comp ? g('Texto {antes} · completo', '') : '');
   const asunto = rep(g('Asunto del aviso', 'Muestreo de agua {tipo} · {lugar} · solicitado el {fecha}'));
