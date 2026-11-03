@@ -2149,10 +2149,10 @@ function aglPintar() {
       '<b style="font-size:14px">' + (e === 'sol' ? 'Qué se le pidió al DPSB (' + fT(x.solicitado) + ')' : 'Qué hay que pedirle al DPSB') + '</b>' +
       '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp) + '.</div>' +
       '<div><b>Dónde:</b> ' + (donde.length ? esc(donde.join(' · ')) : 's/d (completar las canillas en la columna T del Tablero)') + '.</div>' +
-      '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear.'
+      '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length && na[0].recibido ? ' (el informe llegó el ' + fT(na[0].recibido) + ')' : '') + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear.'
         : comp ? (/^\d{4}-/.test(x.fq || '') ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'nunca se hizo un físico-químico' + (/^\d{4}-/.test(x.bact || '') ? ' y el último bacteriológico es del ' + fT(x.bact) + (x.bact < hoyI.slice(0, 4) - 1 + hoyI.slice(4) ? ' (hace más de un año)' : '') : '') + ': corresponde el muestreo completo.')
         : 'toca el control de los 6 meses del muestreo del ' + fT(x.ultimo) + '.') + '</div>' +
-      (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
+      (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde que llegó el informe)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
       // 2) Pasos en orden
       '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
       (comp ? paso(limpio, 'Limpiar y desinfectar ' + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + ' (Javier y Paulo, con el F-AGU-01-T). ' +

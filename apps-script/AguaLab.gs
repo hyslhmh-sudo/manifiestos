@@ -73,11 +73,11 @@ function aguaLabRegistros_(ss) {
   const o = {};
   [['Registro Trelew', 'Trelew'], ['Registro Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh || sh.getLastRow() < 2) return;
-    const rg = sh.getRange(2, 1, sh.getLastRow() - 1, 13), V = rg.getDisplayValues(), F = rg.getFormulas();
+    const rg = sh.getRange(2, 1, sh.getLastRow() - 1, Math.min(16, sh.getMaxColumns())), V = rg.getDisplayValues(), F = rg.getFormulas();
     V.forEach((r, i) => { const est = String(r[2]).trim(); if (!est || !String(r[3]).trim()) return;
       const m = /HYPERLINK\("([^"]+)"/i.exec(F[i][12] || '');
       (o[red + '|' + est] = o[red + '|' + est] || []).push({ nro: String(r[3]).trim(), fecha: aguaLabIso_(r[4]), donde: String(r[5]).trim() || 's/d', analisis: String(r[6]).trim() || 's/d',
-        resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '' }); });
+        resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '', recibido: aguaLabIso_(r[15]) }); });   // P: «Informe recibido el»
   });
   return o;
 }
