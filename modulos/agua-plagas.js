@@ -110,7 +110,9 @@ function aglPintar() {
   const filtro = { ya: x => /urg|ven/.test(est(x)), aho: x => est(x) === 'aho', ok: x => est(x) === 'ok', noap: x => x.noAptas > 0, sind: x => !/^\d{4}/.test(x.ultimo || '') }[AGL.ver] || (x => est(x) !== 'ok');
   const lista = L.filter(filtro).sort((a, b) => orden[est(a)] - orden[est(b)] || (a.red === b.red ? 0 : a.red === 'Trelew' ? -1 : 1) || String(a.ultimo).localeCompare(String(b.ultimo)));
   const color = { urg: 'er', ven: 'er', aho: 'wa', sol: 'ok', ok: 'ok' };
-  const qTxt = x => /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' : /COMPLETO/.test(x.que) ? 'Completo · limpiar tanques antes' : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
+  // 02/11/2026: estado de los tanques (BASE COMÚN › RESERVORIOS, sitio de la columna AA del libro)
+  const tqOk = x => !!(x.tanques && x.tanques.n && x.tanques.limpios === x.tanques.n);
+  const qTxt = x => /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' + (tqOk(x) ? ' · tanques limpios ✅' : '') : /COMPLETO/.test(x.que) ? (tqOk(x) ? 'Completo · tanques limpios el ' + fT(x.tanques.ultima) + ' ✅ listo para pedir' : 'Completo · limpiar tanques antes') : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
   const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) && x.limite >= new Date().toISOString().slice(0, 10) ? 'hasta el ' + fT(x.limite) : 'ya';
   const fila = x => {
     const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), can = x.canillas && x.canillas !== 's/d' ? esc(x.canillas) : 's/d';
@@ -118,13 +120,15 @@ function aglPintar() {
       '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
       '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
       '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
-      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir este muestreo al DPSB (formulario completo)') + ' ↗</button> <button class="btn sec" style="margin:2px 0 8px" id="aglAv' + AGL.lab.indexOf(x) + '" onclick="aglAviso(' + AGL.lab.indexOf(x) + ')">✉ Generar aviso por correo (borrador)</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
+      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir muestreo ' + (comp ? 'COMPLETO' : 'PARCIAL') + ' al DPSB (formulario completo)') + ' ↗</button> <button class="btn sec" style="margin:2px 0 8px" id="aglAv' + AGL.lab.indexOf(x) + '" onclick="aglAviso(' + AGL.lab.indexOf(x) + ')">✉ Generar aviso por correo (borrador)</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
       (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
       '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
       '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
       (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
-      (comp ? '<br><b>Antes:</b> HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra).' : '') + '</div></details>';
+      (comp ? '<br>' + (tqOk(x) ? '<b style="color:#1E6B3A">✅ Tanques limpios:</b> ' + x.tanques.n + ' de ' + x.tanques.n + ' (última limpieza ' + fT(x.tanques.ultima) + '). Listo para pedir el muestreo completo.'
+        : x.tanques && x.tanques.n ? '<b>Antes:</b> limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' limpios en los últimos ' + x.tanques.dias + ' días' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.'
+        : '<b>Antes:</b> HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.') : '') + '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
   const resto = AGL.ver ? [] : L.filter(x => est(x) === 'ok');

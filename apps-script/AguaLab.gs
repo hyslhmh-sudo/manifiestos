@@ -24,27 +24,38 @@
  * 02/11/2026 · Aviso al establecimiento: aguaLabAviso_() (acción p_agl_aviso) deja un BORRADOR en Gmail (no lo envía) para el correo
  *   de la columna Z del Tablero, con copia al Área Externa si es un CAPS de la red Trelew. Asunto, texto, copia y firma se cambian en
  *   la pestaña «Formulario DPSB». Sale desde belenpellegrini.hys@gmail.com si Gmail lo tiene en «Enviar como».
+ * 02/11/2026 · Tanques: columna AA del Tablero = sitio de BASE COMÚN › RESERVORIOS. Por establecimiento se informa cuántos
+ *   tanques y cisternas en uso hay y cuántos se limpiaron en los últimos N días («Días de validez de la limpieza (completo)»,
+ *   pestaña «Formulario DPSB»), para mostrar en el portal «Tanques limpios · listo para pedir el muestreo completo».
+ *   El aviso «Solicitado el …» lo calcula la columna R del libro (fórmula) con la columna U.
  * No envía correos.
  */
 const AGUA_LAB_ID = '1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM';   // Drive › MÓDULO 3 · AGUA › INFORMES DE LABORATORIO · Agua
 
 function aguaLab_() {
   const ss = SpreadsheetApp.openById(AGUA_LAB_ID), out = [], rem = aguaLabRemitente_(ss);
+  let RES = []; try { if (typeof miLeer_ === 'function') RES = miLeer_('RESERVORIOS'); } catch (e) {}
+  const dias = Number(rem.diasLimpieza) || 30, desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
   const f = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'yyyy-MM-dd') : String(x == null ? '' : x).trim();
   [['Tablero Trelew', 'Trelew'], ['Tablero Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh) return;
     const n = sh.getLastRow() - 8; if (n < 1) return;
-    sh.getRange(9, 1, n, 26).getValues().forEach(r => {
+    sh.getRange(9, 1, n, Math.min(27, sh.getMaxColumns())).getValues().forEach(r => {
       const lugar = f(r[1]); if (!lugar) return;
       out.push({ red: red, grupo: f(r[0]), lugar: lugar, cod: red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT',
         ultimo: f(r[2]), muestras: Number(r[3]) || 0, noAptas: Number(r[4]) || 0, sinConclusion: Number(r[5]) || 0, estado: f(r[7]),
         bact: f(r[11]), fq: f(r[12]), parcial: f(r[13]), completo: f(r[14]), que: f(r[15]), limite: f(r[16]), aviso: f(r[17]),
         desde: f(r[18]), canillas: f(r[19]), solicitado: aguaLabIso_(r[20]),
         form: { institucion: f(r[21]), direccion: f(r[22]), localidad: f(r[23]), tipoAgua: f(r[24]) }, correo: /@/.test(f(r[25])) ? f(r[25]) : '', rem: rem });
+      // tanques y cisternas en uso del sitio (columna AA) y cuántos están limpios dentro del plazo
+      { const y = out[out.length - 1], sitio = f(r[26]);
+        if (sitio) { const T = RES.filter(t => t.ESTABLECIMIENTO === y.cod && t.SITIO === sitio && !/fuera|baja/i.test(t.ESTADO)), fs = T.map(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10)).filter(v => /^\d{4}-/.test(v)).sort();
+          y.tanques = { n: T.length, limpios: T.filter(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10) >= desde).length, ultima: fs.length ? fs[fs.length - 1] : '', primera: fs.length ? fs[0] : '', dias: dias }; } }
       // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
       // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
       const x = out[out.length - 1], ult = aguaLabIso_(r[2]);
       if (x.solicitado && (!ult || x.solicitado > ult) && /urgente|vencido|pedir/i.test(x.aviso)) x.aviso = 'Solicitado el ' + x.solicitado.split('-').reverse().join('/') + ' · esperando el resultado';
+      else if (/^Solicitado el/i.test(x.aviso) && !/esperando/.test(x.aviso)) x.aviso += ' · esperando el resultado';
     });
   });
   return out;
@@ -68,7 +79,7 @@ function aguaLabAcciones_(lab) {
 // Datos fijos del remitente (pestaña «Formulario DPSB», columnas A «Dato» y B «Valor»). Se cambian desde la planilla.
 function aguaLabRemitente_(ss) {
   const o = { cuit: '', responsable: '', contacto: '', correo: '', quien: 'Secretaría de Salud', comentarios: '' };
-  const K = { 'CUIT / CUIL': 'cuit', 'Responsable': 'responsable', 'Contacto': 'contacto', 'Correo': 'correo', 'Quién solicita': 'quien', 'Comentarios': 'comentarios' };
+  const K = { 'Días de validez de la limpieza (completo)': 'diasLimpieza', 'CUIT / CUIL': 'cuit', 'Responsable': 'responsable', 'Contacto': 'contacto', 'Correo': 'correo', 'Quién solicita': 'quien', 'Comentarios': 'comentarios' };
   const sh = ss.getSheetByName('Formulario DPSB'); if (!sh || sh.getLastRow() < 1) return o;
   sh.getRange(1, 1, sh.getLastRow(), 2).getDisplayValues().forEach(r => { const k = K[String(r[0]).trim()]; if (k) o[k] = String(r[1]).trim(); });
   return o;
