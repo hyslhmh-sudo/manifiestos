@@ -349,8 +349,9 @@ async function mipyv(fresco) {
   const visitas = '<section class="card" id="mpVis" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Visitas de los últimos 90 días</h2><div class="mu peq">La más nueva arriba. Tocá una para ver el detalle y las fotos, y marcarla como revisada.</div></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="mpFL"><option value="">Todos</option>' + opt(lugares, MPF.lugar) + '</select></label><label class="f">Plaga<select class="c" id="mpFP"><option value="">Todas</option>' + opt(plagasL, MPF.plaga) + '</select></label><label style="display:flex;gap:6px;align-items:center;font-size:14px;padding-bottom:8px"><input type="checkbox" id="mpFR"' + (MPF.sinRev ? ' checked' : '') + '> Solo sin revisar</label></div></div><div id="mpTabla"></div></section>';
   const san = R.saneamiento.length ? '<section class="card" id="mpSan" style="margin-bottom:16px"><h2 style="margin:0 0 6px;font-size:16px">Saneamiento en curso (' + R.saneamiento.length + ')</h2>' + R.saneamiento.map(t => '<div class="at"><span><b>' + esc(lugarDe(t)) + '</b><small>Desde ' + mpF(t.desde) + ' · ' + esc(t.operario) + '</small></span></div>').join('') + '</section>' : '<div id="mpSan"></div>';
-  box.innerHTML = aviso + kpis + '<section class="card" id="mpHizo" style="margin-bottom:16px"></section>' + graficos + casos + (C ? '<section class="card" id="mpSol" style="margin-bottom:16px">' + mpSolHtml(S).replace('margin:14px 0 6px', 'margin:0 0 6px') + mpCierresHtml(R.cierres || []) + '</section>' : '') + visitas + san +
+  box.innerHTML = aviso + kpis + '<section class="card" id="mpHizo" style="margin-bottom:16px"></section>' + graficos + casos + (C ? '<section class="card" id="mpSol" style="margin-bottom:16px">' + mpSolHtml(S).replace('margin:14px 0 6px', 'margin:0 0 6px') + mpCierresHtml(R.cierres || []) + '</section>' : '') + '<section class="card" id="mpSinProd" style="margin-bottom:16px"><div class="mu">Buscando visitas sin producto…</div></section>' + visitas + san +
     '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas de cada operario por día y por mes están en el libro MIPyV › HORAS (para leer) y en su Tablero.</div>';
+  mpSinProd();
   const pintar = () => {
     const F = V.filter(v => (!MPF.lugar || v.lugar === MPF.lugar) && (!MPF.plaga || v.plaga === MPF.plaga) && (!MPF.sinRev || !/^revisad/i.test(String(v.revisado))));
     $('mpTabla').innerHTML = F.length ? '<div style="overflow-x:auto"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Fecha y horario</th><th>Lugar</th><th>Qué se hizo</th><th>Operarios</th><th>Resultado</th><th>HyS</th></tr></thead><tbody>' +
@@ -428,6 +429,28 @@ function mpResponder(x) {
     '<label class="f">Estado<select class="c" id="mpEst">' + ['Pendiente', 'En gestión', 'Atendida', 'No corresponde'].map(e => '<option' + (e === (x.estado === 'Pendiente' ? 'En gestión' : x.estado) ? ' selected' : '') + '>' + e + '</option>').join('') + '</select></label>' +
     '<label class="f">Nota de gestión (solo la ve HyS; los operarios no la ven)<textarea class="c" id="mpResp" rows="3" placeholder="Ej.: pedido a Compras, llega el lunes">' + esc(x.respuesta || '') + '</textarea></label>', 'Guardar',
     () => api('p_mipyv_solicitud', { id: x.id, estado: $('mpEst').value, respuesta: $('mpResp').value }, 120000));
+}
+// 03/11/2026 (Belén): «una nota interna cada vez que no haya producto». Visitas MIPyV con «No había producto (falta de insumo)»
+// que todavía no están en ninguna nota → borrador de nota interna (PlagasSinProducto.gs). El N.º lo asigna Mesa de Entradas.
+async function mpSinProd() {
+  const box = $('mpSinProd'); if (!box) return;
+  let r; try { r = await api('p_psp_listar', {}, 90000); } catch (e) { box.innerHTML = '<div class="mu">No se pudieron leer las visitas sin producto.</div>'; return; }
+  if (!r.ok) { box.innerHTML = '<div class="aviso error">' + esc(r.mensaje || 'Error') + '</div>'; return; }
+  const V = r.visitas || [], P = V.filter(v => !v.nota), H = V.filter(v => v.nota);
+  box.innerHTML = '<h2 style="margin:0 0 4px">Sin producto (falta de insumo) · nota interna</h2><div class="mu peq" style="margin-bottom:10px">Visitas en las que no se pudo tratar la plaga porque no había biocida. Las que todavía no están en ninguna nota vienen marcadas: generá el borrador, revisalo y llevalo a Mesa de Entradas.</div>' +
+    (P.length ? '<div style="display:grid;gap:6px;margin-bottom:10px">' + P.map(v => '<label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" class="pspV" value="' + esc(v.id) + '" checked><span><b>' + mpF(v.fecha) + '</b> · ' + esc(v.lugar) + ' · ' + esc(v.plaga) + (v.protocolo ? ' <span class="mu peq">(caso ' + esc(v.protocolo) + ')</span>' : '') + '</span></label>').join('') + '</div>' +
+      '<label style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" id="pspEpp" checked> Reiterar que los operarios siguen sin EPP ni ropa de trabajo</label>' +
+      '<label class="f" style="max-width:260px;margin-bottom:10px">N.º de nota interna (opcional)<input class="c" id="pspNro" inputmode="numeric" placeholder="Vacío = s/n (lo asigna Mesa de Entradas)"></label>' +
+      '<button class="btn pri" id="pspGen">📝 Generar nota interna (borrador)</button> <span id="pspRes" class="peq"></span>'
+      : '<div class="chip ok">✅ Todas las visitas sin producto ya están en una nota</div>') +
+    (H.length ? '<details style="margin-top:10px"><summary class="mu peq" style="cursor:pointer">Ya incluidas en notas (' + H.length + ')</summary><div class="mu peq" style="margin-top:6px;line-height:1.6">' + H.map(v => mpF(v.fecha) + ' · ' + esc(v.lugar) + ' · ' + esc(v.plaga) + ' → NI ' + esc(v.nota)).join('<br>') + '</div></details>' : '');
+  const b = $('pspGen'); if (!b) return;
+  b.onclick = async () => {
+    const ids = [...document.querySelectorAll('.pspV:checked')].map(i => i.value); if (!ids.length) return toast('Marcá al menos una visita.');
+    b.disabled = true; b.textContent = 'Armando la nota…';
+    try { const g = await api('p_psp_nota', { ids: ids, epp: $('pspEpp').checked, nro: $('pspNro').value.trim() }, 120000); if (!g.ok) throw new Error(g.mensaje);
+      $('pspRes').innerHTML = '✅ Borrador listo: <a href="' + esc(g.url) + '" target="_blank" rel="noopener">abrir la nota ↗</a>' + (g.aviso ? ' · ' + esc(g.aviso) : ''); b.textContent = 'Nota generada'; setTimeout(mpSinProd, 4000); }
+    catch (e) { b.disabled = false; b.textContent = '📝 Generar nota interna (borrador)'; toast(e.message || 'No se pudo generar la nota.'); } };
 }
 function mipyvVer(v) {
   const dd = (t, x) => x ? '<dt>' + t + '</dt><dd>' + x + '</dd>' : '';
