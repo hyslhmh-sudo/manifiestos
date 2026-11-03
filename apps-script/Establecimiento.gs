@@ -394,6 +394,8 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
   de(miLeer_('DOCUMENTOS_EST')).filter(d => d.ESTADO === 'Vigente' && d.FECHA_VENCIMIENTO).forEach(d => { const dd = miDias_(d.FECHA_VENCIMIENTO), n = (d.CODIGO ? d.CODIGO + ' · ' : '') + d.TITULO;
     if (dd < 0) pend('er', 'documentos', n + ': vencido', 'Venció el ' + d.FECHA_VENCIMIENTO.split('-').reverse().join('/') + ' · cargá la versión nueva', 'documentos');
     else if (dd <= 60) pend('wa', 'documentos', n + ': vence en ' + dd + ' días', 'Revisalo y cargá la versión nueva cuando esté lista', 'documentos'); });
+  // Tareas que asigna HyS con plazo (BASE COMÚN › TAREAS_HYS, 03/11/2026): «Urgente» para la persona de PARA
+  try { thPendientes_(G, P); } catch (e) {}
   const orden = { er: 0, wa: 1, ok: 2 }; P.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
   const docs = de(miLeer_('DOCUMENTOS_EST')).filter(d => d.ESTADO === 'Vigente').map(d => ({ id: d.ID, tema: d.TEMA, tipo: d.TIPO, codigo: d.CODIGO, titulo: d.TITULO, version: d.VERSION, vigencia: d.FECHA_VIGENCIA, vence: d.FECHA_VENCIMIENTO, url: d.ARCHIVO, cargado: d.CARGADO }));
   const E = pBC_().getSheetByName('ESTABLECIMIENTOS'), EH = E.getRange(5, 1, 1, E.getLastColumn()).getValues()[0].map(String), ef = pTabla_(E, EH.length).find(r => limpio_(r.v[0]) === G.dueno), ev = c => ef && EH.indexOf(c) >= 0 ? limpio_(ef.v[EH.indexOf(c)]) : '';
@@ -408,4 +410,49 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
     accidentes: typeof accActivo_ === 'function' ? accActivo_(cod) : false,   // pestaña Personal (Modulo4.gs)
     poe: { limpieza: ev('POE_LIMPIEZA_TANQUES') || 'Provincial (DPSB)', muestra: ev('POE_TOMA_MUESTRA') || 'Provincial (DPSB)' }, sitios: miSitios_(cod), hoy: hoy,
     form2: (docs.filter(d => d.codigo === 'Formulario 2' && d.tema === 'Agua').pop() || null) };
+}
+// ------------------------------------------------------------------ TAREAS QUE ASIGNA HyS (03/11/2026, pedido de Belén)
+// BASE COMÚN › TAREAS_HYS: una fila por tarea, editable a mano o desde el portal (Datos · editar todo). Aparece como «Urgente» arriba de
+// «Lo que tenés pendiente» en «Mi establecimiento» del ESTABLECIMIENTO, solo para quien se llama como PARA (vacío = todos los que tienen
+// el MODULO; Higiene y Seguridad la ve siempre). PLAZO y PLAZO_2 (segundo plazo, opcional). ESTADO = Hecha la saca de la lista.
+// Si MODULO = Incendio, muestra cuántos extintores hay cargados en el lugar (SITIO vacío = todo el establecimiento) y cuántos se cargaron desde la fecha CREADO.
+const TH_H = ['ID', 'ESTABLECIMIENTO', 'SITIO', 'PARA', 'MODULO', 'TAREA', 'DETALLE', 'PLAZO', 'PLAZO_2', 'ESTADO', 'CREADO', 'OBSERVACIONES'];
+const TH_IR = { incendio: 'incendio', residuos: 'fotos', agua: 'agua_alta', plagas: 'plagas_intervencion', documentos: 'documentos' };
+function thHoja_() {
+  const ss = pBC_(); let sh = ss.getSheetByName('TAREAS_HYS'); if (sh) return sh;
+  sh = ss.insertSheet('TAREAS_HYS');
+  encabezar_(sh, 'Tareas que asigna Higiene y Seguridad', 'Una fila por tarea. Aparece como «Urgente» en «Lo que tenés pendiente» de Mi establecimiento del ESTABLECIMIENTO, para la persona de PARA (vacío = todos los que tienen el MODULO). PLAZO_2: segundo plazo (opcional). Para sacarla: ESTADO = Hecha (no borrar la fila).', TH_H,
+    ['Lo pone el sistema o a mano (TH-001…).', 'Código (HMH, HZT…).', 'Lugar (opcional): como en SITIOS.', 'Nombre de la persona (opcional).', 'Incendio · Residuos · Agua · Plagas · Documentos', 'Qué hay que hacer (corto).', 'Más detalle (opcional).', 'dd/mm/aaaa', 'dd/mm/aaaa (opcional)', 'Abierta · Hecha', 'dd/mm/aaaa', '']);
+  lista_(sh, 4, 500, ['Incendio', 'Residuos', 'Agua', 'Plagas', 'Documentos']); lista_(sh, 9, 500, ['Abierta', 'Hecha']);
+  sh.getRange(6, 8, 500, 2).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 11, 500, 1).setNumberFormat('dd/mm/yyyy');
+  return sh;
+}
+const thISO_ = v => { if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd'); const s = limpio_(v); let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (m) return m[0];
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s); return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : ''; };
+const thTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '';
+function thPendientes_(G, P) {
+  const sh = pBC_().getSheetByName('TAREAS_HYS'); if (!sh) return;
+  pTabla_(sh, TH_H.length).forEach(r => { const o = {}; TH_H.forEach((h, i) => o[h] = r.v[i]);
+    const cod = limpio_(o.ESTABLECIMIENTO); if (!/^abierta/i.test(limpio_(o.ESTADO) || 'Abierta') || G.cods.indexOf(cod) < 0 || !limpio_(o.TAREA)) return;
+    const p1 = thISO_(o.PLAZO), p2 = thISO_(o.PLAZO_2), d1 = miDias_(p1), d2 = miDias_(p2), tema = limpio_(o.MODULO).toLowerCase();
+    const plazo = !p1 ? '' : d1 >= 0 ? 'Plazo: ' + thTxt_(p1) + (d1 === 0 ? ' (hoy)' : d1 === 1 ? ' (mañana)' : ' (faltan ' + d1 + ' días)') + (p2 ? ' · segundo plazo: ' + thTxt_(p2) : '')
+      : p2 && d2 >= 0 ? 'Venció el primer plazo (' + thTxt_(p1) + '). Último plazo: ' + thTxt_(p2) + (d2 === 0 ? ' (hoy)' : ' (faltan ' + d2 + ' días)')
+      : 'Plazo vencido el ' + thTxt_(p2 || p1);
+    let avance = '';
+    if (tema === 'incendio' && typeof incLeer_ === 'function') { try { const desde = thISO_(o.CREADO), sit = limpio_(o.SITIO);
+      const L = incLeer_('EXTINTORES', INC.H_EXT).filter(e => limpio_(e.ESTABLECIMIENTO) === cod && (!sit || sinTildes_(e.SITIO) === sinTildes_(sit)) && !/baja/i.test(e.ESTADO));
+      const nuevos = desde ? L.filter(e => /alta/i.test(String(e.CAMBIOS || '')) && String(e.CAMBIOS || '').split('\n').some(l => /: Alta/.test(l) && thISO_(l.slice(0, 10)) >= desde)).length : 0;
+      avance = 'Cargados: ' + L.length + (desde ? ' (' + nuevos + ' desde el ' + thTxt_(desde) + ')' : ''); } catch (e) {} }
+    P.push({ nivel: 'er', tema: tema, texto: '⚠️ ' + limpio_(o.TAREA) + (limpio_(o.SITIO) ? ' · ' + limpio_(o.SITIO) : ''), detalle: [plazo, avance, limpio_(o.DETALLE)].filter(Boolean).join(' · '),
+      ir: TH_IR[tema] || '', para: limpio_(o.PARA), hys: true });
+  });
+}
+// Ejecutar una vez desde el editor: crea la hoja y carga las dos tareas de Melani del 03/11/2026 (no duplica)
+function cargarTareasMelani3nov() {
+  const sh = thHoja_(), ya = pTabla_(sh, TH_H.length).map(r => limpio_(r.v[0]));
+  const filas = [['TH-001', 'HMH', '', 'Melani', 'Incendio', 'Cargar todos los extintores del HMH', 'Con N.º de puesto (el cartel), planta, sector, inventario y las 3 fotos.', new Date('2026-11-06T12:00:00'), new Date('2026-11-12T12:00:00'), 'Abierta', new Date('2026-11-03T12:00:00'), ''],
+    ['TH-002', 'HZT', 'Ambulancias', 'Melani', 'Incendio', 'Cargar los extintores de las ambulancias', 'Un extintor por ambulancia: en «Dónde está» poné la patente o el número de móvil.', new Date('2026-11-06T12:00:00'), new Date('2026-11-12T12:00:00'), 'Abierta', new Date('2026-11-03T12:00:00'), '']].filter(f => ya.indexOf(f[0]) < 0);
+  if (filas.length) sh.getRange(Math.max(sh.getLastRow(), 5) + 1, 1, filas.length, TH_H.length).setValues(filas);
+  if (typeof pcBump_ === 'function') pcBump_();
+  Logger.log(filas.length + ' tarea(s) cargada(s) en BASE COMÚN › TAREAS_HYS.'); return filas.length;
 }
