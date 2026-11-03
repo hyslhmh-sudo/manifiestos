@@ -112,28 +112,59 @@ function aglPintar() {
   const color = { urg: 'er', ven: 'er', aho: 'wa', sol: 'ok', ok: 'ok' };
   // 02/11/2026: estado de los tanques (BASE COMÚN › RESERVORIOS, sitio de la columna AA del libro)
   const tqOk = x => !!(x.tanques && x.tanques.n && x.tanques.limpios === x.tanques.n);
-  const qTxt = x => /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' + (tqOk(x) ? ' · tanques limpios ✅' : '') : /COMPLETO/.test(x.que) ? (tqOk(x) ? 'Completo · tanques limpios el ' + fT(x.tanques.ultima) + ' ✅ listo para pedir' : 'Completo · limpiar tanques antes') : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
-  const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) && x.limite >= new Date().toISOString().slice(0, 10) ? 'hasta el ' + fT(x.limite) : 'ya';
+  // 03/11/2026 (Belén: «no aclara lo que se solicita»): cada establecimiento dice, sin dudas, QUÉ se pide al DPSB (tipo de
+  // muestreo y análisis), DÓNDE (canillas), POR QUÉ, el PLAZO y los PASOS en orden (primero limpiar, después pedir).
+  const hoyI = new Date().toISOString().slice(0, 10);
+  const noApL = x => (x.res || []).filter(m => /no apta/i.test(m.resultado));
+  const tipoTxt = comp => comp ? 'muestreo COMPLETO: bacteriológico + físico-químico' : 'muestreo PARCIAL: solo bacteriológico';
+  const qTxt = x => {
+    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), na = noApL(x);
+    if (e === 'sol') return 'Pedido el ' + fT(x.solicitado) + ': ' + tipoTxt(comp) + ' · falta que el DPSB tome las muestras';
+    if (/URGENTE/.test(x.que)) return '❗ Agua NO APTA' + (na.length ? ' en ' + na.map(m => m.donde).join(', ') : '') + ' (' + fT(x.ultimo) + ') · 1.º limpiar tanques' + (tqOk(x) ? ' ✅' : '') + ' · 2.º pedir muestreo COMPLETO';
+    if (comp) return (tqOk(x) ? '✅ Tanques limpios · pedir ' : '1.º limpiar tanques · 2.º pedir ') + tipoTxt(true);
+    if (/PARCIAL/.test(x.que)) return 'Pedir ' + tipoTxt(false);
+    return 'Al día · próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
+  };
+  const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) ? (x.limite >= hoyI ? 'hasta el ' + fT(x.limite) : 'venció el ' + fT(x.limite)) : '';
   const fila = x => {
-    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), can = x.canillas && x.canillas !== 's/d' ? esc(x.canillas) : 's/d';
+    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), urg = /URGENTE/.test(x.que), i = AGL.lab.indexOf(x), na = noApL(x);
+    const cans = (x.canillas && x.canillas !== 's/d' ? x.canillas.split(' · ').map(c => c.trim()).filter(Boolean) : []);
+    const donde = (comp ? ['salida del tanque', 'canilla más alejada'] : []).concat(cans.map(c => c + (na.some(m => m.donde === c) ? ' (repetir: dio no apta)' : '')));
+    const lim = limite(x), rojo = urg || /limpiar tanques/i.test(qTxt(x));
+    const tq = x.tanques && x.tanques.n ? x.tanques : null, limpio = tqOk(x);
+    const paso = (ok, t) => '<li style="margin:3px 0">' + (ok === true ? '✅ ' : ok === 'esp' ? '⏳ ' : '⬜ ') + t + '</li>';
+    const btnPedir = '<button class="btn ' + (comp && !limpio ? 'sec' : 'pri') + '" style="margin:4px 0" onclick="aglPedir(' + i + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB') + ' ↗</button>';
+    const btnAviso = '<button class="btn sec" style="margin:4px 0" id="aglAv' + i + '" onclick="aglAviso(' + i + ')">✉ Avisar al establecimiento (borrador)</button>';
+    // 1) Qué se solicita
+    const pide = e === 'ok' ? '' : '<div style="border:2px solid ' + (rojo && e !== 'sol' ? 'var(--er)' : 'var(--az)') + ';border-radius:12px;padding:10px 12px;margin:2px 0 10px;background:#fff;color:#0D313F">' +
+      '<b style="font-size:14px">' + (e === 'sol' ? 'Qué se le pidió al DPSB (' + fT(x.solicitado) + ')' : 'Qué hay que pedirle al DPSB') + '</b>' +
+      '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp) + '.</div>' +
+      '<div><b>Dónde:</b> ' + (donde.length ? esc(donde.join(' · ')) : 's/d (completar las canillas en la columna T del Tablero)') + '.</div>' +
+      '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear.'
+        : comp ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'toca el control de los 6 meses del muestreo del ' + fT(x.ultimo) + '.') + '</div>' +
+      (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
+      // 2) Pasos en orden
+      '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
+      (comp ? paso(limpio, 'Limpiar y desinfectar ' + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + ' (Javier y Paulo, con el F-AGU-01-T). ' +
+        (limpio ? 'Hecho: última limpieza ' + fT(tq.ultima) + '.' : tq && tq.antesNoApta ? '<b style="color:var(--er)">Falta: la última limpieza (' + fT(tq.ultima) + ') es anterior al muestreo no apto.</b>' : tq ? '<b style="color:var(--er)">Falta: ' + tq.limpios + ' de ' + tq.n + ' limpios' + (tq.ultima ? ' (última ' + fT(tq.ultima) + ')' : '') + '.</b>' : '<b style="color:var(--er)">Falta: no hay tanques cargados para este lugar.</b>') + ' Sin la limpieza el DPSB no toma la muestra.') : '') +
+      paso(e === 'sol' ? true : false, (e === 'sol' ? 'Pedido al DPSB el ' + fT(x.solicitado) + '.' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB' + (comp && !limpio ? ' <b>después</b> de limpiar' : '') + '.')) +
+      paso(e === 'sol' ? 'esp' : false, 'El DPSB toma las muestras (lunes a viernes, 9 a 13 h; puede tardar hasta 10 días). Avisar al establecimiento.') +
+      paso(false, 'Cuando llegue el informe, subirlo (⬆ Subir informes nuevos).') + '</ol></div>' +
+      '<div style="margin-top:6px">' + btnPedir + ' ' + btnAviso + '</div>' +
+      '<small class="mu" style="display:block;margin-top:4px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar el botón.</small></div>';
     return '<details class="aglF" style="border-top:1px solid #EEF2F4"><summary style="list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 4px;align-items:center">' +
-      '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:' + (/limpiar tanques/i.test(qTxt(x)) ? 'var(--er)' : '#0D313F') + ';font-weight:' + (/limpiar tanques/i.test(qTxt(x)) ? '700' : '600') + '">' + esc(qTxt(x)) + '</small></span>' +
-      '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
-      '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
-      (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir muestreo ' + (comp ? 'COMPLETO' : 'PARCIAL') + ' al DPSB (formulario completo)') + ' ↗</button> <button class="btn sec" style="margin:2px 0 8px" id="aglAv' + AGL.lab.indexOf(x) + '" onclick="aglAviso(' + AGL.lab.indexOf(x) + ')">✉ Generar aviso por correo (borrador)</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
-      (e === 'ok' ? '' : '<b>Dónde:</b> ' + (comp ? 'salida del tanque y canilla más alejada, más las de siempre: ' : 'mismas canillas del último muestreo: ') + can + '<br>') +
+      '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:' + (rojo && e !== 'sol' ? 'var(--er)' : '#0D313F') + ';font-weight:' + (rojo && e !== 'sol' ? '700' : '600') + '">' + esc(qTxt(x)) + '</small></span>' +
+      '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(e === 'sol' ? 'Pedido · esperando' : x.aviso || 's/d') + '</span>' + (lim ? '<small style="display:block;margin-top:3px;font-weight:700;color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + '">' + lim + '</small>' : '') + '</span></summary>' +
+      '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' + pide +
+      // 3) Lo que ya se sabe: último muestreo y resultado de cada muestra
       '<b>Último muestreo:</b> ' + fT(x.ultimo) + (x.muestras ? ' (' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') + (x.noAptas ? ', <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') + ')' : '') +
-      ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
-      '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
-      (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
-      // 03/11/2026 (Belén: «no me salen los resultados»): el resultado de cada muestra del último muestreo, con su informe
-      (x.res && x.res.length ? '<br><b>Resultados del último muestreo:</b><span style="display:block;margin:4px 0 2px">' + x.res.map(m => { const no = /no apta/i.test(m.resultado), sc = /sin conclus/i.test(m.resultado);
+      (x.res && x.res.length ? '<span style="display:block;margin:4px 0 2px">' + x.res.map(m => { const no = /no apta/i.test(m.resultado), sc = /sin conclus/i.test(m.resultado);
         return '<span style="display:block;padding:3px 0">' + (no ? '❌' : sc ? '❔' : '✅') + ' <b>' + esc(m.donde) + '</b> · ' + esc(m.analisis) + ' · <b style="color:' + (no ? 'var(--er)' : sc ? 'var(--wa)' : '#1E6B3A') + '">' + esc(m.resultado) + '</b>' +
-          (m.detalle && m.detalle !== 's/d' ? ' <span class="mu">(' + esc(m.detalle) + ')</span>' : '') + ' · <span class="mu">N.º ' + esc(m.nro) + '</span>' + (m.url ? ' · <a href="' + esc(m.url) + '" target="_blank" rel="noopener">Ver informe ↗</a>' : '') + '</span>'; }).join('') + '</span>' : '') +
-      (comp ? '<br>' + (tqOk(x) ? '<b style="color:#1E6B3A">✅ Tanques limpios:</b> ' + x.tanques.n + ' de ' + x.tanques.n + ' (última limpieza ' + fT(x.tanques.ultima) + '). Listo para pedir el muestreo completo.'
-        : x.tanques && x.tanques.n && x.tanques.antesNoApta ? '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">limpiar y desinfectar tanques y cisternas. La última limpieza (' + fT(x.tanques.ultima) + ') es anterior al muestreo NO APTO del ' + fT(x.ultimo) + ': no corrige el resultado. Después de limpiar, pedir el muestreo completo.</span>'
-        : x.tanques && x.tanques.n ? '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente (último ' + (x.tanques.dias >= 360 ? 'año' : x.tanques.dias + ' días') + ')' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.</span>'
-        : '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.</span>') : '') + '</div></details>';
+          (m.detalle && m.detalle !== 's/d' ? ' <span class="mu">(' + esc(m.detalle) + ')</span>' : '') + ' · <span class="mu">N.º ' + esc(m.nro) + '</span>' + (m.url ? ' · <a href="' + esc(m.url) + '" target="_blank" rel="noopener">Ver informe ↗</a>' : '') + '</span>'; }).join('') + '</span>' : '<br>') +
+      (x.sinConclusion ? '<b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.<br>' : '') +
+      (urg ? '<span>Cuando el nuevo muestreo dé apta, se retoma el calendario: parcial cada 6 meses y completo cada 12.</span>'
+        : '<b>Calendario:</b> próximo parcial ' + fT(x.parcial) + ' · próximo completo ' + fT(x.completo) + ' <span class="mu">(último bacteriológico ' + fT(x.bact) + ' · último físico-químico ' + fT(x.fq) + ')</span>') +
+      '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
   const resto = AGL.ver ? [] : L.filter(x => est(x) === 'ok');
