@@ -93,7 +93,7 @@ let AGL = { lab: [], red: '', ver: '' };
 function aglSet(k, v) { AGL[k] = AGL[k] === v ? '' : v; const b = document.getElementById('aglBox'); if (b) b.innerHTML = aglPintar(); }
 function aglPintar() {
   const fT = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? fechaTxt(v) : esc(v || 's/d');
-  const est = x => /^solicitado/i.test(x.aviso) ? 'sol' : /urgente/i.test(x.aviso) ? 'urg' : /vencido/i.test(x.aviso) ? 'ven' : /pedir/i.test(x.aviso) ? 'aho' : 'ok';   // 02/11/2026: «Solicitado el …» (columna U del libro)
+  const est = x => /^solicitado|^muestra tomada/i.test(x.aviso) ? 'sol' : /urgente/i.test(x.aviso) ? 'urg' : /vencido/i.test(x.aviso) ? 'ven' : /pedir/i.test(x.aviso) ? 'aho' : 'ok';   // 02/11/2026: «Solicitado el …» (columna U del libro)
   const orden = { urg: 0, ven: 1, aho: 2, sol: 3, ok: 4 };
   const L = AGL.lab.filter(x => x.grupo !== 'Otros' && (!AGL.red || x.red === AGL.red));
   const cuenta = f => { const t = L.filter(f), r = k => AGL.lab.filter(x => x.grupo !== 'Otros' && x.red === k).filter(f).length; return [t.length, AGL.red ? '' : 'Trelew ' + r('Trelew') + ' · Rawson ' + r('Rawson')]; };
