@@ -166,7 +166,7 @@ function tqRenderLugar() {
   T.forEach(t => {
     const D = tqDos(t), avs = tqEstado(t), peor = tqPeor(avs), abierto = !t.pendiente && tq.codigo === t.codigo;
     h += `<button type="button" class="ext-fila${peor === "ok" ? " ok" : ""}${abierto ? " abierta" : ""}${t.pendiente ? " nuevo" : ""}" data-cod="${escX(t.codigo)}"${t.pendiente ? " disabled" : ""}>
-      <span class="ext-ico">${/cisterna/i.test(t.tipo) ? "🛢️" : "💧"}</span><span class="ext-txt"><b>${escX(t.codigo || "Nuevo")} · ${escX(t.tipo || "s/d")}${t.capacidad ? " · " + escX(Number(t.capacidad) ? Number(t.capacidad).toLocaleString("es-AR") + " L" : t.capacidad) : ""}</b>
+      <span class="ext-ico">${/cisterna/i.test(t.tipo) ? "🛢️" : "💧"}</span><span class="ext-txt"><b>${escX(t.codigo || "Nuevo")}${t.tipo && !/^s\/d/i.test(t.tipo) ? " · " + escX(t.tipo) : ""}${Number(t.capacidad) ? " · " + escX(Number(t.capacidad).toLocaleString("es-AR") + " L") : ""}</b>
       <small>${escX(t.ubicacion || "s/d")}</small><small class="ext-vto ${D.limp.nivel === "ok" ? "" : D.limp.nivel}"><b>🧽 Limpieza:</b> ${escX(D.limp.txt)}</small><small class="ext-vto ${D.rev.nivel === "ok" ? "" : D.rev.nivel}"><b>🔍 Revisión:</b> ${escX(D.rev.txt)}</small>${D.extra.map(a => `<small class="ext-vto ${a.nivel}">${escX(a.txt)}</small>`).join("")}</span></button>`;
     if (abierto) h += `<div class="ext-panel"><div class="step-sub" style="margin:0 0 8px">¿Qué hiciste hoy con este tanque?</div>
       <button type="button" class="ext-listo tq-azul" data-accion="limp">🧽 Lo limpié<br><small style="font-weight:600">Vaciar, cepillar y desinfectar · con el F-AGU-01-T firmado</small></button>
