@@ -1,13 +1,13 @@
 /**
  * RELEVAMIENTO DE EDIFICIOS · agua, desagües, canaletas y techos (03/11/2026, pedido de Belén)
  * La Dirección pidió saber cómo está la red Trelew en esos 4 temas. La app MIP (edificio.js) manda un relevamiento
- * por lugar (CAPS y dependencias, sin el HMH ni el edificio central del HZT). Se guarda en la hoja
+ * por lugar (CAPS, dependencias y el edificio central del HZT, que se puede relevar por partes; sin el HMH). Se guarda en la hoja
  * «relevamiento_edificio» de esta planilla (se crea sola) y las fotos en Drive, en la carpeta de fotos de cada lugar,
  * con el nombre del tema. HyS lo lee para el diagnóstico (informe a la Dirección).
  * Si un lugar se releva dos veces, quedan las dos filas: vale la más nueva.
  */
 const SHEET_EDIFICIO = "relevamiento_edificio";
-const ED_H = ["id_relev", "fecha_relevamiento", "lugar_id", "lugar", "operario", "operario_acompanante", "prioridad",
+const ED_H = ["id_relev", "fecha_relevamiento", "lugar_id", "lugar", "parte", "operario", "operario_acompanante", "prioridad",
   "agua", "desagues", "canaletas", "techos", "techo_tipo", "agua_falta", "desagues_falta", "canaletas_falta", "techos_falta",
   "fotos_agua", "fotos_desagues", "fotos_canaletas", "fotos_techos", "observaciones", "respuestas", "cargado", "revisado_hys"];
 
@@ -19,6 +19,9 @@ function edHoja_(ss) {
     sh.setFrozenRows(1);
     sh.getRange(1, ED_H.indexOf("respuestas") + 1).setNote("Todas las preguntas con su respuesta (Sí / No / No se pudo ver), por tema. Si falta un dato: s/d.");
   }
+  // 03/11/2026: columna «parte» (qué parte del edificio se relevó; el HZT se releva por partes)
+  const H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  if (H.indexOf("parte") < 0) { sh.insertColumnAfter(H.indexOf("lugar") + 1); sh.getRange(1, H.indexOf("lugar") + 2).setValue("parte").setFontWeight("bold").setBackground("#EAF3F6"); }
   return sh;
 }
 
@@ -33,7 +36,7 @@ function guardarRelevEdificio_(ss, data) {
   });
   const s = (v) => String(v == null ? "" : v).trim();
   agregarFila(sh, {
-    id_relev: data.id_relev, fecha_relevamiento: s(data.FECHA) || s(data.fecha).slice(0, 10), lugar_id: s(data.lugar_id), lugar: s(data.lugar),
+    id_relev: data.id_relev, fecha_relevamiento: s(data.FECHA) || s(data.fecha).slice(0, 10), lugar_id: s(data.lugar_id), lugar: s(data.lugar), parte: s(data.parte) || "Todo el edificio",
     operario: s(data.operario) || "s/d", operario_acompanante: s(data.operario_acompanante), prioridad: s(data.prioridad) || "s/d",
     agua: s(data.agua) || "s/d", desagues: s(data.desagues) || "s/d", canaletas: s(data.canaletas) || "s/d", techos: s(data.techos) || "s/d", techo_tipo: s(data.techo_tipo) || "s/d",
     agua_falta: s(data.agua_falta), desagues_falta: s(data.desagues_falta), canaletas_falta: s(data.canaletas_falta), techos_falta: s(data.techos_falta),

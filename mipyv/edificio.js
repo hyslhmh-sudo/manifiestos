@@ -1,7 +1,7 @@
 // ============================================================
 // RELEVAMIENTO DE EDIFICIOS · agua, desagües, canaletas y techos (03/11/2026, pedido de Belén)
 // La Dirección pidió saber cómo está la red Trelew en esos 4 temas. Javier y Paulo relevan cada lugar
-// (CAPS y dependencias, sin el HMH ni el edificio central del HZT) con preguntas de Sí / No / No se pudo ver,
+// (CAPS, dependencias y el edificio central del HZT; sin el HMH) con preguntas de Sí / No / No se pudo ver,
 // fotos por tema y lo que hace falta. Con eso HyS arma el diagnóstico.
 // Es SOLO relevamiento: no se arregla nada en el momento. Por seguridad, a los techos no se sube sin escalera
 // segura y sin otra persona: si no se puede, se mira desde abajo y se marca «No se pudo ver».
@@ -9,7 +9,7 @@
 // hoja «relevamiento_edificio» de la planilla MIP; las fotos van a Drive, en la carpeta de fotos de cada lugar.
 // ============================================================
 const ED_LOCAL_KEY = "mipyv_edificio_local_v1", ED_BORR_KEY = "mipyv_edificio_borrador_v1", ED_CAT_KEY = "mipyv_edificio_cat_v1";
-const ED_FUERA = ["HZT", "AMB", "HMH", "HSST"];   // fuera de este relevamiento
+const ED_FUERA = ["AMB", "HMH", "HSST"];   // fuera de este relevamiento (03/11/2026: el HZT central SÍ entra, pedido de Belén)
 const ED_TEMAS = [
   { id: "agua", emo: "💧", t: "Agua", ayuda: "Canillas, caños e inodoros. Los tanques se cargan aparte, en «Tanques y cisternas».", pregs: [
     ["a1", "¿Sale agua en todas las canillas?", "Sí"],
@@ -46,9 +46,9 @@ try { ED_CAT = edLeer(ED_CAT_KEY, ED_CAT); } catch (e) { }
 function edLugares() {
   const L = typeof EXTINTORES_LUG !== "undefined" ? EXTINTORES_LUG : {}, grupos = {}, est = typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : [];
   Object.keys(L).filter(id => ED_FUERA.indexOf(id) < 0).forEach(id => { const s = L[id].sitio || id; (grupos[s] = grupos[s] || []).push(id); });
-  let out = Object.keys(grupos).map(s => ({ id: grupos[s].slice().sort()[0], ids: grupos[s], nombre: grupos[s].length > 1 ? s : ((est.find(e => e.id === grupos[s][0]) || {}).nombre || s) }));
+  let out = Object.keys(grupos).map(s => ({ id: grupos[s].slice().sort()[0], ids: grupos[s], nombre: grupos[s].length > 1 ? s : grupos[s][0] === "HZT" ? "Hospital Zonal Trelew (edificio central)" : ((est.find(e => e.id === grupos[s][0]) || {}).nombre || s) }));
   if (!out.length) out = est.filter(e => ED_FUERA.indexOf(e.id) < 0).map(e => ({ id: e.id, ids: [e.id], nombre: e.nombre }));   // sin catálogo de incendio: la lista fija
-  return out.sort((a, b) => (/^CAPS/.test(a.nombre) ? 1 : 0) - (/^CAPS/.test(b.nombre) ? 1 : 0) || a.nombre.localeCompare(b.nombre, "es"));
+  return out.sort((a, b) => (a.id === "HZT" ? -1 : b.id === "HZT" ? 1 : 0) || (/^CAPS/.test(a.nombre) ? 1 : 0) - (/^CAPS/.test(b.nombre) ? 1 : 0) || a.nombre.localeCompare(b.nombre, "es"));
 }
 function edUltimo(l) {   // último relevamiento de ese lugar: lo del celular o lo de la planilla
   const loc = edLeer(ED_LOCAL_KEY, {}), c = ED_CAT.lugares || {};
@@ -105,7 +105,7 @@ function edRender() {
 }
 function edAbrir(l) {
   ed.lugar = l; ed.vista = "form"; ed.aviso = "";
-  ed.form = { uid: "ED" + Date.now() + Math.floor(Math.random() * 1000), lugar: l, FECHA: edHoy(), resp: {}, falta: {}, fotos: { agua: [], desagues: [], canaletas: [], techos: [] }, obs: "" };
+  ed.form = { uid: "ED" + Date.now() + Math.floor(Math.random() * 1000), lugar: l, FECHA: edHoy(), parte: "", resp: {}, falta: {}, fotos: { agua: [], desagues: [], canaletas: [], techos: [] }, obs: "" };
   edRender(); screensEl.scrollTop = 0;
 }
 function edBorrador() { if (!ed.form) return; if (!edGuardarLS(ED_BORR_KEY, { form: ed.form, guardado: Date.now() })) { const f = Object.assign({}, ed.form, { fotos: { agua: [], desagues: [], canaletas: [], techos: [] } }); edGuardarLS(ED_BORR_KEY, { form: f, guardado: Date.now() }); } }
@@ -116,7 +116,9 @@ function edRenderForm() {
   const opc = (campo, vals, act) => `<div class="ext-opc" data-campo="${campo}">${vals.map(v => `<button type="button" class="${act === v ? "on" : ""}" data-valor="${escX(v)}">${escX(v)}</button>`).join("")}</div>`;
   let h = `<button type="button" class="ext-quitar tq-volver" data-f="cancelar">← Volver a los lugares</button>
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
-    <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">`;
+    <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
+    <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
+    ${f.lugar.id === "HZT" ? `<div class="step-sub">El hospital es grande: se puede relevar por partes, cargando un relevamiento por cada parte.</div>` : ""}`;
   ED_TEMAS.forEach(tm => {
     const e = edEstadoTema(tm, r), sinTener = tm.tiene && r[tm.id + "_tiene"] === "No", malo = e.nivel === "wa" || e.nivel === "er";
     h += `<div class="ext-card tq"><h4>${tm.emo} ${tm.t}</h4><div class="step-sub">${escX(tm.ayuda)}</div>`;
@@ -138,7 +140,7 @@ function edRenderForm() {
     <button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta completar: " + escX(faltan.join(", ")) : "Listo, guardar el relevamiento"}</button>`;
   box.innerHTML = h;
   ED_TEMAS.forEach(tm => edPintarFotos(tm.id));
-  box.querySelectorAll("[data-dato]").forEach(i => { i.oninput = () => { if (i.dataset.dato === "FECHA") f.FECHA = i.value; else f.obs = i.value; edBorrador(); }; });
+  box.querySelectorAll("[data-dato]").forEach(i => { i.oninput = () => { if (i.dataset.dato === "FECHA") f.FECHA = i.value; else if (i.dataset.dato === "parte") f.parte = i.value; else f.obs = i.value; edBorrador(); }; });
   box.querySelectorAll("[data-falta]").forEach(i => { i.oninput = () => { f.falta[i.dataset.falta] = i.value; edBorrador(); }; });
   box.querySelectorAll(".ext-opc[data-campo] button").forEach(b => b.onclick = () => {
     const k = b.parentElement.dataset.campo; r[k] = b.dataset.valor; edBorrador(); const y = screensEl.scrollTop; edRenderForm(); screensEl.scrollTop = y;
@@ -173,7 +175,7 @@ async function edGuardar() {
       (tm.tiene && r[tm.id + "_tiene"] === "No" ? "" : tm.pregs.map(([k, p]) => "\n  " + p + " → " + r[k]).join("") + (r[tm.id + "_urgente"] ? "\n  ¿Urgente? → " + r[tm.id + "_urgente"] : "")));
   });
   const urg = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "er"), arr = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "wa");
-  const data = { id_relev: f.uid, fecha: new Date().toISOString(), FECHA: f.FECHA, lugar_id: f.lugar.id, lugar: f.lugar.nombre, establecimiento: f.lugar.nombre,
+  const data = { id_relev: f.uid, fecha: new Date().toISOString(), FECHA: f.FECHA, lugar_id: f.lugar.id, lugar: f.lugar.nombre, establecimiento: f.lugar.nombre, parte: (f.parte || "").trim() || "Todo el edificio",
     operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
     agua: estados.agua, desagues: estados.desagues, canaletas: estados.canaletas, techos: estados.techos, techo_tipo: r.techo_tipo || "",
     prioridad: urg ? "Urgente" : arr ? "Requiere arreglos" : "Sin problemas a la vista", respuestas: textos.join("\n"),
@@ -183,7 +185,7 @@ async function edGuardar() {
   if (!(await guardarEnCola([{ tipo: "relev_edificio", data: data }]))) { if (btn) btn.disabled = false; return; }
   const loc = edLeer(ED_LOCAL_KEY, {}); loc[f.lugar.id] = { fecha: f.FECHA, estados: estados }; edGuardarLS(ED_LOCAL_KEY, loc);
   edBorrarBorrador();
-  ed.aviso = "Relevamiento de " + f.lugar.nombre + " guardado" + (navigator.onLine ? " · se está enviando." : " · se envía solo cuando haya señal.");
+  ed.aviso = "Relevamiento de " + f.lugar.nombre + ((f.parte || "").trim() ? " (" + f.parte.trim() + ")" : "") + " guardado" + (navigator.onLine ? " · se está enviando." : " · se envía solo cuando haya señal.");
   ed.form = null; ed.vista = "lugares"; edRender(); screensEl.scrollTop = 0; edPintarHome();
 if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar
   try { await updateQueueBadge(); } catch (e) { } trySync();
