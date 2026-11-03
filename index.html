@@ -1302,7 +1302,7 @@ const AGUA_INF_MI = {
 // 03/11/2026 (Belén): muestreos del laboratorio provincial (DPSB) de la red, los mismos que ve HyS en el portal (Agua · Tablero
 // de análisis de laboratorio). Solo para ver: el pedido al DPSB y la limpieza previa de tanques los organiza Higiene y Seguridad.
 const aguaLabQue = x => { const ok = x.tanques && x.tanques.n && x.tanques.limpios === x.tanques.n;
-  return /URGENTE/.test(x.que) ? 'URGENTE: limpiar tanques y muestreo completo en 15 días hábiles' + (ok ? ' · tanques limpios ✅' : '')
+  return /URGENTE/.test(x.que) ? 'URGENTE (agua NO APTA): repetir la limpieza de tanques, limpiar y desinfectar las griferías afectadas' + ((x.res || []).filter(m => /no apta/i.test(m.resultado)).length ? ' (' + x.res.filter(m => /no apta/i.test(m.resultado)).map(m => m.donde).join(', ') + ')' : '') + ' y muestreo completo en 15 días hábiles' + (ok ? ' · tanques limpios ✅' : '')
     : /COMPLETO/.test(x.que) ? (ok ? 'Completo · tanques limpios el ' + fechaTxt(x.tanques.ultima) + ' ✅' : 'Completo · limpiar tanques antes')
     : /PARCIAL/.test(x.que) ? 'Parcial · solo bacteriológico' : 'Próximo muestreo: ' + fechaTxt((x.completo && x.parcial && x.completo <= x.parcial ? x.completo : x.parcial) || '') ; };
 const aguaLabNivel = x => /^solicitado|^muestra tomada/i.test(x.aviso) ? 'ok' : /urgente|vencido/i.test(x.aviso) ? 'er' : /pedir/i.test(x.aviso) ? 'wa' : 'ok';

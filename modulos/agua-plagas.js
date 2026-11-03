@@ -120,7 +120,7 @@ function aglPintar() {
   const qTxt = x => {
     const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), na = noApL(x);
     if (e === 'sol') return 'Pedido el ' + fT(x.solicitado) + ': ' + tipoTxt(comp) + ' · falta que el DPSB tome las muestras';
-    if (/URGENTE/.test(x.que)) return '❗ Agua NO APTA' + (na.length ? ' en ' + na.map(m => m.donde).join(', ') : '') + ' (' + fT(x.ultimo) + ') · 1.º limpiar tanques' + (tqOk(x) ? ' ✅' : '') + ' · 2.º pedir muestreo COMPLETO';
+    if (/URGENTE/.test(x.que)) return '❗ Agua NO APTA' + (na.length ? ' en ' + na.map(m => m.donde).join(', ') : '') + ' (' + fT(x.ultimo) + ') · 1.º repetir la limpieza de tanques' + (tqOk(x) ? ' ✅' : '') + ' y de las griferías afectadas · 2.º pedir muestreo COMPLETO';
     if (comp) return (tqOk(x) ? '✅ Tanques limpios · pedir ' : '1.º limpiar tanques · 2.º pedir ') + tipoTxt(true);
     if (/PARCIAL/.test(x.que)) return 'Pedir ' + tipoTxt(false);
     return 'Al día · próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
@@ -140,14 +140,15 @@ function aglPintar() {
       '<b style="font-size:14px">' + (e === 'sol' ? 'Qué se le pidió al DPSB (' + fT(x.solicitado) + ')' : 'Qué hay que pedirle al DPSB') + '</b>' +
       '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp) + '.</div>' +
       '<div><b>Dónde:</b> ' + (donde.length ? esc(donde.join(' · ')) : 's/d (completar las canillas en la columna T del Tablero)') + '.</div>' +
-      '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length && na[0].recibido ? ' (resultado cargado el ' + fT(na[0].recibido) + ')' : '') + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear.'
+      '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length && na[0].recibido ? ' (resultado cargado el ' + fT(na[0].recibido) + ')' : '') + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear. Regla de HyS para toda la red: se repite la limpieza de tanques y se limpian y desinfectan las griferías afectadas.'
         : comp ? (/^\d{4}-/.test(x.fq || '') ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'nunca se hizo un físico-químico' + (/^\d{4}-/.test(x.bact || '') ? ' y el último bacteriológico es del ' + fT(x.bact) + (x.bact < hoyI.slice(0, 4) - 1 + hoyI.slice(4) ? ' (hace más de un año)' : '') : '') + ': corresponde el muestreo completo.')
         : 'toca el control de los 6 meses del muestreo del ' + fT(x.ultimo) + '.') + '</div>' +
       (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde que se cargó el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
       // 2) Pasos en orden
       '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
-      (comp ? paso(limpio, 'Limpiar y desinfectar ' + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + ' (Javier y Paulo, con el F-AGU-01-T). ' +
+      (comp ? paso(limpio, (urg ? 'Repetir la limpieza y desinfección de ' : 'Limpiar y desinfectar ') + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + ' (Javier y Paulo, con el F-AGU-01-T). ' +
         (limpio ? 'Hecho: última limpieza ' + fT(tq.ultima) + '.' : tq && tq.antesNoApta ? '<b style="color:var(--er)">Falta: la última limpieza (' + fT(tq.ultima) + ') es anterior al muestreo no apto.</b>' : tq ? '<b style="color:var(--er)">Falta: ' + tq.limpios + ' de ' + tq.n + ' limpios' + (tq.ultima ? ' (última ' + fT(tq.ultima) + ')' : '') + '.</b>' : '<b style="color:var(--er)">Falta: no hay tanques cargados para este lugar.</b>') + ' Sin la limpieza el DPSB no toma la muestra.') : '') +
+      (urg ? paso(false, 'Limpiar y desinfectar las griferías afectadas' + (na.length ? ': <b>' + esc(na.map(m => m.donde).join(', ')) + '</b>' : '') + ' (canilla, pico y filtro o aireador), además de los tanques.') : '') +
       paso(e === 'sol' ? true : false, (e === 'sol' ? 'Pedido al DPSB el ' + fT(x.solicitado) + '.' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB' + (comp && !limpio ? ' <b>después</b> de limpiar' : '') + '.')) +
       paso(e === 'sol' ? 'esp' : false, 'El DPSB toma las muestras (lunes a viernes, 9 a 13 h; puede tardar hasta 10 días). Avisar al establecimiento.') +
       paso(false, 'Cuando llegue el informe, subirlo (⬆ Subir informes nuevos).') + '</ol></div>' +

@@ -10,7 +10,8 @@
  *   · Parcial (cada 6 meses, celda B2): solo bacteriológico, en las mismas canillas del último muestreo.
  *   · Completo (cada 12 meses, celda D3): bacteriológico + físico-químico, PREVIA limpieza y desinfección de tanques y cisternas,
  *     en la salida del tanque y la canilla más alejada además de las canillas de siempre.
- *   · Si en el último muestreo hubo una muestra NO APTA: limpieza y nuevo muestreo completo en 15 días hábiles.
+ *   · Si en el último muestreo hubo una muestra NO APTA (toda la red, 03/11/2026): repetir la limpieza de tanques y cisternas,
+ *     limpiar y desinfectar las griferías afectadas y nuevo muestreo completo en 15 días hábiles.
  *   · Avisa 30 días antes del parcial (F3) y 45 antes del completo (H3), para dar tiempo a la limpieza.
  * Normativa: Dto. 351/79 art. 57 (bacteriológico semestral y físico-químico anual); POE DPSB «Toma de muestra y gestión de
  *   resultados» 10.1 (demanda programada cada 6 meses) y 10.7 (15 días hábiles); POE DPSB «Limpieza y desinfección de tanques»
@@ -90,7 +91,9 @@ function aguaLabIso_(v) {
 function aguaLabAcciones_(lab) {
   return (lab || []).filter(x => x.grupo !== 'Otros' && /urgente|vencido|pedir/i.test(x.aviso)).map(x => ({
     cod: x.cod, origen: 'Agua', vencida: /urgente|vencido/i.test(x.aviso), estado: x.aviso,
-    que: (/COMPLETO/.test(x.que) ? 'Pedir muestreo COMPLETO (bacteriológico + físico-químico), antes limpiar tanques y cisternas'
+    // 03/11/2026 (Belén): con agua NO APTA, en toda la red: repetir la limpieza de tanques y limpiar las griferías afectadas
+    que: (/^URGENTE/.test(x.que) ? 'Agua NO APTA: repetir la limpieza y desinfección de tanques y cisternas, limpiar y desinfectar las griferías afectadas' + ((x.res || []).filter(m => /no apta/i.test(m.resultado)).length ? ' (' + x.res.filter(m => /no apta/i.test(m.resultado)).map(m => m.donde).join(', ') + ')' : '') + ' y pedir muestreo COMPLETO'
+      : /COMPLETO/.test(x.que) ? 'Pedir muestreo COMPLETO (bacteriológico + físico-químico), antes limpiar tanques y cisternas'
       : /PARCIAL/.test(x.que) ? 'Pedir muestreo PARCIAL de 6 meses (solo bacteriológico)' : x.que),
     donde: x.lugar + ' · red ' + x.red, prioridad: /urgente/i.test(x.aviso) ? 'Alta' : '',
     aCargo: 'HyS (limpieza de tanques y solicitud al DPSB)', limite: /^\d{4}-/.test(x.limite) ? x.limite : '',
