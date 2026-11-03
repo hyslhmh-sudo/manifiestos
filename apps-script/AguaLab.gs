@@ -38,6 +38,7 @@ function aguaLab_() {
   let RES = []; try { if (typeof miLeer_ === 'function') RES = miLeer_('RESERVORIOS'); } catch (e) {}
   const dias = Number(rem.diasLimpieza) || 30, desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
   const f = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'yyyy-MM-dd') : String(x == null ? '' : x).trim();
+  const REG = aguaLabRegistros_(ss);   // 03/11/2026: resultado de cada muestra (pestañas «Registro Trelew» y «Registro Rawson»)
   [['Tablero Trelew', 'Trelew'], ['Tablero Rawson', 'Rawson']].forEach(([hoja, red]) => {
     const sh = ss.getSheetByName(hoja); if (!sh) return;
     const n = sh.getLastRow() - 8; if (n < 1) return;
@@ -50,8 +51,13 @@ function aguaLab_() {
         form: { institucion: f(r[21]), direccion: f(r[22]), localidad: f(r[23]), tipoAgua: f(r[24]) }, correo: /@/.test(f(r[25])) ? f(r[25]) : '', rem: rem });
       // tanques y cisternas en uso del sitio (columna AA) y cuántos están limpios dentro del plazo
       { const y = out[out.length - 1], sitio = f(r[26]);
+        // 03/11/2026 (Belén: «no me salen los resultados»): si el último muestreo dio NO APTA, solo cuenta como limpio el tanque
+        // limpiado DESPUÉS de ese muestreo (una limpieza anterior no corrige el resultado).
+        const ultM = aguaLabIso_(r[2]), tras = y.noAptas > 0 ? ultM : '';
         if (sitio) { const T = RES.filter(t => t.ESTABLECIMIENTO === y.cod && t.SITIO === sitio && !/fuera|baja/i.test(t.ESTADO)), fs = T.map(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10)).filter(v => /^\d{4}-/.test(v)).sort();
-          y.tanques = { n: T.length, limpios: T.filter(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10) >= desde).length, ultima: fs.length ? fs[fs.length - 1] : '', primera: fs.length ? fs[0] : '', dias: dias }; } }
+          y.tanques = { n: T.length, limpios: T.filter(t => { const u = String(t.ULTIMA_LIMPIEZA || '').slice(0, 10); return /^\d{4}-/.test(u) && u >= desde && (!tras || u > tras); }).length, ultima: fs.length ? fs[fs.length - 1] : '', primera: fs.length ? fs[0] : '', dias: dias,
+            antesNoApta: !!(tras && fs.length && fs[fs.length - 1] <= tras) }; }
+        y.res = (REG[red + '|' + lugar] || []).filter(m => m.fecha === ultM); }
       // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
       // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
       const x = out[out.length - 1], ult = aguaLabIso_(r[2]);
@@ -60,6 +66,20 @@ function aguaLab_() {
     });
   });
   return out;
+}
+
+// Resultado de cada muestra, por red y establecimiento: { 'Trelew|CAPS La Loma': [{ nro, fecha, donde, analisis, resultado, detalle, url }] }
+function aguaLabRegistros_(ss) {
+  const o = {};
+  [['Registro Trelew', 'Trelew'], ['Registro Rawson', 'Rawson']].forEach(([hoja, red]) => {
+    const sh = ss.getSheetByName(hoja); if (!sh || sh.getLastRow() < 2) return;
+    const rg = sh.getRange(2, 1, sh.getLastRow() - 1, 13), V = rg.getDisplayValues(), F = rg.getFormulas();
+    V.forEach((r, i) => { const est = String(r[2]).trim(); if (!est || !String(r[3]).trim()) return;
+      const m = /HYPERLINK\("([^"]+)"/i.exec(F[i][12] || '');
+      (o[red + '|' + est] = o[red + '|' + est] || []).push({ nro: String(r[3]).trim(), fecha: aguaLabIso_(r[4]), donde: String(r[5]).trim() || 's/d', analisis: String(r[6]).trim() || 's/d',
+        resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '' }); });
+  });
+  return o;
 }
 
 function aguaLabIso_(v) {

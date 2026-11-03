@@ -126,7 +126,12 @@ function aglPintar() {
       ' · <b>bacteriológico</b> ' + fT(x.bact) + ' · <b>físico-químico</b> ' + fT(x.fq) + '<br>' +
       '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
       (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
+      // 03/11/2026 (Belén: «no me salen los resultados»): el resultado de cada muestra del último muestreo, con su informe
+      (x.res && x.res.length ? '<br><b>Resultados del último muestreo:</b><span style="display:block;margin:4px 0 2px">' + x.res.map(m => { const no = /no apta/i.test(m.resultado), sc = /sin conclus/i.test(m.resultado);
+        return '<span style="display:block;padding:3px 0">' + (no ? '❌' : sc ? '❔' : '✅') + ' <b>' + esc(m.donde) + '</b> · ' + esc(m.analisis) + ' · <b style="color:' + (no ? 'var(--er)' : sc ? 'var(--wa)' : '#1E6B3A') + '">' + esc(m.resultado) + '</b>' +
+          (m.detalle && m.detalle !== 's/d' ? ' <span class="mu">(' + esc(m.detalle) + ')</span>' : '') + ' · <span class="mu">N.º ' + esc(m.nro) + '</span>' + (m.url ? ' · <a href="' + esc(m.url) + '" target="_blank" rel="noopener">Ver informe ↗</a>' : '') + '</span>'; }).join('') + '</span>' : '') +
       (comp ? '<br>' + (tqOk(x) ? '<b style="color:#1E6B3A">✅ Tanques limpios:</b> ' + x.tanques.n + ' de ' + x.tanques.n + ' (última limpieza ' + fT(x.tanques.ultima) + '). Listo para pedir el muestreo completo.'
+        : x.tanques && x.tanques.n && x.tanques.antesNoApta ? '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">limpiar y desinfectar tanques y cisternas. La última limpieza (' + fT(x.tanques.ultima) + ') es anterior al muestreo NO APTO del ' + fT(x.ultimo) + ': no corrige el resultado. Después de limpiar, pedir el muestreo completo.</span>'
         : x.tanques && x.tanques.n ? '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente (último ' + (x.tanques.dias >= 360 ? 'año' : x.tanques.dias + ' días') + ')' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.</span>'
         : '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.</span>') : '') + '</div></details>';
   };

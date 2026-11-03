@@ -1313,7 +1313,9 @@ function aguaLabMi() {
     (L.length ? '<div class="lista">' + L.map(x => { const q = aguaLabQue(x), rojo = /limpiar tanques/i.test(q);
       return '<div class="item"><div><b>' + esc(x.lugar) + '</b><small style="display:block;font-weight:' + (rojo ? '700' : '600') + ';color:' + (rojo ? 'var(--er)' : 'var(--ink, #0D313F)') + '">' + esc(q) + '</small>' +
         '<small>Último muestreo: ' + (/^\d{4}-/.test(x.ultimo) ? fechaTxt(x.ultimo) : 's/d') + (x.muestras ? ' · ' + x.muestras + ' muestra' + (x.muestras > 1 ? 's' : '') : '') + (x.noAptas ? ' · <b style="color:var(--er)">' + x.noAptas + ' no apta' + (x.noAptas > 1 ? 's' : '') + '</b>' : '') +
-        (x.tanques && x.tanques.n ? '<br>Tanques: ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente' + (x.tanques.ultima ? ' · última ' + fechaTxt(x.tanques.ultima) : '') : '') + '</small></div>' +
+        (x.tanques && x.tanques.n ? '<br>Tanques: ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente' + (x.tanques.ultima ? ' · última ' + fechaTxt(x.tanques.ultima) : '') + (x.tanques.antesNoApta ? ' <b style="color:var(--er)">(es anterior al muestreo no apto: hay que volver a limpiar)</b>' : '') : '') +
+        // 03/11/2026: resultado de cada muestra del último muestreo, con su informe
+        ((x.res || []).length ? '<br><b>Resultados:</b>' + x.res.map(m => '<br>' + (/no apta/i.test(m.resultado) ? '❌' : /sin conclus/i.test(m.resultado) ? '❔' : '✅') + ' ' + esc(m.donde) + ' · ' + esc(m.analisis) + ' · <b' + (/no apta/i.test(m.resultado) ? ' style="color:var(--er)"' : '') + '>' + esc(m.resultado) + '</b>' + (m.url ? ' · <a href="' + esc(m.url) + '" target="_blank" rel="noopener">informe ↗</a>' : '')).join('') : '') + '</small></div>' +
         '<span class="tag ' + aguaLabNivel(x) + '">' + esc(x.aviso || 's/d') + '</span></div>'; }).join('') + '</div>'
       : '<p class="mu">Todavía no hay muestreos del laboratorio cargados para esta red.</p>') +
     (AGUA_INF_MI[SES.est] ? '<div class="menu"><button class="big" data-act="aguaInformes"><b>Ver los informes (PDF)</b><span>Carpeta de Drive con los análisis y remitos</span></button></div>' : '');
