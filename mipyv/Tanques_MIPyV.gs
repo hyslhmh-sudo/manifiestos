@@ -96,14 +96,15 @@ function cronogramaTanques_(ss, dias) {
   d.lugares.forEach((l) => (nom[l.id] = l.nombre));
   const f = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : 's/d';
   d.tanques.filter((t) => !/riego/i.test(t.uso)).forEach((t) => {
-    const k = t.lugares[0]; const g = por[k] = por[k] || { n: 0, prox: '', ult: '', sin: 0 };
+    const k = t.lugares.join('|'); const g = por[k] = por[k] || { n: 0, prox: '', ult: '', sin: 0 };
     g.n++; if (!t.ultima_limpieza) g.sin++;
     if (t.ultima_limpieza && (!g.ult || t.ultima_limpieza > g.ult)) g.ult = t.ultima_limpieza;
     const p = t.ultima_limpieza ? t.proxima_limpieza : ''; if (p && (!g.prox || p < g.prox)) g.prox = p;
   });
   const venc = [], prox = [], ok = [];
   Object.keys(por).forEach((k) => {
-    const g = por[k], n = g.n + (g.n === 1 ? ' tanque' : ' tanques'), nm = nom[k] || k;
+    // tanques compartidos por varios lugares (p. ej. la sede ex ADOS): se nombran todos, una sola vez
+    const g = por[k], n = g.n + (g.n === 1 ? ' tanque' : ' tanques'), nm = k.split('|').map((x) => nom[x] || x).join(' / ');
     if (g.sin || !g.prox || g.prox < lim) venc.push([g.prox || '0', '⚠️  ' + nm + ' · ' + n + ' · ' + (g.ult ? 'vencida desde ' + f(g.prox) + ' (última: ' + f(g.ult) + ')' : 'sin limpieza registrada')]);
     else if (g.prox <= tope) prox.push([g.prox, '📅  ' + nm + ' · ' + n + ' · toca el ' + f(g.prox) + ' (última: ' + f(g.ult) + ')']);
     else ok.push([nm, nm + ' (' + f(g.ult) + ')']);
