@@ -79,9 +79,7 @@ function tanquesParaApp_(ss) {
     const propio = String(t.LUGAR_MIPYV || '').trim(), ids = L.map((l) => l.id);
     const lug = propio && ids.indexOf(propio) >= 0 ? [propio] : (porSitio[String(t.ESTABLECIMIENTO).trim() + '|' + tqNorm_(tqSitio_(t.SITIO))] || []), i = ultI[String(t.CODIGO_TANQUE)] || {};
     const ult = tqIso_(t.ULTIMA_LIMPIEZA);
-    // 03/11/2026 (pedido de Belén): una limpieza registrada cuenta también como relevamiento de estado (el tanque se abrió y se revisó),
-    // para que un tanque recién limpiado no figure «con algo vencido» por falta de relevamiento.
-    if (ult && (!i.fecha || ult >= i.fecha)) { i.fecha = ult; i.resultado = 'Limpieza registrada (cuenta como relevamiento)'; i.proxima = tqMeses_(ult, TQ_INSP_MESES); }
+    // 03/11/2026 (Belén: «se confunde relevamiento con limpieza»): la limpieza NO cuenta como revisión; cada tarea tiene su propio estado.
     return { codigo: String(t.CODIGO_TANQUE), lugares: lug, sitio: String(t.SITIO || ''), ubicacion: String(t.UBICACION || ''), tipo: String(t.TIPO || ''), uso: String(t.USO || ''),
       capacidad: String(t.CAPACIDAD_L || ''), material: String(t.MATERIAL || ''), tapa: String(t.TAPA || ''), acceso: String(t.ACCESO || ''),
       ultima_limpieza: ult, proxima_limpieza: tqIso_(t.PROXIMA_LIMPIEZA) || tqMeses_(ult, Number(t.FRECUENCIA_LIMPIEZA_MESES) || 12),

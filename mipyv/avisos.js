@@ -49,16 +49,30 @@ function avisosCasos() {
 }
 
 // ---------- Pantalla de inicio ----------
+// 03/11/2026 (Belén): arriba de todo, SOLO lo urgente que falta hacer («❗ Para hacer ahora»), con los datos sincronizados:
+// plagas con la 2.ª visita vencida o por vencer y lugares con tanques para limpiar. Después, en cada tarjeta, el estado
+// en palabras simples: ✅ hecho · ⏳ en curso · ❗ falta hacer.
 function avisosPintar() {
   const box = document.getElementById("avisosHome"); if (!box) return;
-  const casos = avisosCasos(), urg = casos.filter((c) => c.urgente);
-  box.innerHTML = avMensajeHtml() + (urg.length
-    ? `<button type="button" class="av-urgente" data-av="casos"><span class="av-emo">⚠️</span><span><b>Revisar urgente: ${urg.length} caso${urg.length > 1 ? "s" : ""}</b><small>Tocá para indicar si quedó resuelto</small></span></button>`
-    : casos.length ? `<button type="button" class="av-suave" data-av="casos"><span class="av-emo">📋</span><span><b>${casos.length} caso${casos.length > 1 ? "s" : ""} abierto${casos.length > 1 ? "s" : ""}</b><small>Al día. Tocá para verlos o cerrarlos</small></span></button>` : "");
+  const casos = avisosCasos(), urg = casos.filter((c) => c.urgente).sort((a, b) => a.dias - b.dias);
+  const tq = typeof tqUrgentes === "function" ? tqUrgentes() : [];
+  const items = urg.map((c, i) => `<button type="button" class="av-item" data-av="caso" data-i="${i}"><span class="av-emo">🐜</span><span><b>${avEsc(c.establecimiento)} · ${avEsc(c.tipo_plaga || "plaga")}</b><small>${c.dias < 0 ? "La 2.ª visita venció hace " + -c.dias + (c.dias === -1 ? " día" : " días") : c.dias === 0 ? "La 2.ª visita vence hoy" : "La 2.ª visita vence en " + c.dias + (c.dias === 1 ? " día" : " días")} · tocá para volver o cerrar el caso</small></span></button>`)
+    .concat(tq.map((x, i) => `<button type="button" class="av-item" data-av="tq" data-i="${i}"><span class="av-emo">💧</span><span><b>${avEsc(x.lugar.nombre)} · limpiar ${x.n === 1 ? "1 tanque" : x.n + " tanques"}</b><small>La limpieza está vencida o no está cargada · tocá para ver cuáles</small></span></button>`));
+  box.innerHTML = `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
+  box.querySelectorAll("[data-av=caso]").forEach((b) => (b.onclick = () => avCasosLista()));
+  box.querySelectorAll("[data-av=tq]").forEach((b) => (b.onclick = () => { const x = tq[+b.dataset.i]; const go = document.getElementById("goTanques"); if (go) go.click();
+    setTimeout(() => { try { tq_irLugar(x.lugar); } catch (e) {} }, 60); }));
+  // Estado en cada tarjeta
+  const sub = (id, txt) => { const el = document.getElementById(id); if (el) { const s = el.querySelector(".mc-sub"); if (s) s.textContent = txt; } };
+  const venc = casos.filter((c) => c.dias < 0).length;
+  sub("goMipyv", casos.length ? (venc ? "❗ " + venc + " con la 2.ª visita vencida · " : "") + "⏳ " + casos.length + (casos.length === 1 ? " plaga activa (caso abierto)" : " plagas activas (casos abiertos)") : "✅ Sin plagas activas · tocá para cargar una visita");
+  try { const tr = JSON.parse(localStorage.getItem("mipyv_trabajos_planilla_v1") || "null"), n = tr && Array.isArray(tr.lista) ? tr.lista.length : null;
+    if (n != null) sub("goSaneamiento", n ? "⏳ " + n + (n === 1 ? " trabajo sin terminar" : " trabajos sin terminar") + " · tocá para seguir" : "✅ Ningún trabajo sin terminar"); } catch (e) {}
   const sol = document.getElementById("goSolicitudes");
   if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
-  box.querySelectorAll("[data-av=casos]").forEach((b) => (b.onclick = () => avCasosLista()));
 }
+// Abre un lugar en «Tanques y cisternas» (desde «Para hacer ahora»)
+function tq_irLugar(l) { if (typeof tq === "undefined") return; tq.vista = "lugar"; tq.lugar = l; tq.codigo = null; tqRender(); if (typeof screensEl !== "undefined") screensEl.scrollTop = 0; }
 
 // Mensaje de HyS (texto con formato de WhatsApp: *negrita*, viñetas «•»). Se cambia o se borra desde la planilla.
 function avMensajeHtml() {
@@ -230,7 +244,7 @@ function avSolForm(yo, tipo) {
 (function avisosIniciar() {
   const st = document.createElement("style");
   st.textContent = `
-#avisosHome:empty{display:none}#avisosHome{margin:0 0 14px}
+#avisosHome:empty{display:none}#avisosHome{margin:0 0 14px}.av-ahora{background:#fff;border:2px solid #C0453A;border-radius:18px;padding:12px;margin:0 0 14px}.av-ahora-t{font-weight:800;color:#8A2B1F;font-size:1.05rem;margin:2px 4px 8px}.av-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:#FBE4E1;border:0;border-radius:12px;padding:10px 12px;margin:0 0 8px;font-family:inherit;color:#5A1A13;cursor:pointer}.av-item b{display:block;font-size:.98rem}.av-item small{display:block;font-weight:600;opacity:.9}
 .av-urgente,.av-suave,.av-grande,.av-caso,.av-tile{width:100%;border:none;font-family:inherit;text-align:left;display:flex;gap:14px;align-items:center;border-radius:18px;padding:16px;margin:0 0 12px;cursor:pointer}
 .av-msj{background:#FFF7E0;border:2px solid #E0B44C;border-radius:18px;padding:14px 16px;margin:0 0 14px;color:#2B2B2B;font-size:.95rem;line-height:1.4}.av-msj-t{font-size:.8rem;font-weight:700;color:#8A6400;margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}.av-msj b{color:#0D313F}.av-msj-v{padding-left:6px}.av-msj-sep{height:8px}
 .av-urgente{background:#B4361F;color:#fff;animation:avLatido 1.6s ease-in-out infinite}.av-suave{background:#EAF1F2;color:#0D313F}
