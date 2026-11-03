@@ -7,4 +7,4 @@
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.03g";
+const APP_VERSION = "2026.11.03h";

@@ -185,7 +185,7 @@ function guardarTanqueMipyv_(tipo, data) {
     const o = { CODIGO_TANQUE: codigo, ESTABLECIMIENTO: l.cod, SITIO: l.sitio, LUGAR_MIPYV: l.id, UBICACION: String(data.UBICACION).trim(), TIPO: data.TIPO, USO: data.USO,
       CAPACIDAD_L: String(data.CAPACIDAD_L).replace(/[^\d]/g, '') || 's/d', MATERIAL: String(data.MATERIAL || '').trim() || 's/d', TAPA: data.TAPA, ACCESO: data.ACCESO,
       QUIEN_LIMPIA: 'Operarios MIPyV (Javier y Paulo Tramaleo)', FRECUENCIA_LIMPIEZA_MESES: 12, ULTIMA_LIMPIEZA: ult || '', PROXIMA_LIMPIEZA: ult ? tqMeses_(ult, 12) : '',
-      ESTADO: 'Activo', OBSERVACIONES: ('Alta ' + marcaFecha + ' · ' + quien + ' (lugar: ' + l.nombre + ') ' + marca + '. ' + (ult ? '' : 'Última limpieza: s/d. ') + String(data.OBS_TANQUE || '').trim()).trim(),
+      ESTADO: 'Activo', OBSERVACIONES: ('Alta ' + marcaFecha + ' · ' + quien + ' (lugar: ' + l.nombre + ') ' + marca + '. ' + (ult ? '' : 'Última limpieza: s/d. ') + (data.CAPACIDAD_ESTIMADA === 'Sí' ? 'Capacidad ESTIMADA (no se sabe el número exacto). ' : '') + String(data.OBS_TANQUE || '').trim()).trim(),
       ACTUALIZADO: tqHoy_() };
     tqAgregar_(R, o);
     const ev = tqGuardarInspeccion_(tqTabla_('AGUA_INSPECCIONES', TQ_INSP_H), data, o, quien, fecha, 'INS-' + data.id_alta);
@@ -199,6 +199,8 @@ function guardarTanqueMipyv_(tipo, data) {
     const nombres = { UBICACION: 'Ubicación', TIPO: 'Tipo', USO: 'Uso', CAPACIDAD_L: 'Capacidad', MATERIAL: 'Material', TAPA: 'Tapa', ACCESO: 'Acceso', ESTADO: 'Estado' };
     const cambios = {}, dif = [];
     Object.keys(nombres).forEach((k) => { if (!(k in data)) return; const v = String(data[k] == null ? '' : data[k]).trim(); if (!v || tqNorm_(v) === tqNorm_(t[k])) return; cambios[k] = k === 'CAPACIDAD_L' ? v.replace(/[^\d]/g, '') : v; dif.push(nombres[k] + ': «' + (String(t[k] || '').trim() || '—') + '» → «' + v + '»'); });
+    // 03/11/2026 (Belén): si no saben los litros, eligen un tamaño parecido y queda anotado como capacidad ESTIMADA
+    if (data.CAPACIDAD_ESTIMADA === 'Sí' && String(data.CAPACIDAD_L || '').replace(/[^\d]/g, '')) dif.push('capacidad ESTIMADA (no se sabe el número exacto)');
     cambios.OBSERVACIONES = (String(t.OBSERVACIONES || '') + '\n' + marcaFecha + ' · ' + quien + ': ' + (dif.join('; ') || 'sin cambios') + ' ' + marca).trim().slice(0, 3000);
     cambios.ACTUALIZADO = tqHoy_();
     tqCambiar_(R, t._fila, cambios);
