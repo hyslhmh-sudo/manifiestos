@@ -117,7 +117,7 @@ function aglPintar() {
   const fila = x => {
     const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), can = x.canillas && x.canillas !== 's/d' ? esc(x.canillas) : 's/d';
     return '<details class="aglF" style="border-top:1px solid #EEF2F4"><summary style="list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 4px;align-items:center">' +
-      '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:#0D313F;font-weight:600">' + esc(qTxt(x)) + '</small></span>' +
+      '<span><b style="font-size:14.5px">' + esc(x.lugar) + '</b> <span class="mu peq">· red ' + esc(x.red) + '</span><small style="display:block;color:' + (/limpiar tanques/i.test(qTxt(x)) ? 'var(--er)' : '#0D313F') + ';font-weight:' + (/limpiar tanques/i.test(qTxt(x)) ? '700' : '600') + '">' + esc(qTxt(x)) + '</small></span>' +
       '<span style="text-align:right"><span class="chip ' + color[e] + '">' + esc(x.aviso || 's/d') + '</span>' + (limite(x) && limite(x) !== 'ya' ? '<small style="display:block;margin-top:3px;font-weight:700;color:var(--wa)">' + limite(x) + '</small>' : '') + '</span></summary>' +
       '<div class="mu peq" style="padding:0 4px 12px;line-height:1.55">' +
       (e === 'ok' ? '' : '<button class="btn pri" style="margin:2px 0 8px" onclick="aglPedir(' + AGL.lab.indexOf(x) + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir muestreo ' + (comp ? 'COMPLETO' : 'PARCIAL') + ' al DPSB (formulario completo)') + ' ↗</button> <button class="btn sec" style="margin:2px 0 8px" id="aglAv' + AGL.lab.indexOf(x) + '" onclick="aglAviso(' + AGL.lab.indexOf(x) + ')">✉ Generar aviso por correo (borrador)</button><br><span style="display:block;margin-bottom:6px">Si el formulario aparece con campos vacíos o con datos de otro establecimiento, es un borrador sin enviar que guardó Google: abajo de todo tocá «Borrar formulario» y volvé a tocar este botón.</span>') +
@@ -127,8 +127,8 @@ function aglPintar() {
       '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
       (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
       (comp ? '<br>' + (tqOk(x) ? '<b style="color:#1E6B3A">✅ Tanques limpios:</b> ' + x.tanques.n + ' de ' + x.tanques.n + ' (última limpieza ' + fT(x.tanques.ultima) + '). Listo para pedir el muestreo completo.'
-        : x.tanques && x.tanques.n ? '<b>Antes:</b> limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente (último ' + (x.tanques.dias >= 360 ? 'año' : x.tanques.dias + ' días') + ')' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.'
-        : '<b>Antes:</b> HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.') : '') + '</div></details>';
+        : x.tanques && x.tanques.n ? '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente (último ' + (x.tanques.dias >= 360 ? 'año' : x.tanques.dias + ' días') + ')' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.</span>'
+        : '<b style="color:var(--er)">Antes:</b> <span style="color:var(--er)">HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.</span>') : '') + '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
   const resto = AGL.ver ? [] : L.filter(x => est(x) === 'ok');

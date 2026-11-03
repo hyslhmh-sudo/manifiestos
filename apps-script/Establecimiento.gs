@@ -398,7 +398,12 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
   const docs = de(miLeer_('DOCUMENTOS_EST')).filter(d => d.ESTADO === 'Vigente').map(d => ({ id: d.ID, tema: d.TEMA, tipo: d.TIPO, codigo: d.CODIGO, titulo: d.TITULO, version: d.VERSION, vigencia: d.FECHA_VIGENCIA, vence: d.FECHA_VENCIMIENTO, url: d.ARCHIVO, cargado: d.CARGADO }));
   const E = pBC_().getSheetByName('ESTABLECIMIENTOS'), EH = E.getRange(5, 1, 1, E.getLastColumn()).getValues()[0].map(String), ef = pTabla_(E, EH.length).find(r => limpio_(r.v[0]) === G.dueno), ev = c => ef && EH.indexOf(c) >= 0 ? limpio_(ef.v[EH.indexOf(c)]) : '';
   const carpeta = ev('CARPETA'), rapido = !!(op && op.portal), F = rapido ? { lista: [] } : miFormularios_(), CT = rapido ? { lista: [] } : miContratos_();
-  return { ok: true, est: cod, dueno: G.dueno, grupo: G.cods, red: red, pendientes: P, tanques: tanques, puntos: puntos, casos: C.map(c => ({ caso: c.CASO, est: c.ESTABLECIMIENTO, sitio: c.SITIO, sector: c.SECTOR, fecha: c.FECHA, plaga: c.PLAGA, estado: c.ESTADO, proxima: c.PROXIMA_REVISION })),
+  // 03/11/2026 (Belén): muestreos del laboratorio provincial (DPSB) de la red del establecimiento, los mismos del portal
+  // (libro «Agua · Tablero de análisis de laboratorio», AguaLab.gs). Solo para ver: el pedido al DPSB lo hace HyS.
+  let lab = [];
+  if (!(op && op.portal) && typeof aguaLab_ === 'function') { try { lab = aguaLab_().filter(x => G.cods.indexOf(x.cod) >= 0 && x.grupo !== 'Otros').map(x => ({ lugar: x.lugar, red: x.red, ultimo: x.ultimo, muestras: x.muestras,
+    noAptas: x.noAptas, que: x.que, aviso: x.aviso, limite: x.limite, parcial: x.parcial, completo: x.completo, tanques: x.tanques || null })); } catch (e) { lab = []; } }
+  return { ok: true, est: cod, dueno: G.dueno, grupo: G.cods, red: red, pendientes: P, lab: lab, tanques: tanques, puntos: puntos, casos: C.map(c => ({ caso: c.CASO, est: c.ESTABLECIMIENTO, sitio: c.SITIO, sector: c.SECTOR, fecha: c.FECHA, plaga: c.PLAGA, estado: c.ESTADO, proxima: c.PROXIMA_REVISION })),
     documentos: docs, biblioteca: !rapido && typeof bibPara_ === 'function' ? bibPara_(G.dueno) : [], formularios: F.lista, formulariosError: F.error || '', contratos: CT.lista, contratosError: CT.error || '', carpeta: /^https?:/.test(carpeta) ? carpeta : (carpeta ? 'https://drive.google.com/drive/folders/' + carpeta : ''),
     accidentes: typeof accActivo_ === 'function' ? accActivo_(cod) : false,   // pestaña Personal (Modulo4.gs)
     poe: { limpieza: ev('POE_LIMPIEZA_TANQUES') || 'Provincial (DPSB)', muestra: ev('POE_TOMA_MUESTRA') || 'Provincial (DPSB)' }, sitios: miSitios_(cod), hoy: hoy,
