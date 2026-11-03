@@ -1704,7 +1704,7 @@ const CAMPOS_ALTA = [
 let altaN = 0;
 function altaVacia(l) { const d = {}; CAMPOS_ALTA.forEach(([k]) => d[k] = ""); const f = {}; FOTOS_EXTINTOR.forEach(([k]) => f[k] = ""); return { uid: "A" + (++altaN) + "-" + Date.now(), lugar: { id: l.id, nombre: l.nombre }, datos: d, fotos: f, obs: "" }; }
 // Kilos: acepta «5», «2,5», «2.5» o «5 kg»; devuelve el número con punto, o "" si no hay número
-function kilosNormal(v) { const m = String(v || "").replace(",", ".").match(/\d+(\.\d+)?/); return m ? m[0] : ""; }
+function kilosNormal(v) { const m = String(v || "").replace(/\s*[,.]\s*/, ".").match(/\d+(\.\d+)?/); return m ? m[0] : ""; }   // «2,5», «2, 5», «2.5» o «2,5 kg» → 2.5 (03/11/2026: «2, 5» se guardaba como 2)
 function altaValor(a, k) { return k === "CAPACIDAD_KG" ? kilosNormal(a.datos[k]) : String(a.datos[k] || "").trim(); }
 function altaFaltan(a) {
   const f = CAMPOS_ALTA.filter(([k, , , , opc]) => !opc && !altaValor(a, k)).map(([, tit]) => tit.replace(/[¿?]/g, "").replace(/\s*\(.*\)\s*/, "").trim().toLowerCase());
