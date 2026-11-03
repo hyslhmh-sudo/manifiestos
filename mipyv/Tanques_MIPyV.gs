@@ -190,7 +190,7 @@ function guardarTanqueMipyv_(tipo, data) {
     const cod = String(t.ESTABLECIMIENTO).trim(), pref = 'LIM-' + cod + '-' + fecha.slice(0, 4) + '-';
     const n = Lm.filas.filter((x) => String(x.ID).indexOf(pref) === 0).reduce((m, x) => Math.max(m, Number(String(x.ID).slice(pref.length)) || 0), 0) + 1;
     const id = pref + ('00' + n).slice(-3);
-    const archivo = tqFotos_(data, cod, fecha, fecha + ' · ' + t.CODIGO_TANQUE + ' · Limpieza F-AGU-01-T', 1);
+    const archivo = tqFotos_(data, cod, fecha, fecha + ' · ' + t.CODIGO_TANQUE + ' · Limpieza F-AGU-01-T', 0) || 's/d (sin foto del F-AGU-01-T)';   // 02/11/2026: foto opcional por ahora
     const ml = String(data.LAVANDINA_ML == null ? '' : data.LAVANDINA_ML).replace('.', ',').trim();   // 28/10/2026: desinfección con el 20 % del tanque, 2 mL de lavandina 5,5 % por litro (110 ppm)
     tqAgregar_(Lm, { ID: id, FECHA: fecha, ESTABLECIMIENTO: cod, CODIGO_TANQUE: t.CODIGO_TANQUE, PROCEDIMIENTO: 'POE-AGU-001 (propio) · F-AGU-01-T',
       HORA_CORTE: data.HORA_CORTE || '', HORA_REHABILITACION: data.HORA_REHABILITACION || '', HORAS_CERRADO: data.HORAS_CERRADO || '',

@@ -140,7 +140,7 @@ function tqRenderLugar() {
       <span class="ext-ico">${/cisterna/i.test(t.tipo) ? "🛢️" : "💧"}</span><span class="ext-txt"><b>${escX(t.codigo || "Nuevo")} · ${escX(t.tipo || "s/d")}${t.capacidad ? " · " + escX(Number(t.capacidad) ? Number(t.capacidad).toLocaleString("es-AR") + " L" : t.capacidad) : ""}</b>
       <small>${escX(t.ubicacion || "s/d")}</small>${avs.map(a => `<small class="ext-vto ${a.nivel === "ok" ? "" : a.nivel}">${a.nivel === "er" ? "⚠️ " : a.nivel === "wa" ? "⏰ " : "✅ "}${escX(a.txt)}</small>`).join("")}</span></button>`;
     if (abierto) h += `<div class="ext-panel"><button type="button" class="ext-listo" data-accion="insp">🔍 Relevamiento de estado (cada 3 meses)</button>
-      <button type="button" class="ext-listo tq-azul" data-accion="limp">🧽 Registrar una limpieza (foto del F-AGU-01-T)</button>
+      <button type="button" class="ext-listo tq-azul" data-accion="limp">🧽 Registrar una limpieza</button>
       <button type="button" class="ext-editar" data-accion="edit">✏️ Corregir los datos de este tanque</button>
       <div class="step-sub" style="margin-top:8px">Última limpieza: ${tqFecha(t.ultima_limpieza)} · último relevamiento: ${tqFecha(t.ultima_insp)}${t.resultado_insp ? " (" + escX(t.resultado_insp) + ")" : ""} · tapa: ${escX(t.tapa || "s/d")} · acceso: ${escX(t.acceso || "s/d")}</div></div>`;
   });
@@ -202,7 +202,7 @@ function tqFaltan(f) {
   }
   if (f.accion === "limp") {
     if (!d.HORAS_CERRADO) x.push("horas cerrado");
-    if (!d.TAPA) x.push("tapa"); if (!f.fotos.length) x.push("la foto del F-AGU-01-T firmado");
+    if (!d.TAPA) x.push("tapa");   // 02/11/2026: la foto del F-AGU-01-T es opcional por ahora (pedido de Belén)
   }
   if (!f.FECHA) x.push("fecha");
   return x;
@@ -215,7 +215,7 @@ function tqRenderForm() {
     <div class="step-sub">${escX(f.lugar ? f.lugar.nombre : "")}${t ? " · " + escX(t.codigo) + " · " + escX(t.ubicacion || "") : ""}</div><div class="ext-card tq">`;
   h += `<div class="ext-preg">Fecha</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">`;
   if (f.accion === "alta" || f.accion === "edit") {
-    h += `<div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-dato="UBICACION" value="${escX(d.UBICACION)}" placeholder="Ej.: techo del edificio principal, patio del fondo">
+    h += `<div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-dato="UBICACION" value="${escX(d.UBICACION)}" placeholder="Ej.: techo del edificio principal, patio del fondo"><div class="step-sub">Solo dónde está este tanque. Si hay más tanques o una cisterna, agregá cada uno aparte con «Agregar un tanque o cisterna».</div>
       <div class="ext-preg">Tipo</div>${tqOpc("TIPO", TQ_OPC.TIPO, d.TIPO)}
       <div class="ext-preg">¿Para qué se usa el agua?</div>${tqOpc("USO", TQ_OPC.USO, d.USO)}
       <div class="ext-preg">Capacidad (litros)</div><input class="ext-inp" inputmode="numeric" data-dato="CAPACIDAD_L" value="${escX(d.CAPACIDAD_L)}" placeholder="Ej.: 1100 (si no se sabe, el número del tanque o aproximado)">
@@ -244,7 +244,7 @@ function tqRenderForm() {
       <div class="ext-preg">Análisis de laboratorio (lo pide Higiene y Seguridad)</div>${tqOpc("MUESTRA_TOMADA", TQ_OPC.MUESTRA_TOMADA, d.MUESTRA_TOMADA)}`;
   }
   if (f.accion !== "edit") {
-    const tit = f.accion === "limp" ? "Foto del F-AGU-01-T completo y firmado (las 2 hojas)" : "Fotos del tanque (de afuera y, si se puede, de adentro)";
+    const tit = f.accion === "limp" ? "Foto del F-AGU-01-T firmado (opcional por ahora)" : "Fotos del tanque (de afuera y, si se puede, de adentro)";
     h += `<div class="ext-preg" style="margin-top:16px">${tit} · hasta 5</div><div class="foto-grid" id="tqFotoGrid"></div>`;
   }
   h += `<div class="ext-preg" style="margin-top:16px">Observaciones${f.accion === "edit" ? "" : " (opcional)"}</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="${f.accion === "limp" ? "Lo que no se pudo hacer, arreglos que hacen falta…" : "Lo que quieras contar"}">${escX(f.obs)}</textarea>`;

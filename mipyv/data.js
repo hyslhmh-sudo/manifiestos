@@ -272,7 +272,6 @@ const TAREAS_SANEAMIENTO = [
   { id: "predios", nombre: "Limpieza de predios", icono: "yard" },
   { id: "insecticida", nombre: "Saneamiento con insecticida doméstico", icono: "spray" },
   { id: "canerias", nombre: "Desobstrucción de cañerías", icono: "pipe" },
-  { id: "tanques", nombre: "Limpieza de tanques de agua", icono: "tank" },
   { id: "roedores", nombre: "Control de roedores / sellado", icono: "rodent" },
   { id: "pluviales", nombre: "Desagües pluviales", icono: "drain" },
 ];
@@ -282,7 +281,6 @@ const DETALLE_CHIPS_SANEAMIENTO = [
   "Se retiraron residuos / escombros",
   "Agua estancada eliminada",
   "Obstrucción resuelta",
-  "Tanque limpio y desinfectado",
   "Poda realizada",
   "Sellado de aberturas realizado",
   "Requiere mantenimiento (reportado)",
