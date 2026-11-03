@@ -374,6 +374,13 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
           <div class="mc-sub" id="tqHomeSub">Limpieza y revisión de tanques · red Trelew</div>
         </div>
       </button>
+      <button class="module-card edificio" type="button" id="goEdificio">
+        <span class="mc-emoji">🏚️</span>
+        <div>
+          <div class="mc-title">Relevamiento de edificios</div>
+          <div class="mc-sub">Agua, desagües, canaletas y techos</div>
+        </div>
+      </button>
       <button class="module-card ext" type="button" id="goExtTabla">
         <span class="mc-emoji">📋</span>
         <div>
@@ -681,6 +688,13 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <div id="tanquesBox"></div>
     </section>
 
+    <!-- ============ RELEVAMIENTO DE EDIFICIOS (edificio.js) ============ -->
+    <section class="screen" data-step="e-main">
+      <div class="step-title">Relevamiento de edificios</div>
+      <div class="step-sub">Agua · desagües · canaletas · techos · un lugar por vez</div>
+      <div id="edificioBox"></div>
+    </section>
+
     <section class="screen" data-step="h-detalle">
       <div class="step-title">¿Qué hiciste?</div>
       <div class="step-sub" id="hDetalleSub">Contalo con tus palabras</div>
@@ -741,5 +755,6 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 <script src="avisos.js"></script>
 <script src="tanques.js"></script>
 <script src="extintores.js"></script>
+<script src="edificio.js"></script>
 </body>
 </html>

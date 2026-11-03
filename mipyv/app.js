@@ -71,7 +71,7 @@ function goHome() {
   currentModule = null;
   if (hayVersionNueva) { window.location.reload(); return; }
   cargarCatalogosGuardados(); // por si se descargaron listas nuevas mientras cargaba
-  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques");
+  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques", "mode-edificio");
   brandLabel.textContent = "Red HZT";
   progressWrap.style.display = "none";
   bottomBar.style.display = "none";
@@ -81,6 +81,7 @@ function goHome() {
   if (typeof avisosPintar === "function") avisosPintar();
   borradorMostrarAviso();
   if (typeof tqAvisoHome === "function") { tqPintarHome(); tqAvisoHome(); }
+  if (typeof edPintarHome === "function") edPintarHome();
 }
 homeBtn.addEventListener("click", goHome);
 
@@ -92,8 +93,13 @@ function enterModule(mod) {
   resetTareaHys();
   operarioAcompanante = null;
   acompananteRespondido = false;
-  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques");
-  if (mod === "tanques") {   // tanques y cisternas de la red Trelew (tanques.js, 28/10/2026)
+  document.body.classList.remove("mode-saneamiento", "mode-hys", "mode-tanques", "mode-edificio");
+  if (mod === "edificio") {   // relevamiento de edificios: agua, desagües, canaletas y techos (edificio.js, 03/11/2026)
+    document.body.classList.add("mode-edificio");
+    brandLabel.textContent = "Relevamiento de edificios";
+    stepList = ["quien", "acompanante", "e-main"];
+    if (typeof edEntrar === "function") edEntrar();
+  } else if (mod === "tanques") {   // tanques y cisternas de la red Trelew (tanques.js, 28/10/2026)
     document.body.classList.add("mode-tanques");
     brandLabel.textContent = "Tanques y cisternas";
     stepList = ["quien", "acompanante", "t-main"];
@@ -130,7 +136,7 @@ function showStep(name) {
   const pos = stepList.indexOf(name) + 1;
   progressFill.style.width = Math.max(8, (pos / stepList.length) * 100) + "%";
   backBtn.style.visibility = pos <= 1 ? "hidden" : "visible";
-  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent" || name === "t-main";   // t-main tiene sus propios botones
+  const isSentScreen = name === "m-sent" || name === "s-sent" || name === "h-sent" || name === "t-main" || name === "e-main";   // t-main y e-main tienen sus propios botones
   bottomBar.style.display = isSentScreen ? "none" : "flex";
   nextBtn.disabled = !canAdvance(name);
   const isConfirm = name === "m-confirm" || name === "s-confirm" || name === "h-confirm";
@@ -155,6 +161,7 @@ function showStep(name) {
   if (name === "h-hallazgos") prepararHallazgosHys();
   if (name === "h-confirm") renderResumenHys();
   if (name === "t-main" && typeof tqRender === "function") tqRender();
+  if (name === "e-main" && typeof edRender === "function") edRender();
   if (currentModule === "hys" && name !== "h-sent") borradorProgramar();
 }
 
@@ -2379,6 +2386,7 @@ async function actualizarCatalogosDesdePlanilla() {
     if (!currentModule) aplicarCatalogos(catalogos);
     if (catalogos.tanques && typeof tqAplicarCatalogo === "function") tqAplicarCatalogo(catalogos.tanques);   // aunque esté cargando (no cambia el formulario abierto)
     if (typeof avisosDatos === "function") avisosDatos(datos);   // casos por vencer y solicitudes (avisos.js)
+    if (typeof edDatos === "function") edDatos(datos);   // relevamiento de edificios (edificio.js, 03/11/2026)
   } catch (err) {
     console.warn("No se pudieron descargar los catálogos de la planilla; se usa la copia del celular.", err);
   }

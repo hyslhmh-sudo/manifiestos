@@ -261,6 +261,10 @@ function doPost(e) {
       const r = guardarTanqueMipyv_(tipo, data);
       return respuesta(Object.assign({ ok: true }, r));
     }
+    if (tipo === "relev_edificio") {   // relevamiento de edificios: agua, desagües, canaletas y techos (Edificio_MIPyV.gs, 03/11/2026)
+      const r = guardarRelevEdificio_(ss, data);
+      return respuesta(Object.assign({ ok: true }, r));
+    }
     if (tipo === "cierre_caso" || tipo === "solicitud") {   // cierre de casos y solicitudes a HyS (Casos_Solicitudes_MIPyV.gs, 25/10/2026)
       const r = guardarCasoOSolicitud_(ss, tipo, data);
       return respuesta(Object.assign({ ok: true }, r));
@@ -496,6 +500,8 @@ function doGet(e) {
   try { out.extintores_lugares = lugaresIncendioParaApp_(ss); } catch (err) { out.extintores_lugares_error = String(err.message || err); }
   // tanques y cisternas de la red Trelew, sin el HMH (archivo Tanques_MIPyV.gs, 28/10/2026)
   try { out.tanques = tanquesParaApp_(ss); } catch (err) { out.tanques_error = String(err.message || err); }
+  // relevamiento de edificios: último de cada lugar (archivo Edificio_MIPyV.gs, 03/11/2026)
+  try { if (typeof edificioParaApp_ === "function") out.edificio = edificioParaApp_(ss); } catch (err) { out.edificio_error = String(err.message || err); }
 
 
   return respuesta(out);
