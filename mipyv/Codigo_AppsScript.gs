@@ -504,12 +504,15 @@ function doGet(e) {
 // Mensaje de HyS en la pantalla de inicio de la app (30/10/2026, pedido de Belén). Hoja "configuracion": fila con
 // "mensaje_inicio" en la columna clave y el texto en valor (admite varias líneas y *negrita* como en WhatsApp).
 // Para sacarlo, borrar el texto (o la fila). Si hay varias filas, se muestran una debajo de otra.
+// {cronograma_tanques} dentro del texto = cronograma de limpieza armado solo, con los datos de RESERVORIOS (03/11/2026).
 function mensajeInicio(ss) {
   const sh = ss.getSheetByName(SHEET_CONFIG);
   if (!sh) return "";
   return sh.getDataRange().getValues().slice(1)
     .filter((r) => String(r[0]).trim() === "mensaje_inicio" && String(r[1]).trim() !== "")
-    .map((r) => String(r[1]).trim()).join("\n\n");
+    .map((r) => String(r[1]).trim()).join("\n\n")
+    // 03/11/2026: {cronograma_tanques} se reemplaza por la lista armada con los datos reales (Tanques_MIPyV.gs)
+    .replace(/\{cronograma_tanques\}/g, () => { try { return cronogramaTanques_(ss, 60); } catch (e) { return "(No se pudo armar el cronograma: " + e.message + ")"; } });
 }
 
 function tiposTareaHys(ss) {

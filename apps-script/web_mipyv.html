@@ -744,7 +744,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.02b";
+const APP_VERSION = "2026.11.03a";
 </script>
 <script>
 // ============================================================
@@ -4062,6 +4062,19 @@ function tqEstado(t) {
   if (av.every(a => a.nivel === "ok")) return [{ nivel: "ok", txt: "Al día · limpieza " + tqFecha(t.ultima_limpieza) + " · relevamiento " + tqFecha(t.ultima_insp) }];
   return av;
 }
+// 03/11/2026: en la lista de lugares se dice QUÉ falta (limpieza o relevamiento), no solo «algo vencido»
+function tqResumen(T) {
+  const sinL = T.filter(t => !/riego/i.test(t.uso || "") && (!t.ultima_limpieza || tqDias(t.proxima_limpieza || tqMas(t.ultima_limpieza, 12)) < 0)).length;
+  const sinR = T.filter(t => !t.ultima_insp || tqDias(tqMas(t.ultima_insp, TANQUES_CAT.meses_inspeccion || 3)) < 0).length;
+  const avs = T.map(t => tqPeor(tqEstado(t))), er = avs.filter(x => x === "er").length, wa = avs.filter(x => x === "wa").length;
+  const p = [];
+  if (sinL) p.push("🧽 " + sinL + " para limpiar");
+  if (sinR) p.push("📋 " + sinR + " sin relevamiento al día");
+  if (!p.length && er) p.push("⚠️ " + er + " para revisar");
+  if (!p.length && wa) p.push("⏰ " + wa + " por vencer");
+  if (!p.length) { const u = T.map(t => t.ultima_limpieza).filter(Boolean).sort().pop(); p.push("✅ al día" + (u ? " · limpio el " + tqFecha(u) : "")); }
+  return " · " + p.join(" · ");
+}
 const tqPeor = (avs) => avs.some(a => a.nivel === "er") ? "er" : avs.some(a => a.nivel === "wa") ? "wa" : "ok";
 
 // ---------- catálogo (lo llama app.js › aplicarCatalogos y actualizarCatalogosDesdePlanilla)
@@ -4083,7 +4096,7 @@ function tqPintarHome() {
   const T = tqTanques(), n = T.length;
   if (!n) { sub.textContent = (TANQUES_CAT.lugares || []).length ? "Relevamiento y limpieza · red Trelew" : "Relevamiento y limpieza · tocá Sincronizar con señal"; return; }
   const er = T.filter(t => tqPeor(tqEstado(t)) === "er").length;
-  sub.textContent = n + (n === 1 ? " cargado" : " cargados") + (er ? " · " + er + " con algo vencido" : " · todo al día");
+  sub.textContent = n + (n === 1 ? " cargado" : " cargados") + (er ? " · " + er + " para atender" : " · todo al día");
 }
 
 // ---------- pantalla principal (data-step="t-main")
@@ -4107,7 +4120,7 @@ function tqRenderLugares() {
   h += `<div class="step-sub" style="margin:6px 0 8px">Elegí el lugar</div>`;
   L.forEach(l => {
     const T = tqDe(l.id), avs = T.map(t => tqPeor(tqEstado(t))), er = avs.filter(x => x === "er").length, wa = avs.filter(x => x === "wa").length;
-    const txt = !T.length ? "Sin tanques cargados · tocá para agregarlos" : T.length + (T.length === 1 ? " tanque o cisterna" : " tanques o cisternas") + (er ? " · ⚠️ " + er + " con algo vencido" : wa ? " · ⏰ " + wa + " por vencer" : " · todo al día");
+    const txt = !T.length ? "Sin tanques cargados · tocá para agregarlos" : T.length + (T.length === 1 ? " tanque o cisterna" : " tanques o cisternas") + tqResumen(T);
     h += `<button type="button" class="ext-fila${T.length && !er && !wa ? " ok" : ""}" data-lugar="${escX(l.id)}"><span class="ext-ico">${!T.length ? "➕" : er ? "⚠️" : wa ? "⏰" : "✅"}</span><span class="ext-txt"><b>${escX(l.nombre)}</b><small>${escX(txt)}</small></span></button>`;
   });
   box.innerHTML = h;

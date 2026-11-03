@@ -76,12 +76,44 @@ function tanquesParaApp_(ss) {
   const tanques = R.filas.filter((t) => !/fuera/i.test(t.ESTADO) && TQ_COD_EXCLUIDOS.indexOf(String(t.ESTABLECIMIENTO).trim()) < 0).map((t) => {
     const lug = porSitio[String(t.ESTABLECIMIENTO).trim() + '|' + tqNorm_(tqSitio_(t.SITIO))] || [], i = ultI[String(t.CODIGO_TANQUE)] || {};
     const ult = tqIso_(t.ULTIMA_LIMPIEZA);
+    // 03/11/2026 (pedido de Belén): una limpieza registrada cuenta también como relevamiento de estado (el tanque se abrió y se revisó),
+    // para que un tanque recién limpiado no figure «con algo vencido» por falta de relevamiento.
+    if (ult && (!i.fecha || ult >= i.fecha)) { i.fecha = ult; i.resultado = 'Limpieza registrada (cuenta como relevamiento)'; i.proxima = tqMeses_(ult, TQ_INSP_MESES); }
     return { codigo: String(t.CODIGO_TANQUE), lugares: lug, sitio: String(t.SITIO || ''), ubicacion: String(t.UBICACION || ''), tipo: String(t.TIPO || ''), uso: String(t.USO || ''),
       capacidad: String(t.CAPACIDAD_L || ''), material: String(t.MATERIAL || ''), tapa: String(t.TAPA || ''), acceso: String(t.ACCESO || ''),
       ultima_limpieza: ult, proxima_limpieza: tqIso_(t.PROXIMA_LIMPIEZA) || tqMeses_(ult, Number(t.FRECUENCIA_LIMPIEZA_MESES) || 12),
       ultima_insp: i.fecha || '', resultado_insp: i.resultado || '', proxima_insp: i.proxima || '' };
   }).filter((t) => t.lugares.length);
   return { lugares: L.map((l) => ({ id: l.id, nombre: l.nombre, tipo: l.tipo })), tanques: tanques, hoy: tqHoy_(), meses_inspeccion: TQ_INSP_MESES };
+}
+
+// Cronograma de limpieza de tanques para el mensaje de inicio de la app (03/11/2026, pedido de Belén).
+// En planilla › configuracion › mensaje_inicio se escribe {cronograma_tanques} y la app muestra la lista armada con los datos
+// de BASE COMÚN › RESERVORIOS: así nunca queda desactualizada (cuando se registra una limpieza, el lugar pasa a «al día»).
+function cronogramaTanques_(ss, dias) {
+  const d = tanquesParaApp_(ss), hoy = d.hoy, lim = tqMeses_(hoy, 0), nom = {}, por = {};
+  const tope = (() => { const x = new Date(hoy + 'T12:00:00'); x.setDate(x.getDate() + (dias || 60)); return Utilities.formatDate(x, ZONA_HORARIA, 'yyyy-MM-dd'); })();
+  d.lugares.forEach((l) => (nom[l.id] = l.nombre));
+  const f = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : 's/d';
+  d.tanques.filter((t) => !/riego/i.test(t.uso)).forEach((t) => {
+    const k = t.lugares[0]; const g = por[k] = por[k] || { n: 0, prox: '', ult: '', sin: 0 };
+    g.n++; if (!t.ultima_limpieza) g.sin++;
+    if (t.ultima_limpieza && (!g.ult || t.ultima_limpieza > g.ult)) g.ult = t.ultima_limpieza;
+    const p = t.ultima_limpieza ? t.proxima_limpieza : ''; if (p && (!g.prox || p < g.prox)) g.prox = p;
+  });
+  const venc = [], prox = [], ok = [];
+  Object.keys(por).forEach((k) => {
+    const g = por[k], n = g.n + (g.n === 1 ? ' tanque' : ' tanques'), nm = nom[k] || k;
+    if (g.sin || !g.prox || g.prox < lim) venc.push([g.prox || '0', '⚠️  ' + nm + ' · ' + n + ' · ' + (g.ult ? 'vencida desde ' + f(g.prox) + ' (última: ' + f(g.ult) + ')' : 'sin limpieza registrada')]);
+    else if (g.prox <= tope) prox.push([g.prox, '📅  ' + nm + ' · ' + n + ' · toca el ' + f(g.prox) + ' (última: ' + f(g.ult) + ')']);
+    else ok.push([nm, nm + ' (' + f(g.ult) + ')']);
+  });
+  const o = (a) => a.sort((x, y) => x[0] < y[0] ? -1 : 1).map((x) => x[1]);
+  let txt = '';
+  if (venc.length) txt += '*Limpieza vencida o sin registrar*\n' + o(venc).join('\n');
+  if (prox.length) txt += (txt ? '\n\n' : '') + '*Próximas (' + (dias || 60) + ' días)*\n' + o(prox).join('\n');
+  if (ok.length) txt += (txt ? '\n\n' : '') + '✅  Al día: ' + o(ok).join(' · ');
+  return txt || 'Sin tanques cargados.';
 }
 
 // Carpeta de fotos: MÓDULO 3 · AGUA › Establecimientos › «HZT · …» › Tanques y cisternas (MIPyV) › año
