@@ -56,20 +56,37 @@ function avisosPintar() {
   const box = document.getElementById("avisosHome"); if (!box) return;
   const casos = avisosCasos(), urg = casos.filter((c) => c.urgente).sort((a, b) => a.dias - b.dias);
   const tq = typeof tqUrgentes === "function" ? tqUrgentes() : [];
+  const ext = avExtPendientes();
   const items = urg.map((c, i) => `<button type="button" class="av-item" data-av="caso" data-i="${i}"><span class="av-emo">🐜</span><span><b>${avEsc(c.establecimiento)} · ${avEsc(c.tipo_plaga || "plaga")}</b><small>${c.dias < 0 ? "La 2.ª visita venció hace " + -c.dias + (c.dias === -1 ? " día" : " días") : c.dias === 0 ? "La 2.ª visita vence hoy" : "La 2.ª visita vence en " + c.dias + (c.dias === 1 ? " día" : " días")} · tocá para volver o cerrar el caso</small></span></button>`)
-    .concat(tq.map((x, i) => `<button type="button" class="av-item" data-av="tq" data-i="${i}"><span class="av-emo">💧</span><span><b>${avEsc(x.lugar.nombre)} · limpiar ${x.n === 1 ? "1 tanque" : x.n + " tanques"}</b><small>La limpieza está vencida o no está cargada · tocá para ver cuáles</small></span></button>`));
+    // 03/11/2026 (Belén: «resumir lo del agua sin desaparecerlo»): un solo renglón para los tanques, con los lugares
+    .concat(tq.length ? [`<button type="button" class="av-item" data-av="tq"><span class="av-emo">💧</span><span><b>Tanques · limpiar en ${tq.length === 1 ? "1 lugar" : tq.length + " lugares"}</b><small>${tq.map((x) => avEsc(x.lugar.nombre) + " (" + x.n + ")").join(" · ")} · tocá para ver cuáles</small></span></button>`] : [])
+    // 03/11/2026 (Belén: «poner lo de extintores carga en caps/hzt/etc»): lugares de la red sin ningún extintor cargado
+    .concat(ext && (ext.faltan.length || ext.venc) ? [`<button type="button" class="av-item" data-av="ext"><span class="av-emo">🧯</span><span><b>Extintores · ${ext.faltan.length ? "falta cargarlos en " + (ext.faltan.length === 1 ? "1 lugar" : ext.faltan.length + " lugares") : ext.venc + (ext.venc === 1 ? " con la carga vencida" : " con la carga vencida")}</b><small>${ext.faltan.length ? "Sin ningún extintor cargado: " + ext.faltan.map((x) => avEsc(x.nombre)).join(" · ") : ""}${ext.hechos.length ? (ext.faltan.length ? "<br>" : "") + "Ya empezado: " + ext.hechos.map((x) => avEsc(x.nombre) + " (" + x.n + ")").join(" · ") : ""}${ext.venc && ext.faltan.length ? "<br>⚠️ " + ext.venc + (ext.venc === 1 ? " extintor con la carga vencida" : " extintores con la carga vencida") : ""}<br>Tocá › elegí el lugar › «Control de extintores»</small></span></button>`] : []);
   box.innerHTML = `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
   box.querySelectorAll("[data-av=caso]").forEach((b) => (b.onclick = () => avCasosLista()));
-  box.querySelectorAll("[data-av=tq]").forEach((b) => (b.onclick = () => { const x = tq[+b.dataset.i]; const go = document.getElementById("goTanques"); if (go) go.click();
-    setTimeout(() => { try { tq_irLugar(x.lugar); } catch (e) {} }, 60); }));
+  box.querySelectorAll("[data-av=tq]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goTanques"); if (go) go.click(); }));   // la lista ya muestra arriba los lugares para limpiar
+  box.querySelectorAll("[data-av=ext]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goHys"); if (go) go.click(); }));
   // Estado en cada tarjeta
   const sub = (id, txt) => { const el = document.getElementById(id); if (el) { const s = el.querySelector(".mc-sub"); if (s) s.textContent = txt; } };
   const venc = casos.filter((c) => c.dias < 0).length;
   sub("goMipyv", casos.length ? (venc ? "❗ " + venc + " con la 2.ª visita vencida · " : "") + "⏳ " + casos.length + (casos.length === 1 ? " plaga activa (caso abierto)" : " plagas activas (casos abiertos)") : "✅ Sin plagas activas · tocá para cargar una visita");
   try { const tr = JSON.parse(localStorage.getItem("mipyv_trabajos_planilla_v1") || "null"), n = tr && Array.isArray(tr.lista) ? tr.lista.length : null;
     if (n != null) sub("goSaneamiento", n ? "⏳ " + n + (n === 1 ? " trabajo sin terminar" : " trabajos sin terminar") + " · tocá para seguir" : "✅ Ningún trabajo sin terminar"); } catch (e) {}
+  if (ext) sub("goExtTabla", ext.faltan.length ? "❗ Falta cargar en " + ext.faltan.length + " de " + ext.lugares + " lugares · " + ext.total + (ext.total === 1 ? " cargado" : " cargados") : ext.venc ? "❗ " + ext.venc + " con la carga vencida · " + ext.total + " cargados" : "✅ " + ext.total + " cargados · ver la lista");
   const sol = document.getElementById("goSolicitudes");
   if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
+}
+// Extintores: lugares de la red (sin HMH) sin ningún extintor cargado, los que ya empezaron y los que tienen la carga vencida.
+// La Sede ex ADOS cuenta como UN lugar (todas sus dependencias juntas), igual que en la carga.
+function avExtPendientes() {
+  if (typeof EXTINTORES_LUG === "undefined" || typeof EXTINTORES_CAT === "undefined") return null;
+  const ids = Object.keys(EXTINTORES_LUG || {}); if (!ids.length) return null;
+  const grupos = {}; ids.forEach((id) => { const s = EXTINTORES_LUG[id].sitio || id; (grupos[s] = grupos[s] || []).push(id); });
+  const nombre = (s) => grupos[s].length > 1 ? s : (((typeof ESTABLECIMIENTOS !== "undefined" ? ESTABLECIMIENTOS : []).find((e) => e.id === grupos[s][0]) || {}).nombre || s);
+  const faltan = [], hechos = [];
+  Object.keys(grupos).forEach((s) => { const n = EXTINTORES_CAT.filter((e) => (e.lugares || []).some((id) => grupos[s].indexOf(id) >= 0) || e.sitio === s).length; (n ? hechos : faltan).push({ nombre: nombre(s), n: n }); });
+  const hoy = new Date().toISOString().slice(0, 10), venc = EXTINTORES_CAT.filter((e) => /^\d{4}-/.test(e.vto || "") && e.vto < hoy).length;
+  return { faltan: faltan, hechos: hechos, venc: venc, total: EXTINTORES_CAT.length, lugares: Object.keys(grupos).length };
 }
 // Abre un lugar en «Tanques y cisternas» (desde «Para hacer ahora»)
 function tq_irLugar(l) { if (typeof tq === "undefined") return; tq.vista = "lugar"; tq.lugar = l; tq.codigo = null; tqRender(); if (typeof screensEl !== "undefined") screensEl.scrollTop = 0; }

@@ -2341,6 +2341,7 @@ function aplicarCatalogos(c) {
   if (Array.isArray(c.extintores)) EXTINTORES_CAT = c.extintores;
   if (c.extintores_lugares && typeof c.extintores_lugares === "object") EXTINTORES_LUG = c.extintores_lugares;
   if (typeof extTablaRefrescar === "function") extTablaRefrescar();   // tabla de extintores cargados (extintores.js)
+  if (typeof avisosPintar === "function") avisosPintar();   // 03/11/2026: «Para hacer ahora» muestra lo que falta cargar de extintores
   // volver a dibujar las grillas con las listas nuevas
   renderOperarios();
   renderEstablecimientos();
