@@ -185,6 +185,7 @@ async function edGuardar() {
   edBorrarBorrador();
   ed.aviso = "Relevamiento de " + f.lugar.nombre + " guardado" + (navigator.onLine ? " · se está enviando." : " · se envía solo cuando haya señal.");
   ed.form = null; ed.vista = "lugares"; edRender(); screensEl.scrollTop = 0; edPintarHome();
+if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar
   try { await updateQueueBadge(); } catch (e) { } trySync();
 }
 
@@ -203,3 +204,4 @@ body.mode-edificio{--mod-primary:#5B4636;--mod-accent:#8A6A4F;--mod-claro:#F4EEE
 document.head.appendChild(edCss);
 document.getElementById("goEdificio") && document.getElementById("goEdificio").addEventListener("click", () => enterModule("edificio"));
 edPintarHome();
+if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar

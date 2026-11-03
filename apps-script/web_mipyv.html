@@ -758,7 +758,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.03j";
+const APP_VERSION = "2026.11.03k";
 </script>
 <script>
 // ============================================================
@@ -4818,6 +4818,7 @@ async function edGuardar() {
   edBorrarBorrador();
   ed.aviso = "Relevamiento de " + f.lugar.nombre + " guardado" + (navigator.onLine ? " · se está enviando." : " · se envía solo cuando haya señal.");
   ed.form = null; ed.vista = "lugares"; edRender(); screensEl.scrollTop = 0; edPintarHome();
+if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar
   try { await updateQueueBadge(); } catch (e) { } trySync();
 }
 
@@ -4836,6 +4837,7 @@ body.mode-edificio{--mod-primary:#5B4636;--mod-accent:#8A6A4F;--mod-claro:#F4EEE
 document.head.appendChild(edCss);
 document.getElementById("goEdificio") && document.getElementById("goEdificio").addEventListener("click", () => enterModule("edificio"));
 edPintarHome();
+if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar
 </script>
 </body>
 </html>
