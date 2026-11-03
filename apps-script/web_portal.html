@@ -2150,7 +2150,8 @@ function aglPintar() {
       '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp) + '.</div>' +
       '<div><b>Dónde:</b> ' + (donde.length ? esc(donde.join(' · ')) : 's/d (completar las canillas en la columna T del Tablero)') + '.</div>' +
       '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear.'
-        : comp ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'toca el control de los 6 meses del muestreo del ' + fT(x.ultimo) + '.') + '</div>' +
+        : comp ? (/^\d{4}-/.test(x.fq || '') ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'nunca se hizo un físico-químico' + (/^\d{4}-/.test(x.bact || '') ? ' y el último bacteriológico es del ' + fT(x.bact) + (x.bact < hoyI.slice(0, 4) - 1 + hoyI.slice(4) ? ' (hace más de un año)' : '') : '') + ': corresponde el muestreo completo.')
+        : 'toca el control de los 6 meses del muestreo del ' + fT(x.ultimo) + '.') + '</div>' +
       (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
       // 2) Pasos en orden
       '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
@@ -2172,7 +2173,8 @@ function aglPintar() {
           (m.detalle && m.detalle !== 's/d' ? ' <span class="mu">(' + esc(m.detalle) + ')</span>' : '') + ' · <span class="mu">N.º ' + esc(m.nro) + '</span>' + (m.url ? ' · <a href="' + esc(m.url) + '" target="_blank" rel="noopener">Ver informe ↗</a>' : '') + '</span>'; }).join('') + '</span>' : '<br>') +
       (x.sinConclusion ? '<b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.<br>' : '') +
       (urg ? '<span>Cuando el nuevo muestreo dé apta, se retoma el calendario: parcial cada 6 meses y completo cada 12.</span>'
-        : '<b>Calendario:</b> próximo parcial ' + fT(x.parcial) + ' · próximo completo ' + fT(x.completo) + ' <span class="mu">(último bacteriológico ' + fT(x.bact) + ' · último físico-químico ' + fT(x.fq) + ')</span>') +
+        : e !== 'ok' && e !== 'sol' && !(/^\d{4}-/.test(x.parcial || '') && x.parcial >= hoyI) ? '<span>Cuando llegue el informe de este muestreo, se arma el calendario: parcial cada 6 meses y completo cada 12.</span>'
+        : '<b>Calendario:</b> próximo parcial ' + fT(x.parcial) + ' · próximo completo ' + (/^\d{4}-/.test(x.completo || '') ? fT(x.completo) : 'todavía no hay ninguno hecho') + ' <span class="mu">(último bacteriológico ' + fT(x.bact) + ' · último físico-químico ' + fT(x.fq) + ')</span>') +
       '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
