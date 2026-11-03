@@ -74,7 +74,10 @@ function tanquesParaApp_(ss) {
   const R = tqTabla_('RESERVORIOS'), I = tqTabla_('AGUA_INSPECCIONES', TQ_INSP_H), ultI = {};
   I.filas.forEach((x) => { const k = String(x.CODIGO_TANQUE), f = tqIso_(x.FECHA); if (!ultI[k] || f >= ultI[k].fecha) ultI[k] = { fecha: f, resultado: String(x.RESULTADO || ''), proxima: tqIso_(x.PROXIMA_INSPECCION) }; });
   const tanques = R.filas.filter((t) => !/fuera/i.test(t.ESTADO) && TQ_COD_EXCLUIDOS.indexOf(String(t.ESTABLECIMIENTO).trim()) < 0).map((t) => {
-    const lug = porSitio[String(t.ESTABLECIMIENTO).trim() + '|' + tqNorm_(tqSitio_(t.SITIO))] || [], i = ultI[String(t.CODIGO_TANQUE)] || {};
+    // 03/11/2026 (Belén: «no usan los mismos tanques»): si el tanque tiene LUGAR_MIPYV, es SOLO de ese lugar. Sin ese dato se usa
+    // el sitio, que en la Sede ex ADOS es compartido por varios lugares (Adolescencia, PROSATE, Vacunatorio, etc.).
+    const propio = String(t.LUGAR_MIPYV || '').trim(), ids = L.map((l) => l.id);
+    const lug = propio && ids.indexOf(propio) >= 0 ? [propio] : (porSitio[String(t.ESTABLECIMIENTO).trim() + '|' + tqNorm_(tqSitio_(t.SITIO))] || []), i = ultI[String(t.CODIGO_TANQUE)] || {};
     const ult = tqIso_(t.ULTIMA_LIMPIEZA);
     // 03/11/2026 (pedido de Belén): una limpieza registrada cuenta también como relevamiento de estado (el tanque se abrió y se revisó),
     // para que un tanque recién limpiado no figure «con algo vencido» por falta de relevamiento.
@@ -181,7 +184,7 @@ function guardarTanqueMipyv_(tipo, data) {
     const n = R.filas.filter((x) => String(x.CODIGO_TANQUE).indexOf(pref) === 0).reduce((m, x) => Math.max(m, Number(String(x.CODIGO_TANQUE).slice(pref.length)) || 0), 0) + 1;
     const codigo = pref + ('0' + n).slice(-2);
     const ult = /^\d{4}-\d{2}-\d{2}$/.test(data.ULTIMA_LIMPIEZA || '') ? data.ULTIMA_LIMPIEZA : '';
-    const o = { CODIGO_TANQUE: codigo, ESTABLECIMIENTO: l.cod, SITIO: l.sitio, UBICACION: String(data.UBICACION).trim(), TIPO: data.TIPO, USO: data.USO,
+    const o = { CODIGO_TANQUE: codigo, ESTABLECIMIENTO: l.cod, SITIO: l.sitio, LUGAR_MIPYV: l.id, UBICACION: String(data.UBICACION).trim(), TIPO: data.TIPO, USO: data.USO,
       CAPACIDAD_L: String(data.CAPACIDAD_L).replace(/[^\d]/g, '') || 's/d', MATERIAL: String(data.MATERIAL || '').trim() || 's/d', TAPA: data.TAPA, ACCESO: data.ACCESO,
       QUIEN_LIMPIA: 'Operarios MIPyV (Javier y Paulo Tramaleo)', FRECUENCIA_LIMPIEZA_MESES: 12, ULTIMA_LIMPIEZA: ult || '', PROXIMA_LIMPIEZA: ult ? tqMeses_(ult, 12) : '',
       ESTADO: 'Activo', OBSERVACIONES: ('Alta ' + marcaFecha + ' · ' + quien + ' (lugar: ' + l.nombre + ') ' + marca + '. ' + (ult ? '' : 'Última limpieza: s/d. ') + String(data.OBS_TANQUE || '').trim()).trim(),
