@@ -127,7 +127,7 @@ function aglPintar() {
       '<b>Próximo parcial</b> ' + fT(x.parcial) + ' · <b>próximo completo</b> ' + fT(x.completo) +
       (x.sinConclusion ? '<br><b>' + x.sinConclusion + ' muestra(s) sin conclusión:</b> consultar al DPSB.' : '') +
       (comp ? '<br>' + (tqOk(x) ? '<b style="color:#1E6B3A">✅ Tanques limpios:</b> ' + x.tanques.n + ' de ' + x.tanques.n + ' (última limpieza ' + fT(x.tanques.ultima) + '). Listo para pedir el muestreo completo.'
-        : x.tanques && x.tanques.n ? '<b>Antes:</b> limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' limpios en los últimos ' + x.tanques.dias + ' días' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.'
+        : x.tanques && x.tanques.n ? '<b>Antes:</b> limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra): ' + x.tanques.limpios + ' de ' + x.tanques.n + ' con la limpieza vigente (último ' + (x.tanques.dias >= 360 ? 'año' : x.tanques.dias + ' días') + ')' + (x.tanques.ultima ? ' · última limpieza ' + fT(x.tanques.ultima) : '') + '.'
         : '<b>Antes:</b> HyS hace limpiar y desinfectar tanques y cisternas (sin eso el DPSB no toma la muestra). No hay tanques cargados para este lugar.') : '') + '</div></details>';
   };
   const titulo = { ya: 'Pedir ya', aho: 'Pedir ahora', ok: 'Al día', noap: 'Con agua NO APTA', sind: 'Sin informes' }[AGL.ver] || 'Qué hacer ahora';
