@@ -77,7 +77,7 @@ function aguaLabRegistros_(ss) {
     V.forEach((r, i) => { const est = String(r[2]).trim(); if (!est || !String(r[3]).trim()) return;
       const m = /HYPERLINK\("([^"]+)"/i.exec(F[i][12] || '');
       (o[red + '|' + est] = o[red + '|' + est] || []).push({ nro: String(r[3]).trim(), fecha: aguaLabIso_(r[4]), donde: String(r[5]).trim() || 's/d', analisis: String(r[6]).trim() || 's/d',
-        resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '', recibido: aguaLabIso_(r[15]) }); });   // P: «Informe recibido el»
+        resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '', recibido: aguaLabIso_(r[15]) }); });   // P: «Resultado cargado el»
   });
   return o;
 }
