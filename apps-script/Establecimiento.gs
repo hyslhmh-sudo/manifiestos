@@ -11,7 +11,7 @@
  * Hospitales con dos edificios (HMH → HZT, ESTABLECIMIENTOS › COMITES_COMPARTIDOS) comparten red, tablero y carpeta.
  * Criterios: Dto. 351/79, arts. 57 y 58; procesos provinciales DPSB (limpieza 2026-2031 y toma de muestra 2025-2030);
  * normas locales en AGUA_NORMATIVA. No envía correos.
- * 29/10/2026 (pedido de Belén, red Rawson): relevamiento de estado de tanques cada 3 meses (acción m_inspeccion, hoja AGUA_INSPECCIONES,
+ * 29/10/2026 (pedido de Belén, red Rawson): relevamiento de estado de tanques cada 6 meses (acción m_inspeccion, hoja AGUA_INSPECCIONES,
  *   la misma que usa la app MIP en la red Trelew), limpieza con los datos del Formulario 1 / F-AGU-01 (agua al 20 %, mL de lavandina 5,5 %,
  *   sin cloro: lo mide el DPSB) y carga del Formulario 2 firmado (personal designado, acción m_form2 → DOCUMENTOS_EST).
  * 22/10/2026: las acciones «m_res_nov…» (novedades de residuos) se derivan a ResiduosNovedades.gs › resNovRed_.
@@ -33,7 +33,7 @@ const MI_H = {
 const MI_AYUDA = {
   AGUA_LIMPIEZAS: 'Una fila por limpieza de tanque o cisterna. La carga la app «Mi establecimiento» con la foto del formulario F-AGU-01 firmado.',
   AGUA_ANALISIS: 'Una fila por análisis de agua (bacteriológico cada 6 meses y físico-químico cada 12, Dto. 351/79). Si da NO APTA: limpieza y nueva muestra en no más de 15 días hábiles (proceso provincial DPSB).',
-  AGUA_INSPECCIONES: 'Relevamiento de estado de cada tanque o cisterna cada 3 meses (POE de limpieza: inspección visual trimestral). Lo cargan la app MIP (red Trelew) y «Mi establecimiento».',
+  AGUA_INSPECCIONES: 'Relevamiento de estado de cada tanque o cisterna cada 6 meses (POE de limpieza: inspección visual semestral). Lo cargan la app MIP (red Trelew) y «Mi establecimiento».',
   PLAGAS_CASOS: 'Un caso por aparición de plaga. Se cierra con dos revisiones seguidas sin actividad.',
   PLAGAS_REGISTROS: 'Intervenciones, seguimientos de eficacia y recorridas preventivas, con la foto del formulario F-PLG-02, 03 o 04.',
   DOCUMENTOS_EST: 'Manuales, guías, POE, protocolos y PTS propios de cada establecimiento. Para reemplazar uno, cargar la versión nueva: la anterior queda como «Reemplazado».'
@@ -104,7 +104,7 @@ function miRed_(d) {
     case 'm_punto': return maestra ? conLock_(() => miGuardarInv_(cod, 'PUNTOS_MUESTREO', 'CODIGO_PUNTO', 'P', x)) : { ok: false, mensaje: 'Los puntos de muestreo (canillas) los asigna Higiene y Seguridad.' };
     case 'm_limpieza': return conLock_(() => corr('limpieza', () => miLimpieza_(cod, x, quien)));
     case 'm_analisis': return conLock_(() => corr('analisis', () => miAnalisis_(cod, x, quien)));
-    case 'm_inspeccion': return conLock_(() => miInspeccion_(cod, x, quien));   // relevamiento de estado cada 3 meses (29/10/2026)
+    case 'm_inspeccion': return conLock_(() => miInspeccion_(cod, x, quien));   // relevamiento de estado cada 6 meses (29/10/2026)
     case 'm_relev_dep': return conLock_(() => miRelevDep_(cod, x, quien));   // hoja de relevamiento de una dependencia completa (29/10/2026)
     case 'm_form2': return conLock_(() => miForm2_(cod, x, quien));   // Formulario 2 firmado: personal designado y capacitado (29/10/2026)
     case 'm_plaga_aviso': return conLock_(() => x.CASO_EDITAR ? regEditar_(cod, 'PLAGAS_CASOS', 'CASO', x.CASO_EDITAR, maestra, x, quien) : miPlagaAviso_(cod, x, quien));
@@ -192,7 +192,7 @@ function miAnalisis_(cod, x, quien) {
   return { ok: true, aviso: /no apta/i.test(res) ? 'Agua NO APTA: hay que limpiar y desinfectar y tomar una nueva muestra en no más de 15 días hábiles (proceso provincial). Quedó como pendiente.' : '' };
 }
 
-// Relevamiento de estado de un tanque o cisterna (cada 3 meses). Mismas preguntas que la app MIP (Tanques_MIPyV.gs) y que el
+// Relevamiento de estado de un tanque o cisterna (cada 6 meses). Mismas preguntas que la app MIP (Tanques_MIPyV.gs) y que el
 // punto 7 del Formulario 1, sin cloro (lo mide el DPSB). Resultado: Conforme · Requiere limpieza · Requiere reparación · ambas.
 const MI_INSP = [['FISURAS', 'No', 'reparación', 'fisuras o pérdidas'], ['OXIDO', 'No', 'reparación', 'óxido o deterioro'], ['SEDIMENTO', 'No', 'limpieza', 'barro o sedimento'],
   ['OLOR_TURBIDEZ', 'No', 'limpieza', 'olor o turbidez'], ['FLOTANTE_OK', 'Sí', 'reparación', 'flotante o válvulas con fallas'], ['VENTILACION_MALLA', 'Sí', 'reparación', 'ventilación sin malla'],
@@ -210,7 +210,7 @@ function miInspeccion_(cod, x, quien) {
   const L = miLeer_('AGUA_INSPECCIONES'), prev = L.find(i => i.CODIGO_TANQUE === R.CODIGO_TANQUE && String(i.FECHA).slice(0, 10) === fecha), id = prev ? prev.ID : miId_('INS', R.ESTABLECIMIENTO, L, 'ID');
   const fotos = x.archivo && x.archivo.base64 ? miArchivo_(cod, 'Agua', fecha.slice(0, 4), Object.assign({ nombre: 'Relevamiento_' + R.CODIGO_TANQUE + '_' + fecha }, x.archivo)) : (x.fotoUrl || '');
   const o = { ID: id, FECHA: fecha, ESTABLECIMIENTO: R.ESTABLECIMIENTO, SITIO: R.SITIO, CODIGO_TANQUE: R.CODIGO_TANQUE, TAPA: x.TAPA, CLORO_MG_L: 'Lo mide el DPSB', RESULTADO: resultado,
-    PROXIMA_INSPECCION: miSumarMeses_(fecha, 3), FOTOS: fotos, QUIEN: quien + ' · Mi establecimiento', CARGADO: miHoy_(),
+    PROXIMA_INSPECCION: miSumarMeses_(fecha, 6), FOTOS: fotos, QUIEN: quien + ' · Mi establecimiento', CARGADO: miHoy_(),
     OBSERVACIONES: [prob.length ? 'Problemas: ' + prob.join('; ') + '.' : '', String(x.OBSERVACIONES || '').trim()].filter(Boolean).join(' ') };
   MI_INSP.forEach(q => o[q[0]] = x[q[0]]);
   if (prev) miCambiar_('AGUA_INSPECCIONES', prev.fila, o); else miAgregar_('AGUA_INSPECCIONES', o);
@@ -343,11 +343,11 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
   // Agua: tanques
   const T = de(miLeer_('RESERVORIOS')).filter(t => !/fuera/i.test(t.ESTADO)), Pm = de(miLeer_('PUNTOS_MUESTREO')).filter(p => !/fuera/i.test(p.ESTADO));
   if (!T.length) pend('wa', 'agua', 'Cargá tus tanques y cisternas', 'Con la hoja de relevamiento por dependencia que completa Mantenimiento: se carga una dependencia por vez y quedan el mapeo y el estado.', 'agua_alta');
-  // Relevamiento de estado cada 3 meses (AGUA_INSPECCIONES, también lo carga la app MIP en la red Trelew)
+  // Relevamiento de estado cada 6 meses (AGUA_INSPECCIONES, también lo carga la app MIP en la red Trelew)
   const sinRel = [], sinLim = [];
   const INS = {}; de(miLeer_('AGUA_INSPECCIONES')).forEach(i => { if (!INS[i.CODIGO_TANQUE] || i.FECHA > INS[i.CODIGO_TANQUE].FECHA) INS[i.CODIGO_TANQUE] = i; });
   const tanques = T.map(t => { const prox = t.PROXIMA_LIMPIEZA || (t.ULTIMA_LIMPIEZA ? miSumarMeses_(t.ULTIMA_LIMPIEZA, t.FRECUENCIA_LIMPIEZA_MESES || 12) : ''), d = miDias_(prox);
-    const ui = INS[t.CODIGO_TANQUE], pi = ui ? (ui.PROXIMA_INSPECCION || miSumarMeses_(ui.FECHA, 3)) : '', di = miDias_(pi), insp = ui ? { fecha: ui.FECHA, resultado: ui.RESULTADO, proxima: pi } : null;
+    const ui = INS[t.CODIGO_TANQUE], pi = ui ? miSumarMeses_(ui.FECHA, 6) : ''   /* 03/11/2026: relevamiento semestral (Belén); se calcula siempre desde la fecha */, di = miDias_(pi), insp = ui ? { fecha: ui.FECHA, resultado: ui.RESULTADO, proxima: pi } : null;
     if (!/fuera/i.test(t.ESTADO)) { if (!ui || di < 0) sinRel.push(t.CODIGO_TANQUE + (t.SITIO ? ' (' + t.SITIO + ')' : ''));   // se agrupan en un solo pendiente
       if (ui && /limpieza/i.test(ui.RESULTADO) && (!t.ULTIMA_LIMPIEZA || t.ULTIMA_LIMPIEZA < ui.FECHA)) pend('er', 'agua', t.CODIGO_TANQUE + ': el relevamiento pide limpiarlo', ui.FECHA + ' · ' + ui.RESULTADO, 'agua_limpieza');
       if (ui && /reparaci/i.test(ui.RESULTADO)) pend('wa', 'agua', t.CODIGO_TANQUE + ': necesita una reparación', ui.FECHA + ' · ' + String(ui.OBSERVACIONES || '').slice(0, 120), 'agua_insp'); }
@@ -355,7 +355,7 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
     { if (est === 'vencida') pend('er', 'agua', t.CODIGO_TANQUE + ': limpieza vencida', 'Vencía el ' + prox, 'agua_limpieza'); else if (est === 'porvencer') pend('wa', 'agua', t.CODIGO_TANQUE + ': la limpieza vence en ' + d + ' días', t.UBICACION, 'agua_limpieza'); else if (est === 'sin') sinLim.push(t.CODIGO_TANQUE); }
     return { codigo: t.CODIGO_TANQUE, est: t.ESTABLECIMIENTO, sitio: t.SITIO, ubicacion: t.UBICACION, tipo: t.TIPO, uso: t.USO, capacidad: t.CAPACIDAD_L, material: t.MATERIAL, inv: t.ESTADO, tapa: t.TAPA, acceso: t.ACCESO, quienLimpia: t.QUIEN_LIMPIA,
       frecuencia: t.FRECUENCIA_LIMPIEZA_MESES, ultima: t.ULTIMA_LIMPIEZA, proxima: prox, estado: est, obs: t.OBSERVACIONES, insp: insp }; });
-  if (sinRel.length) pend('wa', 'agua', sinRel.length === 1 ? sinRel[0] + ': falta el relevamiento de estado' : sinRel.length + ' tanques o cisternas sin relevamiento de estado al día', (sinRel.length > 1 ? sinRel.join(', ') + ' · ' : '') + 'Se hace cada 3 meses con la hoja de relevamiento por dependencia', 'agua_insp');
+  if (sinRel.length) pend('wa', 'agua', sinRel.length === 1 ? sinRel[0] + ': falta el relevamiento de estado' : sinRel.length + ' tanques o cisternas sin relevamiento de estado al día', (sinRel.length > 1 ? sinRel.join(', ') + ' · ' : '') + 'Se hace cada 6 meses con la hoja de relevamiento por dependencia', 'agua_insp');
   if (sinLim.length) pend('wa', 'agua', sinLim.length === 1 ? sinLim[0] + ': sin limpieza registrada' : sinLim.length + ' tanques o cisternas sin limpieza registrada', (sinLim.length > 1 ? sinLim.join(', ') + ' · ' : '') + 'Cargá la última que se hizo, con el formulario firmado', 'agua_limpieza');
   // Agua: canillas y análisis
   const A = de(miLeer_('AGUA_ANALISIS'));

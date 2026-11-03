@@ -3,7 +3,7 @@
  * Va en el mismo proyecto de Apps Script de la planilla «MIP RED HZT - Base de Datos v2», como archivo aparte (igual que Incendio_MIPyV.gs).
  * Javier y Paulo cargan desde la app MIP › «Tanques y cisternas»:
  *  - el relevamiento de cada tanque o cisterna (alta con sus datos y el primer relevamiento de estado),
- *  - el relevamiento de estado cada 3 meses (inspección visual del POE-AGU-001, punto 10.1),
+ *  - el relevamiento de estado cada 6 meses (inspección visual del POE-AGU-001, punto 10.1),
  *  - cada limpieza, con la foto del formulario F-AGU-01-T firmado (se descarga en PDF desde la app).
  * Todo se guarda en la BASE COMÚN del sistema HyS, en las mismas hojas que usan el Portal HyS y «Mi establecimiento»:
  *  - RESERVORIOS       inventario (código HZT-T01 para tanques, HZT-C01 para cisternas; SITIO = sitio_sistema del lugar de MIPyV),
@@ -22,7 +22,7 @@ const TQ_BC_ID = '1rjKzrfo3KGTyKgyaCEKV0B15ZSi8b1j0zIAY8wAgYwQ';         // BASE
 const TQ_CARPETA_EST = '1QDQ6gbcPVc1A_I1UfDeXlQ3RG-sj6vjV';               // Drive › MÓDULO 3 · AGUA › Establecimientos
 const TQ_SIN_TANQUES = ['AMB'];                                          // lugares de MIPyV sin tanques propios
 const TQ_COD_EXCLUIDOS = ['HMH'];                                        // pedido de Belén: el HMH no entra en esta sección
-const TQ_INSP_MESES = 3;                                                 // relevamiento de estado cada 3 meses (POE-AGU-001, 10.1)
+const TQ_INSP_MESES = 6;                                                 // relevamiento de estado cada 6 meses (POE-AGU-001, 10.1)
 const TQ_INSP_H = ['ID', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'CODIGO_TANQUE', 'TAPA', 'FISURAS', 'OXIDO', 'SEDIMENTO', 'OLOR_TURBIDEZ', 'FLOTANTE_OK',
   'VENTILACION_MALLA', 'INSECTOS', 'ACCESO_SEGURO', 'CLORO_MG_L', 'RESULTADO', 'PROXIMA_INSPECCION', 'FOTOS', 'QUIEN', 'CARGADO', 'OBSERVACIONES'];
 // Preguntas del relevamiento: [campo, respuesta que está bien, qué hace falta si no]
@@ -45,7 +45,7 @@ function tqTabla_(nombre, crearCon) {
     if (!crearCon) throw new Error('Falta la hoja ' + nombre + ' en la BASE COMÚN.');
     sh = bc.insertSheet(nombre);
     sh.getRange(1, 1).setValue(nombre + ' · Relevamiento de estado de tanques y cisternas').setFontWeight('bold').setFontSize(13);
-    sh.getRange(2, 1).setValue('Una fila por relevamiento (inspección visual cada 3 meses, POE-AGU-001 punto 10.1). La carga la app MIP (Javier y Paulo). Respuestas Sí / No; RESULTADO: Conforme, Requiere limpieza, Requiere reparación o Requiere limpieza y reparación. Si falta un dato: s/d.').setFontStyle('italic');
+    sh.getRange(2, 1).setValue('Una fila por relevamiento (inspección visual cada 6 meses, POE-AGU-001 punto 10.1). La carga la app MIP (Javier y Paulo). Respuestas Sí / No; RESULTADO: Conforme, Requiere limpieza, Requiere reparación o Requiere limpieza y reparación. Si falta un dato: s/d.').setFontStyle('italic');
     sh.getRange(5, 1, 1, crearCon.length).setValues([crearCon]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#0D313F');
     sh.setFrozenRows(5);
   }
@@ -207,7 +207,7 @@ function guardarTanqueMipyv_(tipo, data) {
     return { cambios: dif.length };
   }
 
-  if (tipo === 'inspeccion_tanque') {   // relevamiento de estado cada 3 meses
+  if (tipo === 'inspeccion_tanque') {   // relevamiento de estado cada 6 meses
     if (!data.id_insp) throw new Error('Falta el identificador del relevamiento.');
     const I = tqTabla_('AGUA_INSPECCIONES', TQ_INSP_H);
     if (I.filas.some((x) => String(x.ID) === String(data.id_insp))) return { duplicado: true };

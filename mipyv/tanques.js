@@ -2,13 +2,13 @@
 // TANQUES Y CISTERNAS — red Trelew, sin el HMH (28/10/2026, pedido de Belén)
 // Javier y Paulo cargan:
 //  · el relevamiento de cada tanque o cisterna (datos + estado + fotos),
-//  · el relevamiento de estado cada 3 meses (POE-AGU-001, 10.1),
+//  · el relevamiento de estado cada 6 meses (POE-AGU-001, 10.1),
 //  · cada limpieza, con la foto del F-AGU-01-T firmado (el PDF se descarga desde acá para imprimir).
 // Se guarda en la BASE COMÚN del sistema HyS (Apps Script › Tanques_MIPyV.gs): RESERVORIOS, AGUA_INSPECCIONES y AGUA_LIMPIEZAS.
 // Funciona sin señal: lo cargado queda en la cola y se manda solo. Lo que se está cargando se guarda en el celular
 // (fotos incluidas) por si la app se cierra al abrir la cámara.
 // ============================================================
-let TANQUES_CAT = { lugares: [], tanques: [], hoy: "", meses_inspeccion: 3 };
+let TANQUES_CAT = { lugares: [], tanques: [], hoy: "", meses_inspeccion: 6 };
 const TQ_LOCAL_KEY = "mipyv_tanques_local_v1";     // lo cargado en este celular que todavía no volvió de la planilla
 // formulario para imprimir: va en la app y anda sin señal; desde el respaldo de Google (?p=mipyv) se abre el de GitHub
 const TQ_F1_PDF = /github\.io$|^localhost$/.test(location.hostname) ? "F-AGU-01-T.pdf" : "https://hyslhmh-sudo.github.io/manifiestos/mipyv/F-AGU-01-T.pdf";
@@ -62,7 +62,7 @@ const tqDe = (idLugar) => tqTanques().filter(t => (t.lugares || []).indexOf(idLu
 function tqEstado(t) {
   const av = [], uso = String(t.uso || "");
   if (t.pendiente) av.push({ nivel: "wa", txt: "Recién cargado: se envía con señal y después tiene código" });
-  const pi = t.ultima_insp ? tqMas(t.ultima_insp, TANQUES_CAT.meses_inspeccion || 3) : "", di = tqDias(pi);
+  const pi = t.ultima_insp ? tqMas(t.ultima_insp, TANQUES_CAT.meses_inspeccion || 6) : "", di = tqDias(pi);
   if (!t.ultima_insp) av.push({ nivel: "er", txt: "Falta el primer relevamiento de estado" });
   else if (di < 0) av.push({ nivel: "er", txt: "Relevamiento vencido (tocaba el " + tqFecha(pi) + ")" });
   else if (di <= 15) av.push({ nivel: "wa", txt: "Relevamiento: toca el " + tqFecha(pi) });
@@ -81,7 +81,7 @@ function tqEstado(t) {
 // 03/11/2026: en la lista de lugares se dice QUÉ falta (limpieza o relevamiento), no solo «algo vencido»
 function tqResumen(T) {
   const sinL = T.filter(t => !/riego/i.test(t.uso || "") && (!t.ultima_limpieza || tqDias(t.proxima_limpieza || tqMas(t.ultima_limpieza, 12)) < 0)).length;
-  const sinR = T.filter(t => !t.ultima_insp || tqDias(tqMas(t.ultima_insp, TANQUES_CAT.meses_inspeccion || 3)) < 0).length;
+  const sinR = T.filter(t => !t.ultima_insp || tqDias(tqMas(t.ultima_insp, TANQUES_CAT.meses_inspeccion || 6)) < 0).length;
   const avs = T.map(t => tqPeor(tqEstado(t))), er = avs.filter(x => x === "er").length, wa = avs.filter(x => x === "wa").length;
   const p = [];
   if (sinL) p.push("🧽 " + sinL + " para limpiar");
@@ -153,7 +153,7 @@ function tqRenderLugar() {
     h += `<button type="button" class="ext-fila${peor === "ok" ? " ok" : ""}${abierto ? " abierta" : ""}${t.pendiente ? " nuevo" : ""}" data-cod="${escX(t.codigo)}"${t.pendiente ? " disabled" : ""}>
       <span class="ext-ico">${/cisterna/i.test(t.tipo) ? "🛢️" : "💧"}</span><span class="ext-txt"><b>${escX(t.codigo || "Nuevo")} · ${escX(t.tipo || "s/d")}${t.capacidad ? " · " + escX(Number(t.capacidad) ? Number(t.capacidad).toLocaleString("es-AR") + " L" : t.capacidad) : ""}</b>
       <small>${escX(t.ubicacion || "s/d")}</small>${avs.map(a => `<small class="ext-vto ${a.nivel === "ok" ? "" : a.nivel}">${a.nivel === "er" ? "⚠️ " : a.nivel === "wa" ? "⏰ " : "✅ "}${escX(a.txt)}</small>`).join("")}</span></button>`;
-    if (abierto) h += `<div class="ext-panel"><button type="button" class="ext-listo" data-accion="insp">🔍 Relevamiento de estado (cada 3 meses)</button>
+    if (abierto) h += `<div class="ext-panel"><button type="button" class="ext-listo" data-accion="insp">🔍 Relevamiento de estado (cada 6 meses)</button>
       <button type="button" class="ext-listo tq-azul" data-accion="limp">🧽 Registrar una limpieza</button>
       <button type="button" class="ext-editar" data-accion="edit">✏️ Corregir los datos de este tanque</button>
       <div class="step-sub" style="margin-top:8px">Última limpieza: ${tqFecha(t.ultima_limpieza)} · último relevamiento: ${tqFecha(t.ultima_insp)}${t.resultado_insp ? " (" + escX(t.resultado_insp) + ")" : ""} · tapa: ${escX(t.tapa || "s/d")} · acceso: ${escX(t.acceso || "s/d")}</div></div>`;
@@ -180,7 +180,7 @@ function tqRenderPoe() {
     ["Paso 1 · Limpieza", ["Cerrar la entrada de agua.", "Vaciar, dejando solo el agua justa para cepillar.", "Cerrar las salidas a las cañerías.", "Cepillar piso, paredes y tapa con cepillo de cerdas plásticas. SIN detergente.", "Vaciar del todo, sacar el barro y enjuagar."]],
     ["Paso 2 · Desinfección", ["Cargar agua de red SOLO hasta el 20 % del tanque (un quinto de la altura): tanque de 1.000 L → 200 L de agua. No se llena.", "En esa agua, agregar lavandina al 5,5 %: 2 mL por cada litro de agua cargada (110 ppm). Tanque de 1.000 L → 200 L de agua → 400 mL de lavandina; de 2.750 L → 550 L → 1.100 mL.", "Cerrar la entrada y dejar todo cerrado mínimo 3 horas (mejor 6)."]],
     ["Paso 3 · Enjuague", ["Abrir todas las canillas hasta vaciar el agua con cloro.", "Abrir la entrada y dejar correr hasta que el olor y el sabor a cloro sean aceptables.", "Tapar bien el tanque (no sirve lona ni nylon).", "El cloro no se mide acá: lo mide Saneamiento (DPSB) cuando toma la muestra.", "Completar y firmar el F-AGU-01-T y sacarle una foto acá, en «Registrar una limpieza»."]],
-    ["Cada 3 meses", ["Mirar cada tanque y cargar el «Relevamiento de estado». Si hay barro, olor, agua turbia o bichos, se limpia aunque no toque."]],
+    ["Cada 6 meses", ["Mirar cada tanque y cargar el «Relevamiento de estado». Si hay barro, olor, agua turbia o bichos, se limpia aunque no toque."]],
   ];
   tqBox().innerHTML = `<button type="button" class="ext-quitar tq-volver" data-tq="volver">← Volver</button>
     <div class="step-title" style="font-size:1.25rem">Cómo se limpia un tanque</div><div class="step-sub">Resumen de nuestro protocolo POE-AGU-001 (Higiene y Seguridad HZT/HMH). El detalle está en el F-AGU-01-T.</div>` +
