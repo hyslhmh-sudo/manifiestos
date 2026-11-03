@@ -1727,7 +1727,13 @@ function panelAlta(a) {
       tipo = "texto";
     }
     html += `<div class="ext-preg">${tit}</div>`;
-    if (tipo === "puesto") { html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("puesto")}`; return; }
+    if (tipo === "puesto") {
+      html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">`;
+      html += a.sinCartel
+        ? `<div class="step-sub" style="margin:6px 0 0">🏷️ No tenía cartel: le pusiste el N.º <b>${escX(a.datos[k])}</b>. Queda anotado para colocar el cartel. <button type="button" class="ext-sincartel-no" style="border:0;background:none;color:inherit;text-decoration:underline;font:inherit;padding:0">Deshacer</button></div>`
+        : `<button type="button" class="ext-agregar ext-sincartel" style="margin-top:8px">🏷️ No tiene cartel: ponerle el próximo número (${proximoPuesto(a)})</button>`;
+      html += extEjemplo("puesto"); return;
+    }
     if (tipo === "inventario") { html += `<input class="ext-inp" data-campo="${k}" type="text" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("inventario")}`; return; }
     const opciones = k === "PLANTA" ? plantasDe(a.lugar.id, a.datos.PLANTA) : x;
     if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + opciones.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
@@ -1746,7 +1752,9 @@ function panelAlta(a) {
   const boton = panel.querySelector(".ext-listo");
   const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = textoBotonAlta(a); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
-  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
+  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; if (inp.dataset.campo === "NRO_EXTINTOR") a.sinCartel = false; actualizar(); }; });
+  const bSc = panel.querySelector(".ext-sincartel"); if (bSc) bSc.onclick = () => { a.datos.NRO_EXTINTOR = String(proximoPuesto(a)); a.sinCartel = true; renderExtintores(); borradorGuardar(); };
+  const bScNo = panel.querySelector(".ext-sincartel-no"); if (bScNo) bScNo.onclick = () => { a.datos.NRO_EXTINTOR = ""; a.sinCartel = false; renderExtintores(); };
   panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
   panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
@@ -1803,11 +1811,19 @@ function registrosEdicionExtintores(idTarea) {
   });
 }
 // Registros de los extintores agregados (uno por extintor nuevo)
+// Extintor sin cartel (decisión de Belén, 03/11/2026): Javier le pone el número que sigue al último del establecimiento y después se coloca el cartel.
+// El próximo número cuenta los extintores de la lista y los nuevos de esta tarea (si otro celular usó el mismo, el sistema avisa y se cambia).
+function proximoPuesto(a) {
+  const cod = lugarInc(a.lugar.id).cod;
+  const usados = EXTINTORES_CAT.filter(e => !cod || (e.lugares || []).some(id => lugarInc(id).cod === cod)).map(e => Number(e.nro) || 0)
+    .concat(tareaHys.altas.filter(x => x !== a).map(x => Number(x.datos.NRO_EXTINTOR) || 0));
+  return Math.max(0, ...usados) + 1;
+}
 function registrosAltaExtintores(idTarea) {
   return tareaHys.altas.filter(altaCompleta).map((a, i) => {
     const d = Object.assign({ id_alta: idTarea + "-A" + (i + 1), id_tarea: idTarea, lugar_id: a.lugar.id, lugar_nombre: a.lugar.nombre, fecha: new Date().toISOString(),
       operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
-      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: [a.sinCartel ? "Sin cartel: se le asignó el puesto " + a.datos.NRO_EXTINTOR + "; falta colocar el cartel." : "", (a.obs || "").trim()].filter(Boolean).join(" ") }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
     return { tipo: "alta_extintor", data: d };
   });
 }

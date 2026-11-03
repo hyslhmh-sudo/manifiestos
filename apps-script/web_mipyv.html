@@ -744,7 +744,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.03e";
+const APP_VERSION = "2026.11.03f";
 </script>
 <script>
 // ============================================================
@@ -1097,7 +1097,7 @@ const AYUDA_TEXTOS = {
   "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
   "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
   "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
-  "h-extintores": "Tocá cada extintor de la lista. Si está todo bien (en su lugar, se puede agarrar, aguja en verde, precinto y cartel) y la carga está vigente, tocá «✅ Todo OK»: un toque y sin fotos. Si algo está mal, o la carga está vencida o sin fecha, contestá las 5 preguntas con Sí o No, poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, la prueba hidráulica, y sacá las 3 fotos: 1) de lejos, que se vea el extintor, el cartel y todo alrededor; 2) la tarjeta con la fecha; 3) la chapita con el número de inventario. Cada extintor tiene DOS números distintos: el N.º de puesto es el del cartel donde va colgado (solo números, no se repite) y el N.º de inventario es el de la chapita pegada en el extintor (si no tiene, s/d). No los cruces. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: N.º de puesto, planta (subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias), sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario, vencimiento de la carga y 3 fotos; todo es obligatorio. En la Sede ex ADOS el sector es la dependencia (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes): si entraste por una de ellas, ya viene puesta. Si el puesto o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el N.º de puesto o dónde está»; Belén lo verifica. «📋 Ver todos los extintores cargados» muestra la lista completa (rojo: carga vencida; amarillo: vence en 30 días). Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. Si al mandar la planilla no acepta algo (por ejemplo, un puesto repetido), en el inicio aparece un cuadro rojo «No se pudo enviar»: tocalo, leé el motivo y corregilo o descartalo. Si la app se cierra al sacar una foto, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común y después elegí «🖼️ Elegir del teléfono».",
+  "h-extintores": "Tocá cada extintor de la lista. Si está todo bien (en su lugar, se puede agarrar, aguja en verde, precinto y cartel) y la carga está vigente, tocá «✅ Todo OK»: un toque y sin fotos. Si algo está mal, o la carga está vencida o sin fecha, contestá las 5 preguntas con Sí o No, poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, la prueba hidráulica, y sacá las 3 fotos: 1) de lejos, que se vea el extintor, el cartel y todo alrededor; 2) la tarjeta con la fecha; 3) la chapita con el número de inventario. Cada extintor tiene DOS números distintos: el N.º de puesto es el del cartel donde va colgado (solo números, no se repite) y el N.º de inventario es el de la chapita pegada en el extintor (si no tiene, s/d). No los cruces. Si el extintor no tiene cartel con número, tocá «🏷️ No tiene cartel: ponerle el próximo número»: la app le pone el número que sigue al último y queda anotado para colocar el cartel. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: N.º de puesto, planta (subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias), sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario, vencimiento de la carga y 3 fotos; todo es obligatorio. En la Sede ex ADOS el sector es la dependencia (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes): si entraste por una de ellas, ya viene puesta. Si el puesto o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el N.º de puesto o dónde está»; Belén lo verifica. «📋 Ver todos los extintores cargados» muestra la lista completa (rojo: carga vencida; amarillo: vence en 30 días). Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. Si al mandar la planilla no acepta algo (por ejemplo, un puesto repetido), en el inicio aparece un cuadro rojo «No se pudo enviar»: tocalo, leé el motivo y corregilo o descartalo. Si la app se cierra al sacar una foto, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común y después elegí «🖼️ Elegir del teléfono».",
   "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
   "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
   "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
@@ -3027,7 +3027,13 @@ function panelAlta(a) {
       tipo = "texto";
     }
     html += `<div class="ext-preg">${tit}</div>`;
-    if (tipo === "puesto") { html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("puesto")}`; return; }
+    if (tipo === "puesto") {
+      html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">`;
+      html += a.sinCartel
+        ? `<div class="step-sub" style="margin:6px 0 0">🏷️ No tenía cartel: le pusiste el N.º <b>${escX(a.datos[k])}</b>. Queda anotado para colocar el cartel. <button type="button" class="ext-sincartel-no" style="border:0;background:none;color:inherit;text-decoration:underline;font:inherit;padding:0">Deshacer</button></div>`
+        : `<button type="button" class="ext-agregar ext-sincartel" style="margin-top:8px">🏷️ No tiene cartel: ponerle el próximo número (${proximoPuesto(a)})</button>`;
+      html += extEjemplo("puesto"); return;
+    }
     if (tipo === "inventario") { html += `<input class="ext-inp" data-campo="${k}" type="text" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("inventario")}`; return; }
     const opciones = k === "PLANTA" ? plantasDe(a.lugar.id, a.datos.PLANTA) : x;
     if (tipo === "botones") html += `<div class="ext-opc" data-campo="${k}">` + opciones.map(v => `<button type="button" class="${a.datos[k] === v ? "on" : ""}" data-valor="${v}">${v}</button>`).join("") + `</div>`;
@@ -3046,7 +3052,9 @@ function panelAlta(a) {
   const boton = panel.querySelector(".ext-listo");
   const actualizar = () => { const ok = altaCompleta(a); boton.disabled = !ok; boton.textContent = textoBotonAlta(a); nextBtn.disabled = !canAdvance("h-extintores"); };
   panel.querySelectorAll(".ext-opc").forEach(g => g.querySelectorAll("button").forEach(b => { b.onclick = () => { a.datos[g.dataset.campo] = b.dataset.valor; renderExtintores(); }; }));
-  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; actualizar(); }; });
+  panel.querySelectorAll(".ext-inp").forEach(inp => { inp.oninput = inp.onchange = () => { a.datos[inp.dataset.campo] = inp.value; if (inp.dataset.campo === "NRO_EXTINTOR") a.sinCartel = false; actualizar(); }; });
+  const bSc = panel.querySelector(".ext-sincartel"); if (bSc) bSc.onclick = () => { a.datos.NRO_EXTINTOR = String(proximoPuesto(a)); a.sinCartel = true; renderExtintores(); borradorGuardar(); };
+  const bScNo = panel.querySelector(".ext-sincartel-no"); if (bScNo) bScNo.onclick = () => { a.datos.NRO_EXTINTOR = ""; a.sinCartel = false; renderExtintores(); };
   panel.querySelector(".ext-com").oninput = (ev) => { a.obs = ev.target.value; };
   panel.querySelectorAll("[data-foto]").forEach(b => { b.onclick = () => { extFotoDestino = ["alta", a.uid, b.dataset.foto]; elegirOrigenFoto(extFotoInput, false, fs => extFotoPoner(fs[0])); }; });
   boton.onclick = () => { if (altaCompleta(a)) { altaAbierta = null; renderExtintores(); } };
@@ -3103,11 +3111,19 @@ function registrosEdicionExtintores(idTarea) {
   });
 }
 // Registros de los extintores agregados (uno por extintor nuevo)
+// Extintor sin cartel (decisión de Belén, 03/11/2026): Javier le pone el número que sigue al último del establecimiento y después se coloca el cartel.
+// El próximo número cuenta los extintores de la lista y los nuevos de esta tarea (si otro celular usó el mismo, el sistema avisa y se cambia).
+function proximoPuesto(a) {
+  const cod = lugarInc(a.lugar.id).cod;
+  const usados = EXTINTORES_CAT.filter(e => !cod || (e.lugares || []).some(id => lugarInc(id).cod === cod)).map(e => Number(e.nro) || 0)
+    .concat(tareaHys.altas.filter(x => x !== a).map(x => Number(x.datos.NRO_EXTINTOR) || 0));
+  return Math.max(0, ...usados) + 1;
+}
 function registrosAltaExtintores(idTarea) {
   return tareaHys.altas.filter(altaCompleta).map((a, i) => {
     const d = Object.assign({ id_alta: idTarea + "-A" + (i + 1), id_tarea: idTarea, lugar_id: a.lugar.id, lugar_nombre: a.lugar.nombre, fecha: new Date().toISOString(),
       operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
-      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: (a.obs || "").trim() }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
+      fotos_base64: FOTOS_EXTINTOR.map(([k]) => a.fotos[k]), OBSERVACIONES: [a.sinCartel ? "Sin cartel: se le asignó el puesto " + a.datos.NRO_EXTINTOR + "; falta colocar el cartel." : "", (a.obs || "").trim()].filter(Boolean).join(" ") }, a.datos, { CAPACIDAD_KG: kilosNormal(a.datos.CAPACIDAD_KG) });
     return { tipo: "alta_extintor", data: d };
   });
 }
