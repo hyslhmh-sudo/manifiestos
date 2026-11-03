@@ -71,10 +71,11 @@ function tqEstado(t) {
     if (!t.ultima_limpieza) av.push({ nivel: "er", txt: "Sin limpieza registrada" });
     else if (dl < 0) av.push({ nivel: "er", txt: "Limpieza vencida (tocaba el " + tqFecha(pl) + ")" });
     else if (dl <= 30) av.push({ nivel: "wa", txt: "Limpieza: toca el " + tqFecha(pl) });
+    else av.push({ nivel: "ok", txt: "Limpio el " + tqFecha(t.ultima_limpieza) + " · próxima limpieza " + tqFecha(pl) });   // 02/11/2026: la limpieza al día se ve siempre
     if (/limpieza/i.test(t.resultado_insp || "") && t.ultima_insp && (!t.ultima_limpieza || t.ultima_limpieza < t.ultima_insp)) av.push({ nivel: "er", txt: "El último relevamiento pide limpiarlo" });
   }
   if (/reparaci/i.test(t.resultado_insp || "")) av.push({ nivel: "wa", txt: "Necesita una reparación (lo ve Higiene y Seguridad)" });
-  if (!av.length) av.push({ nivel: "ok", txt: "Al día · limpieza " + tqFecha(t.ultima_limpieza) + " · relevamiento " + tqFecha(t.ultima_insp) });
+  if (av.every(a => a.nivel === "ok")) return [{ nivel: "ok", txt: "Al día · limpieza " + tqFecha(t.ultima_limpieza) + " · relevamiento " + tqFecha(t.ultima_insp) }];
   return av;
 }
 const tqPeor = (avs) => avs.some(a => a.nivel === "er") ? "er" : avs.some(a => a.nivel === "wa") ? "wa" : "ok";
