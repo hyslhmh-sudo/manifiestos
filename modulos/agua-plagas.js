@@ -218,7 +218,7 @@ async function agua(modo) {
   const pe = {}; (TB.puntos || []).filter(p => enA(p.cod)).forEach(p => { const x = pe[p.cod] = pe[p.cod] || { t: 0, aldia: 0, porvencer: 0, vencida: 0, sin: 0, unica: 0 }; x.t++; x[p.estado in x ? p.estado : 'sin']++; });
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
-    ? aguaLabCard(TB.lab, TB.labError) + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    ? aguaLabCard(TB.lab, TB.labError) + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Relevamiento de edificios · red Trelew</h2><span class="mu peq" style="display:block;margin-bottom:8px">Agua, desagües, canaletas y techos de cada lugar, cargados por Javier y Paulo desde la app MIP.</span><a class="btn sec" href="#edif">Ver el relevamiento</a></section>' + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
@@ -576,4 +576,78 @@ async function pantallaHoras(fresco) {
     '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas salen de «hora de inicio» y «hora de fin» de cada registro de la app; el acompañante usa su propio horario y, si no lo cargó, el del titular.</div>';
   $('hsMes').onchange = e => { MHS = e.target.value; pantallaHoras(); };
   $('hsImp').onclick = () => { document.querySelectorAll('#hsBox details').forEach(d => d.open = true); window.print(); };
+}
+
+// ------------------------------------------------------------------ Relevamiento de edificios · red Trelew (05/11/2026, pedido de Belén)
+// Agua, desagües, canaletas y techos de cada lugar: lo cargan Javier y Paulo desde la app MIP (módulo «Edificio»).
+// Servidor: Edificios.gs › p_edif (lee la hoja «relevamiento_edificio» del libro MIPyV) y p_edif_revisar.
+// Si un lugar se relevó más de una vez (o por partes, como el HZT), se ven todas las filas; arriba, el estado más nuevo de cada lugar.
+// Los lugares esperados son los de la app MIP (sin HMH, HSST ni AMB); la Sede ex ADOS es un solo edificio.
+const EDIF_LUGARES = [['HZT', 'Hospital Zonal Trelew (edificio central)'], ['ADOL|PROS|VAC|EXADOS|CEXT', 'Sede ex ADOS (Adolescencia, PROSATE, Vacunatorio, Consultorios Externos)'],
+  ['CTUT', 'Casa Tutelada'], ['CDIA', 'Centro de Día'], ['CIT', 'CIT'], ['HCAM', 'Hilando Caminos'], ['ISM', 'Internación de Salud Mental'], ['PANAI', 'Pichi Anai'], ['UGD', 'UGD - ex Área Programática'],
+  ['CAP-AMA', 'CAPS Amaya'], ['CAP-CON', 'CAPS Constitución'], ['CAP-COR', 'CAPS Corradi (Pascual Daleoso)'], ['CAP-DBO', 'CAPS Don Bosco (Gwenda Williams)'], ['CAP-ETC', 'CAPS Etchepare'], ['CAP-LLO', 'CAPS La Loma'],
+  ['CAP-PGA', 'CAPS Planta de Gas'], ['CAP-SMA', 'CAPS San Martín (Ing. Franzetti)'], ['CAP-SAR', 'CAPS Sarmiento'], ['CAP-TFE', 'CAPS Tiro Federal'], ['CAP-VIT', 'CAPS Villa Italia']];
+const EDIF_TEMAS = [['agua', '💧 Agua'], ['desagues', '🚿 Desagües'], ['canaletas', '🌧 Canaletas'], ['techos', '🏠 Techos']];
+const EDIF_INFORME = 'https://docs.google.com/document/d/1zdFy2BfuuUtELR5DPnlXKKEFEcgjZH6M6RYVusL12uw/edit';
+let EDIF = null, EDF = { lugar: '', soloUrg: false };
+function edifNivel(t) { t = String(t || ''); return /urgente/i.test(t) ? 'er' : /arreglo/i.test(t) ? 'wa' : /^(bien|no tiene)$/i.test(t.trim()) ? 'ok' : 'nd'; }
+function edifChip(t) { const n = edifNivel(t), c = { er: ['#FBE3DE', '#B4361F'], wa: ['#FFF1D6', '#8A5A00'], ok: ['#E3F4E8', '#1E6B3A'], nd: ['#EEF1F3', '#55606A'] }[n];
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:' + c[0] + ';color:' + c[1] + '">' + esc(t || 's/d') + '</span>'; }
+async function pantallaEdificios(fresco) {
+  marco('#edif', '<div class="cab"><div><span class="mu peq">2 · Agua · 6 · Infraestructura</span><h1>Relevamiento de edificios · red Trelew</h1><span class="mu peq">Agua, desagües, canaletas y techos de cada lugar. Lo cargan Javier y Paulo desde la app MIP; tocá un lugar para ver lo que hace falta, las fotos y marcarlo como revisado.</span></div>' +
+    '<div class="filtros"><button class="btn sec" id="edAct">Actualizar</button><a class="btn sec" id="edLib" href="#" target="_blank" rel="noopener" hidden>Planilla ↗</a><a class="btn sec" href="' + EDIF_INFORME + '" target="_blank" rel="noopener">Informe a la Dirección ↗</a></div></div>' +
+    '<div id="edBox"><section class="card"><div class="mu">Leyendo el relevamiento…</div></section></div>' +
+    '<style>@media (max-width:760px){.edT thead{display:none}.edT,.edT tbody,.edT tr,.edT td{display:block;width:100%}.edT tr{border-top:1px solid var(--ln);padding:10px 0}.edT td{border:0!important;padding:2px 0!important}.edT td[data-l]::before{content:attr(data-l) ": ";color:var(--mu);font-weight:600}}.edT tr[data-i]{cursor:pointer}.edT tr[data-i]:hover{background:#F4F8FA}.edFotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.edFotos img{width:88px;height:88px;object-fit:cover;border-radius:8px;border:1px solid var(--ln)}</style>');
+  $('edAct').onclick = () => pantallaEdificios(true);
+  if (!EDIF || fresco) { try { EDIF = await api('p_edif', {}, 120000); } catch (e) { $('edBox').innerHTML = '<section class="card"><div class="aviso error">No se pudo leer el relevamiento de edificios.</div></section>'; return; } }
+  if (!EDIF || EDIF.ok === false) { $('edBox').innerHTML = '<section class="card"><div class="aviso error">' + esc((EDIF && (EDIF.mensaje || EDIF.error)) || 'No se pudo leer el relevamiento.') + '</div></section>'; return; }
+  if (EDIF.libro) { $('edLib').href = EDIF.libro; $('edLib').hidden = false; }
+  edifPintar();
+}
+function edifPintar() {
+  const F = EDIF.filas || [], ult = {};
+  F.forEach(f => { const g = (EDIF_LUGARES.find(l => l[0].split('|').indexOf(f.lugar_id) >= 0) || [f.lugar_id || f.lugar])[0]; if (!ult[g]) ult[g] = f; });   // F viene del más nuevo al más viejo
+  const hechos = EDIF_LUGARES.filter(l => ult[l[0]]), faltan = EDIF_LUGARES.filter(l => !ult[l[0]]);
+  const U = Object.values(ult), urg = U.filter(f => /urgente/i.test(f.prioridad) || EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'er')), arr = U.filter(f => urg.indexOf(f) < 0 && EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'wa'));
+  const sinRev = F.filter(f => !/^revisado/i.test(f.revisado_hys));
+  const kpi = (n, t, col) => '<div class="card" style="padding:12px;text-align:center"><div style="font-size:26px;font-weight:800;color:' + (col || 'inherit') + '">' + n + '</div><div class="mu peq">' + t + '</div></div>';
+  const porTema = EDIF_TEMAS.map(t => { const c = { er: 0, wa: 0, ok: 0, nd: 0 }; U.forEach(f => c[edifNivel(f[t[0]])]++); return '<tr><td><b>' + t[1] + '</b></td><td style="color:#B4361F;font-weight:700">' + c.er + '</td><td style="color:#8A5A00;font-weight:700">' + c.wa + '</td><td style="color:#1E6B3A;font-weight:700">' + c.ok + '</td><td class="mu">' + c.nd + '</td></tr>'; }).join('');
+  const lugares = Array.from(new Set(F.map(f => f.lugar))).sort((a, b) => a.localeCompare(b, 'es'));
+  const ver = F.filter(f => (!EDF.lugar || f.lugar === EDF.lugar) && (!EDF.soloUrg || urg.indexOf(f) >= 0 || /urgente/i.test(f.prioridad)));
+  $('edBox').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' + kpi(hechos.length + ' de ' + EDIF_LUGARES.length, 'lugares relevados') + kpi(urg.length, 'con algo urgente', urg.length ? '#B4361F' : '') + kpi(arr.length, 'requieren arreglos', arr.length ? '#8A5A00' : '') + kpi(sinRev.length, 'sin revisar por HyS', sinRev.length ? '#21788C' : '') + '</div>' +
+    (urg.length ? '<section class="card" style="border-left:4px solid #B4361F"><h2 style="margin:0 0 6px;font-size:16px">Urgente</h2>' + urg.map(f => { const T = EDIF_TEMAS.filter(t => edifNivel(f[t[0]]) === 'er'), q = T.map(t => f[t[0] + '_falta']).filter(x => x && !/^s\/?n$/i.test(x.trim())).join(' · ') || f.observaciones;
+      return '<div style="margin:8px 0;cursor:pointer" data-u="' + F.indexOf(f) + '"><b>' + esc(f.lugar) + '</b> · ' + (T.length ? T.map(t => t[1]).join(', ') : 'marcado urgente') + '<br><span class="mu peq">' + esc(String(q || '').slice(0, 300)) + '</span></div>'; }).join('') + '</section>' : '') +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Por tema (último relevamiento de cada lugar)</h2><table class="tabla" style="width:100%;max-width:520px"><thead><tr><th>Tema</th><th>Urgente</th><th>Arreglo</th><th>Bien</th><th>No se pudo ver / s/d</th></tr></thead><tbody>' + porTema + '</tbody></table></section>' +
+    '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Relevamientos cargados</h2>' +
+    '<div class="filtros" style="margin-bottom:8px"><label class="f">Lugar<select class="c" id="edL"><option value="">Todos</option>' + lugares.map(l => '<option' + (l === EDF.lugar ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></label><label class="peq" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="edU"' + (EDF.soloUrg ? ' checked' : '') + '> Solo urgentes</label></div>' +
+    (ver.length ? '<div style="overflow-x:auto"><table class="tabla edT" style="width:100%"><thead><tr><th>Fecha</th><th>Lugar</th>' + EDIF_TEMAS.map(t => '<th>' + t[1] + '</th>').join('') + '<th>Prioridad</th><th>Revisión HyS</th></tr></thead><tbody>' +
+      ver.map(f => '<tr data-i="' + F.indexOf(f) + '"><td data-l="Fecha">' + esc(fechaTxt(f.fecha)) + '</td><td data-l="Lugar"><b>' + esc(f.lugar) + '</b>' + (f.parte && !/^todo el edificio$/i.test(f.parte) ? '<br><span class="mu peq">' + esc(f.parte) + '</span>' : '') + '</td>' +
+        EDIF_TEMAS.map(t => '<td data-l="' + t[1] + '">' + edifChip(f[t[0]]) + '</td>').join('') + '<td data-l="Prioridad">' + edifChip(f.prioridad) + '</td><td data-l="Revisión HyS" class="peq">' + esc(f.revisado_hys || 'Sin revisar') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<div class="mu">' + (F.length ? 'Ninguno con ese filtro.' : 'Todavía no hay relevamientos cargados.') + '</div>') + '</section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Faltan relevar (' + faltan.length + ')</h2>' + (faltan.length ? faltan.map(l => '<div style="margin:3px 0">⬜ ' + esc(l[1]) + '</div>').join('') : '<div class="mu">✅ Están todos.</div>') + '<span class="mu peq" style="display:block;margin-top:8px">Los mismos lugares que ven Javier y Paulo en la app MIP (sin HMH). Si un lugar no corresponde, avisame y lo saco de la lista.</span></section>';
+  $('edL').onchange = e => { EDF.lugar = e.target.value; edifPintar(); };
+  $('edU').onchange = e => { EDF.soloUrg = e.target.checked; edifPintar(); };
+  document.querySelectorAll('.edT tr[data-i]').forEach(tr => tr.onclick = () => edifVer(F[+tr.dataset.i]));
+  document.querySelectorAll('#edBox [data-u]').forEach(d => d.onclick = () => edifVer(F[+d.dataset.u]));
+}
+function edifVer(f) {
+  const dd = (t, x) => x ? '<dt>' + t + '</dt><dd>' + x + '</dd>' : '', nl = s => esc(s || '').replace(/\n/g, '<br>');
+  const fotos = L => L && L.length ? '<div class="edFotos">' + L.map((x, i) => '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" title="Foto ' + (i + 1) + '">' + (x.id ? '<img loading="lazy" alt="Foto ' + (i + 1) + '" src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(x.id) + '&sz=w300">' : 'Foto ' + (i + 1) + ' ↗') + '</a>').join('') + '</div>' : '';
+  const tema = t => '<div style="border-top:1px solid var(--ln);padding:10px 0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + t[1] + (t[0] === 'techos' && f.techo_tipo && f.techo_tipo !== 's/d' ? ' · ' + esc(f.techo_tipo) : '') + '</b>' + edifChip(f[t[0]]) + '</div>' +
+    (f[t[0] + '_falta'] && !/^s\/?n$/i.test(f[t[0] + '_falta'].trim()) ? '<div style="margin-top:4px"><span class="mu peq">Qué hace falta:</span> ' + nl(f[t[0] + '_falta']) + '</div>' : '') + fotos(f['fotos_' + t[0]]) + '</div>';
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Relevamiento de edificio" style="max-width:760px"><h2>' + esc(f.lugar) + ' · ' + esc(fechaTxt(f.fecha)) + '</h2><dl class="dl">' +
+    dd('Parte relevada', esc(f.parte)) + dd('Operarios', esc(f.operario) + (f.operario_acompanante ? ' y ' + esc(f.operario_acompanante) : '')) + dd('Prioridad', edifChip(f.prioridad)) + '</dl>' +
+    EDIF_TEMAS.map(tema).join('') +
+    (f.observaciones ? '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Observaciones</b><div style="margin-top:4px">' + nl(f.observaciones) + '</div></div>' : '') +
+    (f.respuestas ? '<details style="border-top:1px solid var(--ln);padding:10px 0"><summary><b>Todas las respuestas</b></summary><pre style="white-space:pre-wrap;font:inherit;font-size:13px;margin:6px 0 0">' + esc(f.respuestas) + '</pre></details>' : '') +
+    '<dl class="dl">' + dd('Revisión HyS', esc(f.revisado_hys || 'Sin revisar')) + '</dl>' +
+    '<label class="f" style="margin-top:8px">Nota de revisión (opcional)<input class="c" id="edNota" placeholder="Ej.: pasa al informe; pedir a Mantenimiento"></label>' +
+    '<div class="acciones"><div></div><div style="display:flex;gap:8px"><button class="btn sec" id="edCer">Cerrar</button><button class="btn pri" id="edRev">Marcar como revisado</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('edCer').onclick = cerrar;
+  $('edRev').onclick = async () => { $('edRev').disabled = true; $('edRev').textContent = 'Guardando…';
+    try { const r = await api('p_edif_revisar', { id: f.id_relev, nota: $('edNota').value }, 60000); if (!r.ok) throw new Error(r.mensaje); toast('Relevamiento marcado como revisado.'); cerrar(); pantallaEdificios(true); }
+    catch (e) { $('edRev').disabled = false; $('edRev').textContent = 'Marcar como revisado'; toast(e.message || 'No se pudo guardar.'); } };
 }
