@@ -379,10 +379,14 @@ function incDetalle_(cod, sitio) {
 // Desde el 29/10/2026 el N.º de puesto también es obligatorio y todo pasa por incValidar_ (las mismas reglas para todos).
 const INC_REQ_ALTA = [['SITIO', 'el lugar'], ['NRO_EXTINTOR', 'el N.º de puesto (el del cartel)'], ['PLANTA', 'la planta'], ['SECTOR', 'el sector o servicio'], ['UBICACION', 'dónde está exactamente'], ['TIPO', 'el tipo'],
   ['AGENTE', 'el agente extintor'], ['CAPACIDAD_KG', 'la capacidad (kg)'], ['NRO_INVENTARIO', 'el N.º de inventario de la chapita (si no tiene, «s/d»)'], ['VTO_CARGA', 'el vencimiento de la carga (está en la tarjeta)']];
-// Desde la aplicación (codPermitido) también se puede corregir el N.º de puesto y la ubicación (lugar, planta, sector,
-// ubicación): queda «Pendiente» de verificar por HyS, con el cambio anotado en CAMBIOS. Lo que carga o corrige HyS desde el portal queda verificado.
-const INC_EDIT_APP = [['NRO_EXTINTOR', 'N.º de puesto'], ['SITIO', 'Lugar'], ['PLANTA', 'Planta'], ['SECTOR', 'Sector'], ['UBICACION', 'Ubicación']];
-const INC_NOMBRES = { NRO_EXTINTOR: 'N.º de puesto', NRO_CHAPA: 'N.º de chapa', SITIO: 'Lugar', PLANTA: 'Planta', SECTOR: 'Sector', UBICACION: 'Ubicación', TIPO: 'Tipo', AGENTE: 'Agente',
+// Desde la aplicación (codPermitido) se puede corregir el N.º de puesto y la ubicación (lugar, planta, sector, ubicación) y, desde el
+// 05/11/2026 (pedido de Belén, para Melani), también tipo, agente, kilos, N.º de chapa baliza, inventario, vencimientos y las 3 fotos:
+// queda «Pendiente» de verificar por HyS, con el cambio anotado en CAMBIOS. Lo que carga o corrige HyS desde el portal queda verificado.
+const INC_EDIT_APP = [['NRO_EXTINTOR', 'N.º de puesto'], ['SITIO', 'Lugar'], ['PLANTA', 'Planta'], ['SECTOR', 'Sector'], ['UBICACION', 'Ubicación'],
+  ['TIPO', 'Tipo'], ['AGENTE', 'Agente'], ['CAPACIDAD_KG', 'Capacidad'], ['NRO_CHAPA', 'N.º de chapa baliza'], ['NRO_INVENTARIO', 'N.º de inventario'],
+  ['VTO_CARGA', 'Vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'Prueba hidráulica']];
+const INC_EDIT_NO_VACIO = ['TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA'];   // si se mandan, no pueden quedar vacíos
+const INC_NOMBRES = { NRO_EXTINTOR: 'N.º de puesto', NRO_CHAPA: 'N.º de chapa baliza', SITIO: 'Lugar', PLANTA: 'Planta', SECTOR: 'Sector', UBICACION: 'Ubicación', TIPO: 'Tipo', AGENTE: 'Agente',
   CAPACIDAD_KG: 'Capacidad', NRO_INVENTARIO: 'N.º de inventario', VTO_CARGA: 'Vencimiento de la carga', PRUEBA_HIDRAULICA_VENCE: 'Prueba hidráulica', ESTADO: 'Estado', OBSERVACIONES: 'Observaciones' };
 // Anota los cambios (lo más nuevo primero) en la columna CAMBIOS
 function incAnotarCambio_(o, antes, quien, extra) {
@@ -398,7 +402,9 @@ function incExtGuardar_(x, quien, codPermitido) {
   if (x.ID && !e) return { ok: false, codigo: 'no_existe', mensaje: 'Ese extintor (' + x.ID + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista y buscalo de nuevo.' };
   if (codPermitido && e) {   // corrección desde la aplicación: solo N.º de puesto y ubicación, de este establecimiento
     if (limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese extintor no es de este establecimiento.' };
-    const y = { ID: e.ID, ESTABLECIMIENTO: codPermitido }; INC_EDIT_APP.forEach(c => { if (c[0] in x) y[c[0]] = x[c[0]]; });
+    const y = { ID: e.ID, ESTABLECIMIENTO: codPermitido, fotos: x.fotos || {}, id_origen: x.id_origen }; INC_EDIT_APP.forEach(c => { if (c[0] in x) y[c[0]] = x[c[0]]; });
+    const vac = INC_EDIT_NO_VACIO.filter(k => k in y && !limpio_(y[k])).map(k => INC_NOMBRES[k].toLowerCase()); if (vac.length) return { ok: false, codigo: 'datos', mensaje: 'No pueden quedar vacíos: ' + vac.join(', ') + ' (si no se sabe, poné s/d).' };
+    if ('VTO_CARGA' in y && !/^s\/d/i.test(y.VTO_CARGA) && !incISO_(y.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
     if (!limpio_(y.SITIO || e.SITIO) || ('SECTOR' in y && !limpio_(y.SECTOR)) || ('UBICACION' in y && !limpio_(y.UBICACION))) return { ok: false, codigo: 'datos', mensaje: 'El lugar, el sector y la ubicación no pueden quedar vacíos.' };
     if (y.SITIO && !incDatos_().sit.some(s => s.ESTABLECIMIENTO === codPermitido && sinTildes_(s.SITIO) === sinTildes_(y.SITIO))) return { ok: false, codigo: 'lugar', mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
     x = y;
