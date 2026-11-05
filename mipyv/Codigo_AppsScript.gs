@@ -234,6 +234,12 @@ function doPost(e) {
     const tipo = body.tipo; // "visita" | "hallazgo" | "trabajo_nuevo" | "avance" | "cierre_trabajo" | "tarea_hys" | "control_extintor" | "alta_extintor" | "editar_extintor" | "alta_tanque" | "editar_tanque" | "inspeccion_tanque" | "limpieza_tanque"
     const data = body.data || {};
 
+    // Extintores (05/11/2026): van al Portal HyS, que tiene su propio turno y no duplica si llega dos veces el mismo envío.
+    // Se atienden SIN tomar el turno de MIPyV: así un extintor que tarda (fotos a Drive) no deja «Servidor ocupado» a los demás envíos.
+    if (tipo === "editar_extintor") return respuesta(Object.assign({ ok: true }, guardarEdicionExtintor_(data)));
+    if (tipo === "alta_extintor") return respuesta(Object.assign({ ok: true }, guardarAltaExtintor_(data)));
+    if (tipo === "control_extintor") return respuesta(Object.assign({ ok: true }, guardarControlExtintor_(data)));
+
     // Espera hasta 30 s a que termine otro envío, para que no se pisen.
     if (!lock.tryLock(30000)) throw new Error("Servidor ocupado, se reintenta.");
 
@@ -242,18 +248,6 @@ function doPost(e) {
     if (tipo === "cierre_trabajo") {
       const encontrado = marcarTrabajoCerrado(ss, data.id_trabajo, data.fecha_fin);
       return respuesta({ ok: true, aviso: encontrado ? "" : "Trabajo no encontrado en la planilla" });
-    }
-    if (tipo === "editar_extintor") {   // corrección de nombre o ubicación de un extintor → módulo 10 (Incendio_MIPyV.gs)
-      const r = guardarEdicionExtintor_(data);
-      return respuesta(Object.assign({ ok: true }, r));
-    }
-    if (tipo === "alta_extintor") {   // extintor agregado desde la app → módulo 10 del sistema HyS (Incendio_MIPyV.gs)
-      const r = guardarAltaExtintor_(data);
-      return respuesta(Object.assign({ ok: true }, r));
-    }
-    if (tipo === "control_extintor") {   // control de un extintor → módulo 10 del sistema HyS (Incendio_MIPyV.gs)
-      const r = guardarControlExtintor_(data);
-      return respuesta(Object.assign({ ok: true }, r));
     }
 
 
@@ -313,7 +307,11 @@ function doPost(e) {
 
     return respuesta({ ok: true, fotos: links.length });
   } catch (err) {
-    return respuesta({ ok: false, error: String(err && err.message ? err.message : err) });
+    const msg = String(err && err.message ? err.message : err);
+    // Cortes que se arreglan solos esperando (servidor ocupado, el Portal HyS no contestó, Drive o la planilla tardaron):
+    // codigo «reintentar» → la app lo vuelve a mandar sola y no lo muestra como error (05/11/2026)
+    const pasajero = /ocupado|no respondi|reintenta|tiempo de espera|bloqueo|timeout|tard[oó]|servicio|address unavailable|dns|demasiad/i.test(msg);
+    return respuesta({ ok: false, error: msg, codigo: pasajero ? "reintentar" : "" });
   } finally {
     try { lock.releaseLock(); } catch (x) { /* sin lock tomado */ }
   }

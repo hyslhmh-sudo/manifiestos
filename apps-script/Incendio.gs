@@ -32,7 +32,8 @@
  *  - Una sola puerta: MIPyV ya no escribe en la planilla. Manda cada alta, corrección y control acá, como acceso de servicio «MIPyV»
  *    (BASE COMÚN › ACCESOS, ROL = Servicio, módulo Incendio, establecimiento HZT). Mismas reglas, mismo turno (bloqueo) y mismos mensajes
  *    que «Mi establecimiento». Cada envío trae su id_origen: si MIPyV reintenta, no se duplica.
- *  - N.º de puesto (el cartel, columna NRO_EXTINTOR): obligatorio en el alta, solo números (1 a 3 cifras) y único en el establecimiento.
+ *  - N.º de puesto (el cartel, columna NRO_EXTINTOR): obligatorio en el alta, solo números (1 a 3 cifras) y único en cada edificio (SITIO).
+ *    Desde el 05/11/2026 cada edificio numera sus carteles desde 1 (en la red Trelew no había nada numerado); el N.º de inventario sigue único en el establecimiento.
  *    El N.º de inventario (la chapita) no puede ser igual al de puesto (para que no se crucen) ni estar repetido.
  *  - Plantas por establecimiento (INC.PLANTAS_EST): HMH planta baja, planta alta y terraza; HZT subsuelo, planta baja, 1er a 3er piso, Única (CAPS) y Vehículo (ambulancias); HSST y sus CAPS planta baja y planta alta.
  *  - Fechas de vencimiento entre 2020 y 2040.
@@ -95,7 +96,7 @@ function construirModuloIncendio() {
   });
   hoja('EXTINTORES', sh => {
     encabezar_(sh, 'Inventario de extintores', 'Una fila por extintor. Fechas dd/mm/aaaa. VTO_CARGA: vencimiento de la carga (marbete). PRUEBA_HIDRAULICA_VENCE: si no se sabe, s/d (revisar). Para sacar uno: ESTADO = Baja (no borrar la fila). Las columnas del último control las completa el sistema.', INC.H_EXT,
-      ['Lo pone el sistema.', 'Código del establecimiento.', 'Como en SITIOS_INC.', 'N.º de puesto (el cartel): solo números, único en el establecimiento.', 'Número de chapa.', 'Subsuelo · Planta baja · 1er, 2do o 3er piso · Única · Vehículo', 'Servicio o sector.', 'Detalle de la ubicación.', 'ABC · BC · K…', 'PQS · CO2 · HCFC…', 'Kilos.', 'Número de inventario patrimonial.', 'dd/mm/aaaa', 'dd/mm/aaaa o s/d (revisar)', 'Operativo · Sobrecarga · Recargar · Fuera de servicio · Baja', 'Lo pone el sistema.', 'Lo pone el sistema.', 'Enlace a la foto.', 'Enlace a la foto.', 'Enlace a la foto.', '', 'Lo pone el sistema.'],
+      ['Lo pone el sistema.', 'Código del establecimiento.', 'Como en SITIOS_INC.', 'N.º de puesto (el cartel): solo números, único en cada edificio (sitio).', 'Número de chapa.', 'Subsuelo · Planta baja · 1er, 2do o 3er piso · Única · Vehículo', 'Servicio o sector.', 'Detalle de la ubicación.', 'ABC · BC · K…', 'PQS · CO2 · HCFC…', 'Kilos.', 'Número de inventario patrimonial.', 'dd/mm/aaaa', 'dd/mm/aaaa o s/d (revisar)', 'Operativo · Sobrecarga · Recargar · Fuera de servicio · Baja', 'Lo pone el sistema.', 'Lo pone el sistema.', 'Enlace a la foto.', 'Enlace a la foto.', 'Enlace a la foto.', '', 'Lo pone el sistema.'],
       [0, 15, 16, 17, 18, 19, 21]);
     lista_(sh, 5, 2000, INC.PLANTAS); lista_(sh, 8, 2000, INC.TIPOS); lista_(sh, 9, 2000, INC.AGENTES); lista_(sh, 14, 2000, INC.ESTADOS);
     sh.getRange(6, 13, 2000, 2).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 16, 2000, 1).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 12, 2000, 1).setNumberFormat('@');
@@ -165,7 +166,7 @@ const INC_AYUDA = [
   ['Ayuda · Módulo 10 · Protección contra incendios', ''],
   ['Qué es', 'El inventario de extintores de la red y su control mensual. Versión 0: red Trelew (HZT y sus sitios, HMH) y HSST con sus CAPS.'],
   ['Desde dónde se carga', 'Portal HyS › 7 · Protección contra incendios (Higiene y Seguridad: todo). Aplicación «Mi establecimiento» › Incendio (las personas con el módulo Incendio en BASE COMÚN › ACCESOS). Aplicación MIPyV (Javier Tramaleo, red Trelew sin HMH): pasa por las mismas reglas que «Mi establecimiento». También se puede cargar y corregir acá, en cada hoja.'],
-  ['Números de cada extintor', 'ID: lo pone el sistema (EXT-HZT-001). N.º de puesto (columna NRO_EXTINTOR): el número del cartel donde va colgado; solo números, único en el establecimiento y obligatorio. N.º de inventario: el de la chapita patrimonial; no puede repetirse ni ser igual al de puesto. Si no tiene chapita: s/d.'],
+  ['Números de cada extintor', 'ID: lo pone el sistema (EXT-HZT-001). N.º de puesto (columna NRO_EXTINTOR): el número del cartel donde va colgado; solo números, obligatorio y único en cada edificio (cada edificio numera desde 1). N.º de inventario: el de la chapita patrimonial; no puede repetirse ni ser igual al de puesto. Si no tiene chapita: s/d.'],
   ['Plantas', 'HMH: Planta baja, Planta alta y Terraza. Red HZT: Subsuelo, Planta baja, 1er piso, 2do piso, 3er piso, Única (CAPS de una sola planta) y Vehículo (ambulancias). HSST y sus CAPS: Planta baja y Planta alta. Se cambian en Incendio.gs › INC.PLANTAS_EST.'],
   ['SITIOS_INC', 'Cada lugar con extintores y quiénes hacen el control: HMH (Belén, Melani, SOMI y MAREM); HZT, Sede ex ADOS, CAPS, dispositivos (Casa Tutelada, UGD - Ex APT…) y ambulancias de la red Trelew (Belén, Melani y Javier Tramaleo); HSST y sus CAPS (a definir). DEPENDENCIAS: si un edificio tiene varias (Sede ex ADOS: Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental y Áreas comunes), van separadas por «·» y el sector de cada extintor se elige de esa lista. Se pueden agregar o cambiar acá.'],
   ['EXTINTORES', 'Una fila por extintor. La carga inicial salió de la planilla «Inventario de Extintores»; lo que había que revisar quedó escrito en OBSERVACIONES (números de inventario incompletos o repetidos, fechas corregidas, datos faltantes).'],
@@ -305,10 +306,11 @@ function incValidar_(o, e, L, sitDep) {
   const otros = L.filter(z => z.ID !== (e && e.ID) && limpio_(z.ESTABLECIMIENTO) === cod && !/baja/i.test(z.ESTADO));
   const donde = z => z.ID + ' (' + [z.SITIO, z.PLANTA, z.SECTOR, z.UBICACION].filter(Boolean).join(' · ') + ')';
   const nro = limpio_(o.NRO_EXTINTOR);
-  if (cambia('NRO_EXTINTOR')) {
+  if (cambia('NRO_EXTINTOR') || (cambia('SITIO') && nro)) {
     if (!nro) return { ok: false, codigo: 'puesto', mensaje: 'Falta el N.º de puesto: es el número del cartel donde está colgado el extintor.' };
     if (!/^\d{1,3}$/.test(nro)) return { ok: false, codigo: 'puesto', mensaje: 'El N.º de puesto lleva solo números (hasta 3 cifras): es el del cartel, no el de la chapita de inventario.' };
-    const r = otros.find(z => String(Number(limpio_(z.NRO_EXTINTOR))) === String(Number(nro)));
+    // único en el mismo edificio (SITIO), no en todo el establecimiento: cada edificio numera sus carteles desde 1 (05/11/2026)
+    const r = otros.find(z => sinTildes_(z.SITIO) === sinTildes_(o.SITIO) && String(Number(limpio_(z.NRO_EXTINTOR))) === String(Number(nro)));
     if (r) return { ok: false, codigo: 'puesto', mensaje: 'El puesto ' + nro + ' ya lo tiene ' + donde(r) + '. Revisá el cartel; si cambiaron el extintor de lugar, avisale a Higiene y Seguridad.' };
   }
   const inv = incSinNro_(o.NRO_INVENTARIO);
@@ -370,7 +372,7 @@ function incDetalle_(cod, sitio) {
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
     listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: incPlantas_(cod), chequeos: INC.CHEQUEOS, fotos: INC.FOTOS,
-      puesto: 'N.º de puesto: el número del cartel donde va colgado el extintor (solo números, único en el establecimiento).', inventario: 'N.º de inventario: el de la chapita patrimonial pegada en el extintor. Si no tiene, s/d.' } };
+      puesto: 'N.º de puesto: el número del cartel donde va colgado el extintor (solo números, único en cada edificio; cada edificio numera desde 1).', inventario: 'N.º de inventario: el de la chapita patrimonial pegada en el extintor. Si no tiene, s/d.' } };
 }
 // Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
 // MIPyV (Javier Tramaleo, acceso de servicio «MIPyV»). En el alta los datos y las 3 fotos son obligatorios (pedido de Belén 14/10/2026).

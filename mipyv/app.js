@@ -1738,7 +1738,7 @@ function panelAlta(a) {
       html += `<input class="ext-inp" data-campo="${k}" type="text" inputmode="numeric" maxlength="3" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">`;
       html += a.sinCartel
         ? `<div class="step-sub" style="margin:6px 0 0">🏷️ No tenía cartel: le pusiste el N.º <b>${escX(a.datos[k])}</b>. Queda anotado para colocar el cartel. <button type="button" class="ext-sincartel-no" style="border:0;background:none;color:inherit;text-decoration:underline;font:inherit;padding:0">Deshacer</button></div>`
-        : `<button type="button" class="ext-agregar ext-sincartel" style="margin-top:8px">🏷️ No tiene cartel: ponerle el próximo número (${proximoPuesto(a)})</button>`;
+        : `<button type="button" class="ext-agregar ext-sincartel" style="margin-top:8px">🏷️ No tiene cartel: ponerle el próximo número de este edificio (${proximoPuesto(a)})</button>`;
       html += extEjemplo("puesto"); return;
     }
     if (tipo === "inventario") { html += `<input class="ext-inp" data-campo="${k}" type="text" value="${escX(a.datos[k] || "")}" placeholder="${escX(x)}">${extEjemplo("inventario")}`; return; }
@@ -1820,10 +1820,13 @@ function registrosEdicionExtintores(idTarea) {
 // Registros de los extintores agregados (uno por extintor nuevo)
 // Extintor sin cartel (decisión de Belén, 03/11/2026): Javier le pone el número que sigue al último del establecimiento y después se coloca el cartel.
 // El próximo número cuenta los extintores de la lista y los nuevos de esta tarea (si otro celular usó el mismo, el sistema avisa y se cambia).
+// Próximo N.º de puesto DEL MISMO EDIFICIO (sitio): cada edificio numera sus carteles desde 1 (05/11/2026)
+const normSitio = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 function proximoPuesto(a) {
-  const cod = lugarInc(a.lugar.id).cod;
-  const usados = EXTINTORES_CAT.filter(e => !cod || (e.lugares || []).some(id => lugarInc(id).cod === cod)).map(e => Number(e.nro) || 0)
-    .concat(tareaHys.altas.filter(x => x !== a).map(x => Number(x.datos.NRO_EXTINTOR) || 0));
+  const lg = lugarInc(a.lugar.id), sit = normSitio(lg.sitio);
+  const mismoEdificio = (idLugar) => { const l = lugarInc(idLugar); return (!lg.cod || l.cod === lg.cod) && (!sit || normSitio(l.sitio) === sit); };
+  const usados = EXTINTORES_CAT.filter(e => (e.lugares || []).some(mismoEdificio) && (!sit || normSitio(e.sitio) === sit)).map(e => Number(e.nro) || 0)
+    .concat(tareaHys.altas.filter(x => x !== a && x.lugar && mismoEdificio(x.lugar.id)).map(x => Number(x.datos.NRO_EXTINTOR) || 0));
   return Math.max(0, ...usados) + 1;
 }
 function registrosAltaExtintores(idTarea) {
@@ -2135,10 +2138,23 @@ async function enviarRegistro(item) {
     });
     const texto = await res.text();
     try { return JSON.parse(texto); }
-    catch (err) { return { ok: false, error: "Respuesta no válida del servidor" }; }
+    catch (err) { return { ok: false, codigo: "reintentar", error: "Respuesta no válida del servidor" }; }   // página de error de Google: se reintenta sola
   } finally {
     clearTimeout(corte);
   }
+}
+
+// Al abrir: los envíos que quedaron en «No se pudo enviar» solo por un corte (servidor ocupado, el portal no contestó)
+// vuelven a la cola normal y se mandan solos (05/11/2026). Los errores de datos (puesto, inventario, fecha…) se quedan.
+const ERROR_PASAJERO = /ocupado|no respondi|respuesta no válida|reintenta|tiempo de espera|bloqueo|timeout|tard[oó]|address unavailable|demasiad/i;
+async function limpiarErroresPasajeros() {
+  try {
+    for (const it of await colaListar()) {
+      if (it.ultimo_error && ERROR_PASAJERO.test(it.ultimo_error) && !/^(puesto|inventario|datos|fecha|lugar|config|no_existe)$/.test(it.codigo_error || "")) {
+        it.ultimo_error = ""; it.codigo_error = ""; it.intentos = 0; await colaActualizar(it);
+      }
+    }
+  } catch (err) { /* sin cola */ }
 }
 
 let sincronizando = false;
@@ -2159,6 +2175,7 @@ async function trySync(manual) {
 
   let enviados = 0;
   let sinRed = false;
+  let ocupado = false;
   // Si falla algo de un trabajo de saneamiento, lo que sigue de ese mismo
   // trabajo espera (para que el cierre no llegue antes que el inicio).
   const trabajosTrabados = new Set();
@@ -2175,6 +2192,13 @@ async function trySync(manual) {
         // el extintor ya no está en el sistema HyS (lo dieron de baja o lo borraron): no tiene arreglo, se descarta y se avisa (29/10/2026)
         await colaBorrar(item.qid);
         if (typeof extDescartadoGuardar === "function") extDescartadoGuardar(item, resp.mensaje);
+      } else if (resp && resp.codigo === "reintentar") {
+        // servidor ocupado o el Portal HyS tardó: NO es un error de datos; queda en la cola y se manda sola en un minuto (05/11/2026)
+        item.intentos = (item.intentos || 0) + 1;
+        if (item.intentos >= 10) { item.ultimo_error = "No se pudo enviar después de varios intentos (" + (resp.mensaje || resp.error || "servidor ocupado") + "). Tocá «Reintentar ahora» más tarde."; item.codigo_error = "reintentar"; }
+        await colaActualizar(item);
+        ocupado = true;
+        break;
       } else {
         item.intentos = (item.intentos || 0) + 1;
         item.ultimo_error = (resp && (resp.mensaje || resp.error)) || "Error desconocido";
@@ -2197,6 +2221,7 @@ async function trySync(manual) {
   if (enviados > 0) actualizarCatalogosDesdePlanilla(); // refrescar listas abiertas
   if (quedan === 0) showSyncFeedback(`Listo — se enviaron ${enviados} registro(s)`);
   else if (sinRed) showSyncFeedback(`Sin señal — quedan ${quedan} pendientes, se reintenta solo`);
+  else if (ocupado) { showSyncFeedback(`Servidor ocupado — quedan ${quedan}, se mandan solos en un minuto`); setTimeout(() => trySync(), 60000); }
   else showSyncFeedback(`Quedan ${quedan} pendientes — se reintenta más tarde`);
   if (typeof extFallidosAviso === "function") extFallidosAviso();   // aviso «No se pudo enviar» en el inicio (extintores.js)
 }
@@ -2407,7 +2432,7 @@ cargarCatalogosGuardados();
 actualizarCatalogosDesdePlanilla();
 migrarColaVieja()
   .catch(err => console.warn("No se pudo migrar la cola vieja.", err))
-  .finally(() => { updateQueueBadge(); trySync(); });
+  .finally(async () => { await limpiarErroresPasajeros(); updateQueueBadge(); trySync(); });
 // reintento automático cada 5 minutos mientras la app esté abierta
 setInterval(() => trySync(), 5 * 60 * 1000);
 progressWrap.style.display = "none";
