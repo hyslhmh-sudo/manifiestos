@@ -231,6 +231,10 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     const body = JSON.parse(e.postData.contents);
+    // 06/11/2026: ingreso con contraseña y permiso obligatorio para todo lo demás (Accesos_MIPyV.gs)
+    if (body.tipo === "login") return respuesta(accLogin_(SpreadsheetApp.getActiveSpreadsheet(), body));
+    if (!accServicioOk_(body.servicio) && !accPermiso_(SpreadsheetApp.getActiveSpreadsheet(), body.t))
+      return respuesta({ ok: false, codigo: "sin_acceso", error: "sin_acceso", mensaje: "Tu ingreso venció o cambió tu contraseña: entrá de nuevo. Lo cargado queda guardado y se manda después." });
     const tipo = body.tipo; // "visita" | "hallazgo" | "trabajo_nuevo" | "avance" | "cierre_trabajo" | "tarea_hys" | "control_extintor" | "alta_extintor" | "editar_extintor" | "alta_tanque" | "editar_tanque" | "inspeccion_tanque" | "limpieza_tanque"
     const data = body.data || {};
 
@@ -447,6 +451,9 @@ function marcarHallazgoAtendido(ss, idHallazgo, idVisita) {
 // ============================================================
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // 06/11/2026: solo con permiso (contraseña de cada operario, Accesos_MIPyV.gs) o desde el Portal HyS (huella de la clave maestra)
+  const prm = (e && e.parameter) || {};
+  if (!accServicioOk_(prm.s) && !accPermiso_(ss, prm.t)) return respuesta({ ok: false, codigo: "sin_acceso", error: "sin_acceso", mensaje: "Entrá con tu nombre y tu contraseña." });
   const catalogos = ["operarios", "productos", "plagas", "dosis_frecuencia", "establecimientos", "sectores"];
   const out = {};
   catalogos.forEach((name) => {

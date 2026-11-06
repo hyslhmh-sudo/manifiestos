@@ -136,10 +136,13 @@ function plagMipyv_(dias) {
   return out;
 }
 // ------------------------------------------------------------------ Casos y solicitudes de MIPyV (25/10/2026)
+// 06/11/2026: el servidor MIP pide permiso; el portal se identifica con la huella SHA-256 de la clave MAESTRA (minúsculas), sin mandar la clave
+function plagMipyvHuella_() { const k = (clavesMapa_()['MAESTRA'] || '').toLowerCase(); return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, k, Utilities.Charset.UTF_8).map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join(''); }
 function plagMipyvApi_(datos) {
   try {
-    const op = datos ? { method: 'post', contentType: 'text/plain;charset=utf-8', payload: JSON.stringify(datos), muteHttpExceptions: true, followRedirects: true } : { muteHttpExceptions: true, followRedirects: true };
-    const r = UrlFetchApp.fetch(MOD5.MIPYV_API + (datos ? '' : '?para=portal'), op), t = r.getContentText();
+    const hu = plagMipyvHuella_();
+    const op = datos ? { method: 'post', contentType: 'text/plain;charset=utf-8', payload: JSON.stringify(Object.assign({}, datos, { servicio: hu })), muteHttpExceptions: true, followRedirects: true } : { muteHttpExceptions: true, followRedirects: true };
+    const r = UrlFetchApp.fetch(MOD5.MIPYV_API + (datos ? '' : '?para=portal&s=' + hu), op), t = r.getContentText();
     try { return JSON.parse(t); } catch (e) { return { ok: false, error: 'Respuesta no válida del Apps Script de MIPyV (código ' + r.getResponseCode() + ').' }; }
   } catch (e) { return { ok: false, error: 'No se pudo consultar el Apps Script de MIPyV: ' + e.message }; }
 }

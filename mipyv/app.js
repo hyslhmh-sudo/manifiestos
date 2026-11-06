@@ -244,7 +244,10 @@ backBtn.addEventListener("click", goBack);
 const operarioGrid = document.getElementById("operarioGrid");
 function renderOperarios() {
 operarioGrid.innerHTML = "";
-OPERARIOS.forEach(op => {
+// 06/11/2026: cada uno carga a su nombre (el que entró con su contraseña); Belén (HyS) puede elegir cualquiera
+const yoId = typeof accesoOperarioId === "function" ? accesoOperarioId() : "";
+const lista = (!yoId || (typeof accesoEsHys === "function" && accesoEsHys())) ? OPERARIOS : OPERARIOS.filter(op => op.id === yoId);
+(lista.length ? lista : OPERARIOS).forEach(op => {
   const btn = document.createElement("button");
   btn.className = "tile big person-tile";
   btn.innerHTML = `<div class="avatar">${op.inicial}</div><div class="label">${op.nombre}</div>`;
@@ -2133,7 +2136,7 @@ async function enviarRegistro(item) {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(paraEnviar),
+      body: JSON.stringify(Object.assign({}, paraEnviar, { t: accesoToken() })),   // 06/11/2026: permiso del ingreso con contraseña (acceso.js)
       signal: ctrl.signal,
     });
     const texto = await res.text();
@@ -2163,6 +2166,7 @@ async function trySync(manual) {
   if (sincronizando) return;
   if (!navigator.onLine) { await updateQueueBadge(); return; }
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
+  if (typeof accesoToken === "function" && !accesoToken()) return;   // sin ingreso no se manda nada (queda en la cola)
 
   let cola;
   try { cola = await colaListar(); } catch (err) { return; }
@@ -2188,6 +2192,11 @@ async function trySync(manual) {
       if (resp && resp.ok === true) {
         await colaBorrar(item.qid);
         enviados++;
+      } else if (resp && resp.codigo === "sin_acceso") {
+        // 06/11/2026: el permiso venció o cambió la contraseña: lo cargado queda en la cola tal cual y se pide entrar de nuevo
+        sincronizando = false; syncBtn.textContent = originalLabel;
+        if (typeof accesoVencido === "function") accesoVencido(resp.mensaje);
+        return;
       } else if (resp && resp.codigo === "no_existe" && /extintor/.test(item.tipo || "")) {
         // el extintor ya no está en el sistema HyS (lo dieron de baja o lo borraron): no tiene arreglo, se descarta y se avisa (29/10/2026)
         await colaBorrar(item.qid);
@@ -2399,8 +2408,10 @@ async function actualizarCatalogosDesdePlanilla() {
   if (!navigator.onLine) return;
   if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_ACA")) return;
   try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "GET" });
+    if (typeof accesoToken === "function" && !accesoToken()) return;   // 06/11/2026: sin ingreso no se descargan datos
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL + "?t=" + encodeURIComponent(accesoToken()), { method: "GET" });
     const datos = await res.json();
+    if (datos && datos.codigo === "sin_acceso") { if (typeof accesoVencido === "function") accesoVencido(datos.mensaje); return; }
     const catalogos = convertirCatalogos(datos);
     try {
       localStorage.setItem(CATALOGOS_KEY, JSON.stringify({ fecha: new Date().toISOString(), catalogos }));
