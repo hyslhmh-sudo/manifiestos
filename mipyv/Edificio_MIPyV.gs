@@ -9,7 +9,8 @@
 const SHEET_EDIFICIO = "relevamiento_edificio";
 const ED_H = ["id_relev", "fecha_relevamiento", "lugar_id", "lugar", "parte", "operario", "operario_acompanante", "prioridad",
   "agua", "desagues", "canaletas", "techos", "techo_tipo", "agua_falta", "desagues_falta", "canaletas_falta", "techos_falta",
-  "fotos_agua", "fotos_desagues", "fotos_canaletas", "fotos_techos", "observaciones", "respuestas", "cargado", "revisado_hys"];
+  "fotos_agua", "fotos_desagues", "fotos_canaletas", "fotos_techos", "observaciones", "respuestas", "cargado", "revisado_hys",
+  "otros_riesgos", "fotos_riesgos"];   // 06/11/2026: otros riesgos (gas, electricidad, algo que se puede caer, otro) con dónde y qué, y sus fotos
 
 function edHoja_(ss) {
   let sh = ss.getSheetByName(SHEET_EDIFICIO);
@@ -22,6 +23,9 @@ function edHoja_(ss) {
   // 03/11/2026: columna «parte» (qué parte del edificio se relevó; el HZT se releva por partes)
   const H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
   if (H.indexOf("parte") < 0) { sh.insertColumnAfter(H.indexOf("lugar") + 1); sh.getRange(1, H.indexOf("lugar") + 2).setValue("parte").setFontWeight("bold").setBackground("#EAF3F6"); }
+  // 06/11/2026: columnas nuevas al final (otros_riesgos, fotos_riesgos); las filas viejas quedan vacías ahí
+  const H2 = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  ED_H.filter(h => H2.indexOf(h) < 0).forEach(h => { const c = sh.getLastColumn() + 1; sh.getRange(1, c).setValue(h).setFontWeight("bold").setBackground("#EAF3F6"); });
   return sh;
 }
 
@@ -30,7 +34,7 @@ function guardarRelevEdificio_(ss, data) {
   const sh = edHoja_(ss);
   if (existeId(sh, "id_relev", data.id_relev)) return { duplicado: true };
   const links = {};
-  ["agua", "desagues", "canaletas", "techos"].forEach((t) => {
+  ["agua", "desagues", "canaletas", "techos", "riesgos"].forEach((t) => {
     const fotos = Array.isArray(data["fotos_" + t]) ? data["fotos_" + t].filter(Boolean) : [];
     links[t] = fotos.length ? guardarFotos(fotos, { establecimiento: data.lugar || data.lugar_id, fecha: data.fecha }, data.id_relev + "_" + t).join(SEPARADOR_LINKS) : "";
   });
@@ -40,7 +44,7 @@ function guardarRelevEdificio_(ss, data) {
     operario: s(data.operario) || "s/d", operario_acompanante: s(data.operario_acompanante), prioridad: s(data.prioridad) || "s/d",
     agua: s(data.agua) || "s/d", desagues: s(data.desagues) || "s/d", canaletas: s(data.canaletas) || "s/d", techos: s(data.techos) || "s/d", techo_tipo: s(data.techo_tipo) || "s/d",
     agua_falta: s(data.agua_falta), desagues_falta: s(data.desagues_falta), canaletas_falta: s(data.canaletas_falta), techos_falta: s(data.techos_falta),
-    fotos_agua: links.agua, fotos_desagues: links.desagues, fotos_canaletas: links.canaletas, fotos_techos: links.techos,
+    fotos_agua: links.agua, fotos_desagues: links.desagues, fotos_canaletas: links.canaletas, fotos_techos: links.techos, otros_riesgos: s(data.otros_riesgos) || "s/d", fotos_riesgos: links.riesgos,
     observaciones: s(data.observaciones), respuestas: s(data.respuestas), cargado: new Date(), revisado_hys: "Sin revisar" });
   return { lugar: data.lugar };
 }

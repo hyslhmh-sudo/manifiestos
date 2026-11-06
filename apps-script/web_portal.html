@@ -2600,6 +2600,7 @@ const EDIF_LUGARES = [['HZT', 'Hospital Zonal Trelew (edificio central)'], ['ADO
 const EDIF_TEMAS = [['agua', '💧 Agua'], ['desagues', '🚿 Desagües'], ['canaletas', '🌧 Canaletas'], ['techos', '🏠 Techos']];
 const EDIF_INFORME = 'https://docs.google.com/document/d/1zdFy2BfuuUtELR5DPnlXKKEFEcgjZH6M6RYVusL12uw/edit';
 let EDIF = null, EDF = { lugar: '', soloUrg: false };
+const edifRg = f => { const t = String(f.otros_riesgos || '').trim(); return t && !/^(no|s\/d)$/i.test(t) ? t : ''; };   // 06/11/2026: otros riesgos (gas, electricidad, caída de objetos)
 function edifNivel(t) { t = String(t || ''); return /urgente/i.test(t) ? 'er' : /arreglo/i.test(t) ? 'wa' : /^(bien|no tiene)$/i.test(t.trim()) ? 'ok' : 'nd'; }
 function edifChip(t) { const n = edifNivel(t), c = { er: ['#FBE3DE', '#B4361F'], wa: ['#FFF1D6', '#8A5A00'], ok: ['#E3F4E8', '#1E6B3A'], nd: ['#EEF1F3', '#55606A'] }[n];
   return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:' + c[0] + ';color:' + c[1] + '">' + esc(t || 's/d') + '</span>'; }
@@ -2618,7 +2619,7 @@ function edifPintar() {
   const F = EDIF.filas || [], ult = {};
   F.forEach(f => { const g = (EDIF_LUGARES.find(l => l[0].split('|').indexOf(f.lugar_id) >= 0) || [f.lugar_id || f.lugar])[0]; if (!ult[g]) ult[g] = f; });   // F viene del más nuevo al más viejo
   const hechos = EDIF_LUGARES.filter(l => ult[l[0]]), faltan = EDIF_LUGARES.filter(l => !ult[l[0]]);
-  const U = Object.values(ult), urg = U.filter(f => /urgente/i.test(f.prioridad) || EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'er')), arr = U.filter(f => urg.indexOf(f) < 0 && EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'wa'));
+  const U = Object.values(ult), urg = U.filter(f => /urgente/i.test(f.prioridad) || edifRg(f) || EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'er')), arr = U.filter(f => urg.indexOf(f) < 0 && EDIF_TEMAS.some(t => edifNivel(f[t[0]]) === 'wa'));
   const sinRev = F.filter(f => !/^revisado/i.test(f.revisado_hys));
   const kpi = (n, t, col) => '<div class="card" style="padding:12px;text-align:center"><div style="font-size:26px;font-weight:800;color:' + (col || 'inherit') + '">' + n + '</div><div class="mu peq">' + t + '</div></div>';
   const porTema = EDIF_TEMAS.map(t => { const c = { er: 0, wa: 0, ok: 0, nd: 0 }; U.forEach(f => c[edifNivel(f[t[0]])]++); return '<tr><td><b>' + t[1] + '</b></td><td style="color:#B4361F;font-weight:700">' + c.er + '</td><td style="color:#8A5A00;font-weight:700">' + c.wa + '</td><td style="color:#1E6B3A;font-weight:700">' + c.ok + '</td><td class="mu">' + c.nd + '</td></tr>'; }).join('');
@@ -2626,8 +2627,8 @@ function edifPintar() {
   const ver = F.filter(f => (!EDF.lugar || f.lugar === EDF.lugar) && (!EDF.soloUrg || urg.indexOf(f) >= 0 || /urgente/i.test(f.prioridad)));
   $('edBox').innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' + kpi(hechos.length + ' de ' + EDIF_LUGARES.length, 'lugares relevados') + kpi(urg.length, 'con algo urgente', urg.length ? '#B4361F' : '') + kpi(arr.length, 'requieren arreglos', arr.length ? '#8A5A00' : '') + kpi(sinRev.length, 'sin revisar por HyS', sinRev.length ? '#21788C' : '') + '</div>' +
-    (urg.length ? '<section class="card" style="border-left:4px solid #B4361F"><h2 style="margin:0 0 6px;font-size:16px">Urgente</h2>' + urg.map(f => { const T = EDIF_TEMAS.filter(t => edifNivel(f[t[0]]) === 'er'), q = T.map(t => f[t[0] + '_falta']).filter(x => x && !/^s\/?n$/i.test(x.trim())).join(' · ') || f.observaciones;
-      return '<div style="margin:8px 0;cursor:pointer" data-u="' + F.indexOf(f) + '"><b>' + esc(f.lugar) + '</b> · ' + (T.length ? T.map(t => t[1]).join(', ') : 'marcado urgente') + '<br><span class="mu peq">' + esc(String(q || '').slice(0, 300)) + '</span></div>'; }).join('') + '</section>' : '') +
+    (urg.length ? '<section class="card" style="border-left:4px solid #B4361F"><h2 style="margin:0 0 6px;font-size:16px">Urgente</h2>' + urg.map(f => { const T = EDIF_TEMAS.filter(t => edifNivel(f[t[0]]) === 'er'), q = (edifRg(f) ? '⚠️ ' + edifRg(f) + ' · ' : '') + (T.map(t => f[t[0] + '_falta']).filter(x => x && !/^s\/?n$/i.test(x.trim())).join(' · ') || f.observaciones);
+      return '<div style="margin:8px 0;cursor:pointer" data-u="' + F.indexOf(f) + '"><b>' + esc(f.lugar) + '</b> · ' + ((edifRg(f) ? ['⚠️ Otros riesgos'] : []).concat(T.map(t => t[1])).join(', ') || 'marcado urgente') + '<br><span class="mu peq">' + esc(String(q || '').slice(0, 300)) + '</span></div>'; }).join('') + '</section>' : '') +
     '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Por tema (último relevamiento de cada lugar)</h2><table class="tabla" style="width:100%;max-width:520px"><thead><tr><th>Tema</th><th>Urgente</th><th>Arreglo</th><th>Bien</th><th>No se pudo ver / s/d</th></tr></thead><tbody>' + porTema + '</tbody></table></section>' +
     '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Relevamientos cargados</h2>' +
     '<div class="filtros" style="margin-bottom:8px"><label class="f">Lugar<select class="c" id="edL"><option value="">Todos</option>' + lugares.map(l => '<option' + (l === EDF.lugar ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></label><label class="peq" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="edU"' + (EDF.soloUrg ? ' checked' : '') + '> Solo urgentes</label></div>' +
@@ -2648,6 +2649,7 @@ function edifVer(f) {
     (f[t[0] + '_falta'] && !/^s\/?n$/i.test(f[t[0] + '_falta'].trim()) ? '<div style="margin-top:4px"><span class="mu peq">Qué hace falta:</span> ' + nl(f[t[0] + '_falta']) + '</div>' : '') + fotos(f['fotos_' + t[0]]) + '</div>';
   $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Relevamiento de edificio" style="max-width:760px"><h2>' + esc(f.lugar) + ' · ' + esc(fechaTxt(f.fecha)) + '</h2><dl class="dl">' +
     dd('Parte relevada', esc(f.parte)) + dd('Operarios', esc(f.operario) + (f.operario_acompanante ? ' y ' + esc(f.operario_acompanante) : '')) + dd('Prioridad', edifChip(f.prioridad)) + '</dl>' +
+    (edifRg(f) ? '<div style="border-top:1px solid var(--ln);padding:10px 0;background:#FBE3DE;border-radius:8px;padding:10px"><b style="color:#B4361F">⚠️ Otros riesgos</b><div style="margin-top:4px">' + nl(edifRg(f)).replace(/ \| /g, '<br>') + '</div>' + fotos(f.fotos_riesgos) + '</div>' : '') +
     EDIF_TEMAS.map(tema).join('') +
     (f.observaciones ? '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Observaciones</b><div style="margin-top:4px">' + nl(f.observaciones) + '</div></div>' : '') +
     (f.respuestas ? '<details style="border-top:1px solid var(--ln);padding:10px 0"><summary><b>Todas las respuestas</b></summary><pre style="white-space:pre-wrap;font:inherit;font-size:13px;margin:6px 0 0">' + esc(f.respuestas) + '</pre></details>' : '') +

@@ -25,9 +25,9 @@ function edifLista_() {
     if (!txt(r, 'id_relev') && !txt(r, 'lugar')) return;
     const f = { fila: i + 2 };
     ['id_relev', 'lugar_id', 'lugar', 'parte', 'operario', 'operario_acompanante', 'prioridad', 'agua', 'desagues', 'canaletas', 'techos', 'techo_tipo',
-      'agua_falta', 'desagues_falta', 'canaletas_falta', 'techos_falta', 'observaciones', 'respuestas', 'cargado', 'revisado_hys'].forEach(k => { f[k] = txt(r, k); });
+      'agua_falta', 'desagues_falta', 'canaletas_falta', 'techos_falta', 'observaciones', 'respuestas', 'cargado', 'revisado_hys', 'otros_riesgos'].forEach(k => { f[k] = txt(r, k); });
     f.fecha = txt(r, 'fecha_relevamiento').slice(0, 10);
-    ['agua', 'desagues', 'canaletas', 'techos'].forEach(t => { f['fotos_' + t] = fotos(txt(r, 'fotos_' + t)); });
+    ['agua', 'desagues', 'canaletas', 'techos', 'riesgos'].forEach(t => { f['fotos_' + t] = fotos(txt(r, 'fotos_' + t)); });
     out.filas.push(f);
   });
   out.filas.sort((a, b) => (b.fecha + b.cargado).localeCompare(a.fecha + a.cargado));

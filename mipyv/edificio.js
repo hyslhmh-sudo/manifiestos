@@ -32,6 +32,16 @@ const ED_TEMAS = [
     ["t3", "¿Hay ramas o árboles apoyados sobre el techo?", "No"],
     ["t4", "¿Se pudo ver el techo de cerca, sin riesgo?", "Sí"]] }];
 const ED_TIPOS_TECHO = ["Chapa", "Losa", "Tejas", "Mixto", "No sé"];
+// 06/11/2026 (pedido de Belén): que no haga falta pedir aclaraciones. Cada respuesta que muestra un problema pide DÓNDE y QUÉ se ve;
+// cada «No se pudo ver» pide QUÉ no se pudo ver y POR QUÉ; cada «urgente», por qué y dónde. Textos vagos («s/n», «no», «-») no se aceptan.
+// Y una sección fija de OTROS RIESGOS (gas, electricidad, algo que se puede caer, otro), obligatoria, que marca el lugar como urgente.
+const ED_NSV_MOT = ["No hay escalera segura", "Estaba cerrado / sin llave", "Está tapado (cielorraso, mueble, tierra)", "Riesgo para subir o entrar", "Otro motivo"];
+const ED_RIESGOS = [
+  ["g", "¿Hay olor a gas (adentro o afuera)?", "Ej.: sala de la caldera, al lado del calefactor del consultorio 2; olor fuerte al entrar"],
+  ["e", "¿Hay cables, enchufes, tableros o instalaciones eléctricas a la vista, rotos o mojados?", "Ej.: patio de atrás, cable subterráneo con la vaina cortada y con agua alrededor"],
+  ["c", "¿Hay algo que se pueda caer (cielorraso, revoque, chapa, vidrio, cartel)?", "Ej.: Enfermería, cielorraso de durlock mojado y abombado sobre la camilla"],
+  ["o", "¿Hay otro riesgo para las personas (pozo, piso roto, caño o tapa suelta, puerta rota)?", "Ej.: office de limpieza, pileta partida con bordes filosos"]];
+const edTxtOk = (t) => { const x = String(t || "").trim(); return x.replace(/[\s.,;:\-_/]/g, "").length >= 8 && !/^(s\/?n|sin novedad(es)?|no|nada|ninguno|ok|bien|n\/?a)$/i.test(x); };
 const ED_RESP = ["Sí", "No", "No se pudo ver"];
 let ED_CAT = { lugares: {} };   // lo que mandó la planilla: último relevamiento de cada lugar
 let ed = { vista: "lugares", lugar: null, form: null, tema: 0, aviso: "" };
@@ -68,15 +78,37 @@ function edEstadoTema(tm, r) {
   if (nsv) return { nivel: "nd", txt: "No se pudo ver todo" };
   return { nivel: "ok", txt: "Bien" };
 }
+function edNorm(f) { f.det = f.det || {}; f.fotos = f.fotos || {}; ["agua", "desagues", "canaletas", "techos", "riesgos"].forEach(t => { f.fotos[t] = f.fotos[t] || []; }); return f; }
+// Lo que falta, con el detalle exacto (se muestra en rojo debajo del botón)
 function edFaltan(f) {
-  const r = f.resp, x = [];
+  edNorm(f); const r = f.resp, d = f.det, x = [];
+  if (f.lugar && f.lugar.id === "HZT" && !String(f.parte || "").trim()) x.push("Qué parte del hospital relevaste");
   ED_TEMAS.forEach(tm => {
-    if (tm.tiene && !r[tm.id + "_tiene"]) { x.push(tm.t.toLowerCase()); return; }
+    const T = tm.emo + " " + tm.t;
+    if (tm.tiene && !r[tm.id + "_tiene"]) { x.push(T + ": " + tm.tiene); return; }
     if (tm.tiene && r[tm.id + "_tiene"] === "No") return;
-    const sin = tm.pregs.filter(([k]) => !r[k]).length + (tm.tipo && !r.techo_tipo ? 1 : 0);
-    const e = edEstadoTema(tm, r), urg = (e.nivel === "wa" || e.nivel === "er") && !r[tm.id + "_urgente"];
-    if (sin || urg) x.push(tm.t.toLowerCase());
+    if (tm.tipo && !r.techo_tipo) x.push(T + ": de qué es el techo");
+    let hayMal = false;
+    tm.pregs.forEach(([k, p, bien]) => {
+      if (!r[k]) { x.push(T + ": contestar «" + p + "»"); return; }
+      if (r[k] === "No se pudo ver") {
+        if (!r["nsvm_" + k]) x.push(T + ": por qué no se pudo ver «" + p + "»");
+        if (!edTxtOk(d["nsv_" + k])) x.push(T + ": qué parte no se pudo ver en «" + p + "»");
+      } else if (r[k] !== bien) { hayMal = true; if (!edTxtOk(d[k])) x.push(T + ": dónde y qué se ve en «" + p + "»"); }
+    });
+    if (hayMal) {
+      if (!r[tm.id + "_urgente"]) x.push(T + ": si es urgente o no");
+      if (r[tm.id + "_urgente"] === "Sí" && !edTxtOk(d[tm.id + "_urg"])) x.push(T + ": por qué es urgente");
+      if (!edTxtOk(f.falta[tm.id])) x.push(T + ": qué hace falta arreglar");
+      if (!f.fotos[tm.id].length) x.push(T + ": al menos 1 foto de lo que está mal");
+    }
   });
+  ED_RIESGOS.forEach(([id, p]) => {
+    const k = "rg_" + id;
+    if (!r[k]) x.push("⚠️ Otros riesgos: contestar «" + p + "»");
+    else if (r[k] === "Sí" && !edTxtOk(d[k])) x.push("⚠️ Otros riesgos: dónde exactamente y qué se ve o se siente en «" + p + "»");
+  });
+  if (ED_RIESGOS.some(([id]) => r["rg_" + id] === "Sí") && !f.fotos.riesgos.length) x.push("⚠️ Otros riesgos: al menos 1 foto");
   return x;
 }
 
@@ -105,19 +137,21 @@ function edRender() {
 }
 function edAbrir(l) {
   ed.lugar = l; ed.vista = "form"; ed.aviso = "";
-  ed.form = { uid: "ED" + Date.now() + Math.floor(Math.random() * 1000), lugar: l, FECHA: edHoy(), parte: "", resp: {}, falta: {}, fotos: { agua: [], desagues: [], canaletas: [], techos: [] }, obs: "" };
+  ed.form = { uid: "ED" + Date.now() + Math.floor(Math.random() * 1000), lugar: l, FECHA: edHoy(), parte: "", resp: {}, det: {}, falta: {}, fotos: { agua: [], desagues: [], canaletas: [], techos: [], riesgos: [] }, obs: "" };
   edRender(); screensEl.scrollTop = 0;
 }
 function edBorrador() { if (!ed.form) return; if (!edGuardarLS(ED_BORR_KEY, { form: ed.form, guardado: Date.now() })) { const f = Object.assign({}, ed.form, { fotos: { agua: [], desagues: [], canaletas: [], techos: [] } }); edGuardarLS(ED_BORR_KEY, { form: f, guardado: Date.now() }); } }
 function edBorrarBorrador() { try { localStorage.removeItem(ED_BORR_KEY); } catch (e) { } }
 
 function edRenderForm() {
-  const f = ed.form, r = f.resp, box = edBox();
+  const f = edNorm(ed.form), r = f.resp, d = f.det, box = edBox();
+  const det = (k, ph, lab) => `<div class="ed-det"><div class="ext-preg ed-req">${lab}</div><textarea class="ext-com${edTxtOk(d[k]) ? "" : " ed-falta"}" rows="2" data-det="${k}" placeholder="${escX(ph)}">${escX(d[k] || "")}</textarea></div>`;
   const opc = (campo, vals, act) => `<div class="ext-opc" data-campo="${campo}">${vals.map(v => `<button type="button" class="${act === v ? "on" : ""}" data-valor="${escX(v)}">${escX(v)}</button>`).join("")}</div>`;
   let h = `<button type="button" class="ext-quitar tq-volver" data-f="cancelar">← Volver a los lugares</button>
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
     <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
-    <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
+    <div class="tq-info">Escribí todo como si Belén no hubiera estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
+    <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "(obligatorio)" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
     ${f.lugar.id === "HZT" ? `<div class="step-sub">El hospital es grande: se puede relevar por partes, cargando un relevamiento por cada parte.</div>` : ""}`;
   ED_TEMAS.forEach(tm => {
     const e = edEstadoTema(tm, r), sinTener = tm.tiene && r[tm.id + "_tiene"] === "No", malo = e.nivel === "wa" || e.nivel === "er";
@@ -127,21 +161,36 @@ function edRenderForm() {
       if (tm.tipo) h += `<div class="ext-preg">¿De qué es el techo?</div>` + opc("techo_tipo", ED_TIPOS_TECHO, r.techo_tipo);
       tm.pregs.forEach(([k, p, bien]) => {
         const mal = r[k] && r[k] !== bien && r[k] !== "No se pudo ver";
-        h += `<div class="ext-preg">${escX(p)}</div>` + opc(k, ED_RESP, r[k]) + (mal ? `<small class="ext-vto wa">⚠️ Sacale una foto y contá abajo qué hace falta</small>` : "");
+        h += `<div class="ext-preg">${escX(p)}</div>` + opc(k, ED_RESP, r[k]) +
+          (mal ? det(k, "Ej.: Enfermería, canilla de la pileta: pierde por el vástago", "¿Dónde y qué se ve? (ambiente o sector + lo que está mal)") : "") +
+          (r[k] === "No se pudo ver" ? `<div class="ed-det"><div class="ext-preg ed-req">¿Por qué no se pudo ver?</div>` + opc("nsvm_" + k, ED_NSV_MOT, r["nsvm_" + k]) + `</div>` +
+            det("nsv_" + k, "Ej.: los tanques del techo del frente; no hay escalera segura", "¿Qué parte no se pudo ver?") : "");
       });
-      if (malo || r[tm.id + "_urgente"]) h += `<div class="ext-preg">¿Es urgente? (riesgo de inundación, de que se caiga algo o de quedarse sin agua)</div>` + opc(tm.id + "_urgente", ["Sí", "No"], r[tm.id + "_urgente"]);
-      h += `<div class="ext-preg">¿Qué hace falta? ${malo ? "" : "(opcional)"}</div><textarea class="ext-com" rows="2" data-falta="${tm.id}" placeholder="Ej.: cambiar 2 metros de caño, limpiar la canaleta del frente…">${escX(f.falta[tm.id] || "")}</textarea>
-        <div class="ext-preg">Fotos de ${tm.t.toLowerCase()} · hasta 5${malo ? " (sacale foto a lo que está mal)" : " (opcional)"}</div><div class="foto-grid" data-fotos="${tm.id}"></div>`;
+      if (malo || r[tm.id + "_urgente"]) h += `<div class="ext-preg">¿Es urgente? (riesgo de inundación, de que se caiga algo, de quedarse sin agua o de que el agua toque la electricidad)</div>` + opc(tm.id + "_urgente", ["Sí", "No"], r[tm.id + "_urgente"]) +
+        (r[tm.id + "_urgente"] === "Sí" ? det(tm.id + "_urg", "Ej.: la gotera cae sobre la camilla de Enfermería y el cielorraso está abombado", "¿Por qué es urgente y dónde?") : "");
+      h += `<div class="ext-preg${malo ? " ed-req" : ""}">¿Qué hace falta arreglar? ${malo ? "" : "(opcional)"}</div><textarea class="ext-com${malo && !edTxtOk(f.falta[tm.id]) ? " ed-falta" : ""}" rows="2" data-falta="${tm.id}" placeholder="Ej.: cambiar 2 metros de caño de la pileta de Enfermería, limpiar la canaleta del frente…">${escX(f.falta[tm.id] || "")}</textarea>
+        <div class="ext-preg${malo ? " ed-req" : ""}">Fotos de ${tm.t.toLowerCase()} · hasta 5${malo ? " (al menos 1 de lo que está mal)" : " (opcional)"}</div><div class="foto-grid" data-fotos="${tm.id}"></div>`;
     }
     h += (sinTener ? "" : `<div style="margin-top:8px"><span class="ed-chip ${e.nivel}">${tm.emo} ${escX(e.txt)}</span></div>`) + `</div>`;
   });
+  const hayRg = ED_RIESGOS.some(([id]) => r["rg_" + id] === "Sí");
+  h += `<div class="ext-card tq" style="border-color:#B4361F"><h4>⚠️ Otros riesgos (contestar siempre)</h4><div class="step-sub">Aunque no sean de agua, desagües, canaletas o techos. Si hay <b>olor a gas</b>: no prender ni apagar luces ni aparatos, abrir puertas y ventanas, avisar ya al responsable del lugar y a Belén.</div>` +
+    ED_RIESGOS.map(([id, p, ph]) => `<div class="ext-preg">${escX(p)}</div>` + opc("rg_" + id, ["Sí", "No"], r["rg_" + id]) + (r["rg_" + id] === "Sí" ? det("rg_" + id, ph, "¿Dónde exactamente y qué se ve, se siente o se huele?") : "")).join("") +
+    (hayRg ? `<div class="ext-preg ed-req">Fotos del riesgo · hasta 5 (al menos 1)</div><div class="foto-grid" data-fotos="riesgos"></div><small class="ext-vto er">Queda marcado como URGENTE.</small>` : "") + `</div>`;
   const faltan = edFaltan(f);
   h += `<div class="ext-preg">Observaciones generales (opcional)</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar del lugar">${escX(f.obs)}</textarea>
-    <button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta completar: " + escX(faltan.join(", ")) : "Listo, guardar el relevamiento"}</button>`;
+    <button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta completar (" + faltan.length + ")" : "Listo, guardar el relevamiento"}</button>` +
+    (faltan.length ? `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${faltan.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>` : "");
   box.innerHTML = h;
-  ED_TEMAS.forEach(tm => edPintarFotos(tm.id));
+  ED_TEMAS.forEach(tm => edPintarFotos(tm.id)); edPintarFotos("riesgos");
+  const refrescarFaltan = () => { const fl = edFaltan(f), bt = box.querySelector('[data-f="guardar"]'), lst = box.querySelector(".ed-faltan");
+    bt.disabled = !!fl.length; bt.textContent = fl.length ? "Falta completar (" + fl.length + ")" : "Listo, guardar el relevamiento";
+    if (lst) lst.outerHTML = fl.length ? `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${fl.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>` : "";
+    else if (fl.length) bt.insertAdjacentHTML("afterend", `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${fl.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>`); };
+  box.querySelectorAll("[data-det]").forEach(i => { i.oninput = () => { d[i.dataset.det] = i.value; i.classList.toggle("ed-falta", !edTxtOk(i.value)); edBorrador(); refrescarFaltan(); }; });
   box.querySelectorAll("[data-dato]").forEach(i => { i.oninput = () => { if (i.dataset.dato === "FECHA") f.FECHA = i.value; else if (i.dataset.dato === "parte") f.parte = i.value; else f.obs = i.value; edBorrador(); }; });
-  box.querySelectorAll("[data-falta]").forEach(i => { i.oninput = () => { f.falta[i.dataset.falta] = i.value; edBorrador(); }; });
+  box.querySelectorAll("[data-falta]").forEach(i => { i.oninput = () => { f.falta[i.dataset.falta] = i.value; if (i.classList.contains("ed-falta") || !edTxtOk(i.value)) i.classList.toggle("ed-falta", !edTxtOk(i.value)); edBorrador(); refrescarFaltan(); }; });
+  box.querySelectorAll("[data-dato]").forEach(i => { const o = i.oninput; i.oninput = () => { o(); refrescarFaltan(); }; });
   box.querySelectorAll(".ext-opc[data-campo] button").forEach(b => b.onclick = () => {
     const k = b.parentElement.dataset.campo; r[k] = b.dataset.valor; edBorrador(); const y = screensEl.scrollTop; edRenderForm(); screensEl.scrollTop = y;
   });
@@ -154,33 +203,39 @@ const edFotoInput = document.createElement("input");
 edFotoInput.type = "file"; edFotoInput.accept = "image/*"; edFotoInput.setAttribute("capture", "environment"); edFotoInput.style.display = "none";
 document.body.appendChild(edFotoInput);
 let edFotoTema = null;
-edFotoInput.addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); edFotoInput.value = ""; if (fs.length && ed.form && edFotoTema) { const t = edFotoTema; agregarFotos(ed.form.fotos[t], fs, () => { edPintarFotos(t); edBorrador(); }); } });
+const edFotosCambio = (t) => { edPintarFotos(t); edBorrador(); const y = screensEl.scrollTop; if (ed.vista === "form" && ed.form) { edRenderForm(); screensEl.scrollTop = y; } };
+edFotoInput.addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); edFotoInput.value = ""; if (fs.length && ed.form && edFotoTema) { const t = edFotoTema; agregarFotos(ed.form.fotos[t], fs, () => edFotosCambio(t)); } });
 function edPintarFotos(t) {
   const g = edBox().querySelector(`[data-fotos="${t}"]`); if (!g || !ed.form) return;
-  const F = ed.form.fotos[t];
+  const F = edNorm(ed.form).fotos[t];
   g.innerHTML = F.map((u, i) => `<div class="foto-slot filled"><img src="${u}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button></div>`).join("") +
     (F.length < 5 ? `<button type="button" class="foto-slot add"><span>+</span><small>${F.length}/5</small></button>` : "");
-  g.querySelectorAll(".foto-remove").forEach(b => b.onclick = (e) => { e.stopPropagation(); F.splice(Number(b.dataset.i), 1); edPintarFotos(t); edBorrador(); });
+  g.querySelectorAll(".foto-remove").forEach(b => b.onclick = (e) => { e.stopPropagation(); F.splice(Number(b.dataset.i), 1); edFotosCambio(t); });
   const add = g.querySelector(".foto-slot.add");
-  if (add) add.onclick = () => { edFotoTema = t; edBorrador(); elegirOrigenFoto(edFotoInput, true, fs => agregarFotos(F, fs, () => { edPintarFotos(t); edBorrador(); })); };
+  if (add) add.onclick = () => { edFotoTema = t; edBorrador(); elegirOrigenFoto(edFotoInput, true, fs => agregarFotos(F, fs, () => edFotosCambio(t))); };
 }
 
 // ---------- guardar (a la cola: se manda solo con señal)
 async function edGuardar() {
-  const f = ed.form, r = f.resp; if (edFaltan(f).length) return;
+  const f = edNorm(ed.form), r = f.resp, d = f.det; if (edFaltan(f).length) return;
+  const lin = (k, p, bien) => "\n  " + p + " → " + r[k] + (r[k] === "No se pudo ver" ? " · por qué: " + (r["nsvm_" + k] || "s/d") + " · qué parte: " + (d["nsv_" + k] || "s/d").trim() : r[k] !== bien ? " · dónde y qué: " + (d[k] || "s/d").trim() : "");
   const estados = {}, textos = [];
   ED_TEMAS.forEach(tm => {
     const e = edEstadoTema(tm, r); estados[tm.id] = e.txt; estados[tm.id + "_nivel"] = e.nivel;
     textos.push(tm.t.toUpperCase() + (tm.tiene ? " · tiene: " + r[tm.id + "_tiene"] : "") + (tm.tipo && r.techo_tipo ? " · tipo: " + r.techo_tipo : "") +
-      (tm.tiene && r[tm.id + "_tiene"] === "No" ? "" : tm.pregs.map(([k, p]) => "\n  " + p + " → " + r[k]).join("") + (r[tm.id + "_urgente"] ? "\n  ¿Urgente? → " + r[tm.id + "_urgente"] : "")));
+      (tm.tiene && r[tm.id + "_tiene"] === "No" ? "" : tm.pregs.map(([k, p, bien]) => lin(k, p, bien)).join("") + (r[tm.id + "_urgente"] ? "\n  ¿Urgente? → " + r[tm.id + "_urgente"] + (r[tm.id + "_urgente"] === "Sí" ? " · por qué: " + (d[tm.id + "_urg"] || "s/d").trim() : "") : "")));
   });
-  const urg = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "er"), arr = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "wa");
+  const rg = ED_RIESGOS.filter(([id]) => r["rg_" + id] === "Sí");
+  textos.push("OTROS RIESGOS" + ED_RIESGOS.map(([id, p]) => "\n  " + p + " → " + (r["rg_" + id] || "s/d") + (r["rg_" + id] === "Sí" ? " · dónde y qué: " + (d["rg_" + id] || "s/d").trim() : "")).join(""));
+  const otros = rg.map(([id, p]) => p.replace(/^¿Hay |\?$/g, "").replace(/ \(.*\)$/, "") + ": " + (d["rg_" + id] || "").trim()).join(" | ");
+  const urg = !!rg.length || ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "er"), arr = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "wa");
   const data = { id_relev: f.uid, fecha: new Date().toISOString(), FECHA: f.FECHA, lugar_id: f.lugar.id, lugar: f.lugar.nombre, establecimiento: f.lugar.nombre, parte: (f.parte || "").trim() || "Todo el edificio",
     operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
     agua: estados.agua, desagues: estados.desagues, canaletas: estados.canaletas, techos: estados.techos, techo_tipo: r.techo_tipo || "",
     prioridad: urg ? "Urgente" : arr ? "Requiere arreglos" : "Sin problemas a la vista", respuestas: textos.join("\n"),
     agua_falta: (f.falta.agua || "").trim(), desagues_falta: (f.falta.desagues || "").trim(), canaletas_falta: (f.falta.canaletas || "").trim(), techos_falta: (f.falta.techos || "").trim(),
-    observaciones: f.obs.trim(), fotos_agua: f.fotos.agua.slice(), fotos_desagues: f.fotos.desagues.slice(), fotos_canaletas: f.fotos.canaletas.slice(), fotos_techos: f.fotos.techos.slice() };
+    observaciones: f.obs.trim(), fotos_agua: f.fotos.agua.slice(), fotos_desagues: f.fotos.desagues.slice(), fotos_canaletas: f.fotos.canaletas.slice(), fotos_techos: f.fotos.techos.slice(),
+    otros_riesgos: otros || "No", fotos_riesgos: f.fotos.riesgos.slice() };
   const btn = edBox().querySelector('[data-f="guardar"]'); if (btn) btn.disabled = true;
   if (!(await guardarEnCola([{ tipo: "relev_edificio", data: data }]))) { if (btn) btn.disabled = false; return; }
   const loc = edLeer(ED_LOCAL_KEY, {}); loc[f.lugar.id] = { fecha: f.FECHA, estados: estados }; edGuardarLS(ED_LOCAL_KEY, loc);
@@ -201,6 +256,10 @@ body.mode-edificio{--mod-primary:#5B4636;--mod-accent:#8A6A4F;--mod-claro:#F4EEE
 .ed-lugar small.er{color:var(--rojo-no)}
 .ed-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .ed-chip{display:inline-block;border-radius:999px;padding:3px 9px;font-size:.8rem;font-weight:700;background:#EEF2F4;color:#0D313F}
+.ed-det{margin:6px 0 4px 12px;padding-left:10px;border-left:3px solid var(--mod-accent,#8A6A4F)}
+.ed-req::after{content:" *";color:var(--rojo-no,#B4361F);font-weight:800}
+.ext-com.ed-falta{border-color:var(--rojo-no,#B4361F)!important;background:#FFF7F6}
+.ed-faltan{margin:10px 0 4px;padding:10px 12px;border-radius:12px;background:#FBE4E1;color:#7A231B;font-size:.92rem}.ed-faltan ul{margin:6px 0 0 18px;padding:0}.ed-faltan li{margin:2px 0}
 .ed-chip.ok{background:#E3F4E8;color:#1E6B3A}.ed-chip.wa{background:#FFF4D6;color:#8A5A00}.ed-chip.er{background:#FBE4E1;color:#7A231B}.ed-chip.nd{background:#EEF2F4;color:#55626A}
 `;
 document.head.appendChild(edCss);
