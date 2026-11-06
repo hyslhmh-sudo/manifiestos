@@ -288,7 +288,7 @@ async function sincronizar() {
   ENVIANDO = true; pintarRed();
   for (const c of COLA.filter(x => x.estado === 'pendiente')) {
     try {
-      const antes = ESPERA_MS; if (c.tipo === 'm_relev_dep') ESPERA_MS = 180000;   // 30/10/2026: varios tanques en una carga: puede tardar más de 25 s
+      const antes = ESPERA_MS; if (c.tipo === 'm_relev_dep' || c.tipo === 'm_caps_guardar') ESPERA_MS = 180000;   // 30/10/2026: varios tanques en una carga: puede tardar más de 25 s
       let res; try { res = await api(c.tipo, c.datos, { est: c.est, clave: c.clave, dni: c.dni || (SES && SES.est === c.est && SES.clave === c.clave ? SES.dni || '' : '') }); } finally { ESPERA_MS = antes; }
       if (res.ok) { COLA = COLA.filter(x => x.datos.idLocal !== c.datos.idLocal); }
       else if (res.error === 'interno') { /* se reintenta luego */ }
@@ -910,6 +910,7 @@ function inicio() {
       return '<button class="big" data-act="aguaLabMi"><b>Muestreos del laboratorio (DPSB)</b><span>' + (lim ? '<b style="color:var(--er)">' + lim + ' para limpiar tanques antes del muestreo</b> · ' : '') + (ped ? ped + ' ya pedidos o tomados · ' : '') + 'Qué toca en cada establecimiento de la red</span></button>'; })() : '') + (refHsst() ? tile('aguaInv', 'Tanques y cisternas', 'Ver los tanques y cargar el relevamiento de cada 6 meses (hoja ' + AGUA_F3() + ')', true) : tile('aguaRelDep', 'Relevamiento por dependencia', 'Cada 6 meses: cargar la hoja ' + AGUA_F3() + ' completa (mapeo y estado de todos los tanques)')) + tile('aguaHojaRelev', 'Hoja de relevamiento para imprimir', 'Una por dependencia, para Mantenimiento') + tile('aguaLimpieza', 'Registrar limpieza de tanque', 'Con la foto o el PDF del ' + aguaF1() + ' firmado') + (SES.est === 'HSST' ? tile('aguaForm2', 'Personal designado (Formulario 2)', MI && MI.form2 ? 'Cargado el ' + fechaTxt(MI.form2.cargado) + ' · subir uno nuevo si cambió' : 'Subir el registro firmado del personal que limpia los tanques') : '') + tile('aguaAnalisis', 'Cargar análisis de agua', 'Con la foto del informe del laboratorio') + (refHsst() ? '' : tile('aguaInv', 'Mis tanques y cisternas', 'Ver, cambiar o agregar · las canillas de muestreo las asigna HyS')) +   /* 29/10/2026 (Belén): en el HSST, relevamiento y tanques en un solo botón */ (AGUA_INF_MI[SES.est] ? tile('aguaInformes', 'Informes del laboratorio', 'PDF de los análisis y remitos, por establecimiento (carpeta de Drive)') : '') + '</div>' : '') +
     (puede('Plagas') ? '<h2>3 · Plagas</h2><div class="menu">' + tile('plagaInter', 'Registrar intervención', 'Con la foto del F-PLG-02 · abre el caso si es nuevo') + tile('plagaSeg', 'Seguimiento de un caso', 'Con la foto del F-PLG-03') + tile('plagaRec', 'Recorrida preventiva', 'Con la foto del F-PLG-04') + (maudHys() ? tile('plInsp', 'Inspección del trabajo de los operarios', 'Higiene y Seguridad: control en el lugar, con puntos críticos y fotos') : '') + '</div>' : '') +
     (puede('Cocina') || puede('Relevamiento de cocina') ? '<h2>4 · Cocina</h2><div class="menu">' + (puede('Cocina') ? tile('cocPers', 'Personas de cocina', 'Carnet de manipulador y libreta sanitaria') : '') + (puede('Relevamiento de cocina') ? tile('irCocina', 'Relevamiento de cocina', 'Buenas prácticas (BPM) y HACCP, con fotos') : '') + '</div>' : '') +   // 14.70: se habilitan aparte
+    (SES.modulos && SES.modulos.indexOf('Relevamiento CAPS') >= 0 && SES.est !== 'HSST' ? '<h2>6 · Servicios e infraestructura</h2><div class="menu">' + tile('capsRel', 'Relevamiento de CAPS', 'Recorrida por cada CAPS: locales, baños, tachos, residuos y preguntas al coordinador, con fotos', true) + tile('capsLista', 'Relevamientos cargados', 'El último de cada CAPS, con su resumen, y los que faltan') + '</div>' : '') +   // RelevCaps.gs (06/11/2026)
     (SES.modulos && SES.modulos.indexOf('Radiaciones') >= 0 ? '<h2>5 · Radiaciones</h2><div class="menu">' + tile('rxPers', 'Personal con dosímetro', 'Altas, bajas y nuevas altas de dosímetros', true) + tile('rxEve', 'Eventos', 'Extravío, dosímetro dañado, registro anormal') + tile('rxForms', 'Formularios del dosímetro', 'F-RAD-01 alta, F-RAD-02 baja y F-RAD-03 novedad: con los datos del trabajador o en blanco') + '</div>' : '') +
     (SES.modulos && SES.modulos.indexOf('Incendio') >= 0 ? '<h2>7 · Incendio</h2><div class="menu">' + tile('incLista', 'Control de extintores', 'Mensual · «Todo OK» de un toque · agregar o corregir extintores', true) + (refHsst() ? '' : tile('incRec', 'Recorrida de seguridad', 'Salidas, puertas, luces, carteles, hidrantes, alarma…') + tile('incNov', 'Informar una novedad', 'Principio de incendio, alarma, olor a quemado, uso de un extintor…') + tile('incNovLista', 'Novedades', 'Lo que está abierto y lo resuelto')) + (SES.servicio ? tile('miImp', 'Hoja para imprimir', 'Control de extintores en blanco para completar en papel, o completado · adjuntar la hoja firmada') : '') + '</div>' : '') +   /* 29/10/2026 (Belén): SOMI y MAREM no ven «Auditorías y diagnósticos»; su hoja para imprimir va en Incendio */   /* 29/10/2026 (Belén): en el HSST el referente solo usa el control de extintores */
     (MI && MI.accidentes && puede('Accidentes') ? '<h2>8 · Siniestros</h2><div class="menu">' + tile('siniestros', 'Siniestros y novedades', 'Abiertos, avisos, altas, reingresos', true) + tile('accidente', 'Cargar un siniestro nuevo', 'Con los datos y el PDF de la denuncia') + '</div>' : '') +
@@ -2783,6 +2784,7 @@ const AYG = [
   { m: 'Radiaciones', t: 'Formularios del dosímetro (F-RAD-01, 02 y 03)', p: ['Inicio › 5 · Radiaciones › «Formularios del dosímetro»: elegí el formulario y el trabajador; los datos se completan solos, los corregís si hace falta y tocás «Imprimir con estos datos». «Imprimir en blanco» lo saca vacío para completar a mano.', 'Alta: «Dar de alta una persona» › completá los datos (teléfono, correo, servicios, título y matrícula) › «Imprimir el F-RAD-01». Sale en dos copias (Personal y Higiene y Seguridad) con el anexo «Compromiso de uso del dosímetro personal». Se firma (trabajador y jefe del servicio) y se adjunta la foto o el PDF en el mismo alta.', 'Baja: «Dar de baja el dosímetro» › motivo, fecha y si entrega el dosímetro › «Imprimir el F-RAD-02» › firmado, se adjunta en la baja.', 'Pérdida, extravío, robo o daño: Eventos › «Registrar un evento» (Extravío de dosímetro o Dosímetro dañado) › qué pasó y la fecha en que cree que ocurrió › «Imprimir el F-RAD-03» (Informe de novedad de dosímetro). Se entrega de inmediato a Higiene y Seguridad y se adjunta firmado en el evento.', 'En blanco: Formularios para imprimir › Radiaciones, o Hojas para imprimir › Radiaciones (también con los datos de una persona ya cargada).'] },
   { m: '', t: 'Hojas para imprimir', p: ['Inicio › «Hojas para imprimir»: cada tema que tenés asignado (auditorías y diagnóstico de residuos, agua, plagas, cocina, extintores y recorridas; infraestructura y RGRL solo Higiene y Seguridad).', '«Imprimir en blanco»: elegí el tipo, el lugar o el servicio. La hoja se arma con los puntos de este establecimiento, con la ayuda y la referencia normativa de cada punto y lugar para las firmas.', '«Imprimir» en una completada: la misma hoja con las respuestas. Se ve en pantalla; desde ahí se imprime o se guarda como PDF. Si el celular no imprime, tocá «Abrir en otra pestaña».', 'Lo que se completó en papel se carga en su pantalla de siempre; después, acá, «Adjuntar hoja firmada»: hasta 5 fotos o un PDF. Si adjuntás otra, la anterior queda reemplazada.', 'También se imprime desde la ficha de cada auditoría o diagnóstico («Auditorías y diagnósticos por tema» › «Imprimir»).'] },
   { m: '', t: 'Auditorías y diagnósticos por tema', p: ['Inicio › «Auditorías y diagnósticos por tema»: todas las evaluaciones del establecimiento que la Res. SRT 905/2015 pone a cargo de Higiene y Seguridad, agrupadas por tema (residuos, agua, plagas, cocinas, radiaciones, infraestructura, incendio y personal), de la más nueva a la más vieja: auditorías y diagnósticos, análisis de agua, controles de dosimetría, RGRL y mediciones, recorridas y control de extintores, e investigaciones de siniestros. Cada uno ve los temas que tiene asignados.', 'El porcentaje es el cumplimiento: verde 80 % o más, amarillo de 50 a 79 %, rojo menos de 50 %. «Críticos» son los puntos críticos que no se cumplen.', 'Tocá una para ver el detalle (estado, no conformidades abiertas, lugares, observaciones e informe). Si es una auditoría interna o un diagnóstico que estás completando, desde ahí la seguís.', 'Nada se corrige desde esta pantalla: para cambiar algo, consultá a Higiene y Seguridad. En el HSST la ve solo Higiene y Seguridad: el referente no ve auditorías ni diagnósticos.'] },
+  { m: 'Relevamiento CAPS', t: 'Relevamiento de CAPS', p: ['Inicio › 6 · Servicios e infraestructura › «Relevamiento de CAPS». Se hace recorriendo el CAPS, en 5 pasos (los botones de arriba llevan a cada uno).', '1 · Datos y acceso: el CAPS, la fecha, quién te acompañó, el coordinador, el horario, si hay escalones o rampa y una foto de la entrada.', '2 · Locales: tocá «+ Agregar un local» por cada ambiente (consultorios, sala de espera, baños, depósitos, sala de máquinas…). En cada uno: qué es, cuántos tachos hay y de qué color es la bolsa de cada uno y si tiene tapa, si hay cerraduras o vidrios rotos y cuáles, el estado y las fotos. En los baños, además: para quién es, si funcionan el inodoro y el lavatorio, si hay jabón y toallas y, si es adaptado, si tiene barras.', '3 · Residuos: si usan bolsa roja y amarilla, si tienen libro de actas para los manifiestos, el depósito (si es exclusivo o se comparte, si tiene llave), el carro de la mucama y cómo y por qué puerta se retiran los residuos.', '4 · Coordinador: preguntale por los caloramas y la caldera (quién los limpia o mantiene, cuándo fue la última vez y si hay constancia). Si no lo encontrás, marcá «No» y escribí por qué.', '5 · Revisar y guardar: muestra el resumen y lo que falta; tocando lo que falta vas directo a ese paso.', 'Si no podés ver algo, elegí «No pude ver» y escribí por qué. No inventes datos: lo que no sepas, «No sabe» o s/d.', 'Si se corta la señal o cerrás la aplicación, el relevamiento queda guardado en el teléfono: al volver a entrar, «Seguir el relevamiento sin terminar». Al guardar, si no hay señal, se envía solo cuando vuelva.', '«Relevamientos cargados»: el último de cada CAPS con su resumen, y cuáles faltan.'] },
   { m: '', t: '¿Algo no funciona?', p: ['No escribas datos directamente en las planillas ni inventes datos: consultá a Higiene y Seguridad (Belén Pellegrini).'] }
 ];
 function ayudaGeneral() {
@@ -2987,6 +2989,258 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 if (SES && SES.persona && !SES.persona.propia && SES.persona.funcion !== 'Referente de residuos' && !SES.persona.red && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
 // 29/10/2026: quien entra con DNI y clave personal (propia) no vuelve a «¿Quién sos?» al recargar la página
 if (SES && SES.persona) { inicio(); actualizarConfig(true); sincronizar(); miCargar(true); } else if (SES) quienCarga(); else ingreso();
+
+// ------------------------------------------------------------------ 6 · Servicios e infraestructura › Relevamiento de CAPS (F-INF-01, versión 0 · 06/11/2026, RelevCaps.gs)
+// Lo carga la secretaría (módulo «Relevamiento CAPS» en ACCESOS) recorriendo cada CAPS: lo que ve y lo que le cuenta el coordinador.
+// Cinco pasos: 1 Datos y acceso · 2 Locales · 3 Residuos · 4 Coordinador · 5 Revisar y guardar. Todos los CAPS tienen gas natural
+// y una sola planta (no se pregunta). Se guarda un borrador en el equipo: si se corta la señal o se cierra la app, se sigue después.
+// Cada «No pude ver» pide el motivo, para que HyS no tenga que pedir aclaraciones.
+let CAPSD = null;   // del sistema: { caps, funciones, ultimos, codigo, version }
+const CAPS_PASOS = ['Datos y acceso', 'Locales', 'Residuos', 'Coordinador', 'Revisar y guardar'];
+const CAPS_BOLSAS = ['Negra', 'Roja', 'Amarilla', 'Otra', 'Sin bolsa'];
+const CAPS_TAPAS = ['Con tapa a pedal', 'Con tapa sin pedal', 'Sin tapa'];
+const CAPS_NPV = 'No pude ver';
+const CAPS_LF = ['FUNCION', 'FUNCION_OTRA', 'NOMBRE', 'CERRADURA_ROTA', 'CERRADURA_ROTA_MOT', 'CERRADURA_CUAL', 'VIDRIO_ROTO', 'VIDRIO_ROTO_MOT', 'VIDRIO_CUAL',
+  'BANO_PARA', 'BANO_INODORO', 'BANO_INODORO_MOT', 'BANO_LAVATORIO', 'BANO_LAVATORIO_MOT', 'BANO_JABON', 'BANO_TOALLAS', 'BANO_BARRAS', 'BANO_BARRAS_MOT', 'ESTADO_GENERAL', 'OBSERVACIONES'];
+const capsNombre = c => c.barrio + (c.oficial ? ' · ' + c.oficial : '');
+// Pregunta con «No pude ver»: si se elige, pide el motivo
+const fSegNV = (k, t, ops) => fSeg(k, t, ops.concat([CAPS_NPV])) + (F[k] === CAPS_NPV ? fInp(k + '_MOT', '¿Por qué no pudiste verlo?', 'text', 'Ej.: estaba cerrado con llave') : '');
+const capsCard = html => '<div class="card" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0">' + html + '</div>';
+
+// Borrador en el equipo (si no entra con las fotos, se guarda sin ellas y se avisa)
+function capsBorrGuardar() {
+  if (!F || F._f !== 'caps') return;
+  if (LS.set('caps_borr', F)) return;
+  const o = {}; Object.keys(F).forEach(k => { const v = F[k]; if ((typeof v === 'string' && /^data:/.test(v)) || /Mas$/.test(k)) return;
+    o[k] = k === 'locales' ? v.map(l => { const c = Object.assign({}, l); delete c.foto; delete c.fotoMas; return c; }) : v; });
+  o._sinFotos = true; LS.set('caps_borr', o);
+}
+
+async function capsListas(fresco) {
+  if (CAPSD && !fresco) return CAPSD;
+  if (!navigator.onLine) { CAPSD = CAPSD || LS.get('caps_listas', null); return CAPSD; }
+  const r = await api('m_caps_abrir', {}); if (!r.ok) throw new Error(r.mensaje || r.error || 'No se pudo abrir.');
+  CAPSD = r; LS.set('caps_listas', { caps: r.caps, funciones: r.funciones, codigo: r.codigo, version: r.version, ultimos: r.ultimos || [] });
+  return CAPSD;
+}
+const capsErrTxt = e => /^(tiempo|red|respuesta)$/.test(e.message) ? 'no hay conexión con el sistema' : e.message;
+
+async function capsRel(nuevo) {
+  VISTA = 'mi'; vista('form');
+  if (!CAPSD) {
+    $('app').innerHTML = miTit('Relevamiento de CAPS') + '<p class="mu">Buscando la lista de CAPS…</p>'; bar(null);
+    try { await capsListas(); } catch (e) { $('app').innerHTML = miTit('Relevamiento de CAPS') + '<div class="notice">No se pudo abrir: ' + esc(capsErrTxt(e)) + '. Probá de nuevo con señal.</div>'; return miVolver(); }
+    if (!CAPSD) { $('app').innerHTML = miTit('Relevamiento de CAPS') + '<p class="mu">La primera vez hace falta señal para traer la lista de CAPS.</p>'; return miVolver(); }
+  }
+  if (!F || F._f !== 'caps') {
+    const b = LS.get('caps_borr', null);
+    if (b && b._f === 'caps' && !nuevo) {
+      const ya = (CAPSD.ultimos || []).some(u => u.caps === b.CAPS && u.fecha === b.FECHA);
+      MIV = { f: () => capsRel() };
+      $('app').innerHTML = miTit('Relevamiento de CAPS') + '<div class="menu">' +
+        '<button class="big main" data-act="capsSeguir"><b>Seguir el relevamiento sin terminar</b><span>' + esc(b.CAPS || 'CAPS sin elegir') + ' · ' + esc(fechaTxt(b.FECHA)) + ' · ' + (b.locales || []).length + ' locales cargados' +
+          (b._sinFotos ? ' · <b>las fotos no entraron en el equipo: hay que volver a sacarlas</b>' : '') + '</span></button>' +
+        '<button class="big" data-act="capsNuevo"><b>Empezar uno nuevo</b><span>Se borra el que está sin terminar</span></button></div>' +
+        (ya ? '<div class="notice">Ya figura guardado en el sistema un relevamiento de ' + esc(b.CAPS) + ' con esa fecha. Si es el mismo, tocá «Empezar uno nuevo».</div>' : '');
+      return miVolver();
+    }
+    LS.del('caps_borr');
+    F = { _f: 'caps', PASO: 0, CAPS: '', FECHA: hoyISO(), locales: [], LI: null };
+  }
+  capsPantalla();
+}
+
+function capsPantalla() {
+  if (!F || F._f !== 'caps') return capsRel();
+  MIV = { f: capsPantalla }; VISTA = 'mi'; vista('form');
+  if (F.LI != null) { capsLocal(); capsBorrGuardar(); return; }
+  const tabs = '<div class="seg" style="flex-wrap:wrap;margin-bottom:12px">' + CAPS_PASOS.map((t, i) => '<button type="button" class="' + (F.PASO === i ? 'sel' : '') + '" data-act="capsPaso" data-arg="' + i + '" style="min-width:30%">' + (i + 1) + ' · ' + t + '</button>').join('') + '</div>';
+  const cab = miTit('Relevamiento de CAPS', (F.CAPS ? '<b>' + esc(F.CAPS) + '</b> · ' : '') + 'Paso ' + (F.PASO + 1) + ' de 5: ' + CAPS_PASOS[F.PASO]) + tabs + fErr;
+  const pie = '<p class="mu" style="font-size:12px;margin-top:24px">' + esc((CAPSD && CAPSD.codigo) || 'F-INF-01') + ' · versión ' + esc((CAPSD && CAPSD.version) || '0') + ' · Servicio de Higiene y Seguridad Laboral HZT / HMH · Ley 19.587, Decreto 351/79 y Res. SRT 905/2015</p>';
+  const nav = '<button class="btn sec" data-act="' + (F.PASO ? 'capsAnt' : 'capsSalir') + '">' + (F.PASO ? 'Anterior' : 'Salir (queda guardado)') + '</button>' +
+    (F.PASO < 4 ? '<button class="btn pri" data-act="capsSig">Siguiente</button>' : '<button class="btn pri" data-act="capsGuardar">Guardar el relevamiento</button>');
+  $('app').innerHTML = cab + [capsP1, capsP2, capsP3, capsP4, capsP5][F.PASO]() + pie;
+  bar(nav); capsBorrGuardar();
+}
+
+// 1 · Datos y acceso
+function capsP1() {
+  return fSel('CAPS', 'CAPS', [['', 'Elegí el CAPS']].concat(CAPSD.caps.map(capsNombre))) + fInp('FECHA', 'Fecha del relevamiento', 'date') +
+    fInp('ACOMPANO', '¿Quién te acompañó del CAPS? (nombre y función)', 'text', 'Ej.: Ana Gómez, enfermera') +
+    '<div class="grid2">' + fInp('COORDINADOR', 'Coordinador del CAPS (nombre)', 'text', 's/d si no sabés') + fInp('COORD_TEL', 'Teléfono del coordinador', 'tel', 's/d si no sabés') + '</div>' +
+    fInp('HORARIO', 'Horario de atención del CAPS', 'text', 'Ej.: lunes a viernes de 7 a 19') +
+    '<h2>Acceso</h2>' + fSegNV('ESCALONES', '¿Hay escalones en la entrada?', ['Sí', 'No']) + fSegNV('RAMPA', '¿Hay rampa en la entrada?', ['Sí', 'No']) +
+    (F.RAMPA === 'Sí' ? fSegNV('RAMPA_BARANDA', '¿La rampa tiene baranda?', ['Sí', 'No']) : '') +
+    fFoto('fotoEntrada', 'Foto de la entrada', 'Que se vea si hay escalones o rampa');
+}
+// 2 · Locales
+function capsP2() {
+  const L = F.locales || [];
+  return '<p class="mu">Recorré el CAPS de punta a punta y cargá <b>cada ambiente</b>: consultorios, sala de espera, baños, depósitos, sala de máquinas, office… Uno por vez.</p>' +
+    (L.length ? '<div class="lista" style="grid-template-columns:1fr">' + L.map((l, i) => {
+      const t = l.tachos || [], prob = [l.CERRADURA_ROTA === 'Sí' ? 'cerradura rota' : '', l.VIDRIO_ROTO === 'Sí' ? 'vidrio roto' : '', t.some(x => x.TAPA === 'Sin tapa') ? 'tacho sin tapa' : ''].filter(Boolean);
+      return '<div class="item" style="align-items:flex-start"><div><b>' + (i + 1) + '. ' + esc(l.NOMBRE || (l.FUNCION === 'Otro' ? l.FUNCION_OTRA : l.FUNCION)) + '</b><small>' + esc(l.FUNCION === 'Otro' ? 'Otro: ' + l.FUNCION_OTRA : l.FUNCION) + ' · ' + t.length + ' tacho(s) · estado ' + esc((l.ESTADO_GENERAL || 's/d').toLowerCase()) +
+        (prob.length ? ' · <span style="color:var(--er)">' + prob.join(', ') + '</span>' : '') + (l.foto ? ' · con foto' : '') + '</small></div>' +
+        '<div style="margin-left:auto;white-space:nowrap"><button class="link" data-act="capsLocEd" data-arg="' + i + '">Corregir</button> · <button class="link" data-act="capsLocQuitar" data-arg="' + i + '">Quitar</button></div></div>';
+    }).join('') + '</div>' : '<div class="notice">Todavía no cargaste ningún local.</div>') +
+    '<div class="menu"><button class="big main" data-act="capsLocNuevo"><b>+ Agregar un local</b><span>' + (L.length ? 'El siguiente ambiente del recorrido' : 'Empezá por la entrada o la sala de espera') + '</span></button></div>';
+}
+// Edición de un local (campos L_…)
+function capsLocal() {
+  const n = Number(F.L_TN || 0), tach = [];
+  for (let i = 0; i < n; i++) tach.push(capsCard('<b>Tacho ' + (i + 1) + '</b>' + fSeg('L_T' + i + '_BOLSA', 'Color de la bolsa', CAPS_BOLSAS) + fSeg('L_T' + i + '_TAPA', 'Tapa', CAPS_TAPAS)));
+  const bano = F.L_FUNCION === 'Baño';
+  $('app').innerHTML = miTit(F.LI === -1 ? 'Local nuevo' : 'Corregir local ' + (F.LI + 1), esc(F.CAPS || '')) + fErr +
+    fSel('L_FUNCION', '¿Qué es este local?', [['', 'Elegí qué es']].concat(CAPSD.funciones)) +
+    (F.L_FUNCION === 'Otro' ? fInp('L_FUNCION_OTRA', '¿Qué es? Escribilo', 'text', 'Ej.: sala de reuniones') : '') +
+    fInp('L_NOMBRE', 'Nombre o número del local (opcional)', 'text', 'Ej.: Consultorio 2, Baño del personal') +
+    '<h2>Tachos</h2>' + fSeg('L_TN', '¿Cuántos tachos hay en este local?', ['0', '1', '2', '3', '4', '5', '6', '7', '8']) + tach.join('') +
+    (n === 8 ? '<p class="mu" style="font-size:13px">Si hay más de 8, anotalo en las observaciones.</p>' : '') +
+    '<h2>Puertas y ventanas</h2>' + fSegNV('L_CERRADURA_ROTA', '¿Hay alguna cerradura rota?', ['Sí', 'No']) + (F.L_CERRADURA_ROTA === 'Sí' ? fInp('L_CERRADURA_CUAL', '¿Cuál? (qué puerta)', 'text', 'Ej.: puerta del baño, no cierra') : '') +
+    fSegNV('L_VIDRIO_ROTO', '¿Hay algún vidrio roto o rajado?', ['Sí', 'No']) + (F.L_VIDRIO_ROTO === 'Sí' ? fInp('L_VIDRIO_CUAL', '¿Cuál?', 'text', 'Ej.: ventana que da a la calle') : '') +
+    (bano ? '<h2>Baño</h2>' + fSeg('L_BANO_PARA', '¿Para quién es el baño?', ['Público', 'Personal', 'Adaptado (silla de ruedas)']) +
+      fSegNV('L_BANO_INODORO', '¿Funciona el inodoro?', ['Sí', 'No']) + fSegNV('L_BANO_LAVATORIO', '¿Funciona el lavatorio?', ['Sí', 'No']) +
+      fSeg('L_BANO_JABON', '¿Hay jabón?', ['Sí', 'No']) + fSeg('L_BANO_TOALLAS', '¿Hay toallas de papel o secador de manos?', ['Sí', 'No']) +
+      (/^Adaptado/.test(F.L_BANO_PARA || '') ? fSegNV('L_BANO_BARRAS', '¿Tiene barras de apoyo?', ['Sí', 'No']) : '') : '') +
+    '<h2>Estado</h2>' + fSeg('L_ESTADO_GENERAL', 'Estado general del local', ['Bueno', 'Regular', 'Malo']) +
+    fTxt('L_OBSERVACIONES', 'Observaciones (opcional)', 'Humedad, canillas que pierden, luces que no andan, cosas rotas…') +
+    fFoto('L_foto', 'Fotos del local', 'Una general y una de cada problema');
+  bar('<button class="btn sec" data-act="capsLocCancel">Cancelar</button><button class="btn pri" data-act="capsLocOk">Listo, guardar el local</button>');
+}
+function capsLocAbrir(i) {
+  Object.keys(F).filter(k => /^L_/.test(k)).forEach(k => delete F[k]);
+  F.LI = i;
+  if (i >= 0) { const l = F.locales[i]; CAPS_LF.forEach(k => { F['L_' + k] = l[k] || ''; }); F.L_TN = String((l.tachos || []).length);
+    (l.tachos || []).forEach((t, j) => { F['L_T' + j + '_BOLSA'] = t.BOLSA; F['L_T' + j + '_TAPA'] = t.TAPA; }); F.L_foto = l.foto || ''; F.L_fotoMas = l.fotoMas || []; }
+  window.scrollTo(0, 0); capsPantalla();
+}
+function capsLocOk() {
+  const g = k => String(F['L_' + k] || '').trim(), nv = [], err = m => miErr(m);
+  if (!g('FUNCION')) return err('Elegí qué es este local.');
+  if (g('FUNCION') === 'Otro' && !g('FUNCION_OTRA')) return err('Escribí qué es el local.');
+  if (F.L_TN == null || F.L_TN === '') return err('Marcá cuántos tachos hay (0 si no hay).');
+  const tachos = [];
+  for (let i = 0; i < Number(F.L_TN); i++) { const b = F['L_T' + i + '_BOLSA'], t = F['L_T' + i + '_TAPA']; if (!b || !t) return err('Tacho ' + (i + 1) + ': falta el color de la bolsa o la tapa.'); tachos.push({ BOLSA: b, TAPA: t }); }
+  const preg = [['CERRADURA_ROTA', 'Cerradura'], ['VIDRIO_ROTO', 'Vidrio']].concat(g('FUNCION') === 'Baño' ? [['BANO_INODORO', 'Inodoro'], ['BANO_LAVATORIO', 'Lavatorio']].concat(/^Adaptado/.test(g('BANO_PARA')) ? [['BANO_BARRAS', 'Barras de apoyo']] : []) : []);
+  for (const [k, n] of preg) { if (!g(k)) return err(n + ': falta la respuesta.'); if (g(k) === CAPS_NPV) { if (!g(k + '_MOT')) return err(n + ': escribí por qué no pudiste verlo.'); nv.push(n + ': ' + g(k + '_MOT')); } }
+  if (g('CERRADURA_ROTA') === 'Sí' && !g('CERRADURA_CUAL')) return err('Escribí cuál es la cerradura rota.');
+  if (g('VIDRIO_ROTO') === 'Sí' && !g('VIDRIO_CUAL')) return err('Escribí cuál es el vidrio roto.');
+  if (g('FUNCION') === 'Baño') { if (!g('BANO_PARA')) return err('Marcá para quién es el baño.'); if (!g('BANO_JABON') || !g('BANO_TOALLAS')) return err('Falta si hay jabón y toallas.'); }
+  if (!g('ESTADO_GENERAL')) return err('Marcá el estado general del local.');
+  const l = { tachos: tachos, NO_PUDO_VER: nv.join(' | '), foto: F.L_foto || '', fotoMas: F.L_fotoMas || [] };
+  CAPS_LF.forEach(k => { l[k] = g(k); });
+  if (l.FUNCION !== 'Baño') ['BANO_PARA', 'BANO_INODORO', 'BANO_LAVATORIO', 'BANO_JABON', 'BANO_TOALLAS', 'BANO_BARRAS'].forEach(k => { l[k] = ''; });
+  if (F.LI >= 0) F.locales[F.LI] = l; else F.locales.push(l);
+  Object.keys(F).filter(k => /^L_/.test(k)).forEach(k => delete F[k]); F.LI = null; window.scrollTo(0, 0); capsPantalla();
+}
+// 3 · Residuos
+function capsP3() {
+  return '<p class="mu">Preguntale al personal del CAPS y mirá el depósito. Lo de cada tacho ya lo cargaste en los locales.</p>' +
+    fSeg('BOLSA_ROJA', '¿En el CAPS usan bolsa roja?', ['Sí', 'No', 'No sabe']) + fSeg('BOLSA_AMARILLA', '¿En el CAPS usan bolsa amarilla?', ['Sí', 'No', 'No sabe']) +
+    fSeg('LIBRO_ACTAS', '¿Tienen libro de actas para los manifiestos de residuos?', ['Sí', 'No', 'No sabe']) + (F.LIBRO_ACTAS === 'Sí' ? fFoto('fotoLibro', 'Foto de la tapa del libro de actas', 'Opcional') : '') +
+    '<h2>Depósito de residuos</h2>' + fSeg('DEPOSITO', '¿Hay depósito de residuos?', ['Sí', 'No']) +
+    (F.DEPOSITO === 'Sí' ? fSeg('DEPOSITO_COMPARTE', '¿El depósito es solo para residuos?', ['Es exclusivo', 'Se comparte con un baño', 'Se comparte con la sala de máquinas', 'Se comparte con otro lugar']) +
+      (F.DEPOSITO_COMPARTE === 'Se comparte con otro lugar' ? fInp('DEPOSITO_COMPARTE_CUAL', '¿Con qué lugar?', 'text', 'Ej.: depósito de limpieza') : '') +
+      fSegNV('DEPOSITO_LLAVE', '¿El depósito tiene llave?', ['Sí', 'No']) + fFoto('fotoDeposito', 'Foto del depósito', 'Por fuera y por dentro') : '') +
+    (F.DEPOSITO === 'No' ? fInp('DEPOSITO_DONDE', '¿Dónde guardan los residuos hasta que los retiran?', 'text', 'Ej.: en el patio, en el baño del fondo') : '') +
+    '<h2>Carro</h2>' + fSeg('CARRO', '¿La mucama tiene carro?', ['Sí', 'No']) + (F.CARRO === 'Sí' ? fSeg('CARRO_ESTADO', '¿En qué estado está el carro?', ['Bueno', 'Regular', 'Malo']) : '') +
+    '<h2>Retiro de residuos</h2>' +
+    fSeg('RETIRO', '¿Cómo retira los residuos la empresa transportista y operadora de residuos peligrosos (Impeesa)?', ['La empresa entra al CAPS a buscarlos', 'La mucama se los lleva afuera', 'No sabe']) +
+    fSeg('RETIRO_PUERTA', '¿Por qué puerta salen los residuos?', ['Puerta principal', 'Puerta trasera', 'Puerta lateral', 'Otra', 'No sabe']) +
+    (F.RETIRO_PUERTA === 'Otra' ? fInp('RETIRO_PUERTA_CUAL', '¿Cuál?', 'text', 'Ej.: portón del estacionamiento') : '') +
+    (F.RETIRO_PUERTA && F.RETIRO_PUERTA !== 'No sabe' ? fFoto('fotoPuerta', 'Foto de esa puerta', '') : '');
+}
+// 4 · Preguntas al coordinador
+function capsP4() {
+  return fSeg('COORD_HABLO', '¿Pudiste hablar con el coordinador?', ['Sí', 'No']) +
+    (F.COORD_HABLO === 'No' ? fInp('COORD_MOTIVO', '¿Por qué no?', 'text', 'Ej.: no estaba; vuelvo el jueves') : '') +
+    (F.COORD_HABLO === 'Sí' ? '<h2>Caloramas</h2>' + fSeg('CALORAMAS', '¿Hay caloramas?', ['Sí', 'No', 'No sabe']) +
+      (F.CALORAMAS === 'Sí' ? fInp('CALORAMAS_QUIEN', '¿Quién los limpia?', 'text', 'Ej.: Mantenimiento del HZT, una empresa, nadie') + fInp('CALORAMAS_ULTIMA', '¿Cuándo fue la última limpieza?', 'text', 'Mes y año, o «no sabe»') : '') +
+      '<h2>Caldera</h2>' + fSeg('CALDERA', '¿Hay caldera?', ['Sí', 'No', 'No sabe']) +
+      (F.CALDERA === 'Sí' ? fInp('CALDERA_QUIEN', '¿Quién le hace el mantenimiento?', 'text', 'Ej.: Mantenimiento del HZT, una empresa, nadie') + fInp('CALDERA_ULTIMA', '¿Cuándo fue el último mantenimiento?', 'text', 'Mes y año, o «no sabe»') +
+        fSeg('CALDERA_CONSTANCIA', '¿Tienen alguna constancia del mantenimiento?', ['Sí', 'No', 'No sabe']) + (F.CALDERA_CONSTANCIA === 'Sí' ? fFoto('fotoConstancia', 'Foto de la constancia', '') : '') : '') +
+      '<h2>Otros problemas</h2>' + fTxt('COORD_OTROS', '¿Hay otros problemas que quiera contar? (opcional)', 'Lo que diga el coordinador, con sus palabras') : '');
+}
+// Lo que falta, por paso (se muestra en «Revisar y guardar»)
+function capsFaltan() {
+  const f = [], v = k => String(F[k] || '').trim(), pide = (p, k, t) => { if (!v(k)) f.push([p, t]); }, nv = (p, k, t) => { pide(p, k, t); if (v(k) === CAPS_NPV && !v(k + '_MOT')) f.push([p, t + ': falta por qué no pudiste verlo']); };
+  pide(0, 'CAPS', 'El CAPS'); pide(0, 'FECHA', 'La fecha'); nv(0, 'ESCALONES', 'Escalones en la entrada'); nv(0, 'RAMPA', 'Rampa'); if (v('RAMPA') === 'Sí') nv(0, 'RAMPA_BARANDA', 'Baranda de la rampa');
+  if (!(F.locales || []).length) f.push([1, 'Ningún local cargado']);
+  pide(2, 'BOLSA_ROJA', 'Bolsa roja'); pide(2, 'BOLSA_AMARILLA', 'Bolsa amarilla'); pide(2, 'LIBRO_ACTAS', 'Libro de actas'); pide(2, 'DEPOSITO', 'Depósito de residuos');
+  if (v('DEPOSITO') === 'Sí') { pide(2, 'DEPOSITO_COMPARTE', 'Si el depósito se comparte'); if (v('DEPOSITO_COMPARTE') === 'Se comparte con otro lugar') pide(2, 'DEPOSITO_COMPARTE_CUAL', 'Con qué lugar se comparte el depósito'); nv(2, 'DEPOSITO_LLAVE', 'Llave del depósito'); }
+  if (v('DEPOSITO') === 'No') pide(2, 'DEPOSITO_DONDE', 'Dónde guardan los residuos');
+  pide(2, 'CARRO', 'Carro de la mucama'); if (v('CARRO') === 'Sí') pide(2, 'CARRO_ESTADO', 'Estado del carro');
+  pide(2, 'RETIRO', 'Cómo se retiran los residuos'); pide(2, 'RETIRO_PUERTA', 'Puerta de salida de los residuos'); if (v('RETIRO_PUERTA') === 'Otra') pide(2, 'RETIRO_PUERTA_CUAL', 'Cuál es la puerta');
+  pide(3, 'COORD_HABLO', 'Si hablaste con el coordinador');
+  if (v('COORD_HABLO') === 'No') pide(3, 'COORD_MOTIVO', 'Por qué no hablaste con el coordinador');
+  if (v('COORD_HABLO') === 'Sí') { pide(3, 'CALORAMAS', 'Caloramas'); if (v('CALORAMAS') === 'Sí') { pide(3, 'CALORAMAS_QUIEN', 'Quién limpia los caloramas'); pide(3, 'CALORAMAS_ULTIMA', 'Última limpieza de los caloramas'); }
+    pide(3, 'CALDERA', 'Caldera'); if (v('CALDERA') === 'Sí') { pide(3, 'CALDERA_QUIEN', 'Quién hace el mantenimiento de la caldera'); pide(3, 'CALDERA_ULTIMA', 'Último mantenimiento de la caldera'); pide(3, 'CALDERA_CONSTANCIA', 'Constancia de la caldera'); } }
+  return f;
+}
+// Resumen (el mismo cálculo que hace el sistema al guardar)
+function capsResumen() {
+  const add = (o, k) => { o[k] = (o[k] || 0) + 1; }, porFun = {}, bolsas = {}, banos = {}, cerr = [], vid = []; let tachos = 0, sinTapa = 0;
+  (F.locales || []).forEach(l => { const nom = l.NOMBRE || l.FUNCION;
+    add(porFun, l.FUNCION === 'Otro' ? 'Otro: ' + l.FUNCION_OTRA : l.FUNCION); (l.tachos || []).forEach(t => { tachos++; add(bolsas, t.BOLSA); if (t.TAPA === 'Sin tapa') sinTapa++; });
+    if (l.FUNCION === 'Baño') add(banos, l.ESTADO_GENERAL); if (l.CERRADURA_ROTA === 'Sí') cerr.push(nom + ': ' + l.CERRADURA_CUAL); if (l.VIDRIO_ROTO === 'Sí') vid.push(nom + ': ' + l.VIDRIO_CUAL); });
+  const txt = o => Object.keys(o).map(k => k + ' ' + o[k]).join(' · ') || 'Ninguno';
+  return { locales: (F.locales || []).length, porFun: txt(porFun), banos: Object.keys(banos).reduce((a, k) => a + banos[k], 0), banosEstado: txt(banos), tachos: tachos, porBolsa: txt(bolsas), sinTapa: sinTapa, cerraduras: cerr.join(' | ') || 'Ninguna', vidrios: vid.join(' | ') || 'Ninguno' };
+}
+const capsResumenHtml = r => '<div class="lista" style="grid-template-columns:1fr">' + [['Locales', r.locales + ' · ' + r.porFun], ['Baños', r.banos + (r.banos ? ' · estado: ' + r.banosEstado : '')], ['Tachos', r.tachos + (r.tachos ? ' · bolsas: ' + r.porBolsa : '')],
+  ['Tachos sin tapa', String(r.sinTapa)], ['Cerraduras rotas', r.cerraduras], ['Vidrios rotos', r.vidrios]].map(x => '<div class="item"><div><b>' + x[0] + '</b><small>' + esc(x[1]) + '</small></div></div>').join('') + '</div>';
+// 5 · Revisar y guardar
+function capsP5() {
+  const fal = capsFaltan();
+  return '<h2>Resumen</h2>' + capsResumenHtml(capsResumen()) +
+    (fal.length ? '<h2>Falta completar</h2><div class="lista" style="grid-template-columns:1fr">' + fal.map(x => '<button class="item pend" data-act="capsPaso" data-arg="' + x[0] + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(x[1]) + '</b><small>Paso ' + (x[0] + 1) + ' · ' + CAPS_PASOS[x[0]] + '</small></div><span class="tag wa">Ir</span></button>').join('') + '</div>'
+      : '<div class="notice ok"><b>Está todo completo.</b> Revisá el resumen y tocá «Guardar el relevamiento».</div>') +
+    fTxt('OBSERVACIONES', 'Observaciones generales (opcional)', 'Algo más que quieras contar del CAPS');
+}
+function capsGuardar() {
+  const fal = capsFaltan(); if (fal.length) { F.PASO = 4; capsPantalla(); return miErr('Falta completar: ' + fal.map(x => x[1]).join(', ') + '.'); }
+  const v = k => String(F[k] || '').trim(), nv = [];
+  [['ESCALONES', 'Escalones'], ['RAMPA', 'Rampa'], ['RAMPA_BARANDA', 'Baranda de la rampa'], ['DEPOSITO_LLAVE', 'Llave del depósito']].forEach(([k, n]) => { if (v(k) === CAPS_NPV) nv.push(n + ': ' + v(k + '_MOT')); });
+  const d = { NO_PUDO_VER: nv.join(' | '), fotoEntrada: miArch(F, 'fotoEntrada'), fotoLibro: v('LIBRO_ACTAS') === 'Sí' ? miArch(F, 'fotoLibro') : null, fotoDeposito: v('DEPOSITO') === 'Sí' ? miArch(F, 'fotoDeposito') : null,
+    fotoPuerta: miArch(F, 'fotoPuerta'), fotoConstancia: v('CALDERA_CONSTANCIA') === 'Sí' ? miArch(F, 'fotoConstancia') : null };
+  ['CAPS', 'FECHA', 'ACOMPANO', 'COORDINADOR', 'COORD_TEL', 'HORARIO', 'ESCALONES', 'RAMPA', 'RAMPA_BARANDA', 'BOLSA_ROJA', 'BOLSA_AMARILLA', 'LIBRO_ACTAS', 'DEPOSITO', 'DEPOSITO_COMPARTE', 'DEPOSITO_COMPARTE_CUAL',
+    'DEPOSITO_DONDE', 'DEPOSITO_LLAVE', 'CARRO', 'CARRO_ESTADO', 'RETIRO', 'RETIRO_PUERTA', 'RETIRO_PUERTA_CUAL', 'COORD_HABLO', 'COORD_MOTIVO', 'CALORAMAS', 'CALORAMAS_QUIEN', 'CALORAMAS_ULTIMA',
+    'CALDERA', 'CALDERA_QUIEN', 'CALDERA_ULTIMA', 'CALDERA_CONSTANCIA', 'COORD_OTROS', 'OBSERVACIONES'].forEach(k => { d[k] = v(k); });
+  if (d.RAMPA !== 'Sí') d.RAMPA_BARANDA = '';
+  if (d.DEPOSITO !== 'Sí') { d.DEPOSITO_COMPARTE = ''; d.DEPOSITO_COMPARTE_CUAL = ''; d.DEPOSITO_LLAVE = ''; } else d.DEPOSITO_DONDE = '';
+  if (d.CARRO !== 'Sí') d.CARRO_ESTADO = '';
+  if (d.COORD_HABLO !== 'Sí') ['CALORAMAS', 'CALORAMAS_QUIEN', 'CALORAMAS_ULTIMA', 'CALDERA', 'CALDERA_QUIEN', 'CALDERA_ULTIMA', 'CALDERA_CONSTANCIA', 'COORD_OTROS'].forEach(k => { d[k] = ''; }); else d.COORD_MOTIVO = '';
+  d.locales = F.locales.map(l => { const o = Object.assign({}, l); o.foto = l.foto ? miArch({ f: l.foto, fMas: l.fotoMas || [] }, 'f') : null; delete o.fotoMas; return o; });
+  encolarMi('m_caps_guardar', d, 'Relevamiento de ' + d.CAPS);
+  if (COLA.some(c => c.datos === d)) LS.del('caps_borr');   // si entró en la cola del equipo, el borrador ya no hace falta
+  CAPSD = null;
+}
+// Relevamientos cargados (último de cada CAPS) y los que faltan
+async function capsLista() {
+  VISTA = 'mi'; MIV = { f: () => capsLista() }; vista('wide'); bar(null);
+  $('app').innerHTML = miTit('Relevamientos de CAPS cargados') + '<p class="mu">Buscando…</p>';
+  try { await capsListas(true); } catch (e) { $('app').innerHTML = miTit('Relevamientos de CAPS cargados') + '<div class="notice">No se pudo abrir: ' + esc(capsErrTxt(e)) + '.</div>'; return miVolver(); }
+  const U = CAPSD.ultimos || [], hechos = U.map(u => u.caps), faltan = CAPSD.caps.map(capsNombre).filter(c => hechos.indexOf(c) < 0);
+  $('app').innerHTML = miTit('Relevamientos de CAPS cargados', U.length + ' de ' + CAPSD.caps.length + ' CAPS relevados · el último de cada uno') +
+    (faltan.length ? '<div class="notice"><b>Falta relevar:</b> ' + faltan.map(esc).join(' · ') + '</div>' : '<div class="notice ok"><b>Están todos los CAPS relevados.</b></div>') +
+    U.map(u => capsCard('<h2 style="margin-top:0">' + esc(u.caps) + '</h2><p class="mu" style="margin-top:-6px">' + esc(fechaTxt(u.fecha)) + ' · cargó ' + esc(u.quien || 's/d') + (u.revisado ? ' · revisado por HyS' : '') + '</p>' +
+      capsResumenHtml({ locales: u.locales, porFun: u.porFuncion, banos: u.banos, banosEstado: u.banosEstado, tachos: u.tachos, porBolsa: u.porBolsa, sinTapa: u.sinTapa, cerraduras: u.cerraduras, vidrios: u.vidrios }))).join('');
+  bar('<button class="btn sec" data-act="inicio">Volver al inicio</button><button class="btn pri" data-act="capsRel">Cargar un relevamiento</button>');
+}
+Object.assign(ACT, {
+  capsRel: () => { capsRel(); }, capsLista: () => capsLista(),
+  capsSeguir: () => { const b = LS.get('caps_borr', null); if (!b) return capsRel(true); F = b; delete F._sinFotos; F.LI = null; capsPantalla(); },
+  capsNuevo: () => preguntar('¿Borrar el relevamiento sin terminar y empezar uno nuevo?', 'Sí, empezar de nuevo', () => { LS.del('caps_borr'); F = null; capsRel(true); }),
+  capsPaso: b => { F.PASO = Number(b.dataset.arg); window.scrollTo(0, 0); capsPantalla(); },
+  capsSig: () => { F.PASO = Math.min(4, F.PASO + 1); window.scrollTo(0, 0); capsPantalla(); },
+  capsAnt: () => { F.PASO = Math.max(0, F.PASO - 1); window.scrollTo(0, 0); capsPantalla(); },
+  capsSalir: () => { capsBorrGuardar(); F = null; inicio(); },
+  capsLocNuevo: () => capsLocAbrir(-1), capsLocEd: b => capsLocAbrir(Number(b.dataset.arg)), capsLocOk: () => capsLocOk(),
+  capsLocCancel: () => { Object.keys(F).filter(k => /^L_/.test(k)).forEach(k => delete F[k]); F.LI = null; capsPantalla(); },
+  capsLocQuitar: b => preguntar('¿Quitar el local ' + (Number(b.dataset.arg) + 1) + '?', 'Sí, quitar', () => { F.locales.splice(Number(b.dataset.arg), 1); capsPantalla(); }),
+  capsGuardar: () => capsGuardar(),
+});
+// Al elegir qué es el local, se vuelve a dibujar (aparecen las preguntas del baño o «¿Qué es?»)
+document.addEventListener('change', e => { const t = e.target; if (t.dataset && t.dataset.f === 'L_FUNCION' && F && F._f === 'caps') { F.L_FUNCION = t.value; capsPantalla(); } });
 
 </script>
 </body>

@@ -404,7 +404,7 @@ function marco(activo, contenido) {
     grp('plg', 'pest_control', '3 · Plagas', pes('Estado') + it('#plagas', '', 'Tablero', 1) + it('#plghs', '', 'Control de horas', 1) + pes('Datos') + ext(API_URL + '?p=mipyv', 'Registro MIPyV') + pes('Evaluación') + it('#plgdiag', '', 'Diagnóstico', 1)) +
     grp('coc', 'soup_kitchen', '4 · Cocinas hospitalarias', pes('Estado') + it('#coc', '', 'Tablero', 1) + pes('Datos') + it('#cocper', '', 'Personas de cocina', 1) + pes('Evaluación') + it('#cocdiag', '', 'Relevamiento BPM / HACCP', 1)) +
     grp('rad', 'radiology', '5 · Radiaciones ionizantes', pes('Estado') + it('#rad', '', 'Tablero', 1) + pes('Datos') + it('#radest', '', 'Por establecimiento', 1) + it('#radform', '', 'Formularios del dosímetro (F-RAD)', 1)) +
-    grp('m8', 'domain', '6 · Servicios e infraestructura', pes('Estado') + it('#m8', '', 'Tablero', 1) + pes('Datos') + it('#m8serv', '', 'Edificios y servicios', 1) + it('#medic', '', 'Mediciones (puesta a tierra…)', 1) + it('#m8libros', '', 'Libros para la red', 1) + ext(M8_LINKS.planilla, 'Planilla del módulo 6 (M8)') + ext(M8_LINKS.campo, 'Listas de campo') + pes('Evaluación') + it('#rgrl', '', 'RGRL (Res. SRT 463/09)', 1) + it('#m8rel', '', 'Nuevo relevamiento', 1)) +
+    grp('m8', 'domain', '6 · Servicios e infraestructura', pes('Estado') + it('#m8', '', 'Tablero', 1) + it('#rcaps', '', 'Relevamiento de CAPS (red Trelew)', 1) + pes('Datos') + it('#m8serv', '', 'Edificios y servicios', 1) + it('#medic', '', 'Mediciones (puesta a tierra…)', 1) + it('#m8libros', '', 'Libros para la red', 1) + ext(M8_LINKS.planilla, 'Planilla del módulo 6 (M8)') + ext(M8_LINKS.campo, 'Listas de campo') + pes('Evaluación') + it('#rgrl', '', 'RGRL (Res. SRT 463/09)', 1) + it('#m8rel', '', 'Nuevo relevamiento', 1)) +
     grp('inc', 'fire_extinguisher', '7 · Protección contra incendios', pes('Estado') + it('#inc', '', 'Extintores · tablero', 1) + pes('Datos') + it('#incest/HMH', '', 'Extintores del HMH', 1) + it('#incest/HZT', '', 'Extintores de la red HZT', 1) + pes('Evaluación') + it('#incnov', '', 'Novedades y recorridas', 1)) +
     grp('per', 'badge', '8 · Personal y RAR', pes('Estado') + it('#sinest', '', 'Estadísticas de siniestros', 1) + pes('Datos') + it('#trab', '', 'Personas', 1) + it('#importar', '', 'Importar base de Personal', 1) + it('#nte', '', 'NTE · nómina de expuestos', 1) + pes('Evaluación') + it('#sin', '', 'Siniestros e investigación', 1)) +
     grp('cap', 'school', '9 · Capacitaciones', pes('Estado') + it('#cap', '', 'Tablero', 1) + it('#capcump', '', 'Cumplimiento', 1) + it('#capmat', '', 'Matriz', 1) + pes('Datos') + it('#capcat', '', 'Catálogo', 1) + it('#capdic', '', 'Dictados e inscriptos', 1) + it('#capag', '', 'Agenda', 1) + it('#capfir', '', 'Firmantes', 1) + it('#capper', '', 'Personas y certificados', 1) + it('#capcont', '', 'Contactos y mails', 1) + pes('Salidas') + it('#capinv', '', 'Invitar (correos)', 1) + it('#capinf', '', 'Informes', 1) + it('#capcorreo', '', 'Bandeja de correos', 1) + ext(CAP_LIBRO, 'Libro CAPACITACIONES')) +
@@ -529,6 +529,7 @@ const AYUDA = {
   '#diag': ['Diagnóstico de residuos', ['Primero la pestaña Establecimiento, después cada lugar. Se cierra con la pestaña Establecimiento completa (y al menos un lugar, solo si hay puntos por lugar activos en ITEMS).', '«Generar informe» arma la línea de base a la Dirección (Google Doc y PDF con número HYSL): portada, índice, resumen ejecutivo, presentación, método, hechos, análisis, conclusión, 6. Recomendaciones (ordenadas por prioridad y plazo), firma y anexo de fotos. Las recomendaciones salen de la columna ACCION de la planilla DIAGNÓSTICO DE RESIDUOS (hoja ITEMS) y pasan solas al plan de acción y a «Acciones».']],
   '#aud': ['Auditorías', ['Programa, planificación, lista de verificación con evidencia, resultado por eje y hallazgos.', 'Las internas de los referentes llegan «Para verificar».']],
   '#aguadiag': ['Diagnóstico de agua', ['Tocá un establecimiento para abrir su diagnóstico o empezar uno. Pestaña «Establecimiento»: documentación, registros y seguridad; una pestaña por cada tanque, cisterna o lugar.', 'Cada tanque o cisterna cargado en BASE COMÚN › RESERVORIOS es una pestaña propia; los CAPS se relevan dentro del hospital del que dependen. Si todavía no hay reservorios cargados, aparecen «Tanque elevado» y «Cisterna».', 'Frecuencias: limpieza anual, bacteriológico cada 6 meses, fisicoquímico anual (o la norma local más exigente). La sección de agua caliente (Legionella) aparece solo si hay termotanques o calderas.', 'Con el diagnóstico cerrado, «Generar informe» arma el informe a la Dirección (Google Doc y PDF con número HYSL) y sus mejoras pasan al Plan de acción.', 'Las preguntas se editan en la planilla del diagnóstico (hoja ITEMS): para dejar de usar una, ACTIVO = No; la mejora que se recomienda está en PROPUESTA, y «LUGAR ~ Tanque|Cisterna» en CONDICION la muestra solo en esos lugares.']],
+  '#rcaps': ['Relevamiento de CAPS · red Trelew', ['Lo que carga la secretaría desde «Mi establecimiento» (Relevamiento de CAPS, F-INF-01): locales y su función, tachos (color de bolsa y tapa), cerraduras y vidrios rotos, baños, acceso, residuos (bolsas, libro de actas, depósito, carro, retiro) y preguntas al coordinador (caloramas y caldera).', 'Arriba, los totales del último relevamiento de cada CAPS; después, lo marcado en cada uno (rojo: importante; amarillo: a mirar; gris: no se pudo ver o preguntar). Es lo que se vio, sin evaluación técnica.', 'Tocá un CAPS para ver el detalle de cada local con sus fotos, imprimirlo y marcarlo como revisado (con una nota opcional).', '«Planilla» abre el libro M6 · Relevamiento de CAPS (hojas RELEVAMIENTOS, LOCALES, CAPS y FUNCIONES); si falta GitHub, todo se ve y se corrige ahí. Un relevamiento nuevo del mismo CAPS deja al anterior «Reemplazado».']],
   '#edif': ['Relevamiento de edificios · red Trelew', ['Lo que cargan Javier y Paulo desde la app MIP (botón «Edificio»): estado de agua, desagües, canaletas y techos de cada lugar de la red Trelew (HZT edificio central, dependencias y CAPS; sin HMH), con lo que hace falta y hasta 5 fotos por tema.', 'Arriba: cuántos lugares están relevados, cuántos tienen algo urgente o requieren arreglos y cuántos relevamientos faltan revisar. Tocá un lugar de «Urgente» o una fila de la tabla para ver el detalle, las fotos y todas las respuestas.', '«Marcar como revisado» deja tu nota en la columna revisado_hys. «Faltan relevar» lista los lugares que todavía no se cargaron.', 'Si un lugar se relevó más de una vez o por partes (como el HZT), se ven todas las filas; para los números de arriba vale el relevamiento más nuevo de cada lugar.', 'Sin GitHub: los mismos datos están en el libro MIPyV, hoja «relevamiento_edificio» (botón «Planilla»). El informe a la Dirección se completa con estos datos (botón «Informe a la Dirección»).']],
   '#plghs': ['Control de horas', ['Horas de Javier y Paulo según la hora de inicio y de fin que cargan en la app MIP (plagas, saneamiento y otros trabajos de HyS). Si dos registros del mismo día se superponen, esas horas se cuentan una sola vez.', 'Javier: contrato de 30 h semanales + 140 h de guardia por mes. Cada semana (lunes a domingo) las primeras 30 h son de contrato y el resto es guardia. La guardia se computa al 100 %: 1 h reloj = 2 h de guardia, así que las 140 h de guardia son 70 h reloj. La barra muestra cuánto lleva del mes.', 'Paulo: cumple su contrato en otro lugar; con HyS solo hace guardias. Se cuentan solo las horas que trabaja con HyS (las que carga en la app MIP), todas como guardia al 100 %, sin tope: «Guardia a pasar» es lo que hay que pasarle en el mes.', 'Elegí el mes arriba. «Por semana» marca «faltan» cuando una semana cerrada no llegó a las 30 h de contrato. «Día por día» muestra el horario contado, dónde estuvieron y qué hicieron.', 'Los registros sin horario o con horario incompleto no se cuentan y aparecen en un aviso para que se corrijan en el libro MIP.', '«Imprimir» abre la impresión con el detalle día por día desplegado.']],
   '#plgdiag': ['Diagnóstico de plagas', ['Tocá un establecimiento para abrir su diagnóstico o empezar uno. Pestaña «Establecimiento»: programa, registros, productos y seguridad; una pestaña por cada lugar (cocina, depósitos, residuos, internación, sótanos, exterior).', 'Se habilita para toda la red: es la línea de base. El registro de intervenciones (app MIPyV) sigue solo en Trelew.', 'Con el diagnóstico cerrado, «Generar informe» arma el informe a la Dirección (Google Doc y PDF con número HYSL) y sus mejoras pasan al Plan de acción.', 'Las preguntas se editan en la planilla del diagnóstico (hoja ITEMS): para dejar de usar una, ACTIVO = No; la mejora que se recomienda está en PROPUESTA, y CONDICION decide en qué lugares aparece cada pregunta.']],
@@ -4780,6 +4781,118 @@ async function m8Libros() {
 }
 </script>
 <script>
+// ------------------------------------------------------------------ 6 · Servicios e infraestructura › Relevamiento de CAPS · red Trelew (06/11/2026)
+// Lo carga la secretaría desde «Mi establecimiento» (F-INF-01, versión 0). Acá se ve como tablero: lo marcado en cada CAPS,
+// la comparación entre CAPS, el detalle con fotos y «Marcar como revisado». Servidor: RelevCaps.gs › p_rcaps y p_rcaps_revisar.
+// Es lo que se vio y lo que contó el personal (sin evaluación técnica). Datos faltantes: s/d. Si falta GitHub: libro «M6 · Relevamiento de CAPS».
+let RCP = null, RCF = { soloVig: true };
+const rcSi = v => /^sí$/i.test(String(v || '').trim()), rcNo = v => /^no$/i.test(String(v || '').trim());
+const rcSd = v => String(v == null || v === '' ? 's/d' : v);
+const rcChip = (t, n) => { const c = { er: ['#FBE3DE', '#B4361F'], wa: ['#FFF1D6', '#8A5A00'], ok: ['#E3F4E8', '#1E6B3A'], nd: ['#EEF1F3', '#55606A'] }[n || 'nd'];
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:' + c[0] + ';color:' + c[1] + '">' + esc(t) + '</span>'; };
+// Lo marcado en un relevamiento (solo datos cargados, sin calificar): [nivel, texto]
+function rcMarcas(r) {
+  const M = [], L = r.locales || [];
+  L.filter(l => rcSi(l.CERRADURA_ROTA)).forEach(l => M.push(['er', 'Cerradura rota · ' + l.NOMBRE + ': ' + rcSd(l.CERRADURA_CUAL)]));
+  L.filter(l => rcSi(l.VIDRIO_ROTO)).forEach(l => M.push(['er', 'Vidrio roto · ' + l.NOMBRE + ': ' + rcSd(l.VIDRIO_CUAL)]));
+  L.filter(l => l.FUNCION === 'Baño').forEach(l => { const f = [rcNo(l.BANO_INODORO) ? 'inodoro no funciona' : '', rcNo(l.BANO_LAVATORIO) ? 'lavatorio no funciona' : '', rcNo(l.BANO_JABON) ? 'sin jabón' : '', rcNo(l.BANO_TOALLAS) ? 'sin toallas' : '', rcNo(l.BANO_BARRAS) ? 'sin barras de apoyo' : ''].filter(Boolean);
+    if (f.length) M.push([/inodoro|lavatorio/.test(f.join()) ? 'er' : 'wa', l.NOMBRE + ': ' + f.join(', ')]); });
+  const st = L.reduce((a, l) => a + (Number(l.TACHOS_SIN_TAPA) || 0), 0); if (st) M.push(['wa', st + ' tacho(s) sin tapa']);
+  L.filter(l => /malo/i.test(l.ESTADO_GENERAL)).forEach(l => M.push(['wa', 'Estado malo · ' + l.NOMBRE]));
+  if (r.DEPOSITO === 'No') M.push(['er', 'Sin depósito de residuos · los guardan en: ' + rcSd(r.DEPOSITO_DONDE)]);
+  if (/comparte/i.test(r.DEPOSITO_COMPARTE)) M.push(['er', 'Depósito de residuos: ' + r.DEPOSITO_COMPARTE.toLowerCase() + (r.DEPOSITO_COMPARTE_CUAL ? ' (' + r.DEPOSITO_COMPARTE_CUAL + ')' : '')]);
+  if (rcNo(r.DEPOSITO_LLAVE)) M.push(['wa', 'Depósito de residuos sin llave']);
+  if (rcNo(r.BOLSA_ROJA)) M.push(['wa', 'No usan bolsa roja']);
+  if (rcNo(r.LIBRO_ACTAS)) M.push(['wa', 'Sin libro de actas para los manifiestos']);
+  if (rcNo(r.CARRO)) M.push(['wa', 'La mucama no tiene carro']); else if (/malo/i.test(r.CARRO_ESTADO)) M.push(['wa', 'Carro en mal estado']);
+  if (rcSi(r.ESCALONES) && rcNo(r.RAMPA)) M.push(['wa', 'Escalones en la entrada y sin rampa']);
+  if (rcSi(r.RAMPA) && rcNo(r.RAMPA_BARANDA)) M.push(['wa', 'Rampa sin baranda']);
+  if (rcSi(r.CALORAMAS) && /nadie|no sabe|s\/d|^$/i.test(String(r.CALORAMAS_QUIEN || '') + '|' + String(r.CALORAMAS_ULTIMA || '')) ) M.push(['wa', 'Caloramas: limpieza ' + rcSd(r.CALORAMAS_QUIEN) + ' · última: ' + rcSd(r.CALORAMAS_ULTIMA)]);
+  if (rcSi(r.CALDERA) && !rcSi(r.CALDERA_CONSTANCIA)) M.push(['wa', 'Caldera sin constancia de mantenimiento (' + rcSd(r.CALDERA_QUIEN) + ' · último: ' + rcSd(r.CALDERA_ULTIMA) + ')']);
+  if (r.COORD_HABLO === 'No') M.push(['nd', 'No se habló con el coordinador: ' + rcSd(r.COORD_MOTIVO)]);
+  const npv = [r.NO_PUDO_VER].concat(L.map(l => l.NO_PUDO_VER ? l.NOMBRE + ' · ' + l.NO_PUDO_VER : '')).filter(Boolean).join(' | ');
+  if (npv) M.push(['nd', 'No se pudo ver: ' + npv]);
+  return M;
+}
+async function pantallaRelevCaps(fresco) {
+  marco('#rcaps', '<div class="cab"><div><span class="mu peq">6 · Servicios e infraestructura</span><h1>Relevamiento de CAPS · red Trelew</h1><span class="mu peq">Lo carga la secretaría desde «Mi establecimiento» (F-INF-01, versión 0): locales, tachos, cerraduras y vidrios, baños, acceso, residuos y lo que cuenta el coordinador. Es lo que se vio, sin evaluación técnica. Tocá un CAPS para ver el detalle y las fotos.</span></div>' +
+    '<div class="filtros"><button class="btn sec" id="rcAct">Actualizar</button><a class="btn sec" id="rcLib" href="#" target="_blank" rel="noopener" hidden>Planilla ↗</a><a class="btn sec" id="rcFot" href="#" target="_blank" rel="noopener" hidden>Fotos ↗</a></div></div>' +
+    '<div id="rcBox"><section class="card"><div class="mu">Leyendo los relevamientos…</div></section></div>' +
+    '<style>@media (max-width:760px){.rcT thead{display:none}.rcT,.rcT tbody,.rcT tr,.rcT td{display:block;width:100%}.rcT tr{border-top:1px solid var(--ln);padding:10px 0}.rcT td{border:0!important;padding:2px 0!important}.rcT td[data-l]::before{content:attr(data-l) ": ";color:var(--mu);font-weight:600}}.rcT tr[data-i]{cursor:pointer}.rcT tr[data-i]:hover{background:#F4F8FA}</style>');
+  $('rcAct').onclick = () => pantallaRelevCaps(true);
+  if (!RCP || fresco) { try { RCP = await api('p_rcaps', {}, 120000); } catch (e) { $('rcBox').innerHTML = '<section class="card"><div class="aviso error">No se pudieron leer los relevamientos de CAPS.</div></section>'; return; } }
+  if (!RCP || RCP.ok === false) { $('rcBox').innerHTML = '<section class="card"><div class="aviso error">' + esc((RCP && (RCP.mensaje || RCP.error)) || 'No se pudieron leer los relevamientos.') + '</div></section>'; return; }
+  if (RCP.libro) { $('rcLib').href = RCP.libro; $('rcLib').hidden = false; }
+  if (RCP.carpeta) { $('rcFot').href = RCP.carpeta; $('rcFot').hidden = false; }
+  rcPintar();
+}
+function rcPintar() {
+  const R = RCP.rels || [], vig = R.filter(r => r.ESTADO === 'Vigente'), hechos = RCP.caps.filter(c => vig.some(r => r.CAPS === c)), faltan = RCP.caps.filter(c => hechos.indexOf(c) < 0);
+  const kpi = (n, t, col) => '<div class="card" style="padding:12px;text-align:center"><div style="font-size:26px;font-weight:800;color:' + (col || 'inherit') + '">' + n + '</div><div class="mu peq">' + t + '</div></div>';
+  const suma = f => vig.reduce((a, r) => a + f(r), 0), L = r => r.locales || [];
+  const cerr = suma(r => L(r).filter(l => rcSi(l.CERRADURA_ROTA)).length), vid = suma(r => L(r).filter(l => rcSi(l.VIDRIO_ROTO)).length), st = suma(r => Number(r.TACHOS_SIN_TAPA) || 0);
+  const depMal = vig.filter(r => r.DEPOSITO === 'No' || /comparte/i.test(r.DEPOSITO_COMPARTE)).length, sinRev = vig.filter(r => !/^revisado/i.test(r.REVISADO_HYS)).length;
+  const ver = RCF.soloVig ? vig : R;
+  const fila = r => { const l = L(r), cons = l.filter(x => /^consultorio|enfermer|vacunatorio/i.test(x.FUNCION)).length, ban = l.filter(x => x.FUNCION === 'Baño'), banMal = ban.filter(x => rcNo(x.BANO_INODORO) || rcNo(x.BANO_LAVATORIO) || /malo/i.test(x.ESTADO_GENERAL)).length, m = rcMarcas(r);
+    return '<tr data-i="' + R.indexOf(r) + '"><td data-l="CAPS"><b>' + esc(r.CAPS) + '</b>' + (r.ESTADO !== 'Vigente' ? '<br><span class="mu peq">' + esc(r.ESTADO) + '</span>' : '') + '</td><td data-l="Fecha">' + esc(fechaTxt(r.FECHA)) + '</td>' +
+      '<td data-l="Locales">' + esc(rcSd(r.N_LOCALES)) + '<span class="mu peq"> · ' + cons + ' de atención</span></td><td data-l="Baños">' + ban.length + (banMal ? ' ' + rcChip(banMal + ' con problema', 'er') : '') + '</td>' +
+      '<td data-l="Tachos">' + esc(rcSd(r.TACHOS_TOTAL)) + (Number(r.TACHOS_SIN_TAPA) ? ' ' + rcChip(r.TACHOS_SIN_TAPA + ' sin tapa', 'wa') : '') + '</td>' +
+      '<td data-l="Depósito">' + (r.DEPOSITO === 'No' ? rcChip('No hay', 'er') : /comparte/i.test(r.DEPOSITO_COMPARTE) ? rcChip('Compartido', 'er') : r.DEPOSITO === 'Sí' ? rcChip('Exclusivo', 'ok') : rcChip('s/d')) + '</td>' +
+      '<td data-l="Retiro" class="peq">' + esc(rcSd(r.RETIRO)) + (r.RETIRO_PUERTA ? '<br><span class="mu">' + esc(r.RETIRO_PUERTA === 'Otra' ? r.RETIRO_PUERTA_CUAL : r.RETIRO_PUERTA) + '</span>' : '') + '</td>' +
+      '<td data-l="Marcas">' + (m.filter(x => x[0] === 'er').length ? rcChip(m.filter(x => x[0] === 'er').length + ' importantes', 'er') + ' ' : '') + (m.filter(x => x[0] === 'wa').length ? rcChip(m.filter(x => x[0] === 'wa').length + ' a mirar', 'wa') : '') + (!m.length ? rcChip('Sin marcas', 'ok') : '') + '</td>' +
+      '<td data-l="Revisión HyS" class="peq">' + esc(r.REVISADO_HYS || 'Sin revisar') + '</td></tr>'; };
+  $('rcBox').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' + kpi(hechos.length + ' de ' + RCP.caps.length, 'CAPS relevados') + kpi(cerr, 'cerraduras rotas', cerr ? '#B4361F' : '') + kpi(vid, 'vidrios rotos', vid ? '#B4361F' : '') +
+      kpi(st, 'tachos sin tapa', st ? '#8A5A00' : '') + kpi(depMal, 'sin depósito exclusivo', depMal ? '#B4361F' : '') + kpi(sinRev, 'sin revisar por HyS', sinRev ? '#21788C' : '') + '</div>' +
+    (vig.length ? '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Lo marcado en cada CAPS (último relevamiento)</h2><span class="mu peq" style="display:block;margin-bottom:6px">En rojo, lo importante; en amarillo, lo que conviene mirar; en gris, lo que no se pudo ver o preguntar. Tocá el CAPS para ver el detalle.</span>' +
+      vig.map(r => { const m = rcMarcas(r); return '<div style="margin:10px 0;cursor:pointer" data-u="' + R.indexOf(r) + '"><b>' + esc(r.CAPS) + '</b> <span class="mu peq">· ' + esc(fechaTxt(r.FECHA)) + '</span>' +
+        (m.length ? '<ul style="margin:4px 0 0 18px;padding:0">' + m.map(x => '<li style="color:' + { er: '#B4361F', wa: '#8A5A00', nd: '#55606A' }[x[0]] + '">' + esc(x[1]) + '</li>').join('') + '</ul>' : '<div class="mu peq">Sin marcas.</div>') + '</div>'; }).join('') + '</section>' : '') +
+    '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Comparación entre CAPS</h2>' +
+    '<label class="peq" style="display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="rcV"' + (RCF.soloVig ? ' checked' : '') + '> Solo el último de cada CAPS</label>' +
+    (ver.length ? '<div style="overflow-x:auto"><table class="tabla rcT" style="width:100%"><thead><tr><th>CAPS</th><th>Fecha</th><th>Locales</th><th>Baños</th><th>Tachos</th><th>Depósito</th><th>Retiro de residuos</th><th>Marcas</th><th>Revisión HyS</th></tr></thead><tbody>' + ver.map(fila).join('') + '</tbody></table></div>'
+      : '<div class="mu">Todavía no hay relevamientos cargados.</div>') + '</section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Faltan relevar (' + faltan.length + ')</h2>' + (faltan.length ? faltan.map(c => '<div style="margin:3px 0">⬜ ' + esc(c) + '</div>').join('') : '<div class="mu">✅ Están todos.</div>') +
+    '<span class="mu peq" style="display:block;margin-top:8px">La lista de CAPS sale de la hoja CAPS del libro (se puede agregar o corregir).</span></section>';
+  $('rcV').onchange = e => { RCF.soloVig = e.target.checked; rcPintar(); };
+  document.querySelectorAll('.rcT tr[data-i], #rcBox [data-u]').forEach(el => el.onclick = () => rcVer(R[+(el.dataset.i || el.dataset.u)]));
+}
+function rcVer(r) {
+  const dd = (t, x) => '<dt>' + t + '</dt><dd>' + (x || 's/d') + '</dd>', nl = s => esc(s || '').replace(/\n/g, '<br>'), lk = (u, t) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + t + ' ↗</a>' : '';
+  const L = r.locales || [], m = rcMarcas(r);
+  const fotos = [['Entrada', r.FOTO_ENTRADA], ['Libro de actas', r.FOTO_LIBRO], ['Depósito', r.FOTO_DEPOSITO], ['Puerta de residuos', r.FOTO_PUERTA], ['Constancia de caldera', r.FOTO_CONSTANCIA]].filter(f => f[1]);
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Relevamiento de CAPS" style="max-width:900px"><h2>' + esc(r.CAPS) + ' · ' + esc(fechaTxt(r.FECHA)) + '</h2>' +
+    '<dl class="dl">' + dd('Relevó', esc(r.CARGADO_POR)) + dd('Acompañó', esc(r.ACOMPANO)) + dd('Coordinador', esc(r.COORDINADOR) + (r.COORD_TEL && r.COORD_TEL !== 's/d' ? ' · ' + esc(r.COORD_TEL) : '')) + dd('Horario', esc(r.HORARIO)) + '</dl>' +
+    (m.length ? '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Lo marcado</b><ul style="margin:4px 0 0 18px;padding:0">' + m.map(x => '<li style="color:' + { er: '#B4361F', wa: '#8A5A00', nd: '#55606A' }[x[0]] + '">' + esc(x[1]) + '</li>').join('') + '</ul></div>' : '') +
+    '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Acceso</b><dl class="dl">' + dd('Escalones', esc(r.ESCALONES)) + dd('Rampa', esc(r.RAMPA) + (r.RAMPA === 'Sí' ? ' · baranda: ' + esc(rcSd(r.RAMPA_BARANDA)) : '')) + '</dl></div>' +
+    '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Residuos</b><dl class="dl">' + dd('Bolsa roja', esc(r.BOLSA_ROJA)) + dd('Bolsa amarilla', esc(r.BOLSA_AMARILLA)) + dd('Libro de actas', esc(r.LIBRO_ACTAS)) +
+      dd('Depósito', r.DEPOSITO === 'Sí' ? esc(r.DEPOSITO_COMPARTE) + (r.DEPOSITO_COMPARTE_CUAL ? ' (' + esc(r.DEPOSITO_COMPARTE_CUAL) + ')' : '') + ' · llave: ' + esc(rcSd(r.DEPOSITO_LLAVE)) : r.DEPOSITO === 'No' ? 'No hay · los guardan en: ' + esc(rcSd(r.DEPOSITO_DONDE)) : '') +
+      dd('Carro de la mucama', esc(r.CARRO) + (r.CARRO_ESTADO ? ' · ' + esc(r.CARRO_ESTADO) : '')) + dd('Retiro', esc(r.RETIRO)) + dd('Puerta', esc(r.RETIRO_PUERTA === 'Otra' ? r.RETIRO_PUERTA_CUAL : r.RETIRO_PUERTA)) + '</dl></div>' +
+    '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Coordinador</b>' + (r.COORD_HABLO === 'No' ? '<div class="mu">No se habló: ' + esc(rcSd(r.COORD_MOTIVO)) + '</div>' : '<dl class="dl">' +
+      dd('Caloramas', esc(r.CALORAMAS) + (r.CALORAMAS === 'Sí' ? ' · limpia: ' + esc(rcSd(r.CALORAMAS_QUIEN)) + ' · última: ' + esc(rcSd(r.CALORAMAS_ULTIMA)) : '')) +
+      dd('Caldera', esc(r.CALDERA) + (r.CALDERA === 'Sí' ? ' · mantenimiento: ' + esc(rcSd(r.CALDERA_QUIEN)) + ' · último: ' + esc(rcSd(r.CALDERA_ULTIMA)) + ' · constancia: ' + esc(rcSd(r.CALDERA_CONSTANCIA)) : '')) +
+      (r.COORD_OTROS ? dd('Otros problemas', nl(r.COORD_OTROS)) : '') + '</dl>') + '</div>' +
+    '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Locales (' + L.length + ')</b><div style="overflow-x:auto"><table class="tabla" style="width:100%;margin-top:6px"><thead><tr><th>#</th><th>Local</th><th>Tachos</th><th>Cerradura</th><th>Vidrio</th><th>Baño</th><th>Estado</th><th>Fotos</th></tr></thead><tbody>' +
+      L.map(l => '<tr><td>' + esc(l.N) + '</td><td><b>' + esc(l.NOMBRE) + '</b><br><span class="mu peq">' + esc(l.FUNCION === 'Otro' ? 'Otro: ' + l.FUNCION_OTRA : l.FUNCION) + '</span>' + (l.OBSERVACIONES ? '<br><span class="peq">' + nl(l.OBSERVACIONES) + '</span>' : '') + (l.NO_PUDO_VER ? '<br><span class="peq mu">No se pudo ver: ' + esc(l.NO_PUDO_VER) + '</span>' : '') + '</td>' +
+        '<td class="peq">' + esc(l.TACHOS_DETALLE) + '</td><td class="peq">' + (rcSi(l.CERRADURA_ROTA) ? rcChip('Rota', 'er') + ' ' + esc(l.CERRADURA_CUAL) : esc(l.CERRADURA_ROTA)) + '</td><td class="peq">' + (rcSi(l.VIDRIO_ROTO) ? rcChip('Roto', 'er') + ' ' + esc(l.VIDRIO_CUAL) : esc(l.VIDRIO_ROTO)) + '</td>' +
+        '<td class="peq">' + (l.FUNCION === 'Baño' ? esc(l.BANO_PARA) + '<br>inodoro: ' + esc(rcSd(l.BANO_INODORO)) + ' · lavatorio: ' + esc(rcSd(l.BANO_LAVATORIO)) + '<br>jabón: ' + esc(rcSd(l.BANO_JABON)) + ' · toallas: ' + esc(rcSd(l.BANO_TOALLAS)) + (l.BANO_BARRAS ? ' · barras: ' + esc(l.BANO_BARRAS) : '') : '') + '</td>' +
+        '<td>' + rcChip(rcSd(l.ESTADO_GENERAL), /malo/i.test(l.ESTADO_GENERAL) ? 'er' : /regular/i.test(l.ESTADO_GENERAL) ? 'wa' : /bueno/i.test(l.ESTADO_GENERAL) ? 'ok' : 'nd') + '</td><td>' + lk(l.FOTOS, 'Ver') + '</td></tr>').join('') + '</tbody></table></div></div>' +
+    (fotos.length ? '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Otras fotos</b><div style="margin-top:4px">' + fotos.map(f => lk(f[1], f[0])).join(' · ') + '</div></div>' : '') +
+    (r.OBSERVACIONES ? '<div style="border-top:1px solid var(--ln);padding:10px 0"><b>Observaciones generales</b><div style="margin-top:4px">' + nl(r.OBSERVACIONES) + '</div></div>' : '') +
+    '<dl class="dl">' + dd('Revisión HyS', esc(r.REVISADO_HYS || 'Sin revisar')) + '</dl>' +
+    '<label class="f" style="margin-top:8px">Nota de revisión (opcional)<input class="c" id="rcNota" placeholder="Ej.: pasa al informe; pedir a Mantenimiento"></label>' +
+    '<div class="acciones"><div><button class="btn sec" id="rcImp">Imprimir</button></div><div style="display:flex;gap:8px"><button class="btn sec" id="rcCer">Cerrar</button><button class="btn pri" id="rcRev">Marcar como revisado</button></div></div></div>';
+  $('ov').hidden = false;
+  const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+  $('rcCer').onclick = cerrar;
+  $('rcImp').onclick = () => { const w = window.open('', '_blank'); if (!w) return toast('El navegador bloqueó la ventana para imprimir.');
+    w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Relevamiento ' + esc(r.CAPS) + '</title><style>body{font-family:"Plus Jakarta Sans",Arial,sans-serif;font-size:10pt;color:#4D4D4D;margin:24px}h2{color:#0D313F}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}dt{font-weight:700;color:#0D313F}dd{margin:0 0 4px 0}a{color:#5894A7}</style></head><body>' + $('ov').querySelector('.modal').innerHTML.replace(/<label class="f"[\s\S]*$/, '') + '<p style="font-size:8pt">F-INF-01 · versión 0 · Servicio de Higiene y Seguridad Laboral HZT / HMH · Ley 19.587, Decreto 351/79 y Res. SRT 905/2015</p></body></html>');
+    w.document.close(); w.focus(); w.print(); };
+  $('rcRev').onclick = async () => { $('rcRev').disabled = true; $('rcRev').textContent = 'Guardando…';
+    try { const x = await api('p_rcaps_revisar', { id: r.ID, nota: $('rcNota').value }, 60000); if (!x.ok) throw new Error(x.mensaje); toast('Relevamiento marcado como revisado.'); cerrar(); pantallaRelevCaps(true); }
+    catch (e) { $('rcRev').disabled = false; $('rcRev').textContent = 'Marcar como revisado'; toast(e.message || 'No se pudo guardar.'); } };
+}
+</script>
+<script>
 // Portal HyS · Estado del establecimiento (ficha): matriz urgencia × gravedad y vistas por tema
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // No pide nada nuevo al servidor: usa los datos del tablero de control (p_tablero), del resumen (p_resumen), de siniestros (p_sin_lista) y del módulo 6 (m8_datos), filtrados por establecimiento.
@@ -7314,6 +7427,7 @@ function routerPantalla() {
   if (ruta === 'plagas') return agua('plagas');
   if (ruta === 'plghs') return pantallaHoras();
   if (ruta === 'edif') return pantallaEdificios();
+  if (ruta === 'rcaps') return pantallaRelevCaps();   // relevamiento de CAPS (RelevCaps.gs, 06/11/2026)
   if (ruta === 'aguadiag') return dgmRuta('agua', a);
   if (ruta === 'plgdiag') return dgmRuta('plagas', a);
   if (ruta === 'sin') return sinPortal(a);

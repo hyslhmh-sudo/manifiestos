@@ -132,6 +132,7 @@ function portalAccion_(d) {
     case 'p_informe_trim': return informeTrim_(x);
     // Módulo 6 · Cocinas hospitalarias (Modulo6.gs): relevamiento BPM / HACCP y personas de cocina
     default: if (String(d.accion).indexOf('p_edif') === 0) return typeof edifPortal_ === 'function' ? edifPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Edificios.gs.' };   // relevamiento de edificios red Trelew (05/11/2026)
+      if (String(d.accion).indexOf('p_rcaps') === 0) return typeof capsPortal_ === 'function' ? capsPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar RelevCaps.gs.' };   // 6 · relevamiento de CAPS (RelevCaps.gs, 06/11/2026)
       if (String(d.accion).indexOf('p_docest_') === 0) return typeof docEstPortal_ === 'function' ? docEstPortal_(d.accion, x) : { ok: false, mensaje: 'Falta actualizar Modulo2.gs.' };   // 2 · Documentos de los establecimientos
       if (String(d.accion).indexOf('p_imp_') === 0) return typeof impPortal_ === 'function' ? impPortal_(d.accion, x) : { ok: false, mensaje: 'Falta instalar Imprimir.gs.' };   // hojas para imprimir (Imprimir.gs, 23/10/2026)
       if (String(d.accion).indexOf('p_acc_') === 0) return typeof accPortal_ === 'function' ? accPortal_(d.accion, x) : { ok: false, error: 'Acción desconocida.' };   // pantalla «Accesos» (Accesos.gs)
