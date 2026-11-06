@@ -140,9 +140,9 @@ function edRender() {
           : `<small class="er">❗ Falta relevar</small>`) + `</button>`; }).join("");
   box.querySelectorAll("[data-l]").forEach(b => b.onclick = () => { const l = L.find(x => x.id === b.dataset.l);
     if (bp && bp.form.lugar.id !== l.id && !confirm("Tenés sin terminar el relevamiento de " + bp.form.lugar.nombre + ". Si empezás " + l.nombre + ", ese se descarta. ¿Seguir?")) return;
-    if (bp && bp.form.lugar.id === l.id) { ed.form = edNorm(bp.form); ed.lugar = l; ed.vista = "form"; ed.aviso = ""; edRender(); screensEl.scrollTop = 0; return; }
+    if (bp && bp.form.lugar.id === l.id) { edSeguirBorrador(); return; }
     edBorrarBorrador(); edAbrir(l); });
-  const bs = box.querySelector('[data-b="seguir"]'); if (bs) bs.onclick = () => { ed.form = edNorm(bp.form); ed.lugar = bp.form.lugar; ed.vista = "form"; ed.aviso = ""; edRender(); screensEl.scrollTop = 0; };
+  const bs = box.querySelector('[data-b="seguir"]'); if (bs) bs.onclick = () => edSeguirBorrador();
   const bd = box.querySelector('[data-b="descartar"]'); if (bd) bd.onclick = () => { if (!confirm("¿Descartar el relevamiento sin terminar de " + bp.form.lugar.nombre + "? Se borra lo cargado.")) return; edBorrarBorrador(); edRender(); };
 }
 function edAbrir(l) {
@@ -150,14 +150,37 @@ function edAbrir(l) {
   ed.form = { uid: "ED" + Date.now() + Math.floor(Math.random() * 1000), lugar: l, FECHA: edHoy(), parte: "", resp: {}, det: {}, falta: {}, fotos: { agua: [], desagues: [], canaletas: [], techos: [], riesgos: [] }, obs: "" };
   edRender(); screensEl.scrollTop = 0;
 }
-function edBorrador() { if (!ed.form) return; if (!edGuardarLS(ED_BORR_KEY, { form: ed.form, guardado: Date.now() })) { const f = Object.assign({}, ed.form, { fotos: { agua: [], desagues: [], canaletas: [], techos: [] } }); edGuardarLS(ED_BORR_KEY, { form: f, guardado: Date.now() }); } }
-function edBorrarBorrador() { try { localStorage.removeItem(ED_BORR_KEY); } catch (e) { } }
+// 06/11/2026 (Belén: «Javier y Paulo no pudieron cargar las fotos»): con muchas fotos, el borrador no entraba en la memoria
+// chica del celular (localStorage, ~5 MB) y se guardaba SIN fotos; si el teléfono cerraba la app al abrir la cámara, al volver
+// se perdían todas. Ahora el borrador completo, con fotos, va a la base del celular (IndexedDB, la misma del borrador de HyS);
+// localStorage queda solo con los textos. Y si la app se cerró al sacar una foto, al abrir de nuevo vuelve sola al formulario.
+const ED_IDB_ID = "edificio", ED_FOTO_PEND = "mipyv_edificio_foto_pendiente";
+function edBorrador() {
+  if (!ed.form) return;
+  const g = { form: ed.form, guardado: Date.now() };
+  if (typeof borradorTx === "function") borradorTx("readwrite", (st) => st.put(JSON.parse(JSON.stringify(g)), ED_IDB_ID)).catch(() => { });
+  const f = Object.assign({}, ed.form, { fotos: { agua: [], desagues: [], canaletas: [], techos: [], riesgos: [] } });
+  edGuardarLS(ED_BORR_KEY, { form: f, guardado: g.guardado, conFotosEnIDB: true });
+}
+function edBorrarBorrador() { try { localStorage.removeItem(ED_BORR_KEY); localStorage.removeItem(ED_FOTO_PEND); } catch (e) { } if (typeof borradorTx === "function") borradorTx("readwrite", (st) => st.delete(ED_IDB_ID)).catch(() => { }); }
+// Borrador con fotos (IndexedDB); si no está, el de textos
+async function edBorradorCompleto() {
+  let b = null; try { if (typeof borradorTx === "function") b = await borradorTx("readonly", (st, set) => { const r = st.get(ED_IDB_ID); r.onsuccess = () => set(r.result || null); }); } catch (e) { }
+  const l = edLeer(ED_BORR_KEY, null);
+  if (b && b.form && (!l || b.guardado >= l.guardado - 2000)) return b;
+  return l;
+}
+async function edSeguirBorrador(aviso) {
+  const b = await edBorradorCompleto(); if (!b || !b.form) return false;
+  ed.form = edNorm(b.form); ed.lugar = b.form.lugar; ed.vista = "form"; ed.aviso = aviso || ""; edRender(); screensEl.scrollTop = 0; return true;
+}
 
 function edRenderForm() {
   const f = edNorm(ed.form), r = f.resp, d = f.det, box = edBox();
   const det = (k, ph, lab) => `<div class="ed-det"><div class="ext-preg ed-req">${lab}</div><textarea class="ext-com${edTxtOk(d[k]) ? "" : " ed-falta"}" rows="2" data-det="${k}" placeholder="${escX(ph)}">${escX(d[k] || "")}</textarea></div>`;
   const opc = (campo, vals, act) => `<div class="ext-opc" data-campo="${campo}">${vals.map(v => `<button type="button" class="${act === v ? "on" : ""}" data-valor="${escX(v)}">${escX(v)}</button>`).join("")}</div>`;
   let h = `<button type="button" class="ext-quitar tq-volver" data-f="cancelar">← Volver a los lugares</button>
+    ${ed.aviso ? `<div class="tq-info" style="border-left:4px solid #B4361F">${escX(ed.aviso)}</div>` : ""}
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
     <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
     <div class="tq-info">Escribí todo para que se entienda sin haber estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
@@ -213,7 +236,7 @@ const edFotoInput = document.createElement("input");
 edFotoInput.type = "file"; edFotoInput.accept = "image/*"; edFotoInput.setAttribute("capture", "environment"); edFotoInput.style.display = "none";
 document.body.appendChild(edFotoInput);
 let edFotoTema = null;
-const edFotosCambio = (t) => { edPintarFotos(t); edBorrador(); const y = screensEl.scrollTop; if (ed.vista === "form" && ed.form) { edRenderForm(); screensEl.scrollTop = y; } };
+const edFotosCambio = (t) => { try { localStorage.removeItem(ED_FOTO_PEND); } catch (e) { } edPintarFotos(t); edBorrador(); const y = screensEl.scrollTop; if (ed.vista === "form" && ed.form) { edRenderForm(); screensEl.scrollTop = y; } };
 edFotoInput.addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); edFotoInput.value = ""; if (fs.length && ed.form && edFotoTema) { const t = edFotoTema; agregarFotos(ed.form.fotos[t], fs, () => edFotosCambio(t)); } });
 function edPintarFotos(t) {
   const g = edBox().querySelector(`[data-fotos="${t}"]`); if (!g || !ed.form) return;
@@ -222,7 +245,8 @@ function edPintarFotos(t) {
     (F.length < 5 ? `<button type="button" class="foto-slot add"><span>+</span><small>${F.length}/5</small></button>` : "");
   g.querySelectorAll(".foto-remove").forEach(b => b.onclick = (e) => { e.stopPropagation(); F.splice(Number(b.dataset.i), 1); edFotosCambio(t); });
   const add = g.querySelector(".foto-slot.add");
-  if (add) add.onclick = () => { edFotoTema = t; edBorrador(); elegirOrigenFoto(edFotoInput, true, fs => agregarFotos(F, fs, () => edFotosCambio(t))); };
+  if (add) add.onclick = () => { edFotoTema = t; edBorrador(); edGuardarLS(ED_FOTO_PEND, { t: Date.now(), tema: t });
+    elegirOrigenFoto(edFotoInput, true, fs => agregarFotos(F, fs, () => edFotosCambio(t))); };
 }
 
 // ---------- guardar (a la cola: se manda solo con señal)
@@ -276,3 +300,15 @@ document.head.appendChild(edCss);
 document.getElementById("goEdificio") && document.getElementById("goEdificio").addEventListener("click", () => enterModule("edificio"));
 edPintarHome();
 if (typeof avisosPintar === "function") avisosPintar();   // «Para hacer ahora» ya con los lugares que faltan relevar
+// Si la app se cerró mientras se sacaba una foto del relevamiento (pasa en algunos celulares al abrir la cámara),
+// al volver a abrirla se vuelve sola al formulario, con todo lo cargado hasta ese momento.
+(function edVolverDeLaCamara() {
+  const p = edLeer(ED_FOTO_PEND, null); if (!p || !p.t) return;
+  try { localStorage.removeItem(ED_FOTO_PEND); } catch (e) { }
+  if (Date.now() - p.t > 15 * 60000) return;
+  setTimeout(async () => {
+    if (typeof accesoLeer === "function" && !accesoLeer()) return;
+    try { enterModule("edificio"); } catch (e) { return; }
+    await edSeguirBorrador("📷 La app se cerró al abrir la cámara y la última foto no llegó. Lo demás está guardado. Volvé a sacarla o, mejor, sacala con la cámara del teléfono y cargala con «🖼️ Elegir del teléfono».");
+  }, 600);
+})();
