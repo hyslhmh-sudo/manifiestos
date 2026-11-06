@@ -121,19 +121,29 @@ function edPintarHome() {
 
 // ---------- pantalla del módulo (data-step="e-main")
 const edBox = () => document.getElementById("edificioBox");
-function edEntrar() { ed = { vista: "lugares", lugar: null, form: null, tema: 0, aviso: "" }; const b = edLeer(ED_BORR_KEY, null); if (b && b.form && Date.now() - b.guardado < 3 * 864e5) { ed.form = b.form; ed.lugar = b.form.lugar; ed.vista = "form"; ed.aviso = "Seguís con el relevamiento que habías empezado."; } }
+// 06/11/2026 (Belén: «no me deja elegir sitios y me manda directo a Sarmiento»): al entrar SIEMPRE se ve la lista de lugares.
+// Si quedó un relevamiento sin terminar en este celular, se ofrece arriba «Seguir» o «Descartar» (no se abre solo).
+function edEntrar() { ed = { vista: "lugares", lugar: null, form: null, tema: 0, aviso: "" }; }
+function edBorradorPendiente() { const b = edLeer(ED_BORR_KEY, null); if (!b || !b.form || !b.form.lugar) return null; if (Date.now() - b.guardado > 7 * 864e5) { edBorrarBorrador(); return null; } return b; }
 function edRender() {
   const box = edBox(); if (!box) return;
   if (ed.vista === "form" && ed.form) return edRenderForm();
   const L = edLugares(), loc = edLeer(ED_LOCAL_KEY, {});
   const chip = (e) => `<span class="ed-chip ${e.nivel}">${escX(e.txt)}</span>`;
+  const bp = edBorradorPendiente();
   box.innerHTML = (ed.aviso ? `<div class="tq-info">${escX(ed.aviso)}</div>` : "") +
+    (bp ? `<div class="tq-info" style="border-left:4px solid #B4361F">📝 Quedó un relevamiento <b>sin terminar</b>: <b>${escX(bp.form.lugar.nombre)}</b>${bp.form.parte ? " (" + escX(bp.form.parte) + ")" : ""}, empezado el ${escX(edF(bp.form.FECHA))}.<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="ext-listo" style="margin:0;flex:1" data-b="seguir">Seguir con ese</button><button type="button" class="ext-quitar" style="flex:1" data-b="descartar">Descartarlo</button></div></div>` : "") +
     `<div class="tq-info">Es <b>solo un relevamiento</b>: mirar y contar cómo está cada lugar. Un lugar por vez, con fotos de lo que esté mal. Con esto Belén arma el informe para la Dirección.</div>` +
     L.map(l => { const u = edUltimo(l);
       return `<button type="button" class="ed-lugar" data-l="${escX(l.id)}"><b>${escX(l.nombre)}</b>` +
         (u ? `<small>✅ Relevado el ${escX(edF(u.fecha))}${loc[l.id] && !((ED_CAT.lugares || {})[l.id]) ? " · se envía cuando haya señal" : ""}</small><span class="ed-chips">${ED_TEMAS.map(tm => chip({ nivel: (u.estados || {})[tm.id + "_nivel"] || "nd", txt: tm.emo + " " + ((u.estados || {})[tm.id] || "s/d") })).join("")}</span>`
           : `<small class="er">❗ Falta relevar</small>`) + `</button>`; }).join("");
-  box.querySelectorAll("[data-l]").forEach(b => b.onclick = () => { const l = L.find(x => x.id === b.dataset.l); edAbrir(l); });
+  box.querySelectorAll("[data-l]").forEach(b => b.onclick = () => { const l = L.find(x => x.id === b.dataset.l);
+    if (bp && bp.form.lugar.id !== l.id && !confirm("Tenés sin terminar el relevamiento de " + bp.form.lugar.nombre + ". Si empezás " + l.nombre + ", ese se descarta. ¿Seguir?")) return;
+    if (bp && bp.form.lugar.id === l.id) { ed.form = edNorm(bp.form); ed.lugar = l; ed.vista = "form"; ed.aviso = ""; edRender(); screensEl.scrollTop = 0; return; }
+    edBorrarBorrador(); edAbrir(l); });
+  const bs = box.querySelector('[data-b="seguir"]'); if (bs) bs.onclick = () => { ed.form = edNorm(bp.form); ed.lugar = bp.form.lugar; ed.vista = "form"; ed.aviso = ""; edRender(); screensEl.scrollTop = 0; };
+  const bd = box.querySelector('[data-b="descartar"]'); if (bd) bd.onclick = () => { if (!confirm("¿Descartar el relevamiento sin terminar de " + bp.form.lugar.nombre + "? Se borra lo cargado.")) return; edBorrarBorrador(); edRender(); };
 }
 function edAbrir(l) {
   ed.lugar = l; ed.vista = "form"; ed.aviso = "";
