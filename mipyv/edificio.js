@@ -160,7 +160,7 @@ function edRenderForm() {
   let h = `<button type="button" class="ext-quitar tq-volver" data-f="cancelar">← Volver a los lugares</button>
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
     <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
-    <div class="tq-info">Escribí todo como si Belén no hubiera estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
+    <div class="tq-info">Escribí todo para que se entienda sin haber estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
     <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "(obligatorio)" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
     ${f.lugar.id === "HZT" ? `<div class="step-sub">El hospital es grande: se puede relevar por partes, cargando un relevamiento por cada parte.</div>` : ""}`;
   ED_TEMAS.forEach(tm => {
