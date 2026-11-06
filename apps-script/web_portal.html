@@ -522,7 +522,7 @@ const AYUDA = {
   '#rgrl': ['RGRL · Relevamiento General de Riesgos Laborales', ['Es el formulario del Anexo I de la Res. SRT 463/09 (formulario A general, Dto. 351/79), con el mismo texto y numeración: datos generales, 161 condiciones a cumplir, planillas A (cancerígenos), B (PCB) y C (sustancias a declarar), gremios, contratistas y responsable.', 'Uno por establecimiento o sitio (red Trelew y HSST). Elegí el establecimiento y el lugar y tocá «Empezar». Se actualiza una vez al año: abrí el anterior y «Copiar para este año».', 'Cada condición: Sí, No o No aplica (tocá de nuevo para borrar). Con «No», la fecha de regularización es obligatoria para guardarlo como completo.', 'Vencido (más de 12 meses) = aviso en el tablero. Todo queda en la planilla «M8 · RGRL y mediciones» (hojas RGRL, RGRL_RESPUESTAS y RGRL_PLANILLAS) y se puede completar a mano.']],
   '#medic': ['Mediciones con vencimiento', ['Puesta a tierra y continuidad de masas (Res. SRT 900/15), iluminación (Res. SRT 84/12), ruido (Res. SRT 85/12), pararrayos y otras.', '«Cargar medición»: establecimiento, lugar, tipo, fecha y protocolo (PDF o foto). Si no cargás el vencimiento, es la fecha + 12 meses. La nueva reemplaza a la anterior del mismo tipo y lugar.', 'Vencidas o que vencen en 30 días: urgentes en el tablero de control y en esta pantalla.', 'Recordatorio por correo los jueves a las 7 h a los correos de «Recordatorio a», mientras siga vencida o por vencer. «Ver el recordatorio» muestra el texto sin enviarlo.']],
   '#m8libros': ['Libros para la red', ['Generar: elegí el establecimiento y sus servicios; el libro queda en la carpeta del módulo › LIBROS DE LA RED. Compartilo vos con el referente como editor.', 'El referente completa solo las columnas amarillas (respuesta, observación y foto) y te avisa.', 'Importar: pegá el enlace del libro completo. Se crea un relevamiento por servicio y, si lo marcás, sus hallazgos.']],
-  '#inicio': ['Tablero de control', ['Panorama de la gestión de toda la red, de arriba hacia abajo: 1) los totales de Urgente, Pronto y Avisos (tocá uno para ver solo esos); 2) «Lo que requiere atención ahora», con filtro por módulo; 3) «Estado de la gestión por módulo», una tarjeta por módulo con su semáforo (rojo: hay algo urgente; amarillo: hay algo pronto; verde: al día; gris: sin datos); 4) el semáforo por establecimiento; 5) los gráficos de residuos, agua y acciones. Cada número, tarjeta y aviso se toca y lleva al detalle.', '«Lo que requiere atención ahora»: primero lo urgente (rojo), después lo que vence pronto (amarillo) y los avisos. Incluye residuos, agua, plagas, cocinas (carnets y libretas), radiaciones (registros anormales, extravíos, investigaciones, controles), infraestructura (RGRL y mediciones), extintores, documentos, acciones y auditorías.', 'Remisión semanal de manifiestos (PROT-RES-003, rige desde el 14/10/2026): avisa por establecimiento los sitios sin manifiestos cargados de las últimas 2 semanas (quincenal: 20 días; mensual: 40; los «no corresponde» no cuentan) y, durante 7 días, cada vez que el establecimiento indicó en la aplicación «No se recibieron manifiestos esta semana». Esas indicaciones quedan en el libro general › REMISION_OBS.', 'El filtro de área de la matriz también se aplica acá.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento.']],
+  '#inicio': ['Tablero de control', ['Para saber de un vistazo cómo está todo. De arriba hacia abajo: 1) una frase con lo urgente del día y en qué ejes está; 2) los números clave (Urgente, Pronto, ejes al día, plan de acción y cuánto depende de HyS); 3) el «Mapa de la gestión»; 4) «Hoy, primero esto»; 5) «Próximos 30 días»; 6) «Cómo viene», los últimos 6 meses.', 'Mapa de la gestión: los 11 ejes (filas) por establecimiento (columnas: HZT, HMH, HSST, CAPS red Trelew y CAPS HSST). Cada casilla tiene color, ícono y una frase: rojo = urgente (vencido o con riesgo), amarillo = pronto (vence en 30 días o hay que verificar), celeste = aviso, verde = al día, gris = s/d o no corresponde. Si hay varios avisos dice el más grave y «(y N más)»; dejando el dedo o el mouse encima se ven todos. Tocá la casilla para ir al detalle; tocá el nombre del hospital para abrir su ficha.', 'Los CAPS van en su propia columna cuando el dato dice el lugar (residuos, muestreos de agua, plagas, RGRL y mediciones, extintores y acciones del plan). Radiaciones, Personal y RAR, Capacitaciones y Documentos se registran por establecimiento: en la columna de los CAPS dicen «Incluido en HZT» o «Incluido en HSST». Las limpiezas de tanques y los análisis de canillas vencidos todavía se cuentan en la columna del hospital.', 'Arriba, los botones «Toda la red», HZT, HMH, HSST, CAPS red Trelew y CAPS HSST filtran la frase, los números, «Hoy, primero esto» y los próximos 30 días; el mapa sigue completo y resalta la columna elegida.', '«Hoy, primero esto»: lo urgente primero y después lo que vence pronto, de a 6 («Ver las N» muestra todo). Se filtra por de quién depende: HyS o la institución. Depende de HyS: muestreos y tanques de agua, plagas, investigaciones de siniestros, dosimetría, RGRL, control mensual de extintores, documentos de HyS, capacitaciones y las acciones del plan a cargo de HyS. Depende de la institución: retiros, manifiestos y certificados de residuos, carnets y libretas de cocina, mediciones (puesta a tierra…), cargas y pruebas de extintores, habilitaciones de rayos X, documentos de cada establecimiento y las demás acciones del plan.', 'Próximos 30 días: fechas de todos los ejes (muestreos, mediciones, RGRL, documentos, capacitaciones agendadas, revisiones de plagas y acciones del plan).', 'Cómo viene: lo pendiente por eje hoy, retiros de residuos, siniestros y registros de capacitación de los últimos 6 meses.', 'Remisión semanal de manifiestos (PROT-RES-003): los sitios sin manifiestos cargados de las últimas 2 semanas aparecen en 1 · Residuos, y durante 7 días cada «No se recibieron manifiestos esta semana» que indicó el establecimiento.', 'Los datos se guardan 15 minutos; «Actualizar» los trae en el momento. Radiaciones, extintores, siniestros y capacitaciones llegan unos segundos después: mientras tanto dicen «Cargando…».']],
   '#est': ['Establecimientos', ['La matriz de los 45 establecimientos, con estado en la aplicación, último retiro y días sin retiro (verde hasta 10, amarillo hasta 30, rojo más).', 'Tocá un establecimiento para abrir su ficha: datos, red HyS, comités, contactos, residuos, agua, plagas y documentos.', 'En el celular se ve en tarjetas.']],
   '#ficha': ['Ficha del establecimiento', ['«Estado del establecimiento» (arriba): matriz de urgencia × gravedad con los temas a atender. Actuar ya = urgente y grave; Resolver rápido = urgente y leve; Planificar = no urgente y grave; Vigilar = no urgente y leve. Usa los datos del tablero de control.', 'Los botones de temas (Residuos, Agua, Plagas, Cocina, Documentos, Personal y RAR, Infraestructura) muestran la matriz solo de ese tema, sus datos principales y accesos a sus pantallas. «Otro establecimiento» cambia de ficha sin volver a la lista.', 'Qué cuenta como urgente: agua NO APTA, limpiezas y análisis vencidos, más de 10 días sin retiro (grave si pasa de 30), acciones vencidas o que vencen en 7 días, revisiones de plagas atrasadas, carnets de cocina vencidos y documentos vencidos. Qué cuenta como grave sin ser urgente: sin diagnóstico de residuos, puntos críticos o menos de 50 % de cumplimiento, sin inventario de agua y tanques o canillas sin registro.', 'Personal y RAR (siniestros): investigación pendiente = grave, y además urgente si pasaron más de 15 días del siniestro; siniestro con avisos = urgente; persona en ILT = vigilar. Infraestructura: los hallazgos abiertos del módulo 6 siguen la misma regla que las acciones de los demás módulos (vencidos, prioridad «Actuar ya» o que vencen en 7 días = urgente). Siniestros y módulo 6 se leen después de abrir la ficha: aparecen unos segundos más tarde.', 'Datos, red HyS, comités y contactos se editan desde acá y quedan en la BASE COMÚN con historial.', '«Agua, plagas y documentos» muestra lo que carga el establecimiento en «Mi establecimiento». Los tanques, cisternas y canillas también se agregan o corrigen desde acá: «+ Agregar tanque o cisterna», «+ Agregar canilla» y «Cambiar datos» en cada fila (queda en la BASE COMÚN con historial).', '«Libro de residuos ↗» y «Carpeta y documentos ↗» abren sus archivos en Drive.', 'Remisión semanal de manifiestos (PROT-RES-003): en «Resolver rápido» aparecen los sitios sin manifiestos cargados de las últimas 2 semanas y cada «No se recibieron manifiestos esta semana» que indicó el establecimiento en el último mes, con el recordatorio del protocolo de trabajo y cuántas veces pasó.']],
   '#trab': ['Personas', ['Búsqueda, edición, altas, bajas y traslados de la base de trabajadores. Cada cambio queda en el HISTORIAL.', 'La importación de una base de Personal está en «Importar base de Personal».']],
@@ -649,140 +649,8 @@ async function inicio(fresco) {
     TB = { meses: [], retiros: {}, acciones: [], noApta: [], plagas: [], tanques: [], auditorias: { ultima: '', paraVerificar: [] }, docsRevisar: [], areaDe: {}, actualizado: new Date().toISOString(), vacio: true };
     inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {});
   } else if (!inicio.pidio) { inicio.pidio = true; api('p_tablero', {}, 240000).then(r => { if (r && r.ok) { TB = r; LS.set('tab', r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }
-  if (!inicio.res) { inicio.res = true; api('p_res_tablero', {}, 180000).then(r => { if (r && r.ok) { REST = r; LS.set('resTab', r); if (resActualizarRes(r) && /^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }   // retiros al día (14.22)
-  const A = FILTRO.area, enA = cod => !A || (TB.areaDe[cod] || '') === A || (RES.filas.find(f => f.cod === cod) || {}).area === A;
-  const F = RES.filas.filter(f => !A || f.area === A), hab = F.filter(f => /^activ/i.test(f.estado));
-  const atr = hab.filter(f => f.diasSinRetiro != null && f.diasSinRetiro > 10).sort((a, b) => b.diasSinRetiro - a.diasSinRetiro);
-  const acc = TB.acciones.filter(a => enA(a.cod)), venc = acc.filter(a => a.vencida), noApta = TB.noApta.filter(a => enA(a.cod)), plagas = TB.plagas.filter(p => enA(p.cod));
-  const tanq = TB.tanques.filter(t => enA(t.cod)), pv = TB.auditorias.paraVerificar.filter(a => enA(a.cod)), docs = TB.docsRevisar;
-  const serie = {}; Object.keys(TB.retiros).filter(a => !A || a === A).forEach(a => Object.keys(TB.retiros[a]).forEach(m => { const x = serie[m] = serie[m] || { Y1: 0, Y3: 0 }; x.Y1 += TB.retiros[a][m].Y1; x.Y3 += TB.retiros[a][m].Y3; }));
-  const nom = c => (RES.filas.find(f => f.cod === c) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
-  // Requiere atención
-  const at = [];
-  noApta.forEach(a => at.push(['er', a.cod + ': agua NO APTA en ' + a.punto, 'Limpiar y tomar nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod)]));
-  const porEst = {}; venc.forEach(a => porEst[a.cod] = (porEst[a.cod] || 0) + 1);
-  Object.keys(porEst).forEach(c => at.push(['er', porEst[c] + ' acción(es) vencida(s) · ' + c, nom(c), '#ges']));
-  Array.from(new Set(tanq.filter(t => t.estado === 'vencida').map(t => t.cod))).forEach(c => at.push(['er', c + ': limpieza de tanque vencida', 'Registrar la limpieza con el F-AGU-01', '#ficha/' + encodeURIComponent(c)]));
-  Array.from(new Set((TB.puntos || []).filter(p => enA(p.cod) && p.estado === 'vencida').map(p => p.cod))).forEach(c => at.push(['er', c + ': análisis de agua vencido', 'Tomar muestra según el proceso provincial', '#ficha/' + encodeURIComponent(c) + '/agua']));
-  estActivos().filter(f => enA(f.cod) && !(TB.tanques || []).some(t => t.cod === f.cod) && !(TB.puntos || []).some(t => t.cod === f.cod)).forEach(f => at.push(['er', f.cod + ': sin inventario de agua cargado (tanques y canillas)', 'No se puede controlar la limpieza ni los análisis · cargar el inventario', '#ficha/' + encodeURIComponent(f.cod) + '/agua']));   // 2 · Agua: habilitados sin datos
-  (TB.mediciones || []).filter(m => enA(m.cod) && (m.estado === 'vencida' || m.estado === 'porvencer')).forEach(m => at.push(['er', m.cod + ': ' + m.tipo.toLowerCase() + (m.estado === 'vencida' ? ' vencida' : ' vence el ' + fechaTxt(m.vence)), (m.estado === 'vencida' ? 'Venció el ' + fechaTxt(m.vence) + ' · ' : '') + 'Coordinar la medición y cargar el protocolo (recordatorio por correo los jueves)', '#medic']));
-  (TB.rgrl || []).filter(r => enA(r.cod) && r.estadoVto === 'vencida').forEach(r => at.push(['wa', r.cod + ': RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' (' + r.lugar + ')' : ''), 'Se actualiza una vez al año (Res. SRT 463/09)', '#rgrl/' + encodeURIComponent(r.id)]));
-  plagas.filter(p => p.revision && p.revision < hoy).forEach(p => at.push(['er', p.cod + ': revisión de plagas atrasada', p.caso + ' · ' + p.plaga, '#agua']));
-  atr.forEach(f => at.push([f.diasSinRetiro > 30 ? 'er' : 'wa', f.cod + ': ' + f.diasSinRetiro + ' días sin retiro', 'Último manifiesto ' + fechaTxt(f.ultimoRetiro), '#ficha/' + encodeURIComponent(f.cod)]));
-  pv.forEach(a => at.push(['wa', 'Auditoría interna para verificar · ' + a.cod, a.id, '#audr/' + encodeURIComponent(a.id)]));
-  ((TB.incendio || {}).avisos || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ' · ' + x.sitio + ': ' + x.texto, 'Extintores · control mensual con 3 fotos', x.h || '#incest/' + encodeURIComponent(x.cod) + '/' + encodeURIComponent(x.sitio)]));   // 7 · Incendio
-  (TB.desvacc || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ': ' + x.texto, 'Residuos · desvíos del recorrido de Star Union (acciones y seguimiento)', '#desvacc']));   // 1 · Residuos › desvíos: acciones
-  (TB.resnov || []).filter(x => enA(x.cod)).forEach(x => at.push([x.nivel, x.cod + ': ' + x.texto, 'Residuos · lo que se vio mal en las recorridas (Mi establecimiento)', '#resnov']));   // 1 · Residuos › novedades de residuos
-  const RM = TB.remision || {};   // remisión semanal de manifiestos (PROT-RES-003 · ResiduosRemision.gs)
-  if (RM.activa) { const g = {}; (RM.avisos || []).filter(x => !x.silenciado && enA(x.cod)).forEach(x => (g[x.cod] = g[x.cod] || []).push(x));
-    Object.keys(g).forEach(c => at.push(['wa', c + ': ' + g[c].length + (g[c].length > 1 ? ' sitios' : ' sitio') + ' sin manifiestos cargados de las últimas 2 semanas', g[c].slice(0, 3).map(x => x.sitio + ' (último ' + fechaTxt(x.ultimo) + ')').join(' · ') + (g[c].length > 3 ? ' · …' : '') + ' · remisión semanal (PROT-RES-003)', '#ficha/' + encodeURIComponent(c)])); }
-  const vRM = {}; (RM.observaciones || []).filter(o => enA(o.cod) && o.fecha >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)).forEach(o => { const k = o.cod + '|' + o.sitio.toLowerCase(); if (vRM[k]) return; vRM[k] = 1;
-    at.push(['av', o.cod + ': no se recibieron manifiestos de ' + o.sitio + ' (semana del ' + fechaTxt(o.semana) + ')', remObsTxt(o, RM.recordar), '#ficha/' + encodeURIComponent(o.cod)]); });
-  docs.forEach(d => at.push([d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), d.titulo + ' · ' + fechaTxt(d.revision), '#bib']));
-  plagas.filter(p => p.revision === hoy).forEach(p => at.push(['av', p.cod + ': revisión de plagas hoy', p.caso, '#agua']));
-  ((TB.docsEst || {}).avisos || []).filter(d => enA(d.cod)).forEach(d => at.push([d.estado === 'vencido' ? 'er' : 'wa', d.cod + ': ' + (d.codigo || 'documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), d.titulo + (d.estado === 'vencido' ? ' · venció el ' + fechaTxt(d.vence) : ''), '#docest/' + encodeURIComponent(d.cod)]));   // 10 · Documentos de los establecimientos
-  (TB.cocina || []).filter(c => enA(c.cod)).forEach(c => { const h = '#cocper/' + encodeURIComponent(c.cod);   // 4 · Cocinas: carnets y libretas
-    if (c.vencidos) at.push(['er', c.cod + ': ' + c.vencidos + (c.vencidos > 1 ? ' personas' : ' persona') + ' de cocina sin carnet o libreta vigente', 'Vencido o faltante · ' + nom(c.cod), h]);
-    if (c.porVencer) at.push(['wa', c.cod + ': ' + c.porVencer + (c.porVencer > 1 ? ' carnets o libretas vencen' : ' carnet o libreta vence') + ' en 60 días', 'Personas de cocina · ' + nom(c.cod), h]); });
-  const ord = { er: 0, wa: 1, av: 2 }; at.sort((a, b) => ord[a[0]] - ord[b[0]]);
-  const kpi = (h, t, v, s, col) => '<a class="kpi2" href="' + h + '"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
-  const card = (titulo, link, cuerpo, extra) => '<section class="card" style="display:flex;flex-direction:column;gap:10px;min-width:0' + (extra || '') + '"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">' + titulo + '</h2>' + (link ? '<a href="' + link[0] + '" class="peq" style="font-weight:700">' + link[1] + '</a>' : '') + '</div>' + cuerpo + '</section>';
-  const areas = Array.from(new Set(estActivos().map(f => f.area))).filter(Boolean).sort();
-  const dias = [['Hasta 10 días', F.filter(f => f.diasSinRetiro != null && f.diasSinRetiro <= 10).length, '#1E6B42'], ['11 a 30 días', F.filter(f => f.diasSinRetiro > 10 && f.diasSinRetiro <= 30).length, '#B7791F'], ['Más de 30 días', F.filter(f => f.diasSinRetiro > 30).length, '#B4361F'], ['Sin datos', F.filter(f => f.diasSinRetiro == null).length, '#B8C4CA']];
-  const orig = ['Diagnóstico', 'Auditorías', 'Agua', 'Plagas'].map(o => { const l = acc.filter(a => a.origen === o || String(a.origen || '').indexOf(o + ' (') === 0), v = l.filter(a => a.vencida).length; return [o, [[l.length - v, '#5894A7'], [v, '#B4361F']]]; });
-  const diagA = areas.filter(a => !A || a === A).map(a => { const l = RES.filas.filter(f => f.area === a && f.diag && f.diag.pct !== '' && f.diag.pct != null); const p = l.length ? Math.round(l.reduce((s, f) => s + Number(f.diag.pct), 0) / l.length) : 0; return [a.replace('Área Programática ', 'Área '), p, '#0D313F', l.length ? p + ' %' : '—']; });
-  const ptos = (TB.puntos || []).filter(p => enA(p.cod)), cnt = (l, e) => l.filter(x => x.estado === e).length;
-  const tanV = tanq.filter(t => t.estado === 'vencida').length, ptoV = cnt(ptos, 'vencida'), plAtr = plagas.filter(p => p.revision && p.revision < hoy).length;
-  // Semáforo por establecimiento: habilitados y los que tienen algún dato
-  const conDato = c => tanq.some(t => t.cod === c) || ptos.some(t => t.cod === c) || plagas.some(t => t.cod === c) || acc.some(t => t.cod === c);
-  const filasS = F.filter(f => /^activ/i.test(f.estado) || conDato(f.cod) || (f.diag && f.diag.pct !== '' && f.diag.pct != null));
-  const ch = (n, t) => '<span class="tag ' + n + '" style="display:inline-block">' + esc(t) + '</span>';
-  const celRes = f => !/^activ/i.test(f.estado) ? ch('gr', 'No habilitado') : f.diasSinRetiro == null ? ch('gr', 'Sin datos') : ch(f.diasSinRetiro > 30 ? 'er' : f.diasSinRetiro > 10 ? 'wa' : 'ok', f.diasSinRetiro + ' días');
-  const celDiag = f => { const p = f.diag && f.diag.pct; return p === '' || p == null ? ch('gr', 'Sin diagnóstico') : ch(p >= 80 ? 'ok' : p >= 50 ? 'wa' : 'er', Math.round(p) + ' %'); };
-  const celAgua = c => { const t = tanq.filter(x => x.cod === c), p = ptos.filter(x => x.cod === c), na = noApta.filter(x => x.cod === c).length;
-    if (na) return ch('er', 'NO APTA'); if (!t.length && !p.length) return ch('gr', 'Sin inventario');
-    const v = cnt(t, 'vencida') + cnt(p, 'vencida'); if (v) return ch('er', v + ' vencido(s)');
-    const w = cnt(t, 'porvencer') + cnt(p, 'porvencer') + cnt(t, 'sin') + cnt(p, 'sin'); return w ? ch('wa', w + ' por revisar') : ch('ok', 'Al día'); };
-  const celPlag = c => { const l = plagas.filter(x => x.cod === c); if (!l.length) return ch('ok', 'Sin casos'); const a = l.filter(x => x.revision && x.revision < hoy).length; return ch(a ? 'er' : 'wa', l.length + ' abierto(s)'); };
-  const celAcc = c => { const l = acc.filter(x => x.cod === c), v = l.filter(x => x.vencida).length; return !l.length ? ch('ok', 'Ninguna') : ch(v ? 'er' : 'wa', v ? v + ' vencida(s)' : l.length + ' en plazo'); };
-  const semaforo = filasS.length ? '<div style="overflow-x:auto"><table class="peq" style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--mu);font-size:12.5px"><th style="padding:6px 8px">Establecimiento</th><th style="padding:6px 8px">Días sin retiro</th><th style="padding:6px 8px">Diagnóstico</th><th style="padding:6px 8px">Agua</th><th style="padding:6px 8px">Plagas</th><th style="padding:6px 8px">Acciones</th></tr></thead><tbody>' +
-    filasS.map(f => '<tr style="border-top:1px solid #EEF2F4"><td style="padding:8px"><a href="#ficha/' + encodeURIComponent(f.cod) + '" style="font-weight:700;text-decoration:none">' + esc(f.cod) + '</a><div class="mu" style="font-size:12px">' + esc(f.nombre) + '</div></td><td style="padding:8px">' + celRes(f) + '</td><td style="padding:8px">' + celDiag(f) + '</td><td style="padding:8px">' + celAgua(f.cod) + '</td><td style="padding:8px">' + celPlag(f.cod) + '</td><td style="padding:8px">' + celAcc(f.cod) + '</td></tr>').join('') + '</tbody></table></div>' +
-    '<span class="mu peq">Establecimientos habilitados en la aplicación y los que tienen algún dato cargado. Tocá el código para abrir la ficha.</span>'
-    : '<div class="mu">Todavía no hay establecimientos con datos en esta área.</div>';
-  // ---- Panorama de la gestión (20/10/2026): lo urgente primero, estado por módulo, gráficos al final
-  if (!inicio.rad) { inicio.rad = true; api('p_rad_tablero', {}, 180000).then(r => { if (r && r.ok) { RADT = r; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }   // 5 · Radiaciones
-  if (RADT && RADT.ok) RADT.establecimientos.filter(e => enA(e.cod) && (e.r.personas || e.r.equipos)).forEach(e => { const r = e.r, h = '#radest/' + encodeURIComponent(e.cod);
-    if (r.anormalesAbiertos) at.push(['er', e.cod + ': ' + r.anormalesAbiertos + ' registro(s) anormal(es) de dosimetría abierto(s)', 'investigar con la persona expuesta', h + '/eve']);
-    if (r.extraviados) at.push(['er', e.cod + ': ' + r.extraviados + ' dosímetro(s) extraviado(s)', 'reponer', h + '/per']);
-    if (r.habVencidas) at.push(['er', e.cod + ': ' + r.habVencidas + ' habilitación(es) de equipo de rayos X vencida(s)', 'revisar en Salas y equipos', h + '/sal']);
-    if (r.invAbiertas) at.push(['wa', e.cod + ': ' + r.invAbiertas + ' investigación(es) de dosis abierta(s)', 'completar causa y medidas', h + '/inv']);
-    if (r.faltanMeses.length) at.push(['wa', e.cod + ': falta el informe de dosimetría de ' + r.faltanMeses.map(radBim).join(', '), 'cargar el PDF del servicio de dosimetría', h + '/con']); });
-  at.sort((a, b) => ord[a[0]] - ord[b[0]]);
-  const MODS = [['1', 'Residuos', '#est'], ['2', 'Agua', '#agua'], ['3', 'Plagas', '#plagas'], ['4', 'Cocinas hospitalarias', '#coc'], ['5', 'Radiaciones ionizantes', '#rad'], ['6', 'Servicios e infraestructura', '#m8'], ['7', 'Protección contra incendios', '#inc'], ['10', 'Documentos', '#docest'], ['pl', 'Plan de acción y auditorías', '#ges']];
-  const modDe = x => { const t = x[1] + ' ' + x[2] + ' ' + x[3];
-    if (/#rad/.test(x[3])) return '5'; if (/extintor|#inc/i.test(t)) return '7'; if (/#cocper|carnet|libreta/i.test(t)) return '4'; if (/plaga/i.test(t)) return '3'; if (/agua|tanque|canilla/i.test(t)) return '2';
-    if (/RGRL|#rgrl|#medic|puesta a tierra/i.test(t)) return '6'; if (/#docest|#bib|documento|revisión vencida|llega a su revisión/i.test(t)) return '10'; if (/acci[oó]n|#ges|auditor|#audr/i.test(t)) return 'pl'; return '1'; };
-  at.forEach(x => x[4] = modDe(x));
-  const nEr = at.filter(x => x[0] === 'er').length, nWa = at.filter(x => x[0] === 'wa').length, nAv = at.filter(x => x[0] === 'av').length;
-  const resumenHtml = '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">' +
-    '<a class="kpi2" href="#" data-uf="er"><span>URGENTE</span><b style="color:#B4361F">' + nEr + '</b><small>vencido o con riesgo: resolver primero</small></a>' +
-    '<a class="kpi2" href="#" data-uf="wa"><span>PRONTO</span><b style="color:#8A5200">' + nWa + '</b><small>por vencer o a verificar</small></a>' +
-    '<a class="kpi2" href="#" data-uf="av"><span>AVISOS</span><b>' + nAv + '</b><small>para tener en cuenta</small></a>' +
-    '<a class="kpi2" href="#ges"><span>PLAN DE ACCIÓN</span><b style="color:' + (venc.length ? '#B4361F' : 'inherit') + '">' + venc.length + '</b><small>vencida(s) de ' + acc.length + ' abiertas</small></a>' +
-    '<a class="kpi2" href="#est"><span>ESTABLECIMIENTOS</span><b>' + hab.length + ' / ' + F.length + '</b><small>habilitados en la aplicación</small></a></div>';
-  const nombreMod = k => (MODS.find(m => m[0] === k) || [0, 'Residuos'])[1];
-  // Agrupa las filas del mismo módulo y nivel (3 o más) en una sola, que se despliega al tocarla
-  const filasU = []; { const gr = {}; at.forEach(x => { const k = x[4] + '|' + x[0]; (gr[k] = gr[k] || []).push(x); });
-    const hecho = {}; at.forEach(x => { const k = x[4] + '|' + x[0], g = gr[k];
-      if (g.length < 3) { filasU.push({ u: x[0], t: x[1], s: x[2], h: x[3], m: x[4] }); return; }
-      if (hecho[k]) return; hecho[k] = 1; const cods = Array.from(new Set(g.map(y => String(y[1]).split(/[ :·]/)[0]))).filter(Boolean);
-      filasU.push({ u: x[0], m: x[4], hijos: g, t: g.length + ' avisos de ' + nombreMod(x[4]).toLowerCase() + (cods.length ? ' (' + cods.join(', ') + ')' : ''), s: ({ er: 'urgentes', wa: 'próximos a vencer', av: 'para tener en cuenta' })[x[0]] }); }); }
-  const urgentesHtml = '<section class="card" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:17px">Lo que requiere atención ahora</h2><span class="mu peq">Ordenado por prioridad · tocá una fila para resolverlo</span></div>' +
-    (at.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap" id="uFil"><button class="fchip on" data-um="">Todos (' + at.length + ')</button>' + MODS.filter(m => at.some(x => x[4] === m[0])).map(m => '<button class="fchip" data-um="' + m[0] + '">' + esc(m[1]) + ' (' + at.filter(x => x[4] === m[0]).length + ')</button>').join('') + '</div>' +
-      '<div id="uLista" style="display:flex;flex-direction:column">' + filasU.map((x, i) => { const tg = '<span class="tag ' + x.u + '">' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.u]) + '</span>';
-        if (!x.hijos) return '<a class="at" href="' + x.h + '" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + '</small></span></a>';
-        return '<details class="at atg" data-u="' + x.u + '" data-m="' + x.m + '"' + (i >= 8 ? ' hidden' : '') + '><summary>' + tg + '<span><b>' + esc(x.t) + '</b><small>' + esc(nombreMod(x.m)) + ' · ' + esc(x.s) + ' · tocá para ver el detalle</small></span></summary><div class="atg-l">' + x.hijos.map(y => '<a href="' + y[3] + '">' + esc(y[1]) + '</a>').join('') + '</div></details>'; }).join('') + '</div>' +
-      (filasU.length > 8 ? '<button class="btn sec" id="uMas" style="align-self:flex-start">Ver los ' + (filasU.length - 8) + ' restantes</button>' : '')
-      : '<div class="mu">Nada urgente: todo al día con los datos cargados.</div>') + '</section>';
-  const cnM = (k, n) => at.filter(x => x[4] === k && x[0] === n).length;
-  const radT = RADT && RADT.ok ? RADT.establecimientos.filter(e => enA(e.cod)).reduce((o, e) => { o.act += e.r.activos || 0; o.ev += (e.r.eventosAbiertos || 0) + (e.r.invAbiertas || 0); return o; }, { act: 0, ev: 0 }) : null;
-  const incA = ((TB.incendio || {}).avisos || []).filter(x => enA(x.cod)), cocV = (TB.cocina || []).filter(c => enA(c.cod)).reduce((s, c) => s + (c.vencidos || 0), 0);
-  const infraN = (TB.mediciones || []).filter(m => enA(m.cod) && m.estado !== 'aldia').length + (TB.rgrl || []).filter(r => enA(r.cod) && r.estadoVto === 'vencida').length;
-  const cabM = {
-    '1': [atr.length ? atr.length + ' lugar(es) con más de 10 días sin retiro' : 'Retiros al día', hab.length > 0],
-    '2': [(noApta.length + tanV + ptoV) ? noApta.length + ' NO APTA · ' + tanV + ' tanque(s) y ' + ptoV + ' análisis vencidos' : 'Sin vencimientos', tanq.length + ptos.length > 0],
-    '3': [plagas.length ? plagas.length + ' caso(s) abierto(s) · ' + plAtr + ' con revisión atrasada' : 'Sin casos abiertos', true],
-    '4': [cocV ? cocV + ' persona(s) sin carnet o libreta vigente' : 'Sin vencimientos', (TB.cocina || []).length > 0],
-    '5': [radT ? radT.act + ' con dosímetro · ' + radT.ev + ' evento(s) o investigación(es) abiertos' : 'Cargando…', !!radT],
-    '6': [infraN ? infraN + ' medición(es) o RGRL por atender' : 'Ver el estado de cada edificio', infraN > 0],
-    '7': [incA.length ? incA.length + ' aviso(s) de extintores' : 'Extintores al día', ((TB.incendio || {}).avisos || []).length > 0 || !!TB.incendio],
-    '10': [(docs.length + ((TB.docsEst || {}).avisos || []).length) ? docs.length + ' documento(s) HyS y ' + ((TB.docsEst || {}).avisos || []).length + ' de establecimientos por revisar' : 'Sin vencimientos', true],
-    'pl': [venc.length ? venc.length + ' acción(es) vencida(s) de ' + acc.length : acc.length + ' acción(es) abierta(s)', true] };
-  const estadoModulosHtml = '<h2 style="margin:18px 0 8px;font-size:17px">Estado de la gestión por módulo</h2><div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">' + MODS.map(m => { const k = m[0], er = cnM(k, 'er'), wa = cnM(k, 'wa'), c = cabM[k] || ['', false];
-    const col = er ? ['er', 'Urgente'] : wa ? ['wa', 'Pronto'] : c[1] ? ['ok', 'Al día'] : ['gr', 'Sin datos'];
-    return '<a class="card" href="' + m[2] + '" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;border-left:5px solid ' + ({ er: '#B4361F', wa: '#B7791F', ok: '#1E6B42', gr: '#B8C4CA' }[col[0]]) + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + (/^\d/.test(k) ? k + ' · ' : '') + esc(m[1]) + '</b><span class="tag ' + col[0] + '">' + col[1] + '</span></div><span class="peq">' + esc(c[0]) + '</span>' +
-      ((er || wa) ? '<span class="mu peq">' + (er ? er + ' urgente(s)' : '') + (er && wa ? ' · ' : '') + (wa ? wa + ' pronto' : '') + '</span>' : '') + '</a>'; }).join('') + '</div>';
-  const estadoBarra = (l) => [[cnt(l, 'aldia'), '#1E6B42'], [cnt(l, 'porvencer'), '#B7791F'], [cnt(l, 'vencida'), '#B4361F'], [cnt(l, 'sin'), '#B8C4CA']];
-  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + (A ? esc(A) : 'Toda la provincia') + (TB.vacio ? ' · cargando gráficos y avisos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
-    '<div class="filtros"><label class="f">Área<select class="c" id="tbA"><option value="">Toda la provincia</option>' + areas.map(a => '<option' + (a === A ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label><label class="f">Ver un establecimiento<select class="c" id="tbEst">' + selectorEst('', false) + '</select></label><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
-    resumenHtml + urgentesHtml + estadoModulosHtml +
-    '<div style="margin-top:6px">' + card('Semáforo por establecimiento', ['#est', 'Todos'], semaforo) + '</div>' +
-    modulosHtml(TB.modulos, card, TB.docsEst) +
-    '<h2 style="margin:18px 0 8px;font-size:17px">Gráficos: residuos, agua y acciones</h2>' +
-    '<div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">' +
-      card('Agua: tanques y canillas', ['#agua', 'Ver'], grHoriz([['Tanques y cisternas', estadoBarra(tanq)], ['Canillas (bacteriológico)', estadoBarra(ptos)]], Math.max(1, tanq.length, ptos.length)) + leyenda([['Al día', '#1E6B42'], ['Por vencer', '#B7791F'], ['Vencido', '#B4361F'], ['Sin registro', '#B8C4CA']])) +
-      card('Acciones abiertas por tema', ['#ges', 'Ver todas'], grHoriz(orig, Math.max(1, ...orig.map(o => o[1][0][0] + o[1][1][0]))) + leyenda([['En plazo', '#5894A7'], ['Vencidas', '#B4361F']])) +
-      card('Residuos: retiros por mes', ['#est', 'Ver'], grBarrasMes(TB.meses, serie) + leyenda([['Y1', '#0D313F'], ['Y3', '#5894A7']])) +
-      card('Residuos: días sin retiro', ['#est', 'Ver'], grHoriz(dias, Math.max(...dias.map(d => d[1])))) +
-      card('Diagnóstico de residuos por área', ['#diag', 'Ver'], grHoriz(diagA, 100)) +
-      card('Auditorías', ['#aud', 'Ver'], '<b style="font-size:22px;color:var(--az)">' + esc(TB.auditorias.ultima || '—') + '</b><span class="mu peq">Última verificación · ' + pv.length + ' interna(s) para verificar</span>') + '</div>');
-  $('tbA').onchange = e => { FILTRO.area = e.target.value; inicio(); };
-  { let fm = '', fu = '', todos = false; const L = document.querySelectorAll('#uLista [data-m]'), ver = () => { let n = 0; L.forEach(a => { const ok = (!fm || a.dataset.m === fm) && (!fu || a.dataset.u === fu); n += ok ? 1 : 0; a.hidden = !(ok && (todos || fm || fu || n <= 8)); }); const b = $('uMas'); if (b) b.hidden = todos || fm || fu; };
-    document.querySelectorAll('#uFil [data-um]').forEach(b => b.onclick = () => { fm = b.dataset.um; document.querySelectorAll('#uFil [data-um]').forEach(x => x.classList.toggle('on', x === b)); ver(); });
-    document.querySelectorAll('[data-uf]').forEach(a => a.onclick = e => { e.preventDefault(); fu = fu === a.dataset.uf ? '' : a.dataset.uf; ver(); const l = $('uLista'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-    if ($('uMas')) $('uMas').onclick = () => { todos = true; ver(); }; }
-  $('tbEst').onchange = e => { if (e.target.value) location.hash = '#ficha/' + encodeURIComponent(e.target.value); };
-  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); inicio(true); };  // no bloquea: se redibuja al llegar
+  if (!inicio.res) { inicio.res = true; api('p_res_tablero', {}, 180000).then(r => { if (r && r.ok) { REST = r; LS.set('resTab', r); resActualizarRes(r); if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); } }).catch(() => {}); }   // retiros al día (14.22)
+  tcPintar({ TB: TB });   // tablero de control v2 (modulos/tablero-control.js, 06/11/2026): mapa de los 11 ejes × establecimientos
 }
 let CAMBIO_RES = false;
 
@@ -7170,6 +7038,264 @@ function impPAchicar(f) {
     img.onload = () => { const k = Math.min(1, 1800 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); res({ base64: c.toDataURL('image/jpeg', 0.75), tipo: 'image/jpeg', nombre: f.name }); };
     img.onerror = () => { URL.revokeObjectURL(u); res(null); }; img.src = u; });
 }
+</script>
+<script>
+// ------------------------------------------------------------------ Tablero de control (inicio) · versión 2 (06/11/2026)
+// Pedido de Belén: «no me permite saber de manera rápida qué está pasando, cómo está todo; es difícil de ver; no integra todos los ejes».
+// Una sola fuente: cada aviso de los 11 ejes se arma acá como un «hallazgo del tablero» {eje, col, n, t, h, dep, fecha}.
+// De esa lista salen la frase del día, los números, el mapa ejes × establecimientos, «Hoy, primero esto» y los próximos 30 días.
+// Solo lee lo que ya traen p_tablero, p_res_tablero, p_rad_tablero, p_inc_tablero, p_sin_est y el tablero de capacitaciones (c_tablero).
+// No cambia el Apps Script. Lo que el dato no trae por sitio (tanques, canillas, siniestros, radiaciones…) queda en la columna del hospital.
+
+const TC_CAPS = { HZT: 'CAPS red Trelew', HSST: 'CAPS HSST (Rawson)' };   // hospitales cuyos CAPS van en una columna propia
+const TC_EJES = [
+  ['1', 'Residuos', 'recycling', '#res'], ['2', 'Agua', 'water_drop', '#agua'], ['3', 'Plagas', 'pest_control', '#plagas'],
+  ['4', 'Cocinas', 'soup_kitchen', '#coc'], ['5', 'Radiaciones', 'radiology', '#rad'], ['6', 'Infraestructura', 'domain', '#m8'],
+  ['7', 'Incendio', 'fire_extinguisher', '#inc'], ['8', 'Personal y RAR', 'personal_injury', '#sin'], ['9', 'Capacitaciones', 'school', '#cap'],
+  ['10', 'Documentos', 'folder_open', '#docest'], ['11', 'Plan de acción', 'task_alt', '#ges']];
+const TC = { ver: '', dep: '', todos: false, sin: null, sinPidio: false, inc: false, cap: false, rad: false };
+const TC_NIV = { er: 0, wa: 1, av: 2 };
+const tcEsCaps = t => /(^|[^a-z])caps([^a-z]|$)/i.test(String(t || ''));
+const tcCol = (cod, lugar, tipo) => TC_CAPS[cod] && (tcEsCaps(lugar) || /^caps$/i.test(String(tipo || ''))) ? cod + '·CAPS' : cod;
+const tcDias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? null : Math.round((d - new Date(new Date().toISOString().slice(0, 10) + 'T12:00:00')) / 864e5); };
+const tcEsPlagas = a => a.origen === 'Plagas' || a.origen === 'Plagas (MIPyV)';
+const tcEsPlan = a => !tcEsPlagas(a) && a.origen !== 'Agua';   // agua NO APTA y muestreos van en 2 · Agua
+const tcMesTxt = m => { const n = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return m ? n[Number(String(m).slice(5, 7)) - 1] + ' ' + String(m).slice(0, 4) : ''; };
+
+function tcEstilos() {
+  if (document.getElementById('tcCss')) return;
+  const s = document.createElement('style'); s.id = 'tcCss';
+  s.textContent = '.tcFrase{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.tcFrase .ms{font-size:34px}.tcFrase p{margin:0}' +
+    '.tcCols{display:flex;gap:6px;flex-wrap:wrap}.tcCols button{font:inherit;font-size:13.5px;font-weight:700;border-radius:999px;padding:8px 14px;border:1px solid var(--ln);background:#fff;color:var(--az);cursor:pointer;min-height:40px}.tcCols button.on{background:var(--az);border-color:var(--az);color:#fff}' +
+    '.tcGrid{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}.tcMain{flex:999 1 620px;min-width:0}.tcSide{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px}' +
+    '.tcMapa{overflow-x:auto}.tcMapa table{border-collapse:separate;border-spacing:5px;width:100%;min-width:900px}.tcMapa th{font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--mu);text-align:left;padding:2px 4px;font-weight:800}' +
+    '.tcMapa th a{color:var(--mu);text-decoration:none}.tcMapa th a:hover{color:var(--az);text-decoration:underline}.tcMapa th.sel,.tcMapa th.sel a{color:var(--az)}' +
+    '.tcMapa td.eje{position:sticky;left:0;background:#fff;z-index:1;min-width:170px;padding:2px 4px}.tcMapa td.eje a{display:flex;gap:8px;align-items:center;text-decoration:none;color:var(--az);font-weight:700;font-size:14px}.tcMapa td.eje .ms{color:var(--pa);font-size:20px}.tcMapa td.eje small{display:block;font-size:11.5px;font-weight:700}' +
+    '.tcCel{display:flex;gap:6px;align-items:center;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;text-decoration:none;min-height:30px;line-height:1.25}.tcCel .ms{font-size:16px;flex:none}' +
+    '.tcCel.er{background:#F8E3DE;color:#8E2A17}.tcCel.wa{background:#FBF0DC;color:#7A4800}.tcCel.av{background:#E7F0F3;color:#2E5E70}.tcCel.ok{background:#E3F1E8;color:#185A37}.tcCel.gr{background:#EEF2F4;color:#55656D}.tcCel:hover{outline:2px solid var(--pa)}' +
+    'td.dim .tcCel{opacity:.45}.tcLey{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mu)}.tcLey span{display:flex;gap:4px;align-items:center}.tcLey .ms{font-size:16px}' +
+    '.tcHoy a.fila{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid #EEF2F4;text-decoration:none;color:inherit}.tcHoy a.fila>.ms{font-size:22px;flex:none}.tcHoy a.fila b{display:block;font-size:14px;color:var(--az)}.tcHoy a.fila small{display:block;font-size:12.5px;color:var(--mu)}.tcHoy a.fila i{display:block;font-style:normal;font-size:11.5px;font-weight:800;margin-top:2px}' +
+    '.tcAg{display:flex;gap:12px;align-items:center;padding:7px 0;border-top:1px solid #EEF2F4;text-decoration:none;color:inherit}.tcAg>span:first-child{display:flex;flex-direction:column;align-items:center;width:46px;flex:none;background:#EAF2F5;border-radius:8px;padding:4px 0;color:var(--az)}.tcAg>span:first-child b{font-size:17px}.tcAg>span:first-child small{font-size:11px;text-transform:uppercase}.tcAg b{color:var(--az);font-size:13.5px}.tcAg small{display:block;color:var(--mu);font-size:12.5px}' +
+    '.tcBar{display:flex;gap:8px;align-items:flex-end;height:110px}.tcBar>div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%;min-width:0}.tcBar>div span{font-size:11px;font-weight:700}.tcBar>div i{display:block;width:100%;border-radius:4px 4px 0 0}.tcBarL{display:flex;gap:8px;font-size:11px;color:var(--mu)}.tcBarL span{flex:1;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '.tcPie{display:flex;justify-content:center;margin:22px 0 8px}.tcPie img{width:75%;max-width:620px;height:auto}';
+  document.head.appendChild(s);
+}
+
+// Pide (una sola vez por sesión, sin bloquear) lo que el tablero necesita además de p_tablero; al llegar, redibuja si se sigue en el inicio
+function tcPedirExtras() {
+  if (!REST) REST = LS.get('resTab', null);
+  const otra = () => { if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); };
+  if (!TC.rad) { TC.rad = true; api('p_rad_tablero', {}, 180000).then(r => { if (r && r.ok) { RADT = r; otra(); } }).catch(() => {}); }
+  if (!TC.inc) { TC.inc = true; api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
+  if (!TC.sinPidio) { TC.sinPidio = true; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
+    api('p_sin_est', { desde: d.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10), est: '' }, 180000).then(r => { if (r && r.ok) { TC.sin = r; otra(); } }).catch(() => {}); }
+  if (!TC.cap && typeof capApi === 'function') { TC.cap = true; if (!CAPT) CAPT = LS.get('capt', null);
+    if (!CAPT || !CAPT.calculado || Date.now() - Date.parse(CAPT.calculado) > 3600000) capApi('c_tablero', {}, 180000).then(r => { if (r) { CAPT = r; LS.set('capt', r); otra(); } }).catch(() => {}); }
+}
+
+// Arma la lista única de hallazgos del tablero (eje × columna)
+function tcHallazgos(ctx) {
+  const { TB, cols } = ctx, H = [], has = {}, okT = {}, enCol = {}; cols.forEach(c => enCol[c.k] = true);
+  const add = (eje, col, n, t, h, dep, fecha) => H.push({ eje: eje, col: col, n: n, t: t, h: h || TC_EJES.find(e => e[0] === eje)[3], dep: dep, fecha: fecha || '' });
+  const hay = (eje, col, txt) => { (has[eje] = has[eje] || {})[col] = true; if (txt != null) (okT[eje] = okT[eje] || {})[col] = txt; };
+  const ficha = (cod, t) => '#ficha/' + encodeURIComponent(cod) + (t ? '/' + t : '');
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  // 1 · Residuos: sitios con retiros atrasados (tablero de residuos), certificados, remisión semanal, novedades y desvíos
+  const minD = {};
+  if (REST && REST.ok) (REST.establecimientos || []).forEach(e => {
+    (e.sitios || []).forEach(s => { const k = tcCol(e.cod, s.sitio); hay('1', k); if (s.dias != null) minD[k] = Math.min(minD[k] == null ? 1e9 : minD[k], s.dias);
+      if (s.atrasado) add('1', k, s.dias > 30 ? 'er' : 'wa', (s.sitio === e.cod ? '' : s.sitio + ': ') + s.dias + ' días sin retiro', ficha(e.cod), 'inst'); });
+    (e.sinCert || []).forEach(c => add('1', e.cod, c.nivel, 'Falta el certificado de tratamiento de ' + tcMesTxt(c.mes), '#res', 'inst'));
+  });
+  else (RES.filas || []).filter(f => f.diasSinRetiro != null).forEach(f => { hay('1', f.cod); minD[f.cod] = f.diasSinRetiro; if (f.diasSinRetiro > 10) add('1', f.cod, f.diasSinRetiro > 30 ? 'er' : 'wa', f.diasSinRetiro + ' días sin retiro', ficha(f.cod), 'inst'); });
+  Object.keys(minD).forEach(k => hay('1', k, 'Al día · último retiro hace ' + minD[k] + ' días'));
+  const RM = TB.remision || {};
+  if (RM.activa) (RM.avisos || []).filter(x => !x.silenciado).forEach(x => add('1', tcCol(x.cod, x.sitio), 'wa', x.sitio + ': sin manifiestos cargados de las últimas 2 semanas', ficha(x.cod), 'inst', ''));
+  (RM.observaciones || []).filter(o => o.fecha >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)).forEach(o => add('1', tcCol(o.cod, o.sitio), 'av', o.sitio + ': no se recibieron manifiestos (semana del ' + fechaTxt(o.semana) + ')', ficha(o.cod), 'inst'));
+  (TB.resnov || []).forEach(x => add('1', x.cod, x.nivel, x.texto, '#resnov', 'inst'));
+  (TB.desvacc || []).forEach(x => add('1', x.cod, x.nivel, x.texto, '#desvacc', 'inst'));
+
+  // 2 · Agua: muestreos del laboratorio (por lugar), tanques y canillas (por establecimiento), sin inventario
+  (TB.lab || []).filter(y => y.grupo !== 'Otros').forEach(y => { const k = tcCol(y.cod, y.lugar); hay('2', k);
+    if (/urgente|vencido/i.test(y.aviso)) add('2', k, 'er', (/^URGENTE/.test(y.que) ? 'Agua NO APTA · ' : 'Muestreo vencido · ') + y.lugar, '#agua', 'hys', y.limite);
+    else if (/pedir/i.test(y.aviso)) add('2', k, 'wa', 'Pedir muestreo ' + (/COMPLETO/.test(y.que) ? 'completo' : 'parcial') + ' · ' + y.lugar, '#agua', 'hys', y.limite); });
+  const tq = TB.tanques || [], pt = TB.puntos || [];
+  Array.from(new Set(tq.concat(pt).map(t => t.cod))).forEach(cod => { hay('2', cod);
+    const tv = tq.filter(t => t.cod === cod && t.estado === 'vencida').length, pv = pt.filter(t => t.cod === cod && t.estado === 'vencida').length;
+    if (tv) add('2', cod, 'er', tv + (tv > 1 ? ' limpiezas de tanque vencidas' : ' limpieza de tanque vencida'), ficha(cod, 'agua'), 'hys');
+    if (pv) add('2', cod, 'er', pv + (pv > 1 ? ' canillas con el análisis vencido' : ' canilla con el análisis vencido'), ficha(cod, 'agua'), 'hys'); });
+  if (!(TB.lab || []).length) (TB.noApta || []).forEach(a => add('2', a.cod, 'er', 'Agua NO APTA en ' + a.punto, ficha(a.cod), 'hys', a.limite));
+  if (!TB.vacio) cols.filter(c => !c.caps).forEach(c => { if (!tq.some(t => t.cod === c.cod) && !pt.some(t => t.cod === c.cod)) add('2', c.k, 'er', 'Sin inventario de tanques y canillas', ficha(c.cod, 'agua'), 'hys'); });
+  cols.forEach(c => { if (has['2'] && has['2'][c.k]) hay('2', c.k, 'Tanques y análisis al día'); });
+
+  // 3 · Plagas: casos abiertos y revisiones (plan único, origen Plagas)
+  (TB.acciones || []).filter(tcEsPlagas).forEach(a => add('3', tcCol(a.cod, a.donde), a.vencida ? 'er' : 'wa', String(a.que || 'Caso de plagas').replace(/^Caso abierto: /, 'Caso abierto · ') + (a.donde && a.donde !== a.cod ? ' · ' + a.donde : ''), '#plagas', 'hys', a.limite));
+  cols.forEach(c => hay('3', c.k, 'Sin casos abiertos'));
+
+  // 4 · Cocinas: carnets y libretas (los CAPS no tienen cocina)
+  (TB.cocina || []).forEach(c => { if (c.vencidos) add('4', c.cod, 'er', c.vencidos + (c.vencidos > 1 ? ' personas' : ' persona') + ' sin carnet o libreta vigente', '#cocper/' + encodeURIComponent(c.cod), 'inst');
+    if (c.porVencer) add('4', c.cod, 'wa', c.porVencer + (c.porVencer > 1 ? ' carnets o libretas vencen' : ' carnet o libreta vence') + ' en 60 días', '#cocper/' + encodeURIComponent(c.cod), 'inst'); });
+  cols.filter(c => !c.caps).forEach(c => hay('4', c.k, 'Sin vencimientos'));
+
+  // 5 · Radiaciones
+  if (RADT && RADT.ok) RADT.establecimientos.filter(e => enCol[e.cod]).forEach(e => { const r = e.r, h = '#radest/' + encodeURIComponent(e.cod); if (!(r.personas || r.equipos)) return;
+    hay('5', e.cod, (r.activos || 0) + ' con dosímetro · al día');
+    if (r.anormalesAbiertos) add('5', e.cod, 'er', r.anormalesAbiertos + ' registro(s) anormal(es) de dosimetría', h + '/eve', 'hys');
+    if (r.extraviados) add('5', e.cod, 'er', r.extraviados + ' dosímetro(s) extraviado(s)', h + '/per', 'inst');
+    if (r.habVencidas) add('5', e.cod, 'er', r.habVencidas + ' habilitación(es) de rayos X vencida(s)', h + '/sal', 'inst');
+    if (r.invAbiertas) add('5', e.cod, 'wa', r.invAbiertas + ' investigación(es) de dosis abierta(s)', h + '/inv', 'hys');
+    if ((r.faltanMeses || []).length) add('5', e.cod, 'wa', 'Falta el informe de dosimetría ' + r.faltanMeses.map(m => typeof radBim === 'function' ? radBim(m) : m).join(', '), h + '/con', 'hys'); });
+
+  // 6 · Infraestructura: mediciones con vencimiento y RGRL
+  (TB.mediciones || []).forEach(m => { const k = tcCol(m.cod, m.lugar); hay('6', k);
+    if (m.estado === 'vencida') add('6', k, 'er', m.tipo + ' vencida' + (m.lugar && m.lugar !== m.cod ? ' · ' + m.lugar : ''), '#medic', 'inst', m.vence);
+    else if (m.estado === 'porvencer') add('6', k, 'wa', m.tipo + ' vence el ' + fechaTxt(m.vence), '#medic', 'inst', m.vence); });
+  (TB.rgrl || []).forEach(r => { const k = tcCol(r.cod, r.lugar), h = '#rgrl/' + encodeURIComponent(r.id); hay('6', k);
+    if (r.estadoVto === 'vencida') add('6', k, 'wa', 'RGRL vencido' + (r.lugar && r.lugar !== r.cod ? ' · ' + r.lugar : ''), h, 'hys', r.vence);
+    else if (r.vence) add('6', k, null, 'RGRL vence' + (r.lugar && r.lugar !== r.cod ? ' · ' + r.lugar : ''), h, 'hys', r.vence);   // solo para «Próximos 30 días»
+    if (r.noVencidas) add('6', k, 'er', r.noVencidas + ' condición(es) del RGRL sin regularizar en fecha', h, 'inst'); });
+  cols.forEach(c => { if (has['6'] && has['6'][c.k]) hay('6', c.k, 'RGRL y mediciones al día'); });
+
+  // 7 · Incendio: extintores por lugar
+  if (INCT && INCT.lugares) INCT.lugares.forEach(L => { if (L.r && L.r.total) hay('7', tcCol(L.cod, L.sitio, L.tipo), 'Extintores al día'); });
+  ((TB.incendio || {}).avisos || []).forEach(x => { const k = tcCol(x.cod, x.sitio); hay('7', k, 'Extintores al día');
+    if (x.nivel === 'er' || x.nivel === 'wa' || x.nivel === 'av') add('7', k, x.nivel, (x.sitio === x.cod ? '' : x.sitio + ': ') + String(x.texto).split(' (')[0], x.h || '#incest/' + encodeURIComponent(x.cod) + '/' + encodeURIComponent(x.sitio), /control|verificar/i.test(x.texto) ? 'hys' : 'inst'); });
+
+  // 8 · Personal y RAR: siniestros de los últimos 6 meses (investigaciones e ILT) y altas propuestas para la base
+  if (TC.sin && TC.sin.ok) { const pend = {}, ilt = {};
+    (TC.sin.lista || []).forEach(s => { if (!enCol[s.est]) return; hay('8', s.est, 'Sin pendientes');
+      if (['Rechazado', 'Inculpable'].indexOf(s.estado) < 0 && s.inv === 'Sin investigar') { const d = -tcDias(s.fecha); (pend[s.est] = pend[s.est] || { n: 0, viejas: 0 }).n++; if (d > 15) pend[s.est].viejas++; }
+      if (s.estado === 'En ILT') ilt[s.est] = (ilt[s.est] || 0) + 1; });
+    Object.keys(pend).forEach(c => { const p = pend[c]; add('8', c, p.viejas ? 'er' : 'wa', p.n + (p.n > 1 ? ' investigaciones de siniestro pendientes' : ' investigación de siniestro pendiente') + (p.viejas ? ' (' + p.viejas + ' con más de 15 días)' : ''), '#sin', 'hys'); });
+    Object.keys(ilt).forEach(c => add('8', c, 'av', ilt[c] + (ilt[c] > 1 ? ' personas en ILT' : ' persona en ILT'), '#sin', 'inst'));
+    cols.filter(c => !c.caps).forEach(c => hay('8', c.k, (has['8'] && has['8'][c.k]) ? 'Sin pendientes' : 'Sin siniestros en 6 meses')); }
+  const P = (TB.modulos || {}).personal || {}, altas = P.altasPersonas != null ? P.altasPersonas : (P.bandeja || 0);
+  if (altas) add('8', '', 'av', altas + ' alta(s) propuesta(s) para la base de trabajadores', '#bandeja', 'hys');
+
+  // 9 · Capacitaciones: personas capacitadas en el ciclo, por establecimiento
+  if (CAPT && CAPT.semaforo) (CAPT.semaforo.porEstablecimiento || []).forEach(e => { const f = RES.filas.find(x => x.cod === e.cod || sinTil(x.nombre) === sinTil(e.nombre)); const cod = f ? f.cod : e.cod;
+    if (cod && enCol[cod]) hay('9', cod, (e.personas || 0) + ' personas capacitadas en el ciclo'); });
+  (((TB.modulos || {}).capacitaciones || {}).lista || []).forEach(t => add('9', '', null, 'Capacitación: ' + t.cap + (t.hora ? ' · ' + t.hora : ''), '#capag', 'hys', t.fecha));
+
+  // 10 · Documentos: de los establecimientos y de HyS (biblioteca)
+  ((TB.docsEst || {}).avisos || []).forEach(d => add('10', d.cod, d.estado === 'vencido' ? 'er' : 'wa', (d.codigo || 'Documento') + (d.estado === 'vencido' ? ' vencido' : ' vence el ' + fechaTxt(d.vence)), '#docest/' + encodeURIComponent(d.cod), 'inst', d.vence));
+  (TB.docsRevisar || []).forEach(d => add('10', '', d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), '#bib', 'hys', d.revision));
+  cols.filter(c => !c.caps).forEach(c => hay('10', c.k, 'Sin vencimientos'));
+
+  // 11 · Plan de acción: acciones del plan (sin agua ni plagas, que ya están en su eje) y auditorías para verificar
+  const plan = (TB.acciones || []).filter(tcEsPlan);
+  const pc = {}; plan.forEach(a => { const k = tcCol(a.cod, a.donde), d = tcDias(a.limite), x = pc[k] = pc[k] || { v: 0, p: 0, t: 0, hys: 0 }; x.t++; if (/hys|higiene/i.test(a.aCargo || '')) x.hys++;
+    if (a.vencida) x.v++; else if (d != null && d <= 7) x.p++; if (!a.vencida && d != null && d >= 0) add('11', k, null, 'Vence una acción del plan: ' + String(a.que || '').slice(0, 70), '#ges', /hys|higiene/i.test(a.aCargo || '') ? 'hys' : 'inst', a.limite); });
+  Object.keys(pc).forEach(k => { const x = pc[k]; hay('11', k, x.t + ' en plazo');
+    if (x.v) add('11', k, 'er', x.v + (x.v > 1 ? ' acciones vencidas' : ' acción vencida') + ' de ' + x.t, '#ges', x.hys >= x.t / 2 ? 'hys' : 'inst');
+    if (x.p) add('11', k, 'wa', x.p + (x.p > 1 ? ' acciones vencen' : ' acción vence') + ' esta semana', '#ges', x.hys >= x.t / 2 ? 'hys' : 'inst'); });
+  ((TB.auditorias || {}).paraVerificar || []).forEach(a => add('11', a.cod, 'wa', 'Auditoría interna para verificar · ' + a.id, '#audr/' + encodeURIComponent(a.id), 'hys'));
+  cols.forEach(c => { if (!(has['11'] && has['11'][c.k])) hay('11', c.k, 'Sin acciones abiertas'); });
+
+  // Lo que no tiene columna propia (otro establecimiento) se cuenta en la red, no en el mapa
+  H.forEach(x => { if (x.col && !enCol[x.col]) x.col = ''; });
+  return { H: H, has: has, okT: okT };
+}
+
+// Casilla del mapa: lo peor de la casilla y una frase corta
+function tcCelda(eje, c, X) {
+  const L = X.H.filter(x => x.eje === eje && x.col === c.k && x.n), e = TC_EJES.find(z => z[0] === eje);
+  const icon = { er: 'error', wa: 'schedule', av: 'info', ok: 'check_circle', gr: 'remove' };
+  const conHosp = ['5', '8', '9', '10'].indexOf(eje) >= 0 && c.caps;   // dato solo por establecimiento
+  let n, t, h = e[3], tip = '';
+  if (L.length) { L.sort((a, b) => TC_NIV[a.n] - TC_NIV[b.n]); n = L[0].n; const er = L.filter(x => x.n === 'er').length, wa = L.filter(x => x.n === 'wa').length, av = L.filter(x => x.n === 'av').length;
+    t = L[0].t + (L.length > 1 ? ' (y ' + (L.length - 1) + ' más)' : '');
+    h = L[0].h; tip = L.map(x => '• ' + x.t).join('\n'); }
+  else if (conHosp) { n = 'gr'; t = 'Incluido en ' + c.cod; }
+  else if (eje === '4' && c.caps) { n = 'gr'; t = 'No corresponde'; }
+  else if (X.has[eje] && X.has[eje][c.k]) { n = 'ok'; t = (X.okT[eje] || {})[c.k] || 'Al día'; }
+  else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : 's/d'; }
+  if (!L.length && !c.caps) h = ({ '1': '#ficha/' + encodeURIComponent(c.cod), '2': '#ficha/' + encodeURIComponent(c.cod) + '/agua', '4': '#cocper/' + encodeURIComponent(c.cod), '5': '#radest/' + encodeURIComponent(c.cod), '7': '#incest/' + encodeURIComponent(c.cod), '10': '#docest/' + encodeURIComponent(c.cod) })[eje] || h;
+  return '<td' + (TC.ver && TC.ver !== c.k ? ' class="dim"' : '') + '><a class="tcCel ' + n + '" href="' + h + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><span class="ms" aria-hidden="true">' + icon[n] + '</span><span>' + esc(t) + '</span></a></td>';
+}
+
+function tcBarras(vals, etiquetas, color, aria) {
+  const max = Math.max(1, ...vals);
+  return '<div class="tcBar" role="img" aria-label="' + esc(aria) + '">' + vals.map(v => '<div><span>' + v + '</span><i style="height:' + Math.max(3, Math.round(80 * v / max)) + 'px;background:' + color + '"></i></div>').join('') + '</div>' +
+    '<div class="tcBarL" aria-hidden="true">' + etiquetas.map(e => '<span>' + esc(e) + '</span>').join('') + '</div>';
+}
+
+function tcPintar(ctx) {
+  tcEstilos(); tcPedirExtras();
+  const { TB } = ctx;
+  const cols = []; estActivos().forEach(f => cols.push({ k: f.cod, t: f.cod, nombre: f.nombre, cod: f.cod }));
+  Object.keys(TC_CAPS).forEach(cod => { if (cols.some(c => c.cod === cod)) cols.push({ k: cod + '·CAPS', t: TC_CAPS[cod], nombre: TC_CAPS[cod], cod: cod, caps: true }); });
+  if (TC.ver && !cols.some(c => c.k === TC.ver)) TC.ver = '';
+  const X = tcHallazgos({ TB: TB, cols: cols }), conNivel = X.H.filter(x => x.n);
+  const enVer = x => !TC.ver || x.col === TC.ver;
+  const V = conNivel.filter(enVer), nEr = V.filter(x => x.n === 'er').length, nWa = V.filter(x => x.n === 'wa').length;
+  const estEje = eje => { const L = conNivel.filter(x => x.eje === eje && enVer(x)); return L.some(x => x.n === 'er') ? 'er' : L.some(x => x.n === 'wa') ? 'wa' : 'ok'; };
+  const ejesEr = TC_EJES.filter(e => estEje(e[0]) === 'er'), alDia = TC_EJES.filter(e => estEje(e[0]) === 'ok').length;
+  const urg = V.filter(x => x.n === 'er' || x.n === 'wa'), dHys = urg.filter(x => x.dep === 'hys').length, dInst = urg.length - dHys;
+  const plan = (TB.acciones || []).filter(a => tcEsPlan(a) && (!TC.ver || tcCol(a.cod, a.donde) === TC.ver)), planV = plan.filter(a => a.vencida).length;
+  const colTxt = TC.ver ? (cols.find(c => c.k === TC.ver) || {}).nombre : '';
+
+  // 1) La frase del día
+  const frase = '<section class="card tcFrase" style="margin-top:14px"><span class="ms" aria-hidden="true" style="color:' + (nEr ? '#B4361F' : nWa ? '#8A5200' : '#1E6B42') + '">' + (nEr ? 'report' : nWa ? 'schedule' : 'verified') + '</span><div style="flex:1 1 420px">' +
+    '<p style="font-size:18px;font-weight:700;color:var(--az)">' + (TB.vacio ? 'Armando el tablero…' : nEr ? (colTxt ? colTxt + ': ' : 'Hoy hay ') + nEr + (nEr > 1 ? ' temas urgentes' : ' tema urgente') + ' en ' + ejesEr.length + (ejesEr.length > 1 ? ' ejes: ' : ' eje: ') + ejesEr.map(e => e[1]).join(', ') + '.' : nWa ? (colTxt ? colTxt + ': ' : '') + 'Nada urgente. Hay ' + nWa + ' tema(s) para atender pronto.' : (colTxt ? colTxt + ': ' : '') + 'Todo al día con los datos cargados.') + '</p>' +
+    '<p class="mu" style="font-size:14px;margin-top:4px">' + (urg.length ? dHys + ' de lo urgente y próximo depende de HyS y ' + dInst + ' de recursos institucionales. ' : '') + alDia + ' de 11 ejes al día.</p></div></section>';
+  // 2) Números clave
+  const kpi = (h, t, v, s, col, uf) => '<a class="kpi2" href="' + h + '"' + (uf ? ' data-tcdep="' + uf + '"' : '') + '><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
+  const nums = '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:14px">' +
+    kpi('#tcHoy', 'URGENTE', nEr, 'vencido o con riesgo: resolver primero', nEr ? '#B4361F' : '') + kpi('#tcHoy', 'PRONTO', nWa, 'vence en 30 días o hay que verificar', nWa ? '#8A5200' : '') +
+    kpi('#tcMapa', 'EJES AL DÍA', alDia + ' / 11', 'sin nada urgente ni próximo', '#1E6B42') + kpi('#ges', 'PLAN DE ACCIÓN', planV + ' / ' + plan.length, 'acciones vencidas de las abiertas', planV ? '#B4361F' : '') +
+    kpi('#tcHoy', 'DEPENDE DE HyS', dHys, 'de lo urgente y próximo · el resto, de la institución', '', 'hys') + '</div>';
+  // 3) Mapa ejes × establecimientos
+  const mapa = '<section class="card" id="tcMapa" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="font-size:17px">Mapa de la gestión · 11 ejes × establecimientos</h2><span class="mu peq">Cada casilla dice qué pasa · tocala para ir al detalle</span></div>' +
+    '<div class="tcMapa"><table><thead><tr><th>Eje</th>' + cols.map(c => '<th' + (TC.ver === c.k ? ' class="sel"' : '') + ' title="' + esc(c.nombre) + '">' + (c.caps ? esc(c.t) : '<a href="#ficha/' + encodeURIComponent(c.cod) + '">' + esc(c.t) + '</a>') + '</th>').join('') + '</tr></thead><tbody>' +
+    TC_EJES.map(e => { const s = estEje(e[0]); return '<tr><td class="eje"><a href="' + e[3] + '"><span class="ms" aria-hidden="true">' + e[2] + '</span><span>' + e[0] + ' · ' + esc(e[1]) + '<small style="color:' + ({ er: '#B4361F', wa: '#8A5200', ok: '#1E6B42' }[s]) + '">' + ({ er: 'Urgente', wa: 'Pronto', ok: 'Al día' }[s]) + '</small></span></a></td>' + cols.map(c => tcCelda(e[0], c, X)).join('') + '</tr>'; }).join('') +
+    '</tbody></table></div><div class="tcLey"><span><span class="ms" aria-hidden="true" style="color:#B4361F">error</span>Urgente: vencido o con riesgo</span><span><span class="ms" aria-hidden="true" style="color:#8A5200">schedule</span>Pronto: vence en 30 días o a verificar</span><span><span class="ms" aria-hidden="true" style="color:#2E5E70">info</span>Aviso</span><span><span class="ms" aria-hidden="true" style="color:#1E6B42">check_circle</span>Al día</span><span><span class="ms" aria-hidden="true" style="color:#5B6B73">remove</span>s/d, no corresponde o se ve en el hospital</span></div></section>';
+  // 4) Hoy, primero esto
+  const ejeN = k => (TC_EJES.find(e => e[0] === k) || [k, ''])[1], colN = k => { const c = cols.find(z => z.k === k); return c ? (c.caps ? c.t : c.cod) : 'Red'; };
+  let lista = urg.concat(V.filter(x => x.n === 'av')).sort((a, b) => TC_NIV[a.n] - TC_NIV[b.n] || (a.fecha || '9').localeCompare(b.fecha || '9'));
+  const cuentaDep = { '': lista.length, hys: lista.filter(x => x.dep === 'hys').length, inst: lista.filter(x => x.dep !== 'hys').length };
+  if (TC.dep) lista = lista.filter(x => TC.dep === 'hys' ? x.dep === 'hys' : x.dep !== 'hys');
+  const verN = TC.todos ? lista.length : 6;
+  const hoyHtml = '<section class="card tcHoy" id="tcHoy" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><h2 style="font-size:17px">Hoy, primero esto</h2>' + (lista.length > 6 ? '<button class="link" id="tcTodos">' + (TC.todos ? 'Ver menos' : 'Ver las ' + lista.length) + '</button>' : '') + '</div>' +
+    '<div class="tcCols" role="group" aria-label="Filtrar por de quién depende">' + [['', 'Todo'], ['hys', 'Depende de HyS'], ['inst', 'Institución']].map(d => '<button data-tcd="' + d[0] + '" class="' + (TC.dep === d[0] ? 'on' : '') + '" aria-pressed="' + (TC.dep === d[0]) + '">' + d[1] + ' (' + cuentaDep[d[0]] + ')</button>').join('') + '</div>' +
+    (lista.length ? lista.slice(0, verN).map(x => '<a class="fila" href="' + x.h + '"><span class="ms" aria-hidden="true" style="color:' + ({ er: '#B4361F', wa: '#8A5200', av: '#2E5E70' }[x.n]) + '">' + (TC_EJES.find(e => e[0] === x.eje) || [])[2] + '</span><span style="flex:1;min-width:0"><b>' + esc(colN(x.col)) + ' · ' + esc(x.t) + '</b><small>' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.n]) + ' · ' + x.eje + ' · ' + esc(ejeN(x.eje)) + (x.fecha ? ' · ' + fechaTxt(x.fecha) : '') + '</small><i style="color:' + (x.dep === 'hys' ? 'var(--az)' : 'var(--pa)') + '">' + (x.dep === 'hys' ? 'Depende de HyS' : 'Depende de la institución') + '</i></span><span class="ms" aria-hidden="true" style="color:var(--pa)">chevron_right</span></a>').join('')
+      : '<div class="mu">Nada pendiente con los datos cargados.</div>') + '</section>';
+  // 5) Próximos 30 días
+  const hoyS = new Date().toISOString().slice(0, 10), lim = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const ag = X.H.filter(x => x.fecha && /^\d{4}-\d{2}-\d{2}/.test(x.fecha) && x.fecha.slice(0, 10) >= hoyS && x.fecha.slice(0, 10) <= lim && enVer(x)).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const vistos = {}, ag2 = ag.filter(x => { const k = x.eje + x.col + x.t + x.fecha; if (vistos[k]) return false; vistos[k] = 1; return true; }).slice(0, 8);
+  const mesC = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const agHtml = '<section class="card" style="display:flex;flex-direction:column;gap:4px"><h2 style="font-size:17px;margin-bottom:4px">Próximos 30 días</h2>' +
+    (ag2.length ? ag2.map(x => '<a class="tcAg" href="' + x.h + '"><span><b>' + x.fecha.slice(8, 10) + '</b><small>' + mesC[Number(x.fecha.slice(5, 7)) - 1] + '</small></span><span><b>' + esc(x.t || ejeN(x.eje) + ': vencimiento') + '</b><small>' + x.eje + ' · ' + esc(ejeN(x.eje)) + (x.col ? ' · ' + esc(colN(x.col)) : '') + '</small></span></a>').join('')
+      : '<div class="mu peq">No hay fechas cargadas para los próximos 30 días.</div>') + '</section>';
+  // 6) Cómo viene · últimos 6 meses
+  const m6 = (TB.meses || []).slice(-6), mE = m6.map(m => mesC[Number(m.slice(5, 7)) - 1]);
+  const ret = m6.map(m => Object.keys(TB.retiros || {}).reduce((s, a) => s + (((TB.retiros[a] || {})[m] || {}).Y1 || 0) + (((TB.retiros[a] || {})[m] || {}).Y3 || 0), 0));
+  const sinM = {}; ((TC.sin && TC.sin.por && TC.sin.por.mes) || []).forEach(p => sinM[p[0]] = p[1]);
+  const capM = {}; ((CAPT && CAPT.meses) || []).forEach(p => capM[p.mes] = p.n);
+  const porEje = TC_EJES.map(e => conNivel.filter(x => x.eje === e[0] && (x.n === 'er' || x.n === 'wa') && enVer(x)).length);
+  const tarj = (t, cuerpo, s, link) => '<section class="card" style="display:flex;flex-direction:column;gap:8px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="color:var(--az);font-size:14.5px">' + t + '</b>' + (link ? '<a class="peq" style="font-weight:700" href="' + link + '">Ver</a>' : '') + '</div>' + cuerpo + '<span class="mu peq">' + s + '</span></section>';
+  const tend = '<h2 style="margin:18px 0 8px;font-size:17px">Cómo viene · últimos 6 meses</h2><div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
+    tarj('Urgente y próximo, por eje (hoy)', tcBarras(porEje, TC_EJES.map(e => e[0]), '#B4361F', 'Temas urgentes y próximos por eje'), 'Número de eje (1 Residuos … 11 Plan de acción). Muestra dónde se concentra lo pendiente.', '#tcMapa') +
+    tarj('Retiros de residuos (manifiestos Y1 + Y3)', m6.length ? tcBarras(ret, mE, '#0D313F', 'Retiros por mes: ' + ret.join(', ')) : '<div class="mu peq">Cargando…</div>', 'Toda la red, por mes. Que baje puede ser falta de carga, no de retiro.', '#res') +
+    tarj('Siniestros laborales', TC.sin ? tcBarras(m6.map(m => sinM[m] || 0), mE, '#0D313F', 'Siniestros por mes') : '<div class="mu peq">Cargando…</div>', 'Casos del período (sin rechazados ni inculpables) · los carga el Servicio de Personal.', '#sinest') +
+    tarj('Registros de capacitación', CAPT ? tcBarras(m6.map(m => capM[m] || 0), mE, '#5894A7', 'Registros de capacitación por mes') : '<div class="mu peq">Cargando…</div>', 'Asistencias y evaluaciones registradas en el mes.', '#cap') + '</div>';
+  // Accesos rápidos de documentos (antes, tarjeta «Documentos» del tablero)
+  const acc = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><a class="btn sec" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="#notas">Notas enviadas y recibidas</a></div>';
+  const pie = '<div class="tcPie"><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas"></div>';
+
+  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (TB.vacio ? ' · cargando datos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
+    '<div class="filtros" style="align-items:center"><div class="tcCols" role="group" aria-label="Ver un establecimiento">' + [{ k: '', t: 'Toda la red' }].concat(cols).map(c => '<button data-tcv="' + esc(c.k) + '" class="' + (TC.ver === c.k ? 'on' : '') + '" aria-pressed="' + (TC.ver === c.k) + '">' + esc(c.caps ? c.t.replace(' (Rawson)', '') : c.t) + '</button>').join('') + '</div><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
+    frase + nums + '<div class="tcGrid"><div class="tcMain">' + mapa + '</div><div class="tcSide">' + hoyHtml + agHtml + '</div></div>' + tend + acc + pie);
+  document.querySelectorAll('[data-tcv]').forEach(b => b.onclick = () => { TC.ver = b.dataset.tcv; inicio(); });
+  document.querySelectorAll('[data-tcd]').forEach(b => b.onclick = () => { TC.dep = b.dataset.tcd; inicio(); });
+  document.querySelectorAll('[data-tcdep]').forEach(a => a.onclick = e => { e.preventDefault(); TC.dep = a.dataset.tcdep; inicio(); setTimeout(() => { const l = $('tcHoy'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); });
+  document.querySelectorAll('a[href="#tcHoy"],a[href="#tcMapa"]').forEach(a => a.onclick = e => { e.preventDefault(); const l = $(a.getAttribute('href').slice(1)); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  if ($('tcTodos')) $('tcTodos').onclick = () => { TC.todos = !TC.todos; inicio(); };
+  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); TC.rad = TC.inc = TC.sinPidio = TC.cap = false; if (CAPT) CAPT.calculado = ''; inicio(true); };
+}
+const sinTil = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 </script>
 <script>
 // Cada cambio de pantalla deja anotada la anterior (ver NAV en marco)
