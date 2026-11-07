@@ -114,6 +114,7 @@ function onOpen() {
     .addItem("Enviar el resumen de hoy ahora", "enviarResumenManual")
     .addItem("Instalar avisos automáticos (activadores)", "instalarActivadores")
     .addItem("Comprobar desde qué correo se envía", "comprobarRemitente")
+    .addItem("Rearmar TODO LO CARGADO (todo lo que cargaron en la app)", "completarTodoLoCargado")
     .addSeparator()
     .addItem("Ayuda", "mostrarAyuda")
     .addToUi();
@@ -251,20 +252,24 @@ function doPost(e) {
 
     if (tipo === "cierre_trabajo") {
       const encontrado = marcarTrabajoCerrado(ss, data.id_trabajo, data.fecha_fin);
+      if (encontrado) anotarTodo_(ss, tipo, Object.assign({}, data, { fecha: data.fecha_fin, id_trabajo: data.id_trabajo + "-fin" }), []);   // TODO LO CARGADO (Registro_MIPyV.gs)
       return respuesta({ ok: true, aviso: encontrado ? "" : "Trabajo no encontrado en la planilla" });
     }
 
 
     if (tipo === "alta_tanque" || tipo === "editar_tanque" || tipo === "inspeccion_tanque" || tipo === "limpieza_tanque") {   // tanques y cisternas de la red Trelew → BASE COMÚN del sistema HyS (Tanques_MIPyV.gs, 28/10/2026)
       const r = guardarTanqueMipyv_(tipo, data);
+      if (!r || !r.duplicado) anotarTodo_(ss, tipo, Object.assign({}, data, { lugar: data.lugar_nombre }), []);
       return respuesta(Object.assign({ ok: true }, r));
     }
     if (tipo === "relev_edificio") {   // relevamiento de edificios: agua, desagües, canaletas y techos (Edificio_MIPyV.gs, 03/11/2026)
       const r = guardarRelevEdificio_(ss, data);
+      if (!r || !r.duplicado) anotarTodo_(ss, tipo, data, []);
       return respuesta(Object.assign({ ok: true }, r));
     }
     if (tipo === "cierre_caso" || tipo === "solicitud") {   // cierre de casos y solicitudes a HyS (Casos_Solicitudes_MIPyV.gs, 25/10/2026)
       const r = guardarCasoOSolicitud_(ss, tipo, data);
+      if (!r || !r.duplicado) anotarTodo_(ss, tipo, data, []);
       return respuesta(Object.assign({ ok: true }, r));
     }
 
@@ -304,6 +309,7 @@ function doPost(e) {
     if (tipo === "visita" || tipo === "hallazgo" || tipo === "tarea_hys") fila.revisado_hys = "Sin revisar";
 
     agregarFila(sheet, fila);
+    anotarTodo_(ss, tipo, tipo === "trabajo_nuevo" ? Object.assign({}, data, { fecha: data.fecha_inicio || new Date() }) : data, links);   // TODO LO CARGADO (Registro_MIPyV.gs, 07/11/2026)
 
     if (tipo === "visita" && data.id_hallazgo_asociado) {
       marcarHallazgoAtendido(ss, data.id_hallazgo_asociado, data.id_visita);

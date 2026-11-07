@@ -315,14 +315,14 @@ function mpActividad(V, A, sinAvances, T) {
       '<small style="display:block"><span class="chip gr mini">Plagas</span> ' + esc(o.plaga || '—') + (o.producto ? ' · ' + esc(o.producto) : '') + '</small>' + (o.motivo ? '<small class="mu" style="display:block">' + esc(String(o.motivo).slice(0, 220)) + '</small>' : '') +
       '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + mpRes(o.resultado) + '</span></div>';
     if (i.t === 't') return '<div class="at cl" data-ht="' + T.indexOf(o) + '" style="cursor:pointer;align-items:flex-start"><span style="min-width:0"><b>' + esc(o.lugar || '—') + '</b>' +
-      '<small style="display:block"><span class="chip gr mini">Otros trabajos HyS</span> ' + esc(o.tipo || '—') + '</small>' + (o.detalle ? '<small class="mu" style="display:block">' + esc(String(o.detalle).slice(0, 220)) + (String(o.detalle).length > 220 ? '…' : '') + '</small>' : '') +
-      (o.hallazgos ? '<small style="display:block;color:var(--er)">Hallazgos: ' + esc(String(o.hallazgos).slice(0, 160)) + '</small>' : '') + '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + mpRev(o.revisado) + '</span></div>';
+      '<small style="display:block"><span class="chip gr mini">' + esc(o.cat || 'Otros trabajos HyS') + '</span> ' + esc(o.tipo || (o.cat ? '' : '—')) + '</small>' + (o.detalle ? '<small class="mu" style="display:block">' + esc(String(o.detalle).slice(0, 220)) + (String(o.detalle).length > 220 ? '…' : '') + '</small>' : '') +
+      (o.hallazgos ? '<small style="display:block;color:var(--er)">Hallazgos: ' + esc(String(o.hallazgos).slice(0, 160)) + '</small>' : '') + '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + (o.otro ? '' : mpRev(o.revisado)) + '</span></div>';
     return '<div class="at cl" data-ha="' + A.indexOf(o) + '" style="cursor:pointer;align-items:flex-start"><span style="min-width:0"><b>' + esc(o.lugar || '—') + '</b>' +
       '<small style="display:block"><span class="chip gr mini">Saneamiento</span> ' + esc(o.tareas || '—') + (o.producto ? ' · ' + esc(o.producto) : '') + '</small>' + (o.detalle ? '<small class="mu" style="display:block">' + esc(String(o.detalle).slice(0, 220)) + (String(o.detalle).length > 220 ? '…' : '') + '</small>' : '') +
       '<small class="mu" style="display:block">' + hr + ' · ' + op + '</small></span><span style="flex:none">' + (/cerr|final|termin/i.test(o.cierre || '') ? '<span class="chip ok mini">Trabajo terminado</span>' : '<span class="chip wa mini">Continúa</span>') + '</span></div>'; };
-  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Qué hicieron y dónde</h2><div class="mu peq">' + esc(tit) + ' · todo lo que cargan en la app MIP, día por día: plagas, saneamiento y otros trabajos de HyS. Tocá una fila para ver todo el detalle y las fotos.</div></div>' +
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px"><div><h2 style="margin:0 0 2px;font-size:16px">Qué hicieron y dónde</h2><div class="mu peq">' + esc(tit) + ' · todo lo que cargan en la app MIP, día por día: plagas, saneamiento, otros trabajos de HyS, relevamientos de edificios, tanques, casos cerrados y solicitudes. Tocá una fila para ver todo el detalle y las fotos.</div></div>' +
     '<div style="display:flex;gap:6px;flex-wrap:wrap">' + per.map(p => '<button class="btn ' + (p[0] === MPA ? 'pri' : 'sec') + '" data-mpa="' + p[0] + '" style="padding:6px 10px;font-size:13px">' + p[1] + '</button>').join('') + '<select class="c" id="mpMes" style="padding:6px 8px;font-size:13px;width:auto"><option value="">Elegir un mes…</option>' + meses.map(m => '<option value="m:' + m + '"' + ('m:' + m === MPA ? ' selected' : '') + '>' + MP_MESES[+m.slice(5) - 1] + ' ' + m.slice(0, 4) + ' (' + cuenta(m) + ')</option>').join('') + '</select></div></div>' +
-    (items.length ? '<div class="peq" style="margin:4px 0 10px"><b>' + nV + '</b> de plagas · <b>' + nA + '</b> de saneamiento · <b>' + nT + '</b> otros trabajos de HyS · <b>' + lugares.size + '</b> lugar(es) · <b>' + Object.keys(dias).length + '</b> día(s) con registros</div>' +
+    (items.length ? '<div class="peq" style="margin:4px 0 10px"><b>' + nV + '</b> de plagas · <b>' + nA + '</b> de saneamiento · <b>' + nT + '</b> otros trabajos de HyS, relevamientos, tanques y avisos · <b>' + lugares.size + '</b> lugar(es) · <b>' + Object.keys(dias).length + '</b> día(s) con registros</div>' +
       Object.keys(dias).sort().reverse().map(f => '<h3 style="margin:14px 0 4px;font-size:14px;border-bottom:1px solid var(--ln);padding-bottom:4px">' + mpF(f) + ' <span class="mu peq" style="font-weight:400">· ' + dias[f].length + ' registro(s) · ' + Array.from(new Set(dias[f].map(i => i.o.lugar).filter(Boolean))).map(esc).join(', ') + '</span></h3>' + dias[f].map(fila).join('')).join('')
       : '<div class="mu" style="padding:8px 0">No cargaron registros en este período.' + (ultimo ? ' El último registro es del ' + mpF(ultimo) + '.' : '') + '</div>') +
     (sinAvances ? '<div class="mu peq" style="margin-top:8px">El saneamiento y los otros trabajos de HyS aparecen cuando se implementa la versión nueva del Apps Script.</div>' : '');
@@ -334,10 +334,10 @@ function mpActividad(V, A, sinAvances, T) {
 }
 function mpTareaVer(x) {
   const dd = (t, v) => v ? '<dt>' + t + '</dt><dd>' + v + '</dd>' : '';
-  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Trabajo de HyS"><h2>' + esc(x.tipo || 'Trabajo de HyS') + ' · ' + mpF(x.fecha) + '</h2><dl class="dl">' +
+  $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Trabajo de HyS"><h2>' + esc(x.cat ? x.cat + (x.tipo ? ' · ' + x.tipo : '') : (x.tipo || 'Trabajo de HyS')) + ' · ' + mpF(x.fecha) + '</h2><dl class="dl">' +
     dd('Lugar', esc(x.lugar || '')) + dd('Operarios', esc(x.operario || '') + (x.acompanante ? ' y ' + esc(x.acompanante) : '') + (x.horario ? ' · ' + esc(mpHorario(x.horario) || x.horario) : '')) +
-    dd('Qué se hizo', esc(x.detalle).replace(/\n/g, '<br>')) + dd('Hallazgos', esc(x.hallazgos).replace(/\n/g, '<br>')) + dd('Observaciones', esc(x.obs).replace(/\n/g, '<br>')) +
-    dd('Fotos', (x.fotos || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + ' ↗</a>').join(' · ')) + dd('Revisión HyS', esc(x.revisado || 'Sin revisar')) + '</dl>' +
+    dd(x.otro ? 'Resumen' : 'Qué se hizo', esc(x.detalle).replace(/\n/g, '<br>')) + dd('Hallazgos', esc(x.hallazgos).replace(/\n/g, '<br>')) + dd('Observaciones', esc(x.obs).replace(/\n/g, '<br>')) +
+    dd('Fotos', (x.fotos || []).map((u, i) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">Foto ' + (i + 1) + ' ↗</a>').join(' · ')) + (x.otro ? dd('Detalle completo', 'En su hoja del libro MIPyV (o en el sistema HyS: tanques en la BASE COMÚN). Todo junto: hoja «TODO LO CARGADO».') : dd('Revisión HyS', esc(x.revisado || 'Sin revisar'))) + '</dl>' +
     '<div class="acciones"><div></div><button class="btn sec" id="mpCer">Cerrar</button></div></div>';
   $('ov').hidden = false; $('mpCer').onclick = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
 }
@@ -401,7 +401,7 @@ async function mipyv(fresco) {
     document.querySelectorAll('#mpTabla tr[data-v]').forEach(tr => tr.onclick = () => mipyvVer(V[Number(tr.dataset.v)]));
   };
   pintar();
-  mpActividad(VT, R.avances || [], R.avances === undefined, R.tareas || []);
+  mpActividad(VT, R.avances || [], R.avances === undefined, (R.tareas || []).concat(R.otros || []));   // otros: relevamientos, tanques, casos cerrados, solicitudes… (hoja TODO LO CARGADO, 07/11/2026)
   box.querySelectorAll('[data-ir]').forEach(a => { const ir = () => { if (a.dataset.ir === 'mpVis' && /sin revisar/i.test(a.textContent)) { MPF.sinRev = true; $('mpFR').checked = true; pintar(); }
     const el = $(a.dataset.ir); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
     a.onclick = e => { e.preventDefault(); ir(); }; a.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } }; });
