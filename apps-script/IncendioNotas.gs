@@ -29,7 +29,7 @@ const INCN = {
 function incnIram_(conPh, conChapa) {
   return 'La Norma IRAM 3517-2 (Extintores manuales y sobre ruedas. Dotación, control, mantenimiento y recarga) establece que el propietario u ocupante es responsable de la dotación de los extintores, su control, mantenimiento y recarga (punto 3.1.1), y que los extintores se someten a mantenimiento por lo menos una vez al año (punto 3.4.2)' +
     (conPh ? '; la prueba hidráulica de los extintores de polvo bajo presión y de dióxido de carbono se realiza cada cinco años (Anexo B)' : '') +
-    '; mientras se realiza el mantenimiento, deben ser sustituidos por equipos de reserva de la misma clasificación y, por lo menos, igual potencial extintor (punto 3.4.3)' +
+    '; que, mientras se realiza el mantenimiento, deben ser sustituidos por equipos de reserva de la misma clasificación y, por lo menos, igual potencial extintor (punto 3.4.3)' +
     (conChapa ? '; y que los lugares donde se ubican deben estar señalizados según la Norma IRAM 10005 (punto 3.3.3), función que cumple la chapa baliza' : '') + '.';
 }
 function incnFundamento_(esHospital, conPh, conChapa) {
@@ -112,7 +112,8 @@ function incnPedidosCompra_(c) {
     out.push('la adquisición de ' + num(n) + (n === 1 ? ' extintor nuevo' : ' extintores nuevos') + [e.agente ? ' tipo ' + e.agente : '', e.clase ? ' ' + e.clase : '', e.kg ? ' de ' + String(e.kg).replace('.', ',') + ' kg' : ''].join('')); });
   // Por cada extintor nuevo van también su chapa baliza y su soporte (pedido de Belén 07/11/2026); las chapas que se escriben aparte son de reposición
   const nuevos = ((c && c.extintores) || []).reduce((t, e) => t + (parseInt(e.cant, 10) || 0), 0), rep = parseInt(c && c.chapas, 10) || 0, ch = nuevos + rep;
-  if (ch) out.push('la adquisición de ' + num(ch) + (ch === 1 ? ' chapa baliza' : ' chapas baliza') + (nuevos && rep ? ' (' + num(nuevos) + ' para ' + (nuevos === 1 ? 'el extintor nuevo' : 'los extintores nuevos') + ' y ' + num(rep) + ' de reposición)' : nuevos ? (nuevos === 1 ? ' para el extintor nuevo' : ' para los extintores nuevos') : ' de reposición'));
+  const numF = n => n === 1 ? 'una' : num(n);   // chapa: femenino
+  if (ch) out.push('la adquisición de ' + numF(ch) + (ch === 1 ? ' chapa baliza' : ' chapas baliza') + (nuevos && rep ? ' (' + numF(nuevos) + ' para ' + (nuevos === 1 ? 'el extintor nuevo' : 'los extintores nuevos') + ' y ' + numF(rep) + ' de reposición)' : nuevos ? (nuevos === 1 ? ' para el extintor nuevo' : ' para los extintores nuevos') : ' de reposición'));
   if (nuevos) out.push('la adquisición de ' + num(nuevos) + (nuevos === 1 ? ' soporte para el extintor nuevo' : ' soportes para los extintores nuevos'));
   return out;
 }
