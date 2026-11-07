@@ -142,7 +142,7 @@ function incnNota_(x) {
   const parDe = r => { let e = r && r.getElement(); while (e && e.getType() !== DocumentApp.ElementType.PARAGRAPH && e.getType() !== DocumentApp.ElementType.LIST_ITEM) e = e.getParent(); return e; };
   // Cambios de Belén al modelo (07/11/2026): sin «S / D», «Me dirijo a usted a fin de…» (sin «desde el Servicio…» ni su nota al pie),
   // sin plazo técnico y sin el bloque de firma (nombre, servicio y correo).
-  const quitar = re => body.getParagraphs().filter(q => re.test(q.getText().trim())).forEach(q => { try { q.removeFromParent(); } catch (e) { q.setText(''); } });
+  const quitar = re => body.getParagraphs().filter(q => re.test(q.getText().trim())).forEach(q => { try { q.removeFromParent(); } catch (e) { try { q.clear(); } catch (x) {} } });   // el último párrafo no se puede quitar: se vacía
   quitar(/^S \/ D$/);
   try { doc.getFootnotes().forEach(fn => { if (fn.getFootnoteContents().findText('905/2015')) fn.removeFromParent(); }); } catch (e) {}
   const pm = parDe(body.findText('Me dirijo a usted'));
