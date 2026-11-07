@@ -53,6 +53,7 @@ function incnIncluidos_() {
 }
 
 // Nombre del lugar para el texto de la nota
+const incnDe_ = n => /^el /.test(n) ? 'del ' + n.slice(3) : 'de ' + n;   // «de el» → «del»
 function incnNombre_(g) {
   if (g.dep) return 'la ' + g.sitio + ' (' + g.dep + ')';
   if (INCN.NOMBRES[g.cod + '|' + g.sitio]) return INCN.NOMBRES[g.cod + '|' + g.sitio];
@@ -98,8 +99,8 @@ function incnNota_(x) {
   const carpeta = dacCarpeta_(dacCarpeta_(DriveApp.getFolderById(DAC.CARPETA_NOTAS), String(anio)), INCN.TIPO_NOTA.replace(/\//g, '-'));
   const nombre = 'Nota interna ' + (sinNro ? 's-n' : nro) + '-' + anio + ' · ' + INCN.DESTINO + ' · Extintores vencidos · ' + g.lugar;
   const copia = DriveApp.getFileById(tipo.modelo).makeCopy(nombre, carpeta), doc = DocumentApp.openById(copia.getId()), body = doc.getBody();
-  const motivo = nC ? 'solicitar la revisión y la recarga de los extintores de ' + g.nombre + ' que tienen la carga vencida' + (nP ? ', y la prueba hidráulica de los que la tienen vencida' : '')
-    : 'solicitar la revisión y la prueba hidráulica de los extintores de ' + g.nombre + ' que la tienen vencida';
+  const motivo = nC ? 'solicitar la revisión y la recarga de los extintores ' + incnDe_(g.nombre) + ' que tienen la carga vencida' + (nP ? ', y la prueba hidráulica de los que la tienen vencida' : '')
+    : 'solicitar la revisión y la prueba hidráulica de los extintores ' + incnDe_(g.nombre) + ' que la tienen vencida';
   const mapa = { NRO_NOTA: (sinNro ? 's/n' : nro) + '/' + anio, FECHA: hoy.getDate() + ' de ' + DAC_MESES[hoy.getMonth()] + ' de ' + anio,
     DEST_NOMBRE: dest.nombre && !/^s\/d/.test(dest.nombre) ? dest.nombre : '[Nombre y apellido]', DEST_CARGO: dest.cargo || INCN.DESTINO, DEST_DEPENDENCIA: dest.dependencia || DAC.DEPENDENCIA,
     ASUNTO: asunto, ANTECEDENTES: antecedentes, MOTIVO: motivo };
@@ -140,8 +141,8 @@ function incnNota_(x) {
   // Lo que se solicita
   const li1 = parDe(body.findText('\\[Primera acción')), li2 = parDe(body.findText('\\[Segunda acción'));
   const pedidos = [];
-  if (nC) pedidos.push('La revisión y la recarga de ' + (nC === 1 ? 'el extintor detallado' : 'los ' + nC + ' extintores detallados') + ' con la carga vencida.');
-  if (nP) pedidos.push('La prueba hidráulica de ' + (nP === 1 ? 'el extintor' : 'los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida.');
+  if (nC) pedidos.push('La revisión y la recarga ' + (nC === 1 ? 'del extintor detallado' : 'de los ' + nC + ' extintores detallados') + ' con la carga vencida.');
+  if (nP) pedidos.push('La prueba hidráulica ' + (nP === 1 ? 'del extintor' : 'de los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida.');
   pedidos.push('Mientras dure la recarga, el reemplazo transitorio de los extintores retirados, para que ' + g.nombre + ' no quede sin protección contra incendios (Decreto N.º 351/79, Anexo VII, punto 7.1.1).');
   if (li1) txt(li1.setText(pedidos[0]));
   if (li2) { txt(li2.setText(pedidos[1])); let ult = li2; pedidos.slice(2).forEach(p => { const li = body.insertListItem(body.getChildIndex(ult) + 1, li2.copy()); txt(li.setText(p)); ult = li; }); }
@@ -157,8 +158,9 @@ function incnNota_(x) {
   reg.getRange(fila, 9, 1, 4).setValues([[asunto, INCN.DESTINO + (dest.nombre && !/^s\/d/.test(dest.nombre) ? ' (' + dest.nombre + ')' : ''), antecedentes, 'Mesa de Entradas']]);
   reg.getRange(fila, 17).setValue('Borrador'); reg.getRange(fila, 19).setValue(INCN.MODULO); reg.getRange(fila, 20).setValue(url);
   reg.getRange(fila, 21).setValue('Generado por el sistema (7 · Incendio › Extintores vencidos · ' + g.lugar + '). Extintores: ' + E.map(e => e.ID).join(', ') + '.' + (sinNro ? ' Sin número (s/n): lo asigna Mesa de Entradas.' : ''));
-  reg.getRange(fila, 5).setValue(sinNro ? 's/n' : nro);
   SpreadsheetApp.flush();
+  // N.º: la columna tiene validación (pide el «Próximo N.º»): sin número queda vacía y la completa Mesa de Entradas
+  if (!sinNro) { try { reg.getRange(fila, 5).setValue(nro); SpreadsheetApp.flush(); } catch (e) { try { reg.getRange(fila, 5).clearContent(); } catch (x) {} } }
   try { CacheService.getScriptCache().remove('inc_tablero'); } catch (e) {}
   return { ok: true, url: url, nombre: nombre, extintores: E.length };
 }
