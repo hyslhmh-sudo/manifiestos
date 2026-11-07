@@ -6891,14 +6891,14 @@ async function incNotasPintar(idCaja, cod, sitio, fresco) {
   const AG = ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 'Encapsulador (baterías de litio)'], CL = ['ABC', 'BC', 'A', 'K', 'D'];
   caja.querySelectorAll('[data-incc]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const i = +b.dataset.incc, g = G[i];
     const campos = []; [1, 2, 3].forEach(n => campos.push(['C' + n, 'Extintores ' + n + ': cantidad'], ['A' + n, 'Agente', AG], ['T' + n, 'Clase', CL], ['K' + n, 'Kg']));
-    campos.push(['CH', 'Chapas baliza: cantidad']);
+    campos.push(['CH', 'Chapas baliza de reposición (aparte de las de los extintores nuevos)']);
     const e0 = g.ext[0] || {}, val = { C1: '1', A1: AG.indexOf(e0.agente) >= 0 ? e0.agente : '', T1: CL.indexOf(e0.tipo) >= 0 ? e0.tipo : '', K1: e0.kg && e0.kg !== 's/d' ? e0.kg : '', CH: '' };
     modal('Recarga + adquisición · ' + g.lugar, campos, val, async out => {
       const compra = { extintores: [1, 2, 3].map(n => ({ cant: out['C' + n], agente: out['A' + n], clase: out['T' + n], kg: out['K' + n] })).filter(x => parseInt(x.cant, 10) > 0), chapas: out.CH };
       if (!compra.extintores.length && !(parseInt(compra.chapas, 10) > 0)) return 'Poné al menos un extintor o una chapa baliza para comprar.';
       if (compra.extintores.some(x => !x.agente || !x.kg)) return 'En cada extintor a comprar poné el agente y los kg.';
       const r = await generar(i, b, compra); return r === 'cancelado' ? '' : r; },
-      '<p class="mu peq" style="margin:0">La nota pide la recarga de los ' + g.ext.length + ' vencidos y, además, la adquisición de lo que pongas acá (hasta 3 tipos de extintor y las chapas baliza). Ej.: 1 · HCFC 123 · ABC · 5.</p>'); });
+      '<p class="mu peq" style="margin:0">La nota pide la recarga de los ' + g.ext.length + ' vencidos y, además, la adquisición de lo que pongas acá (hasta 3 tipos de extintor). Por cada extintor nuevo se piden solos su chapa baliza y su soporte; abajo, las chapas baliza de reposición (rotas o faltantes). También pide los equipos de reserva mientras dura la recarga (IRAM 3517-2, 3.4.3). Ej.: 1 · HCFC 123 · ABC · 5.</p>'); });
 }
 
 // ------------------------------------------------------------------ Extintores de un establecimiento (o de un lugar)

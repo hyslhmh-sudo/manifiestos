@@ -20,7 +20,7 @@ const INCN = {
   PLAZO: '15',
   ESTS: ['HZT', 'HMH'],
   NOMBRES: { 'HMH|HMH': 'el Hospital María Humphreys', 'HZT|HZT Central': 'el Hospital Zonal Trelew «Dr. Adolfo Margara» (sede central)', 'HZT|Ambulancias': 'las ambulancias del Hospital Zonal Trelew' },
-  PIE: 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo, arts. 1, 4, 7 inc. g y 9 inc. g; Decreto N.º 351/79, Capítulo 18 «Protección contra incendios» y Anexo VII, punto 7.1 «Condiciones generales de extinción»; Norma IRAM 3517-2, puntos 3.1.1, 3.3.3, 3.4.2 y Anexo B.'
+  PIE: 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo, arts. 1, 4, 7 inc. g y 9 inc. g; Decreto N.º 351/79, Capítulo 18 «Protección contra incendios» y Anexo VII, punto 7.1 «Condiciones generales de extinción»; Norma IRAM 3517-2, puntos 3.1.1, 3.3.3, 3.4.2, 3.4.3 y Anexo B.'
 };
 
 // Texto modelo de Belén (07/11/2026). En los lugares que no son hospital no se habla de cirugía. «todas las personas» → «todos» (regla de lenguaje de Belén).
@@ -29,6 +29,7 @@ const INCN = {
 function incnIram_(conPh, conChapa) {
   return 'La Norma IRAM 3517-2 (Extintores manuales y sobre ruedas. Dotación, control, mantenimiento y recarga) establece que el propietario u ocupante es responsable de la dotación de los extintores, su control, mantenimiento y recarga (punto 3.1.1), y que los extintores se someten a mantenimiento por lo menos una vez al año (punto 3.4.2)' +
     (conPh ? '; la prueba hidráulica de los extintores de polvo bajo presión y de dióxido de carbono se realiza cada cinco años (Anexo B)' : '') +
+    '; mientras se realiza el mantenimiento, deben ser sustituidos por equipos de reserva de la misma clasificación y, por lo menos, igual potencial extintor (punto 3.4.3)' +
     (conChapa ? '; y que los lugares donde se ubican deben estar señalizados según la Norma IRAM 10005 (punto 3.3.3), función que cumple la chapa baliza' : '') + '.';
 }
 function incnFundamento_(esHospital, conPh, conChapa) {
@@ -109,7 +110,10 @@ function incnPedidosCompra_(c) {
   const out = [], num = n => (['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'][n] || String(n));
   ((c && c.extintores) || []).forEach(e => { const n = parseInt(e.cant, 10) || 0; if (!n) return;
     out.push('la adquisición de ' + num(n) + (n === 1 ? ' extintor nuevo' : ' extintores nuevos') + [e.agente ? ' tipo ' + e.agente : '', e.clase ? ' ' + e.clase : '', e.kg ? ' de ' + String(e.kg).replace('.', ',') + ' kg' : ''].join('')); });
-  const ch = parseInt(c && c.chapas, 10) || 0; if (ch) out.push('la adquisición de ' + num(ch) + (ch === 1 ? ' chapa baliza' : ' chapas baliza'));
+  // Por cada extintor nuevo van también su chapa baliza y su soporte (pedido de Belén 07/11/2026); las chapas que se escriben aparte son de reposición
+  const nuevos = ((c && c.extintores) || []).reduce((t, e) => t + (parseInt(e.cant, 10) || 0), 0), rep = parseInt(c && c.chapas, 10) || 0, ch = nuevos + rep;
+  if (ch) out.push('la adquisición de ' + num(ch) + (ch === 1 ? ' chapa baliza' : ' chapas baliza') + (nuevos && rep ? ' (' + num(nuevos) + ' para ' + (nuevos === 1 ? 'el extintor nuevo' : 'los extintores nuevos') + ' y ' + num(rep) + ' de reposición)' : nuevos ? (nuevos === 1 ? ' para el extintor nuevo' : ' para los extintores nuevos') : ' de reposición'));
+  if (nuevos) out.push('la adquisición de ' + num(nuevos) + (nuevos === 1 ? ' soporte para el extintor nuevo' : ' soportes para los extintores nuevos'));
   return out;
 }
 
@@ -126,7 +130,7 @@ function incnNota_(x) {
   const dest = dacDestinatario_(INCN.DESTINO, LS), f = s => s ? s.split('-').reverse().join('/') : 's/d';
   const nC = E.filter(e => e.carga).length, nP = E.filter(e => e.prueba).length, esHosp = /^edificio$/i.test(g.tipoSitio);
   const compra = incnPedidosCompra_(x.compra);
-  const asunto = (nC ? 'Recarga de extintores' : 'Prueba hidráulica de extintores') + (nC && nP ? ' y prueba hidráulica' : '') + (compra.length ? ' y adquisición de extintores' + (x.compra && parseInt(x.compra.chapas, 10) ? ' y chapas baliza' : '') : '') + ' · ' + g.lugar + (g.cod === 'HMH' ? '' : ' (' + g.cod + ')');
+  const asunto = (nC ? 'Recarga de extintores' : 'Prueba hidráulica de extintores') + (nC && nP ? ' y prueba hidráulica' : '') + (compra.length ? ' y adquisición de ' + (compra.some(t => /extintor/.test(t)) ? 'extintores, chapas baliza y soportes' : 'chapas baliza') : '') + ' · ' + g.lugar + (g.cod === 'HMH' ? '' : ' (' + g.cod + ')');
   const ants = incnAntecedentes_().concat(String(x.antecedentes || '').split(/[,;]+/).map(t => t.trim()).filter(Boolean)).filter((v, i, a) => a.indexOf(v) === i);
   const antecedentes = 'Relevamiento de extintores del Servicio de Higiene y Seguridad Laboral al ' + Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy') + (ants.length ? ' - Notas Internas N.º ' + ants.join(', ').replace(/, ([^,]*)$/, ' y $1') : '');
   const carpeta = dacCarpeta_(dacCarpeta_(DriveApp.getFolderById(DAC.CARPETA_NOTAS), String(anio)), INCN.TIPO_NOTA.replace(/\//g, '-'));
@@ -172,7 +176,7 @@ function incnNota_(x) {
   // Fundamento: texto modelo de Belén (reemplaza el párrafo guía del modelo) y la nota al pie con la norma
   const fu = parDe(body.findText('\\[Fundamento:'));
   if (fu) {
-    const F = incnFundamento_(esHosp, nP > 0, !!(x.compra && parseInt(x.compra.chapas, 10))); let idx = body.getChildIndex(fu);
+    const F = incnFundamento_(esHosp, nP > 0, compra.some(t => /chapa/.test(t))); let idx = body.getChildIndex(fu);
     F.forEach((p, i) => { const o = typeof p === 'string' ? { t: p } : p;
       if (i === 0) { const tx = fu.editAsText(), largo = fu.getText().replace(/\s+$/, '').length; tx.deleteText(0, Math.max(0, largo - 1)); tx.insertText(0, o.t); txt(fu); }
       else parrafo(++idx, o.t, o); });
@@ -183,6 +187,8 @@ function incnNota_(x) {
   let pedidos = [];   // en minúscula, como los corrigió Belén
   if (nC) pedidos.push('la revisión y la recarga ' + (nC === 1 ? 'del extintor detallado' : 'de los ' + nC + ' extintores detallados') + ' con la carga vencida');
   if (nP) pedidos.push('la prueba hidráulica ' + (nP === 1 ? 'del extintor' : 'de los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida');
+  // Reemplazo mientras se recargan: Belén lo pidió de nuevo, citando la norma (07/11/2026)
+  if (nC || nP) pedidos.push('mientras dure la recarga, la colocación de equipos de reserva de la misma clasificación y, por lo menos, igual potencial extintor, para que ' + g.nombre + ' no quede sin protección contra incendios (Norma IRAM 3517-2, punto 3.4.3)');
   pedidos = pedidos.concat(compra).map((p, i, a) => p + (i < a.length - 1 ? ';' : '.'));
   if (li1) txt(li1.setText(pedidos[0]));
   if (li2) { if (pedidos.length < 2) li2.removeFromParent(); else { txt(li2.setText(pedidos[1])); let ult = li2; pedidos.slice(2).forEach(p => { const li = body.insertListItem(body.getChildIndex(ult) + 1, li2.copy()); txt(li.setText(p)); ult = li; }); } }
