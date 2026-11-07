@@ -4905,12 +4905,14 @@ function rcVer(r) {
 let ERG = null;
 const ERG_FILTRO = { est: '', sitio: '', estado: '', q: '', max: 120 }, ERG_MF = { est: '', estado: 'abiertas' };
 const ERG_GUIA = 'https://claude.ai/artifact/8DNNwjucJwJUCTegYzv87w';
-const ERG_PIE = '<div style="margin-top:18px;text-align:center"><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas" style="height:46px"></div>';
+const ERG_PIE = '<div style="margin-top:18px;text-align:center"><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas" style="height:46px;max-width:100%;object-fit:contain"></div>';
 const ergHoy = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const ergDias = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5);
 const ergMas = (f, d) => { const x = new Date(f + 'T12:00:00'); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
 const ergIso = f => { const s = String(f || ''); const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s); return m ? m[3] + '-' + m[2] + '-' + m[1] : s.slice(0, 10); };
 const ergSd = v => String(v == null || v === '' ? 's/d' : v);
+// TAREAS_SUGERIDAS puede traer códigos del catálogo (ERG-T-01) o textos: se muestran los nombres
+const ergTareasSug = p => String(p.TAREAS_SUGERIDAS || '').split(/[;|,]/).map(s => s.trim()).filter(s => s && s !== 's/d').map(s => { const t = ERG.tareas.find(x => x.ID_TAREA_TIPO === s); return t ? t.DESCRIPCION : s; });
 
 // Factores y preguntas oficiales (Anexo I, Res. SRT 886/15). Las reglas son las mismas que aplica el servidor (Ergonomia.gs › ERGO_REGLAS).
 const ERG_F = {
@@ -5116,14 +5118,15 @@ async function pantallaErgoPuesto(id) {
   const r = ergResumen(p);
   const tareas = r.I.map(i => {
     const fs = Object.keys(ERG_F).map(f => { const marcado = i[ERG_F[f].col] === 'Sí', ev = marcado ? ergEvalDe(i.ID_IDENT, f) : null;
-      if (!marcado) return '<div class="erFa off"><b>' + f + '</b><span>' + esc(ERG_F[f].t) + '</span><span class="mu">—</span></div>';
+      if (!marcado) return '';
       return '<div class="erFa"><b>' + f + '</b><span>' + esc(ERG_F[f].t) + '</span>' + (ev ? ergChipR(ev.RESULTADO) : '<span class="chip gr">Falta la Planilla 2</span>') +
         '<span class="erAcc"><button class="link" data-ere="' + esc(i.ID_IDENT) + '" data-f="' + f + '">' + (ev ? 'Ver / corregir 2.' + f : 'Completar Planilla 2.' + f) + '</button>' +
         (ev && (ev.RESULTADO === 'A evaluar' || ev.METODO) ? ' · <button class="link" data-err="' + esc(ev.ID_EVAL) + '">' + (ev.METODO ? 'Evaluación de riesgos' : 'Hacer evaluación de riesgos') + '</button>' : '') +
         (ev && /Moderado|No tolerable|A evaluar/.test(ev.RESULTADO) ? ' · <button class="link" data-erm="' + esc(ev.ID_EVAL) + '">+ Medida</button>' : '') + '</span></div>'; }).join('');
     const gen = ERG_GEN.map(g => i[g[0]] || 's/d'), genOk = gen.every(v => v === 'Sí');
     return '<section class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><h2 style="margin:0">' + esc(i.TAREA) + '</h2><div class="mu peq">' + esc(i.ID_IDENT) + ' · Planilla 1 del ' + fechaTxt(ergIso(i.FECHA)) + ' · ' + esc(ergSd(i.TRABAJADORES_DEL_PUESTO)) + ' trabajador(es) · manifestación temprana: ' + esc(ergSd(i.MANIFESTACION_TEMPRANA)) + (i.UBICACION_SINTOMA ? ' (' + esc(i.UBICACION_SINTOMA) + ')' : '') + (i.FOTOS ? ' · <a href="' + esc(i.FOTOS) + '" target="_blank" rel="noopener">Fotos ↗</a>' : '') + '</div></div>' +
-      '<button class="btn sec" data-eri="' + esc(i.ID_IDENT) + '">Editar Planilla 1</button></div><div class="erFs">' + fs + '</div>' +
+      '<button class="btn sec" data-eri="' + esc(i.ID_IDENT) + '">Editar Planilla 1</button></div>' + (fs ? '<div class="erFs">' + fs + '</div>' : '<div class="aviso peq" style="margin-top:8px">Ningún factor marcado en esta tarea.</div>') +
+      '<div class="mu peq" style="margin-top:6px">Sin el factor: ' + (Object.keys(ERG_F).filter(f => i[ERG_F[f].col] !== 'Sí').join(', ') || 'ninguno') + '</div>' +
       '<div class="peq" style="margin-top:8px">Planilla 3 · medidas generales (información y capacitación): ' + (genOk ? '<span class="chip ok">Las 3 cumplidas</span>' : '<span class="chip ' + (gen.some(v => v === 'No') ? 'er' : 'gr') + '">' + gen.filter(v => v === 'Sí').length + ' de 3</span>') + ' <button class="link" data-eri="' + esc(i.ID_IDENT) + '" data-gen="1">Completar</button></div></section>'; }).join('');
   const med = r.M.map(m => { const ven = m.ESTADO !== 'Cumplida' && m.FECHA_LIMITE && ergIso(m.FECHA_LIMITE) < ergHoy();
     return '<div class="item"><div><b>' + esc(m.ID_MEDIDA) + ' · ' + esc(m.DESCRIPCION) + '</b><div class="mu peq">' + esc(m.TIPO) + ' · factor ' + esc(ergSd(m.FACTOR)) + ' · depende de ' + esc(ergSd(m.DEPENDE_DE)) + ' · ' + esc(ergSd(m.PLAZO)) + (m.FECHA_LIMITE ? ' · límite ' + fechaTxt(ergIso(m.FECHA_LIMITE)) : '') + '</div></div>' +
@@ -5131,12 +5134,12 @@ async function pantallaErgoPuesto(id) {
   marco('#ergop', '<div class="cab"><div><a class="link" href="#ergo">← Ergonomía</a><h1>' + esc(ergSd(p.FUNCION)) + '</h1><span class="mu peq">' + esc(p.ID_PUESTO) + ' · ' + esc(p.ESTABLECIMIENTO) + ' · ' + esc(ergSd(p.SITIO)) + ' · ' + esc(ergSd(p.SERVICIO)) + '</span> ' + ergChipE(r.estado) + '</div>' +
     '<div class="filtros"><button class="btn sec" id="erEdit">Editar puesto</button><button class="btn sec" id="erImp">Imprimir protocolo</button><button class="btn pri" id="erTarea">+ Tarea (Planilla 1)</button></div></div>' +
     (/precargado/i.test(p.ESTADO) ? '<div class="aviso peq">Puesto precargado: revisá sitio, servicio y cantidad de trabajadores (Editar puesto). Al guardar la primera Planilla 1 queda confirmado.</div>' : '') +
-    '<section class="card"><dl class="datos"><dt>Trabajadores</dt><dd>' + esc(ergSd(p.CANT_TRABAJADORES)) + '</dd><dt>Tareas sugeridas</dt><dd>' + esc(ergSd(p.TAREAS_SUGERIDAS)) + '</dd><dt>Observaciones</dt><dd>' + esc(ergSd(p.OBSERVACIONES)) + '</dd>' +
+    '<section class="card"><dl class="datos"><dt>Trabajadores</dt><dd>' + esc(ergSd(p.CANT_TRABAJADORES)) + '</dd><dt>Tareas sugeridas</dt><dd>' + esc(ergSd(ergTareasSug(p).join(' · '))) + '</dd><dt>Observaciones</dt><dd>' + esc(ergSd(p.OBSERVACIONES)) + '</dd>' +
       (r.vence ? '<dt>Vigencia</dt><dd>Hasta el ' + fechaTxt(r.vence) + ' (la Planilla 1 vale un año; antes, si cambian tareas, equipos u organización, o aparece una manifestación temprana, una enfermedad profesional o un accidente)</dd>' : '') + '</dl>' +
       (r.falta.length ? '<div class="aviso peq" style="margin-top:10px"><b>Falta:</b> ' + r.falta.map(esc).join(' · ') + '</div>' : '') + '</section>' +
     (tareas || '<section class="card" style="margin-top:12px"><div class="vacio">Todavía no hay Planilla 1. Tocá «+ Tarea (Planilla 1)» y cargá una por cada tarea habitual, incluidas las secundarias.</div></section>') +
     '<section class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><h2 style="margin:0">Planillas 3 y 4 · Medidas y seguimiento</h2><button class="btn sec" id="erMedNueva">+ Medida</button></div>' + (med || '<div class="mu peq" style="margin-top:8px">Sin medidas. Se cargan cuando la evaluación da nivel 2 o 3, o si un trabajador tiene molestia o dolor persistente.</div>') + '</section>' + ERG_PIE +
-    '<style>.erFs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:10px}.erFa{border:1px solid var(--ln);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13px}.erFa b{color:var(--az);font-size:15px}.erFa.off{opacity:.55}.erAcc{font-size:12px}</style>');
+    '<style>.erFs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr));gap:8px;margin-top:10px}.erFa{border:1px solid var(--ln);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13px}.erFa b{color:var(--az);font-size:15px}.erFa.off{opacity:.55}.erAcc{font-size:12px}</style>');
   $('erEdit').onclick = () => ergFormPuesto(p); $('erTarea').onclick = () => ergFormIdent(p, null); $('erImp').onclick = () => ergImprimir(p);
   $('erMedNueva').onclick = () => ergFormMedida(p, null, null);
   document.querySelectorAll('[data-eri]').forEach(b => b.onclick = () => ergFormIdent(p, ERG.ident.find(i => i.ID_IDENT === b.dataset.eri), !!b.dataset.gen));
@@ -5153,7 +5156,7 @@ function ergFormIdent(p, i, irGen) {
   const marcados = {}; Object.keys(ERG_F).forEach(f => marcados[f] = i ? i[ERG_F[f].col] === 'Sí' : false);
   const expo = {}; String(v.EXPOSICION || '').split(';').forEach(s => { const m = /^\s*([A-I]):\s*(.*)$/.exec(s); if (m) expo[m[1]] = m[2].trim(); });
   const sint = String(v.UBICACION_SINTOMA || '').split(',').map(s => s.trim()).filter(Boolean);
-  const sugTareas = Array.from(new Set(ERG.tareas.filter(t => t.ACTIVA !== 'No').map(t => t.DESCRIPCION).concat(String(p.TAREAS_SUGERIDAS || '').split(/[;|]/).map(s => s.trim())).filter(s => s && s !== 's/d')));
+  const sugTareas = Array.from(new Set(ergTareasSug(p).concat(ERG.tareas.filter(t => t.ACTIVA !== 'No').map(t => t.DESCRIPCION)).filter(Boolean)));
   const sn = (k, val, ops) => '<select class="c" data-ei="' + k + '">' + (ops || ['s/d', 'Sí', 'No']).map(o => '<option' + ((val || 's/d') === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select>';
   ERG.fotos.p1 = [];
   marco('#ergop', '<div class="cab"><div><button class="link" id="eiVolver">← ' + esc(ergSd(p.FUNCION)) + '</button><h1>Planilla 1 · Identificación de factores de riesgo</h1><span class="mu peq">' + esc(p.ID_PUESTO) + ' · ' + esc(p.ESTABLECIMIENTO) + ' · ' + esc(ergSd(p.SITIO)) + (i ? ' · ' + esc(i.ID_IDENT) : ' · tarea nueva') + '</span></div></div>' +
@@ -5180,7 +5183,7 @@ function ergFormIdent(p, i, irGen) {
       ERG_GEN.map((g, n) => '<div class="item"><span class="peq">' + (n + 1) + '. ' + esc(g[1]) + '</span>' + sn(g[0], v[g[0]]) + '</div>').join('') +
       '<div class="grid g4"><label class="f">Fecha<input class="c" type="date" data-ei="GEN_FECHA" value="' + esc(ergIso(v.GEN_FECHA)) + '"></label><label class="f" style="grid-column:span 3">Observaciones (capacitación, fecha y registro)<input class="c" data-ei="GEN_OBS" value="' + esc(v.GEN_OBS || '') + '"></label></div></section>' +
     '<div class="filtros" style="margin-top:12px;justify-content:flex-end"><button class="btn sec" id="eiCan">Cancelar</button><button class="btn pri" id="eiOk">Guardar Planilla 1</button></div>' + ERG_PIE +
-    '<style>.eiFs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-top:10px}.eiF{border:1px solid var(--ln);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}.eiF.si{border-color:var(--az);background:#F4F8FA}.sino{display:flex;gap:4px}.sino .btn{min-height:34px;padding:4px 12px}.multi{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:14px}</style>');
+    '<style>.eiFs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px;margin-top:10px}.eiF{border:1px solid var(--ln);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}.eiF.si{border-color:var(--az);background:#F4F8FA}.sino{display:flex;gap:4px}.sino .btn{min-height:34px;padding:4px 12px}.multi{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:14px}</style>');
   const volver = () => pantallaErgoPuesto(p.ID_PUESTO);
   $('eiVolver').onclick = volver; $('eiCan').onclick = volver; ergFotosActivar('p1', v.FOTOS);
   const pintarF = f => { document.querySelectorAll('[data-fs="' + f + '"]').forEach(b => b.className = 'btn ' + ((b.dataset.v === 'Sí') === marcados[f] ? 'pri' : 'sec')); document.querySelector('[data-fac="' + f + '"]').classList.toggle('si', marcados[f]); document.querySelector('[data-fx="' + f + '"]').hidden = !marcados[f]; };
