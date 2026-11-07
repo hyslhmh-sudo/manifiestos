@@ -73,7 +73,7 @@ async function incNotasPintar(idCaja, cod, sitio, fresco) {
       $(idCaja + 'R' + i).innerHTML = '<br>✅ Borrador listo: <a class="link" href="' + esc(r.url) + '" target="_blank" rel="noopener">abrir la nota ↗</a>'; b.textContent = 'Nota generada'; INCNL = null; return ''; }
     catch (e) { b.disabled = false; b.textContent = txt0; toast(e.message || 'No se pudo generar la nota.'); return e.message || 'No se pudo generar la nota.'; } };
   caja.querySelectorAll('[data-incn]').forEach(b => b.onclick = ev => { ev.stopPropagation(); generar(+b.dataset.incn, b, null); });
-  const AG = ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio'], CL = ['ABC', 'BC', 'A', 'K', 'D'];
+  const AG = ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio', 'Encapsulador (baterías de litio)'], CL = ['ABC', 'BC', 'A', 'K', 'D'];
   caja.querySelectorAll('[data-incc]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const i = +b.dataset.incc, g = G[i];
     const campos = []; [1, 2, 3].forEach(n => campos.push(['C' + n, 'Extintores ' + n + ': cantidad'], ['A' + n, 'Agente', AG], ['T' + n, 'Clase', CL], ['K' + n, 'Kg']));
     campos.push(['CH', 'Chapas baliza: cantidad']);

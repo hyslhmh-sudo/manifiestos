@@ -20,11 +20,18 @@ const INCN = {
   PLAZO: '15',
   ESTS: ['HZT', 'HMH'],
   NOMBRES: { 'HMH|HMH': 'el Hospital María Humphreys', 'HZT|HZT Central': 'el Hospital Zonal Trelew «Dr. Adolfo Margara» (sede central)', 'HZT|Ambulancias': 'las ambulancias del Hospital Zonal Trelew' },
-  PIE: 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo, arts. 1, 4, 7 inc. g y 9 inc. g; Decreto N.º 351/79, Capítulo 18 «Protección contra incendios» y Anexo VII, punto 7.1 «Condiciones generales de extinción».'
+  PIE: 'Ley N.º 19.587 de Higiene y Seguridad en el Trabajo, arts. 1, 4, 7 inc. g y 9 inc. g; Decreto N.º 351/79, Capítulo 18 «Protección contra incendios» y Anexo VII, punto 7.1 «Condiciones generales de extinción»; Norma IRAM 3517-2, puntos 3.1.1, 3.3.3, 3.4.2 y Anexo B.'
 };
 
 // Texto modelo de Belén (07/11/2026). En los lugares que no son hospital no se habla de cirugía. «todas las personas» → «todos» (regla de lenguaje de Belén).
-function incnFundamento_(esHospital) {
+// IRAM 3517-2 «Extintores manuales y sobre ruedas. Dotación, control, mantenimiento y recarga» (revisada por Belén el 07/11/2026,
+// texto publicado en ecofield.net/Legales/Extintores/iram3517-2.htm): 3.1.1, 3.4.2, Anexo B (prueba hidráulica) y 3.3.3 (señalización IRAM 10005).
+function incnIram_(conPh, conChapa) {
+  return 'La Norma IRAM 3517-2 (Extintores manuales y sobre ruedas. Dotación, control, mantenimiento y recarga) establece que el propietario u ocupante es responsable de la dotación de los extintores, su control, mantenimiento y recarga (punto 3.1.1), y que los extintores se someten a mantenimiento por lo menos una vez al año (punto 3.4.2)' +
+    (conPh ? '; la prueba hidráulica de los extintores de polvo bajo presión y de dióxido de carbono se realiza cada cinco años (Anexo B)' : '') +
+    (conChapa ? '; y que los lugares donde se ubican deben estar señalizados según la Norma IRAM 10005 (punto 3.3.3), función que cumple la chapa baliza' : '') + '.';
+}
+function incnFundamento_(esHospital, conPh, conChapa) {
   return [
     'Los extintores representan la primera línea de defensa contra incendios y, en un entorno donde se manipulan sustancias inflamables, se utilizan equipos eléctricos' + (esHospital ? ' y se realiza cirugía' : ' y se atiende a pacientes') + ', su presencia es esencial para controlar y extinguir incendios de manera rápida y eficiente. La pronta respuesta ante un incendio puede marcar la diferencia entre la vida y la muerte, así como evitar daños materiales significativos. Además de su función en la extinción de incendios, los extintores desempeñan un papel crucial en la prevención de la propagación del fuego, lo que minimiza el riesgo de evacuaciones masivas y el caos en un entorno ' + (esHospital ? 'hospitalario' : 'de atención de la salud') + '. Asimismo, permiten que el personal de seguridad y el personal médico actúen de manera efectiva en situaciones de emergencia, lo que contribuye a mantener la calma y la organización en momentos críticos.',
     'La legislación y regulaciones en materia de seguridad laboral, como la Ley de Higiene y Seguridad en el Trabajo y el Decreto 351/79, establecen la obligación de contar con extintores adecuados y en buen estado como parte integral de las medidas de seguridad en el trabajo. Cumplir con estas normativas no solo es un requisito legal, sino también una responsabilidad moral y ética para preservar la seguridad y la salud de todos los que dependen del ' + (esHospital ? 'hospital' : 'establecimiento') + ', ya sean pacientes, empleados o visitantes. El mantenimiento adecuado y la disponibilidad inmediata de extintores son pilares fundamentales en la creación de un entorno ' + (esHospital ? 'hospitalario' : 'de atención de la salud') + ' seguro y eficaz en la atención de la salud.',
@@ -36,7 +43,8 @@ function incnFundamento_(esHospital) {
     { t: 'El Decreto Reglamentario N.º 351/79, Capítulo 18 - Protección contra incendios, establece:', b: true },
     { t: '7. Condiciones de extinción: las condiciones de extinción constituyen el conjunto de exigencias destinadas a suministrar los medios que faciliten la extinción de un incendio en sus distintas etapas.', i: true },
     { t: '7.1. Condiciones generales de extinción. 7.1.1. Todo edificio deberá poseer matafuegos con un potencial mínimo de extinción equivalente a 1 A y 5 BC, en cada piso, en lugares accesibles y prácticos, distribuidos a razón de 1 cada 200 m2 de superficie cubierta o fracción. La clase de estos elementos se corresponderá con la clase de fuego probable.', i: true },
-    { t: '7.1.2. La autoridad competente podrá exigir, cuando a su juicio la naturaleza del riesgo lo justifique, una mayor cantidad de matafuegos, así como también la ejecución de instalaciones fijas automáticas de extinción.', i: true }
+    { t: '7.1.2. La autoridad competente podrá exigir, cuando a su juicio la naturaleza del riesgo lo justifique, una mayor cantidad de matafuegos, así como también la ejecución de instalaciones fijas automáticas de extinción.', i: true },
+    incnIram_(conPh, conChapa)
   ];
 }
 
@@ -164,7 +172,7 @@ function incnNota_(x) {
   // Fundamento: texto modelo de Belén (reemplaza el párrafo guía del modelo) y la nota al pie con la norma
   const fu = parDe(body.findText('\\[Fundamento:'));
   if (fu) {
-    const F = incnFundamento_(esHosp); let idx = body.getChildIndex(fu);
+    const F = incnFundamento_(esHosp, nP > 0, !!(x.compra && parseInt(x.compra.chapas, 10))); let idx = body.getChildIndex(fu);
     F.forEach((p, i) => { const o = typeof p === 'string' ? { t: p } : p;
       if (i === 0) { const tx = fu.editAsText(), largo = fu.getText().replace(/\s+$/, '').length; tx.deleteText(0, Math.max(0, largo - 1)); tx.insertText(0, o.t); txt(fu); }
       else parrafo(++idx, o.t, o); });
