@@ -6869,17 +6869,33 @@ async function incNotasPintar(idCaja, cod, sitio, fresco) {
   if (!G.length) { caja.innerHTML = cod ? '' : '<h2>Notas por extintores vencidos</h2><div class="mu peq">No hay extintores con la carga ni la prueba hidráulica vencida.</div>'; return; }
   const pend = G.filter(g => g.sinNota).length;
   caja.innerHTML = '<h2>📄 Notas por extintores vencidos</h2><span class="mu peq">Una nota interna por lugar a la Dirección Asociada Administrativa, con la tabla de los vencidos (inventario, tipo, agente, peso y vencimiento). Queda como borrador, sin número.' + (pend ? ' <b>' + pend + (pend > 1 ? ' lugares' : ' lugar') + ' sin nota.</b>' : '') + '</span>' +
-    '<label class="f" style="margin:6px 0">N.º de nota (opcional)<input class="c" id="' + idCaja + 'Nro" placeholder="vacío = s/n" style="max-width:140px"></label>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0"><label class="f">N.º de nota (opcional)<input class="c" id="' + idCaja + 'Nro" placeholder="vacío = s/n" style="max-width:140px"></label>' +
+    '<label class="f">Notas anteriores (opcional)<input class="c" id="' + idCaja + 'Ant" placeholder="ej.: 150/2025, 98/2026" style="max-width:200px"></label></div>' +
+    '<span class="mu peq">Las notas internas anteriores sobre extintores que tienen número en el registro se agregan solas a «Antecedentes».</span>' +
     G.map((g, i) => '<div class="at" style="align-items:flex-start"><span class="tag ' + (g.sinNota ? 'er' : 'ok') + '">' + (g.sinNota ? 'Sin nota' : 'Con nota') + '</span><span style="flex:1"><b>' + esc(g.lugar) + (cod ? '' : ' · ' + esc(g.cod)) + '</b><small>' +
       g.ext.length + (g.ext.length > 1 ? ' extintores vencidos' : ' extintor vencido') + (g.sinNota && g.sinNota < g.ext.length ? ' · ' + g.sinNota + ' todavía sin nota' : '') +
       g.notas.map(n => ' · <a class="link" href="' + esc(n.url) + '" target="_blank" rel="noopener">Nota ' + esc(n.nro) + (n.fecha ? ' del ' + fechaTxt(n.fecha) : '') + ' ↗</a>').join('') + '</small><span id="' + idCaja + 'R' + i + '" class="peq"></span></span>' +
-      '<button class="btn ' + (g.sinNota ? 'pri' : 'sec') + '" data-incn="' + i + '" style="white-space:nowrap">' + (g.sinNota ? '📄 Generar nota' : 'Generar otra') + '</button></div>').join('');
-  caja.querySelectorAll('[data-incn]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const g = G[+b.dataset.incn], todos = !g.sinNota;
-    if (todos && !confirm('Ya hay una nota con estos extintores. ¿Generar otra nota igual?')) return;
-    b.disabled = true; b.textContent = 'Armando la nota…';
-    try { const r = await api('p_inc_nota', { cod: g.cod, lugar: g.lugar, todos: todos, nro: ($(idCaja + 'Nro') || {}).value || '' }, 180000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo generar la nota.');
-      $(idCaja + 'R' + b.dataset.incn).innerHTML = '<br>✅ Borrador listo: <a class="link" href="' + esc(r.url) + '" target="_blank" rel="noopener">abrir la nota ↗</a>'; b.textContent = 'Nota generada'; INCNL = null; }
-    catch (e) { b.disabled = false; b.textContent = todos ? 'Generar otra' : '📄 Generar nota'; toast(e.message || 'No se pudo generar la nota.'); } });
+      '<span style="display:flex;flex-direction:column;gap:4px"><button class="btn ' + (g.sinNota ? 'pri' : 'sec') + '" data-incn="' + i + '" style="white-space:nowrap">📄 ' + (g.sinNota ? 'Nota: recarga' : 'Otra nota: recarga') + '</button>' +
+      '<button class="btn sec" data-incc="' + i + '" style="white-space:nowrap">➕ Recarga + adquisición</button></span></div>').join('');
+  // Genera la nota: solo recarga, o recarga + adquisición de extintores (por tipo) y chapas baliza
+  const generar = async (i, b, compra) => { const g = G[i], todos = !g.sinNota;
+    if (todos && !confirm('Ya hay una nota con estos extintores. ¿Generar otra nota igual?')) return 'cancelado';
+    const txt0 = b.textContent; b.disabled = true; b.textContent = 'Armando la nota…';
+    try { const r = await api('p_inc_nota', { cod: g.cod, lugar: g.lugar, todos: todos, nro: ($(idCaja + 'Nro') || {}).value || '', antecedentes: ($(idCaja + 'Ant') || {}).value || '', compra: compra || null }, 180000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo generar la nota.');
+      $(idCaja + 'R' + i).innerHTML = '<br>✅ Borrador listo: <a class="link" href="' + esc(r.url) + '" target="_blank" rel="noopener">abrir la nota ↗</a>'; b.textContent = 'Nota generada'; INCNL = null; return ''; }
+    catch (e) { b.disabled = false; b.textContent = txt0; toast(e.message || 'No se pudo generar la nota.'); return e.message || 'No se pudo generar la nota.'; } };
+  caja.querySelectorAll('[data-incn]').forEach(b => b.onclick = ev => { ev.stopPropagation(); generar(+b.dataset.incn, b, null); });
+  const AG = ['PQS', 'CO2', 'HCFC 123', 'HCFC-236fa', 'Agua', 'AFFF (espuma)', 'Acetato de potasio'], CL = ['ABC', 'BC', 'A', 'K', 'D'];
+  caja.querySelectorAll('[data-incc]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const i = +b.dataset.incc, g = G[i];
+    const campos = []; [1, 2, 3].forEach(n => campos.push(['C' + n, 'Extintores ' + n + ': cantidad'], ['A' + n, 'Agente', AG], ['T' + n, 'Clase', CL], ['K' + n, 'Kg']));
+    campos.push(['CH', 'Chapas baliza: cantidad']);
+    const e0 = g.ext[0] || {}, val = { C1: '1', A1: AG.indexOf(e0.agente) >= 0 ? e0.agente : '', T1: CL.indexOf(e0.tipo) >= 0 ? e0.tipo : '', K1: e0.kg && e0.kg !== 's/d' ? e0.kg : '', CH: '' };
+    modal('Recarga + adquisición · ' + g.lugar, campos, val, async out => {
+      const compra = { extintores: [1, 2, 3].map(n => ({ cant: out['C' + n], agente: out['A' + n], clase: out['T' + n], kg: out['K' + n] })).filter(x => parseInt(x.cant, 10) > 0), chapas: out.CH };
+      if (!compra.extintores.length && !(parseInt(compra.chapas, 10) > 0)) return 'Poné al menos un extintor o una chapa baliza para comprar.';
+      if (compra.extintores.some(x => !x.agente || !x.kg)) return 'En cada extintor a comprar poné el agente y los kg.';
+      const r = await generar(i, b, compra); return r === 'cancelado' ? '' : r; },
+      '<p class="mu peq" style="margin:0">La nota pide la recarga de los ' + g.ext.length + ' vencidos y, además, la adquisición de lo que pongas acá (hasta 3 tipos de extintor y las chapas baliza). Ej.: 1 · HCFC 123 · ABC · 5.</p>'); });
 }
 
 // ------------------------------------------------------------------ Extintores de un establecimiento (o de un lugar)

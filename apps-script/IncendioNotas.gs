@@ -82,7 +82,30 @@ function incnGrupos_() {
 }
 function incnListar_() { try { return { ok: true, grupos: incnGrupos_() }; } catch (e) { return { ok: false, mensaje: String(e.message || e) }; } }
 
-// x: { cod, lugar, nro: '' (s/n) o número, todos: true = también los que ya están en otra nota }
+// Notas internas anteriores sobre extintores (con número, no anuladas) para «Antecedentes» (pedido de Belén 07/11/2026: «mencionar N.º de notas, no resumen»)
+function incnAntecedentes_() {
+  try {
+    const sh = SpreadsheetApp.openById(NTP_LIBRO_ID).getSheetByName('REGISTRO'), u = sh.getLastRow(); if (u < 4) return [];
+    const out = [];
+    sh.getRange(4, 1, u - 3, 21).getValues().forEach(r => {
+      const n = parseInt(String(r[4]), 10); if (!n || /anulad/i.test(String(r[16])) || !/^nota interna/i.test(String(r[1]))) return;
+      if (!/extint|matafueg|incendio/i.test([r[3], r[8], r[18]].join(' '))) return;
+      const a = r[0] instanceof Date ? r[0].getFullYear() : (String(r[0]).match(/(\d{4})/) || [])[1] || ''; const ref = n + (a ? '/' + a : '');
+      if (out.indexOf(ref) < 0) out.push(ref);
+    });
+    return out;
+  } catch (e) { return []; }
+}
+// Adquisición (opcional, botón «Recarga + adquisición»): x.compra = { extintores: [{ cant, agente, clase, kg }], chapas: N }
+function incnPedidosCompra_(c) {
+  const out = [], num = n => (['', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'][n] || String(n));
+  ((c && c.extintores) || []).forEach(e => { const n = parseInt(e.cant, 10) || 0; if (!n) return;
+    out.push('la adquisición de ' + num(n) + (n === 1 ? ' extintor nuevo' : ' extintores nuevos') + [e.agente ? ' tipo ' + e.agente : '', e.clase ? ' ' + e.clase : '', e.kg ? ' de ' + String(e.kg).replace('.', ',') + ' kg' : ''].join('')); });
+  const ch = parseInt(c && c.chapas, 10) || 0; if (ch) out.push('la adquisición de ' + num(ch) + (ch === 1 ? ' chapa baliza' : ' chapas baliza'));
+  return out;
+}
+
+// x: { cod, lugar, nro: '' (s/n) o número, todos: true = también los que ya están en otra nota, antecedentes: 'texto libre', compra: {…} }
 function incnNota_(x) {
   x = x || {};
   const g = incnGrupos_().find(z => z.cod === String(x.cod || '') && z.lugar === String(x.lugar || ''));
@@ -94,10 +117,12 @@ function incnNota_(x) {
   const hoy = new Date(), anio = hoy.getFullYear(), nro = parseInt(String(x.nro || ''), 10) || '', sinNro = !nro;
   const dest = dacDestinatario_(INCN.DESTINO, LS), f = s => s ? s.split('-').reverse().join('/') : 's/d';
   const nC = E.filter(e => e.carga).length, nP = E.filter(e => e.prueba).length, esHosp = /^edificio$/i.test(g.tipoSitio);
-  const asunto = (nC ? 'Recarga de extintores' : 'Prueba hidráulica de extintores') + (nC && nP ? ' y prueba hidráulica' : '') + ' · ' + g.lugar + (g.cod === 'HMH' ? '' : ' (' + g.cod + ')');
-  const antecedentes = 'Relevamiento de extintores del Servicio de Higiene y Seguridad Laboral al ' + Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy') + ' (Sistema HyS, módulo 7)';
+  const compra = incnPedidosCompra_(x.compra);
+  const asunto = (nC ? 'Recarga de extintores' : 'Prueba hidráulica de extintores') + (nC && nP ? ' y prueba hidráulica' : '') + (compra.length ? ' y adquisición de extintores' + (x.compra && parseInt(x.compra.chapas, 10) ? ' y chapas baliza' : '') : '') + ' · ' + g.lugar + (g.cod === 'HMH' ? '' : ' (' + g.cod + ')');
+  const ants = incnAntecedentes_().concat(String(x.antecedentes || '').split(/[,;]+/).map(t => t.trim()).filter(Boolean)).filter((v, i, a) => a.indexOf(v) === i);
+  const antecedentes = 'Relevamiento de extintores del Servicio de Higiene y Seguridad Laboral al ' + Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy') + (ants.length ? ' - Notas Internas N.º ' + ants.join(', ').replace(/, ([^,]*)$/, ' y $1') : '');
   const carpeta = dacCarpeta_(dacCarpeta_(DriveApp.getFolderById(DAC.CARPETA_NOTAS), String(anio)), INCN.TIPO_NOTA.replace(/\//g, '-'));
-  const nombre = 'Nota interna ' + (sinNro ? 's-n' : nro) + '-' + anio + ' · ' + INCN.DESTINO + ' · Extintores vencidos · ' + g.lugar;
+  const nombre = 'Nota interna ' + (sinNro ? 's-n' : nro) + '-' + anio + ' · ' + INCN.DESTINO + ' · Extintores vencidos' + (compra.length ? ' y adquisición' : '') + ' · ' + g.lugar;
   const copia = DriveApp.getFileById(tipo.modelo).makeCopy(nombre, carpeta), doc = DocumentApp.openById(copia.getId()), body = doc.getBody();
   const motivo = nC ? 'solicitar la revisión y la recarga de los extintores ' + incnDe_(g.nombre) + ' que tienen la carga vencida' + (nP ? ', y la prueba hidráulica de los que la tienen vencida' : '')
     : 'solicitar la revisión y la prueba hidráulica de los extintores ' + incnDe_(g.nombre) + ' que la tienen vencida';
@@ -107,6 +132,13 @@ function incnNota_(x) {
   [body, doc.getHeader(), doc.getFooter()].forEach(p => { if (p) Object.keys(mapa).forEach(k => p.replaceText('\\{\\{' + k + '\\}\\}', String(mapa[k]).replace(/\$/g, '\\$'))); });
   const txt = el => { try { el.editAsText().setItalic(false).setForegroundColor(INCN.COLOR); } catch (e) {} return el; };
   const parDe = r => { let e = r && r.getElement(); while (e && e.getType() !== DocumentApp.ElementType.PARAGRAPH && e.getType() !== DocumentApp.ElementType.LIST_ITEM) e = e.getParent(); return e; };
+  // Cambios de Belén al modelo (07/11/2026): sin «S / D», «Me dirijo a usted a fin de…» (sin «desde el Servicio…» ni su nota al pie),
+  // sin plazo técnico y sin el bloque de firma (nombre, servicio y correo).
+  const quitar = re => body.getParagraphs().filter(q => re.test(q.getText().trim())).forEach(q => { try { q.removeFromParent(); } catch (e) { q.setText(''); } });
+  quitar(/^S \/ D$/);
+  try { doc.getFootnotes().forEach(fn => { if (fn.getFootnoteContents().findText('905/2015')) fn.removeFromParent(); }); } catch (e) {}
+  const pm = parDe(body.findText('Me dirijo a usted'));
+  if (pm) { pm.setText('Me dirijo a usted a fin de ' + motivo + '.'); pm.editAsText().setFontFamily('Plus Jakarta Sans').setFontSize(10.5).setBold(false).setItalic(false).setForegroundColor(INCN.COLOR); }
   const parrafo = (idx, t, o) => { const p = body.insertParagraph(idx, t); p.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY).setLineSpacing(1.5).setSpacingAfter(o && o.i ? 3 : 6); txt(p);
     if (o && o.i) p.setIndentStart(18).setIndentFirstLine(0).editAsText().setItalic(true); if (o && o.b) p.editAsText().setBold(true); return p; };
 
@@ -140,13 +172,14 @@ function incnNota_(x) {
   try { doc.getFootnotes().forEach(fn => { const c = fn.getFootnoteContents(); if (c.findText('\\[Norma específica')) { c.replaceText('\\[Norma específica[^\\]]*\\]', INCN.PIE); txt(c); } }); } catch (e) {}
   // Lo que se solicita
   const li1 = parDe(body.findText('\\[Primera acción')), li2 = parDe(body.findText('\\[Segunda acción'));
-  const pedidos = [];
-  if (nC) pedidos.push('La revisión y la recarga ' + (nC === 1 ? 'del extintor detallado' : 'de los ' + nC + ' extintores detallados') + ' con la carga vencida.');
-  if (nP) pedidos.push('La prueba hidráulica ' + (nP === 1 ? 'del extintor' : 'de los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida.');
-  pedidos.push('Mientras dure la recarga, el reemplazo transitorio de los extintores retirados, para que ' + g.nombre + ' no quede sin protección contra incendios (Decreto N.º 351/79, Anexo VII, punto 7.1.1).');
+  let pedidos = [];   // en minúscula, como los corrigió Belén
+  if (nC) pedidos.push('la revisión y la recarga ' + (nC === 1 ? 'del extintor detallado' : 'de los ' + nC + ' extintores detallados') + ' con la carga vencida');
+  if (nP) pedidos.push('la prueba hidráulica ' + (nP === 1 ? 'del extintor' : 'de los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida');
+  pedidos = pedidos.concat(compra).map((p, i, a) => p + (i < a.length - 1 ? ';' : '.'));
   if (li1) txt(li1.setText(pedidos[0]));
-  if (li2) { txt(li2.setText(pedidos[1])); let ult = li2; pedidos.slice(2).forEach(p => { const li = body.insertListItem(body.getChildIndex(ult) + 1, li2.copy()); txt(li.setText(p)); ult = li; }); }
-  const pl = body.findText('\\[30 / 90 / 180\\]'); if (pl) { const t = pl.getElement().asText(), s0 = pl.getStartOffset(); t.deleteText(s0, pl.getEndOffsetInclusive()); t.insertText(s0, INCN.PLAZO); t.setItalic(s0, s0 + INCN.PLAZO.length - 1, false).setForegroundColor(s0, s0 + INCN.PLAZO.length - 1, INCN.COLOR); }
+  if (li2) { if (pedidos.length < 2) li2.removeFromParent(); else { txt(li2.setText(pedidos[1])); let ult = li2; pedidos.slice(2).forEach(p => { const li = body.insertListItem(body.getChildIndex(ult) + 1, li2.copy()); txt(li.setText(p)); ult = li; }); } }
+  const pl = parDe(body.findText('Plazo técnico sugerido')); if (pl) pl.removeFromParent();
+  quitar(/^(Belén Pellegrini|Servicio de Higiene y Seguridad Laboral|belenpellegrini\.hys@gmail\.com)$/);
   doc.saveAndClose();
   const url = copia.getUrl();
 
@@ -157,7 +190,7 @@ function incnNota_(x) {
   reg.getRange(fila, 1, 1, 4).setValues([[hoy, INCN.TIPO_NOTA, g.cod, INCN.MODULO]]);
   reg.getRange(fila, 9, 1, 4).setValues([[asunto, INCN.DESTINO + (dest.nombre && !/^s\/d/.test(dest.nombre) ? ' (' + dest.nombre + ')' : ''), antecedentes, 'Mesa de Entradas']]);
   reg.getRange(fila, 17).setValue('Borrador'); reg.getRange(fila, 19).setValue(INCN.MODULO); reg.getRange(fila, 20).setValue(url);
-  reg.getRange(fila, 21).setValue('Generado por el sistema (7 · Incendio › Extintores vencidos · ' + g.lugar + '). Extintores: ' + E.map(e => e.ID).join(', ') + '.' + (sinNro ? ' Sin número (s/n): lo asigna Mesa de Entradas.' : ''));
+  reg.getRange(fila, 21).setValue('Generado por el sistema (7 · Incendio › Extintores vencidos' + (compra.length ? ' + adquisición: ' + compra.join('; ') : '') + ' · ' + g.lugar + '). Extintores: ' + E.map(e => e.ID).join(', ') + '.' + (sinNro ? ' Sin número (s/n): lo asigna Mesa de Entradas.' : ''));
   SpreadsheetApp.flush();
   // N.º: la columna tiene validación (pide el «Próximo N.º»): sin número queda vacía y la completa Mesa de Entradas
   if (!sinNro) { try { reg.getRange(fila, 5).setValue(nro); SpreadsheetApp.flush(); } catch (e) { try { reg.getRange(fila, 5).clearContent(); } catch (x) {} } }
