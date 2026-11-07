@@ -1556,6 +1556,13 @@ function renderExtintores() {
   verTodos.innerHTML = "📋 Ver todos los extintores cargados";
   verTodos.onclick = () => { if (typeof extTablaAbrir === "function") extTablaAbrir("tabla"); };
   extintoresList.appendChild(verTodos);
+  if (typeof escanearExtintor === "function") {   // 📷 lector de las etiquetas QR (escanear.js, 07/11/2026)
+    const esc = document.createElement("button");
+    esc.type = "button"; esc.className = "ext-agregar"; esc.style.cssText = "margin:0 0 12px;border-style:solid;background:var(--mod-primary);color:#fff";
+    esc.innerHTML = "📷 Escanear el QR del extintor";
+    esc.onclick = () => escanearExtintor();
+    extintoresList.appendChild(esc);
+  }
   const mes = new Date().toISOString().slice(0, 7);
   tareaHys.lugares.forEach(l => {
     const lista = extintoresDe(l.id).slice().sort((a, b) => (Number(a.nro) || 9999) - (Number(b.nro) || 9999));
