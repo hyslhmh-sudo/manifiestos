@@ -173,6 +173,8 @@ const INC_AYUDA = [
   ['CONTROLES', 'Control mensual de cada extintor: en su lugar, acceso libre, manómetro, precinto y señalización, más 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Cada control actualiza el último control del extintor.'],
   ['Avisos', 'Carga vencida o que vence en 30 días; prueba hidráulica vencida; sin control en los últimos 3 meses (el control es mensual, pero la alarma aparece recién a los 3 meses). Se ven en el portal (10 · Incendio y «Requiere atención»).'],
   ['Notas por extintores vencidos', 'Portal › 7 · Incendio: el cuadro «📄 Notas por extintores vencidos» (en el tablero y en cada lugar) lista cada CAPS, hospital, dispositivo, ambulancias y, en Sede ex ADOS, cada dependencia con extintores con la carga o la prueba hidráulica vencida. Dos botones: «Nota: recarga» y «Recarga + adquisición» (pide además la compra de extintores nuevos por agente, clase y kg, hasta 3 tipos; por cada extintor nuevo, su chapa baliza y su soporte; y chapas baliza de reposición). Todas piden los equipos de reserva mientras dura la recarga (IRAM 3517-2, 3.4.3). La nota va a la Dirección Asociada Administrativa con el modelo de notas internas (sin S/D, sin plazo y sin bloque de firma, como la corrigió Belén el 07/11/2026), el texto de fundamento (Ley 19.587 y Dto. 351/79, Cap. 18), la tabla (N.º, inventario, tipo, agente, peso y vencimiento) y, en Antecedentes, el relevamiento y los N.º de las notas internas anteriores sobre extintores (se agregan solas; también se pueden escribir). Queda como borrador sin número (s/n) en DOCUMENTOS › REGISTRO, con los ID de los extintores en Observaciones. Sin GitHub: menú Sistema HyS › Incendio › Notas de extintores vencidos.'],
+  ['Etiquetas QR', 'Portal › 7 · Incendio › tablero › «🏷️ Etiquetas QR para imprimir» (o menú Sistema HyS › Incendio › Etiquetas QR para imprimir). Dos por extintor de 5 × 5 cm (cilindro y chapa baliza), 10 por hoja A4. HMH y CAPS de Trelew. Hoja ETIQUETAS_QR: lo que se imprimió; si cambia un dato impreso, la etiqueta queda pendiente (si cambia solo el texto de la ubicación, «Texto viejo»). El QR abre el control del extintor en «Mi establecimiento».'],
+  ['Revisión de ubicaciones HMH', 'Portal › 7 · Incendio › Revisión de ubicaciones HMH: foto de cada extintor, «Queda acá» o «Mover a…», lista para SOMI y «Ya lo movieron» (actualiza el extintor). Hoja REVISION_UBIC; sin GitHub, ESTADO con la lista y menú Sistema HyS › Incendio › HMH · Aplicar los marcados como «Movido».'],
   ['Fotos', 'Drive › SISTEMA HyS › MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS › Establecimientos › establecimiento › Controles › año-mes.'],
   ['Normativa', 'Ley 19.587; Dto. 351/79, capítulo 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL).']
 ];
@@ -679,6 +681,13 @@ function incPortal_(accion, x) {
     case 'p_inc_resumen': return conLock_(() => resumenFallasIncendio(true));   // botón «Mandar el correo ahora»
     case 'p_inc_notas': return incnListar_();   // lugares con extintores vencidos y sus notas (IncendioNotas.gs, 07/11/2026)
     case 'p_inc_nota': return conLock_(() => incnNota_(x));   // genera el borrador de la nota interna de un lugar
+    case 'p_inc_etiq': return incqListar_();   // etiquetas QR: estado por extintor (IncendioEtiquetas.gs, 07/11/2026)
+    case 'p_inc_etiq_hoja': return incqHojaHtml_(x.ids);   // hoja A4 para imprimir (10 etiquetas)
+    case 'p_inc_etiq_marcar': return conLock_(() => incqMarcar_(x.ids, x.accion, quien));   // «Ya las imprimí» · «No hace falta»
+    case 'p_inc_ubic': return incuListar_();   // revisión de ubicaciones del HMH (IncendioUbicaciones.gs, 07/11/2026)
+    case 'p_inc_ubic_guardar': return conLock_(() => incuGuardar_(x, quien));   // Queda acá · Mover a…
+    case 'p_inc_ubic_movido': return conLock_(() => incuMovido_(x.id, quien));   // Ya lo movieron: actualiza el extintor
+    case 'p_inc_ubic_lista': return incuListaHtml_();   // lista para SOMI o Mantenimiento
   }
   const r = typeof incSrvPortal_ === 'function' ? incSrvPortal_(accion, x, quien) : null; if (r) return r;
   return { ok: false, error: 'Acción desconocida.' };

@@ -883,6 +883,7 @@ function inicio() {
   if (!SES) return ingreso();
   if (!SES.persona) return quienCarga();
   limpiarCachesEst();
+  if (incQrPend()) return;   // se escaneó la etiqueta QR de un extintor
   VISTA = 'inicio'; MIV = null; vista('wide'); pintarCab(); pintarRed(); miAct();
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
@@ -2683,6 +2684,37 @@ async function desvSup(fresco) {
 }
 Object.assign(ACT, { desvSup: () => { F = null; desvSup(); }, desvSupAct: () => desvSup(true) });
 
+// QR de las etiquetas de extintores (07/11/2026, IncendioEtiquetas.gs): ?q=HZT-005 es el cilindro y ?q=HZT-005-C la chapa baliza.
+// Al escanear se abre «Mi establecimiento»; con la sesión iniciada en ese establecimiento, va directo al control de ese extintor.
+// Sin sesión, el código queda guardado 30 minutos y se abre al entrar.
+function incQrPend() {
+  const p = LS.get('qr', null); if (!p || !SES) return false;
+  const m = /^([A-Z]+)-(\d+)(-C)?$/.exec(p.q || '');
+  if (!m || Date.now() - (p.t || 0) > 30 * 60e3) { LS.del('qr'); return false; }
+  const est = m[1], id = 'EXT-' + m[1] + '-' + m[2];
+  if (SES.est !== est) {
+    VISTA = 'mi'; vista('form'); MIV = null;
+    $('app').innerHTML = miTit('Extintor escaneado', 'Código ' + esc(p.q)) + '<div class="notice">Este extintor es del establecimiento <b>' + esc(est) + '</b> y entraste a <b>' + esc(SES.nombre) + '</b>. Para abrirlo, cambiá de establecimiento: se abre solo al entrar.</div>' +
+      '<div class="menu"><button class="big main" data-act="cambiarEst"><b>Cambiar de establecimiento</b><span>Entrar con ' + esc(est) + '</span></button><button class="big" data-act="qrDescartar"><b>Seguir sin abrirlo</b><span>Ir al inicio</span></button></div>';
+    bar(null); return true;
+  }
+  LS.del('qr');
+  if (SES.modulos && SES.modulos.indexOf('Incendio') < 0) return false;
+  incQrAbrir(id, !!m[3]); return true;
+}
+async function incQrAbrir(id, chapa) {
+  VISTA = 'mi'; MIV = null; vista('form'); bar(null);
+  $('app').innerHTML = miTit('Extintor escaneado') + '<p class="mu">Buscando el extintor…</p>';
+  if (!INCX) {
+    if (!navigator.onLine) { $('app').innerHTML = miTit('Extintor escaneado') + '<p class="mu">Para abrir el extintor hace falta señal.</p>'; miVolver(); return; }
+    try { const r = await api('i_datos', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); INCX = r; }
+    catch (e) { $('app').innerHTML = miTit('Extintor escaneado') + '<div class="notice" style="background:var(--erbg);color:var(--er)">' + esc(e.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : e.message) + '</div>'; miVolver(); return; }
+  }
+  const e = INCX.extintores.find(x => x.ID === id);
+  if (!e) { $('app').innerHTML = miTit('Extintor escaneado') + '<div class="notice">No se encontró el extintor ' + esc(id) + '. Puede estar dado de baja: avisá a Higiene y Seguridad.</div>'; miVolver('incLista', 'Ver la lista de extintores'); return; }
+  INCSIT = e.SITIO; incCtl(id);
+}
+Object.assign(ACT, { qrDescartar: () => { LS.del('qr'); inicio(); } });
 Object.assign(ACT, { incLista: () => { F = null; incLista(); }, incAct: () => incLista(true), incSit: b => { INCSIT = b.dataset.arg; incLista(); }, incCtl: b => incCtl(b.dataset.arg), incVolver: () => { F = null; incLista(); }, incGuardar: () => incGuardar(), incTodoOk: () => incTodoOk(), incAlta: () => incAlta(), incAltaGuardar: () => incAltaGuardar(), incEdit: () => incEdit(), incCorr: b => { const e = INCX.extintores.find(x => x.ID === b.dataset.arg); if (!e) return; F = { _f: 'incCorr', _e: e }; incEdit(); }, incResolver: () => incResolver(), incResolverGuardar: () => incResolverGuardar(), incEditGuardar: () => incEditGuardar(), incEditVolver: () => { const e = F && F._e; if (e) incCtl(e.ID); else incLista(); } });
 
 function rxListo(aviso, volver) {
@@ -2778,6 +2810,7 @@ const AYG = [
   { m: 'Documentos', t: 'Formularios, contratos y documentos', p: ['«Formularios para imprimir» y «Contratos y documentación»: «Ver» o «Descargar».', '«Manuales, guías, POE, protocolos y PTS»: «Abrir» para leer; «+ Cargar un documento» para subir uno nuevo, solo en PDF, con nombre completo, tipo, código, versión, vigencia y vencimiento.', 'Si cargás uno con el mismo código o nombre, el anterior queda «Reemplazado».'] },
   { m: 'Notas', t: 'Notas recibidas y envío y respuesta', p: ['Inicio › Notas › «Registrar una nota recibida»: fecha, número, quién la manda, asunto, si requiere respuesta y el escaneo de todas las hojas.', '«Envío y respuesta»: tocá una nota para registrar cuándo se envió y qué respondieron. Revisala una vez por semana.', 'Se abre en otra pestaña con la cuenta de Google habilitada por Higiene y Seguridad.'] },
   { m: 'Incendio', t: 'Control de extintores', p: ['Inicio › Incendio › «Control de extintores»: elegí el lugar y tocá cada extintor. Contestá las 5 preguntas, marcá si tiene algún problema, revisá los vencimientos con la tarjeta (carga obligatoria; si no se lee, «No se lee») y sacá las 3 fotos: de lejos con el entorno, la tarjeta y el n.º de inventario.', 'Cada extintor tiene dos números distintos: el N.º de puesto, que es el del cartel donde va colgado (solo números, no se repite en el mismo edificio; cada edificio numera desde 1), y el N.º de inventario, que es el de la chapita patrimonial pegada en el extintor (si no tiene, s/d). No se cruzan: el sistema avisa si el puesto ya está usado, si el inventario se repite o si los dos quedaron iguales.', 'Si falta un extintor en la lista: «Agregar un extintor» (puesto, planta, sector, ubicación, tipo, agente, kilos, inventario, vencimiento y 3 fotos). Plantas: subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias. En el HSST y sus CAPS: planta baja o planta alta. En Sede ex ADOS el sector se elige de la lista de dependencias (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes). Las fechas van entre 2020 y 2040.', 'Si algún dato está mal: abrí el extintor y tocá «✏️ Corregir los datos de este extintor». Se puede cambiar todo: puesto, lugar, planta, sector, ubicación, tipo, agente, kilos, N.º de chapa baliza, inventario, vencimientos y las 3 fotos (las fotos, solo si hay que reemplazarlas). Higiene y Seguridad lo verifica y cada cambio queda anotado con tu nombre y la fecha. Si arriba de la lista aparece el cartel amarillo «Hay extintores para corregir», tocá cada uno: el sistema encontró un N.º de puesto que no es el del cartel (por ejemplo, el de la chapita) o una planta que no está en la lista. Al guardar la corrección, el cartel desaparece solo.', 'En el HMH, lo que tiene problemas va en un correo a SOMI y Mantenimiento a las 6 h. «El problema ya está resuelto» lo marcan SOMI, Melani o Higiene y Seguridad.'] },
+  { m: 'Incendio', t: 'Escanear la etiqueta QR de un extintor', p: ['Cada extintor tiene dos etiquetas con QR: una en el cilindro y otra en la chapa baliza. Escaneala con la cámara del celular y tocá el link: se abre «Mi establecimiento» directo en el control de ese extintor.', 'Si todavía no entraste, entrá con tu usuario y clave: el extintor se abre solo al entrar (hasta 30 minutos después de escanear). Si entraste con otro establecimiento, te avisa y te ofrece cambiar.', 'Si el extintor no aparece, puede estar dado de baja: avisá a Higiene y Seguridad.'] },
   { m: 'Incendio', t: 'Recorrida de seguridad y novedades', p: ['«Recorrida de seguridad»: escribí el sector y contestá los 12 puntos (salidas, puertas cortafuego, luces de emergencia, carteles, hidrantes, alarma, extintores, material acumulado, tableros, gases, fumar, planos). Cada «No» necesita una foto.', '«Informar una novedad»: principio de incendio, alarma activada, olor a quemado, uso de un extintor, salida obstruida u otra. Si se usó un extintor, elegilo: queda para recargar.', '«Novedades»: lo abierto y lo resuelto. Higiene y Seguridad recibe un correo con cada recorrida con problemas y cada novedad.'] },
   { m: 'Incendio', t: 'Entrar con la clave de una empresa (SOMI, MAREM)', p: ['Elegí el HMH, dejá el DNI vacío y escribí la clave de la empresa.', 'Cada vez que guardes algo, el sistema pide tu DNI: si estás en la base de personal, confirmás tus datos o los actualizás; si no, completás apellido, nombre y correo. Así cada registro queda a nombre de quien lo hizo.'] },
   { m: 'Plagas', t: 'Inspección del trabajo de los operarios (Higiene y Seguridad)', p: ['Solo con la clave de Higiene y Seguridad: Inicio › 3 · Plagas › «Inspección del trabajo de los operarios».', 'Elegí la visita de MIPyV que vas a controlar (o «Sin visita de MIPyV» si es otra empresa), completá sector y quién hizo el trabajo, y contestá cada punto con Sí, No o No aplica. Cada «No» lleva una nota; un «No» en un punto crítico deja la inspección «No conforme».', 'Queda en la BASE COMÚN (PLAGAS_REGISTROS y PLAGAS_INSP_RESP), se ve en el portal y en «Auditorías y diagnósticos por tema», y si elegiste una visita de MIPyV la marca como revisada. Los puntos se cambian en BASE COMÚN › PLAGAS_INSP_ITEMS.'] },
@@ -2985,6 +3018,7 @@ document.addEventListener('change', e => {
 });
 
 // ------------------------------------------------------------------ Arranque
+try { const q = new URLSearchParams(location.search).get('q'); if (q && /^[A-Za-z]{2,6}-\d{1,4}(-C)?$/i.test(q)) { LS.set('qr', { q: q.toUpperCase(), t: Date.now() }); history.replaceState(null, '', location.pathname + location.hash); } } catch (e) {}   // etiqueta QR de extintor
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 if (SES && SES.persona && !SES.persona.propia && SES.persona.funcion !== 'Referente de residuos' && !SES.persona.red && !cargaEn(personas().find(x => (x.dni && x.dni === SES.persona.dni) || x.nombre === SES.persona.nombre) || { ests: [] }, SES.est)) { SES.persona = null; LS.set('ses', SES); }
 // 29/10/2026: quien entra con DNI y clave personal (propia) no vuelve a «¿Quién sos?» al recargar la página
