@@ -25,6 +25,8 @@ function onOpen() {
       .addItem('Generar informe de diagnóstico', 'menuGenerarInforme')
       .addItem('Abrir los planes de acción', 'menuPlanes')
       .addItem('Abrir la página para referentes', 'menuReferentes'))
+    .addSubMenu(ui.createMenu('Incendio')
+      .addItem('Notas de extintores vencidos (una por lugar)', 'menuNotasExtintores'))
     .addSubMenu(ui.createMenu('Riesgos')
       .addItem('NTE · Nómina de trabajadores expuestos (en el portal)', 'menuNTE'))
     .addSubMenu(ui.createMenu('Siniestros')

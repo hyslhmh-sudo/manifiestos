@@ -6361,7 +6361,7 @@ async function gesReglas(fresco) {
 // Inventario de extintores de la red Trelew y del HSST, vencimientos (carga y prueba hidráulica) y control mensual con 3 fotos
 // obligatorias (panorámica con el entorno, marbete y N.º de inventario). Alarma: 3 meses sin control.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
-let INCT = null, INCD = {}, INCF = { sitio: '', ver: 'todos', q: '' };
+let INCT = null, INCD = {}, INCF = { sitio: '', ver: 'todos', q: '' }, INCNL = null;
 const INC_CARGA = { vencida: ['Vencida', 'er'], porvencer: ['Vence pronto', 'wa'], aldia: ['Al día', 'ok'], sd: ['Sin dato', 'gr'] };
 const INC_CTRL = { aldia: ['Al día', 'ok'], atrasado: ['Más de 3 meses', 'er'], sin: ['Sin control', 'gr'] };
 const incChip = (m, k, extra) => { const x = m[k] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (extra ? '<div class="mu peq">' + extra + '</div>' : ''); };
@@ -6396,11 +6396,37 @@ async function incTablero(fresco) {
     '<div class="tb2"><section class="card tabla" style="min-width:0"><div style="padding:14px 18px;border-bottom:1px solid var(--ln)"><h2>Por lugar</h2><span class="mu peq">Tocá un lugar para ver sus extintores y cargar el control.</span></div><div style="overflow-x:auto"><table><thead><tr><th>Lugar</th><th>Controlan</th><th>Extintores</th><th>Carga vencida</th><th>Con observación</th><th>Último control</th></tr></thead><tbody>' +
     Object.keys(grupos).sort((a, b) => a === 'HMH' ? -1 : b === 'HMH' ? 1 : a.localeCompare(b)).map(c => '<tr><td colspan="6" style="background:var(--pa1);font-weight:700;color:var(--az)">' + esc(incNom(c)) + '</td></tr>' + grupos[c].map(fila).join('')).join('') +
     '</tbody></table></div></section>' +
-    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><h2>Requiere atención</h2>' + (at.length ? at.slice(0, 20).join('') : '<div class="mu">Nada pendiente.</div>') +
+    '<section class="card" style="display:flex;flex-direction:column;gap:6px;min-width:0"><div id="icNotas"><span class="mu peq">Buscando extintores vencidos para las notas…</span></div><h2 style="margin-top:10px">Requiere atención</h2>' + (at.length ? at.slice(0, 20).join('') : '<div class="mu">Nada pendiente.</div>') +
     '<p class="mu peq" style="margin-top:8px">Extintores con problemas: un solo correo por día (6 h) con todos, a SOMI y Mantenimiento, y cada 3 días mientras queden sin resolver. <button class="link" id="icResumen">Mandar el correo ahora</button></p><p class="mu peq">Los vencimientos (carga y prueba hidráulica) avisan 30 días antes. El control es mensual; la alarma por falta de control aparece a los 3 meses. Los extintores nunca controlados avisan desde el 14/01/2027 (3 meses después de empezar el módulo).</p></section></div>');
   $('icAct').onclick = () => incTablero(true);
   $('icResumen').onclick = async () => { if (!confirm('¿Mandar ahora el correo con todos los extintores con problemas abiertos?')) return; const r = await api('p_inc_resumen', {}, 180000); toast(r.ok ? (r.enviados && r.enviados.length ? r.enviados.join(' · ') : 'No hay extintores con problemas para avisar.') : (r.mensaje || 'No se pudo mandar.')); };
   document.querySelectorAll('tr.cl[data-h]').forEach(tr => tr.onclick = () => location.hash = tr.dataset.h);
+  incNotasPintar('icNotas', null, null, !!fresco);
+}
+
+// ------------------------------------------------------------------ Notas internas por extintores vencidos (IncendioNotas.gs, 07/11/2026)
+// Una nota por lugar (CAPS, hospital, dispositivo, ambulancias; en Sede ex ADOS, por dependencia) a la Dirección Asociada Administrativa,
+// con la tabla de los extintores con la carga o la prueba hidráulica vencida. Queda como borrador (s/n) en DOCUMENTOS › REGISTRO.
+async function incNotasPintar(idCaja, cod, sitio, fresco) {
+  const caja = $(idCaja); if (!caja) return;
+  if (!INCNL || fresco) { try { INCNL = await api('p_inc_notas', {}, 120000); } catch (e) { caja.innerHTML = ''; return; } }
+  if (!$(idCaja)) return;
+  if (!INCNL.ok) { caja.innerHTML = '<span class="mu peq">' + esc(INCNL.mensaje || 'No se pudieron leer los extintores vencidos.') + '</span>'; return; }
+  const G = INCNL.grupos.filter(g => (!cod || g.cod === cod) && (!sitio || g.sitio === sitio));
+  if (!G.length) { caja.innerHTML = cod ? '' : '<h2>Notas por extintores vencidos</h2><div class="mu peq">No hay extintores con la carga ni la prueba hidráulica vencida.</div>'; return; }
+  const pend = G.filter(g => g.sinNota).length;
+  caja.innerHTML = '<h2>📄 Notas por extintores vencidos</h2><span class="mu peq">Una nota interna por lugar a la Dirección Asociada Administrativa, con la tabla de los vencidos (inventario, tipo, agente, peso y vencimiento). Queda como borrador, sin número.' + (pend ? ' <b>' + pend + (pend > 1 ? ' lugares' : ' lugar') + ' sin nota.</b>' : '') + '</span>' +
+    '<label class="f" style="margin:6px 0">N.º de nota (opcional)<input class="c" id="' + idCaja + 'Nro" placeholder="vacío = s/n" style="max-width:140px"></label>' +
+    G.map((g, i) => '<div class="at" style="align-items:flex-start"><span class="tag ' + (g.sinNota ? 'er' : 'ok') + '">' + (g.sinNota ? 'Sin nota' : 'Con nota') + '</span><span style="flex:1"><b>' + esc(g.lugar) + (cod ? '' : ' · ' + esc(g.cod)) + '</b><small>' +
+      g.ext.length + (g.ext.length > 1 ? ' extintores vencidos' : ' extintor vencido') + (g.sinNota && g.sinNota < g.ext.length ? ' · ' + g.sinNota + ' todavía sin nota' : '') +
+      g.notas.map(n => ' · <a class="link" href="' + esc(n.url) + '" target="_blank" rel="noopener">Nota ' + esc(n.nro) + (n.fecha ? ' del ' + fechaTxt(n.fecha) : '') + ' ↗</a>').join('') + '</small><span id="' + idCaja + 'R' + i + '" class="peq"></span></span>' +
+      '<button class="btn ' + (g.sinNota ? 'pri' : 'sec') + '" data-incn="' + i + '" style="white-space:nowrap">' + (g.sinNota ? '📄 Generar nota' : 'Generar otra') + '</button></div>').join('');
+  caja.querySelectorAll('[data-incn]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const g = G[+b.dataset.incn], todos = !g.sinNota;
+    if (todos && !confirm('Ya hay una nota con estos extintores. ¿Generar otra nota igual?')) return;
+    b.disabled = true; b.textContent = 'Armando la nota…';
+    try { const r = await api('p_inc_nota', { cod: g.cod, lugar: g.lugar, todos: todos, nro: ($(idCaja + 'Nro') || {}).value || '' }, 180000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo generar la nota.');
+      $(idCaja + 'R' + b.dataset.incn).innerHTML = '<br>✅ Borrador listo: <a class="link" href="' + esc(r.url) + '" target="_blank" rel="noopener">abrir la nota ↗</a>'; b.textContent = 'Nota generada'; INCNL = null; }
+    catch (e) { b.disabled = false; b.textContent = todos ? 'Generar otra' : '📄 Generar nota'; toast(e.message || 'No se pudo generar la nota.'); } });
 }
 
 // ------------------------------------------------------------------ Extintores de un establecimiento (o de un lugar)
@@ -6436,6 +6462,7 @@ async function incEst(a, fresco) {
     '<label class="f">Buscar<input class="c" id="icQ" value="' + esc(INCF.q) + '" placeholder="N.º, inventario, sector"></label>' +
     (pend.length ? '<button class="btn pri" id="icVerTodo">Verificar los ' + pend.length + ' pendientes</button>' : '') + '<button class="btn sec" id="icNuevo">Agregar extintor</button><button class="btn sec" id="icAct">Actualizar</button></div></div>' +
     (pend.length ? '<div class="aviso">' + pend.length + (pend.length > 1 ? ' extintores fueron agregados o cambiados' : ' extintor fue agregado o cambiado') + ' desde la aplicación o MIPyV (nombre, lugar, planta, sector o ubicación). Revisalos: «Verificar» si está bien, o «Editar» para corregir (al guardar desde acá queda verificado).</div>' : '') +
+    '<section class="card" id="icNotasEst" style="display:none"></section>' +
     '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Extintor</th><th>Ubicación</th><th>Tipo</th><th>N.º inventario</th><th>Carga</th><th>Prueba hidráulica</th><th>Estado</th><th>Último control</th><th>Observaciones</th><th></th></tr></thead><tbody>' +
     (L.length ? L.map(fila).join('') : '<tr><td colspan="10" class="mu">' + (D.extintores.length ? 'Ningún extintor coincide con el filtro.' : 'Todavía no hay extintores cargados en este lugar. Usá «Agregar extintor».') + '</td></tr>') + '</tbody></table></div></section>' +
     '<p class="mu peq">Control: 5 verificaciones y 3 fotos obligatorias (panorámica con el entorno, marbete y N.º de inventario). Todo se puede corregir también en la planilla del módulo.</p>');
@@ -6455,8 +6482,9 @@ async function incEst(a, fresco) {
   document.querySelectorAll('[data-verif]').forEach(b => b.onclick = () => { b.disabled = true; verificar([b.dataset.verif]); });
   document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => incControlForm(D, D.extintores[+b.dataset.ctl]));
   document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => incExtForm(D, D.extintores[+b.dataset.edit]));
+  if (D.extintores.some(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (e.est.carga === 'vencida' || e.est.prueba === 'vencida'))) { $('icNotasEst').style.display = ''; incNotasPintar('icNotasEst', cod, INCF.sitio || null, !!fresco); }
 }
-function incRecargar(D, msg) { if (msg) toast(msg); INCT = null; TB = null; delete INCD[D.cod]; incEst(encodeURIComponent(D.cod), true); }
+function incRecargar(D, msg) { if (msg) toast(msg); INCT = null; TB = null; INCNL = null; delete INCD[D.cod]; incEst(encodeURIComponent(D.cod), true); }
 
 // ---------- Alta o corrección de un extintor. En el alta todo es obligatorio, también las 3 fotos (pedido de Belén 14/10/2026).
 function incExtForm(D, e) {
