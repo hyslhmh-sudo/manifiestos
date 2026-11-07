@@ -84,7 +84,7 @@ function anotarTodo_(ss, tipo, data, links) {
 function completarTodoLoCargado() {
   const ss = SpreadsheetApp.getActiveSpreadsheet(), filas = [];
   const leer = (nombre) => { const sh = ss.getSheetByName(nombre); if (!sh || sh.getLastRow() < 2) return [];
-    const v = sh.getDataRange().getValues(), H = v[0].map(h => String(h).trim()); return v.slice(1).filter(r => r.some(c => c !== "")).map(r => { const o = {}; H.forEach((h, i) => { if (h) o[h] = r[i]; }); return o; }); };
+    const v = sh.getDataRange().getValues(), H = v[0].map(h => String(h).trim()); return v.slice(1).filter(r => String(r[0]).trim() !== "").map(r => { const o = {}; H.forEach((h, i) => { if (h) o[h] = r[i]; }); return o; }); };
   const fotos = (o) => String(o.foto_url || "").split(/[\s,|]+/).filter(u => /^https?:/.test(u));
   leer(SHEET_VISITAS).forEach(o => filas.push(todoFila_("visita", o, fotos(o))));
   leer(SHEET_TRABAJOS).forEach(o => { filas.push(todoFila_("trabajo_nuevo", Object.assign({}, o, { fecha: o.fecha_inicio, operario: o.operario_inicio }), []));
