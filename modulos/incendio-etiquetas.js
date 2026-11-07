@@ -12,7 +12,7 @@ async function incqPintar(idCaja, fresco) {
   if (!INCQT || fresco) { caja.innerHTML = '<span class="mu peq">Buscando etiquetas para imprimir…</span>'; try { INCQT = await api('p_inc_etiq', {}, 120000); } catch (e) { caja.innerHTML = ''; return; } }
   if (!$(idCaja)) return;
   if (!INCQT.ok) { caja.innerHTML = '<span class="mu peq">' + esc(INCQT.mensaje || INCQT.error || 'No se pudieron leer las etiquetas.') + '</span>'; return; }
-  const LL = INCQT.lugares.slice().sort((a, b) => (a.cod === 'HMH') - (b.cod === 'HMH') || a.lugar.localeCompare(b.lugar));
+  const LL = INCQT.lugares.filter(L => L.total).sort((a, b) => (a.cod === 'HMH') - (b.cod === 'HMH') || a.lugar.localeCompare(b.lugar));
   const pendTot = LL.reduce((s, L) => s + L.pend, 0);
   if (!INCQS || !LL.some(L => incqClave(L) === INCQS)) { const p = LL.find(L => L.pend && L.cod !== 'HMH') || LL.find(L => L.total) || LL[0]; INCQS = p ? incqClave(p) : ''; INCQSEL = null; }
   const L = LL.find(x => incqClave(x) === INCQS), E = L ? INCQT.ext.filter(e => e.EST === L.cod && e.SITIO === L.sitio) : [];
@@ -20,7 +20,7 @@ async function incqPintar(idCaja, fresco) {
   const chip = e => { const x = INCQ_EST[e.estado] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + ' mini">' + x[0] + '</span>'; };
   const sub = e => [e.estado === 'aldia' || e.estado === 'texto' ? (e.impresa ? 'Impresa el ' + fechaTxt(e.impresa) : '') : '', e.motivo, e.nota].filter(Boolean).join(' · ');
   caja.innerHTML = '<h2>🏷️ Etiquetas QR para imprimir</h2>' +
-    '<span class="mu peq">Dos por extintor (una para el cilindro y otra para la chapa baliza), de 5 × 5 cm, 10 por hoja A4. HMH y CAPS de Trelew. ' +
+    '<span class="mu peq">Dos por extintor (una para el cilindro y otra para la chapa baliza), de 5 × 5 cm, 10 por hoja A4. HMH y CAPS de Trelew (aparecen los lugares que tienen extintores cargados). ' +
     (pendTot ? '<b>' + pendTot + (pendTot > 1 ? ' extintores pendientes' : ' extintor pendiente') + '</b> (nuevos o con datos cambiados).' : 'No hay etiquetas pendientes.') + ' ' +
     '<a class="link" href="' + esc(INCQT.libro) + '" target="_blank" rel="noopener">Planilla ETIQUETAS_QR ↗</a></span>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:10px 0"><label class="f">Lugar<select class="c" id="iqLugar">' +
