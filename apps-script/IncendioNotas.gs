@@ -118,6 +118,15 @@ function incnPedidosCompra_(c) {
   return out;
 }
 
+// Filas del cuadro de adquisición: extintores nuevos por tipo, chapas baliza (una por extintor nuevo + reposición) y soportes (uno por extintor nuevo)
+function incnCompraFilas_(c) {
+  const ext = ((c && c.extintores) || []).filter(e => parseInt(e.cant, 10) > 0), nuevos = ext.reduce((t, e) => t + parseInt(e.cant, 10), 0), rep = parseInt(c && c.chapas, 10) || 0;
+  const F = ext.map(e => [String(parseInt(e.cant, 10)), 'Extintor nuevo', e.agente || 's/d', e.clase || 's/d', e.kg ? String(e.kg).replace('.', ',') : 's/d']);
+  if (nuevos + rep) F.push([String(nuevos + rep), 'Chapa baliza' + (nuevos && rep ? ' (' + nuevos + ' para los extintores nuevos y ' + rep + ' de reposición)' : nuevos ? ' (para los extintores nuevos)' : ' (reposición)'), '—', '—', '—']);
+  if (nuevos) F.push([String(nuevos), 'Soporte para extintor (para los extintores nuevos)', '—', '—', '—']);
+  return F;
+}
+
 // x: { cod, lugar, nro: '' (s/n) o número, todos: true = también los que ya están en otra nota, antecedentes: 'texto libre', compra: {…} }
 function incnNota_(x) {
   x = x || {};
@@ -165,14 +174,21 @@ function incnNota_(x) {
     const filas = [cab].concat(E.map((e, i) => [String(i + 1), e.inv, e.tipo, e.agente, String(e.kg).replace('.', ','), (e.vto ? f(e.vto) : 's/d') + (e.carga ? ' (vencida)' : '')]
       .concat(conPh ? [(e.ph ? f(e.ph) : 's/d') + (e.prueba ? ' (vencida)' : '')] : [])));
     filas.push(['Total: ' + E.length + (E.length === 1 ? ' extintor' : ' extintores')].concat(cab.slice(1).map(() => '')));
-    const t = body.insertTable(body.getChildIndex(h) + 1, filas);
-    t.setBorderColor('#B7C4CB').setBorderWidth(0.5);
-    for (let r = 0; r < t.getNumRows(); r++) { const row = t.getRow(r);
-      for (let c = 0; c < row.getNumCells(); c++) { const cell = row.getCell(c); cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
-        const tx = cell.editAsText(); tx.setFontFamily('Plus Jakarta Sans').setFontSize(8.5).setItalic(false).setForegroundColor(r === 0 ? '#FFFFFF' : INCN.COLOR).setBold(r === 0 || r === filas.length - 1);
-        if (r === 0) cell.setBackgroundColor(INCN.AZUL); else if (r === filas.length - 1) cell.setBackgroundColor('#E8EEF1');
-        try { cell.getChild(0).asParagraph().setAlignment(c === 0 && r < filas.length - 1 ? DocumentApp.HorizontalAlignment.CENTER : DocumentApp.HorizontalAlignment.LEFT).setLineSpacing(1).setSpacingAfter(0); } catch (e) {} } }
-    const tras = body.insertParagraph(body.getChildIndex(t) + 1, ''); tras.setSpacingAfter(4);
+    const tabla = (idx, F, conTotal) => { const t = body.insertTable(idx, F); t.setBorderColor('#B7C4CB').setBorderWidth(0.5);
+      for (let r = 0; r < t.getNumRows(); r++) { const row = t.getRow(r), tot = conTotal && r === F.length - 1;
+        for (let c = 0; c < row.getNumCells(); c++) { const cell = row.getCell(c); cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
+          const tx = cell.editAsText(); tx.setFontFamily('Plus Jakarta Sans').setFontSize(8.5).setItalic(false).setForegroundColor(r === 0 ? '#FFFFFF' : INCN.COLOR).setBold(r === 0 || tot);
+          if (r === 0) cell.setBackgroundColor(INCN.AZUL); else if (tot) cell.setBackgroundColor('#E8EEF1');
+          try { cell.getChild(0).asParagraph().setAlignment(c === 0 && !tot ? DocumentApp.HorizontalAlignment.CENTER : DocumentApp.HorizontalAlignment.LEFT).setLineSpacing(1).setSpacingAfter(0); } catch (e) {} } }
+      const tras = body.insertParagraph(body.getChildIndex(t) + 1, ''); tras.setSpacingAfter(4); return tras; };
+    // Cuadro 1: recarga (los vencidos)
+    let ult = tabla(body.getChildIndex(h) + 1, filas, true);
+    // Cuadro 2, abajo: adquisición (pedido de Belén 07/11/2026: «recarga es un cuadro, adquisición otro que se debe ubicar abajo»)
+    const CF = incnCompraFilas_(x.compra);
+    if (CF.length) {
+      const pa = parrafo(body.getChildIndex(ult) + 1, 'Además, para completar la dotación, se requiere la adquisición de los siguientes elementos:');
+      tabla(body.getChildIndex(pa) + 1, [['Cantidad', 'Elemento', 'Agente extintor', 'Clase', 'Peso (kg)']].concat(CF), false);
+    }
   }
   // Fundamento: texto modelo de Belén (reemplaza el párrafo guía del modelo) y la nota al pie con la norma
   const fu = parDe(body.findText('\\[Fundamento:'));
@@ -190,7 +206,8 @@ function incnNota_(x) {
   if (nP) pedidos.push('la prueba hidráulica ' + (nP === 1 ? 'del extintor' : 'de los ' + nP + ' extintores') + ' que la ' + (nP === 1 ? 'tiene' : 'tienen') + ' vencida');
   // Reemplazo mientras se recargan: Belén lo pidió de nuevo, citando la norma (07/11/2026)
   if (nC || nP) pedidos.push('mientras dure la recarga, la colocación de equipos de reserva de la misma clasificación y, por lo menos, igual potencial extintor, para que ' + g.nombre + ' no quede sin protección contra incendios (Norma IRAM 3517-2, punto 3.4.3)');
-  pedidos = pedidos.concat(compra).map((p, i, a) => p + (i < a.length - 1 ? ';' : '.'));
+  if (compra.length) pedidos.push('la adquisición de los elementos detallados en el segundo cuadro');
+  pedidos = pedidos.map((p, i, a) => p + (i < a.length - 1 ? ';' : '.'));
   if (li1) txt(li1.setText(pedidos[0]));
   if (li2) { if (pedidos.length < 2) li2.removeFromParent(); else { txt(li2.setText(pedidos[1])); let ult = li2; pedidos.slice(2).forEach(p => { const li = body.insertListItem(body.getChildIndex(ult) + 1, li2.copy()); txt(li.setText(p)); ult = li; }); } }
   const pl = parDe(body.findText('Plazo técnico sugerido')); if (pl) pl.removeFromParent();
