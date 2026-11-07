@@ -34,6 +34,7 @@ function todoHoja_(ss) {
 }
 
 const todoTxt_ = (v) => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+const todoHora_ = (v) => v instanceof Date ? String(v.getHours()).padStart(2, "0") + ":" + String(v.getMinutes()).padStart(2, "0") : todoTxt_(v);   // las horas de la hoja vienen como fecha de 1899
 function todoFecha_(data) {
   const F = todoTxt_(data.FECHA || data.fecha_relevamiento);
   const f = data.fecha || data.fecha_inicio || data.fecha_fin || data.cargado;
@@ -65,7 +66,7 @@ function todoFila_(tipo, data, links) {
   else if (tipo === "cierre_caso") res = [t(d.tipo_plaga), t(d.resultado_cierre), t(d.motivo), t(d.detalle), t(d.protocolo) && "Caso " + t(d.protocolo)].filter(Boolean).join(" · ");
   else if (tipo === "solicitud") res = [t(d.tipo), t(d.que) && t(d.que) + (t(d.cantidad) ? " (" + t(d.cantidad) + ")" : ""), t(d.detalle)].filter(Boolean).join(" · ");
   const id = t(d.id_visita || d.id_avance || d.id_trabajo || d.id_tarea || d.id_hallazgo || d.id_relev || d.id_alta || d.id_insp || d.id_limpieza || d.id_edit || d.id_cierre || d.id_solicitud);
-  return [f, Utilities.formatDate(f, ZONA_HORARIA, "dd/MM/yyyy"), [t(d.hora_inicio), t(d.hora_fin)].filter(Boolean).join(" a "), t(d.operario || d.operario_inicio), t(d.operario_acompanante),
+  return [f, Utilities.formatDate(f, ZONA_HORARIA, "dd/MM/yyyy"), [todoHora_(d.hora_inicio), todoHora_(d.hora_fin)].filter(Boolean).join(" a "), t(d.operario || d.operario_inicio), t(d.operario_acompanante),
     TODO_QUE[tipo] || tipo, lugar, todoCorto_(res, 600), (links || []).join(SEPARADOR_LINKS), id, tipo, new Date()];
 }
 
