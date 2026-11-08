@@ -1,4 +1,4 @@
-// Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026; 15.24 · 08/11/2026: responsable obligatorio) · servidor: Gestion.gs (acciones p_ges_…)
+// Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026; 15.24 · 08/11/2026: responsable obligatorio; 15.25: 12 · Ergonomía) · servidor: Gestion.gs (acciones p_ges_…)
 // Plan de acción (antes «Plan de acción único»; nombre de Belén, 08/11/2026), hallazgos, bandeja de sugeridos, necesidades de inversión y alcance (niveles A y B).
 // Los datos viven en la BASE COMÚN (GES_ALCANCE, GES_EMPRESAS, GES_HALLAZGOS, GES_ACCIONES).
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
@@ -32,7 +32,7 @@ async function gestion(fresco) {
   return gesPlan();
 }
 async function gesTraer() {
-  cargando('#ges', 'Trayendo de los módulos (plan de residuos, infraestructura, agua y plagas)…');
+  cargando('#ges', 'Trayendo de los módulos (plan de residuos, infraestructura, agua, plagas y ergonomía)…');
   let r; try { r = await api('p_ges_traer', { fresco: true }, 300000); } catch (e) { return; }
   if (!r.ok) { toast(r.mensaje || 'No se pudo traer.'); return gestion(true); }
   toast('Nuevos: ' + r.hallazgos + ' hallazgo(s) y ' + r.acciones + ' acción(es)' + (r.sugeridos ? ' · ' + r.sugeridos + ' a la bandeja' : '') + (r.cerradas ? ' · ' + r.cerradas + ' cerrada(s) en su módulo' : '') + (r.errores && r.errores.length ? ' · ⚠ ' + r.errores.join(' · ') : ''));
@@ -257,7 +257,7 @@ async function gesElevar(cod) {
 // ------------------------------------------------------------------ Acciones abiertas en cada módulo y en la ficha (14.63)
 // Al abrir el tablero de un módulo o la ficha de un establecimiento, se agrega abajo un recuadro con sus acciones del plan único.
 const GES_MOD_RUTA = { '#res': '1 · Residuos', '#agua': '2 · Agua', '#plagas': '3 · Plagas', '#coc': '4 · Cocinas hospitalarias', '#rad': '5 · Radiaciones ionizantes', '#radest': '5 · Radiaciones ionizantes',
-  '#m8': '6 · Servicios e infraestructura', '#inc': '7 · Protección contra incendios', '#sinest': '8 · Personal y RAR', '#cap': '9 · Capacitaciones', '#docest': '10 · Documentos', '#ficha': '' };
+  '#m8': '6 · Servicios e infraestructura', '#inc': '7 · Protección contra incendios', '#sinest': '8 · Personal y RAR', '#cap': '9 · Capacitaciones', '#docest': '10 · Documentos', '#ergo': '12 · Ergonomía', '#ergomed': '12 · Ergonomía', '#ficha': '' };   // 12 desde el 08/11/2026
 let GES_T = 0;
 async function gesInyectar(activo) {
   const base = String(activo || '').split('/')[0]; if (!(base in GES_MOD_RUTA)) return;
