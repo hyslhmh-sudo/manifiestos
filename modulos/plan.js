@@ -11,7 +11,7 @@ async function planLista(yaPedido) {
   if (!R) { cargando('#plan', 'Leyendo los planes de acción…'); try { const x = await pedir(); if (!x) return; R = x.r; } catch (e) { return; } }
   else if (!yaPedido) pedir().then(x => { if (x && x.cambio && location.hash.split('/')[0] === '#plan' && !location.hash.split('/')[1] && $('ov').hidden) planLista(true); }).catch(() => {});
   const L = R.informes || [];
-  marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos · Agua · Plagas · Cocinas</span><h1>Plan de acción</h1><span class="mu">Un plan por informe emitido (diagnósticos y auditorías de residuos, diagnósticos de agua y de plagas, relevamientos de cocina). Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
+  marco('#plan', '<div class="cab"><div><span class="mu peq">Residuos · Agua · Plagas · Cocinas</span><h1>Recomendaciones del informe</h1><span class="mu">El seguimiento de todo junto está en <a class="link" href="#ges">11 · Gestión › Plan de acción</a>. Acá, una lista por informe emitido (diagnósticos y auditorías de residuos, diagnósticos de agua y de plagas, relevamientos de cocina). Cargá la fecha de envío, la respuesta de la Dirección y el avance de cada recomendación.</span></div></div>' +
     '<section class="card tabla">' + (L.length ? '<table><thead><tr><th>Establecimiento</th><th>Informe</th><th>Enviado</th><th>Recom.</th><th>Cumplidas</th><th>En curso</th><th>Vencidas</th><th>Sin respuesta</th><th></th></tr></thead><tbody>' +
       L.map(i => '<tr><td><b>' + esc(i.nombre) + '</b></td><td class="peq">' + esc(i.codigo) + '</td><td>' + (i.enviado ? plF(i.enviado) : '<span class="chip gr">Sin enviar</span>') + '</td><td>' + i.total + '</td><td>' + (i.c['Cumplida'] || 0) + '</td><td>' + (i.c['En curso'] || 0) + '</td><td>' + (i.c['Vencida'] ? '<b style="color:#9B2C22">' + i.c['Vencida'] + '</b>' : 0) + '</td><td>' + (i.c['Sin respuesta'] || 0) + '</td><td><a class="link" href="#plan/' + encodeURIComponent(i.codigo) + '">Abrir</a></td></tr>').join('') + '</tbody></table>'
       : '<div class="vacio">Todavía no hay informes emitidos. El plan se crea solo al generar el informe de un diagnóstico cerrado.</div>') + '</section>');
@@ -27,7 +27,7 @@ function planPintar() {
   const R = PL, F = R.filas, c = {}; F.forEach(o => c[o.EFECTIVO] = (c[o.EFECTIVO] || 0) + 1);
   const kpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
   const env = R.enviado ? 'Enviado el ' + plF(R.enviado) + ' · respuesta hasta el ' + plF(R.limiteRespuesta) : 'Todavía no se marcó como enviado';
-  marco('#plan', '<div class="cab"><div><a class="link peq" href="#plan">‹ Todos los planes</a><h1>' + esc(R.nombre) + '</h1><span class="mu">Informe ' + esc(R.codigo) + ' · ' + env + '</span></div>' +
+  marco('#plan', '<div class="cab"><div><a class="link peq" href="#plan">‹ Todos los informes</a><h1>' + esc(R.nombre) + '</h1><span class="mu">Informe ' + esc(R.codigo) + ' · ' + env + '</span></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (R.doc ? '<a class="btn" href="' + esc(R.doc) + '" target="_blank" rel="noopener">Documento</a>' : '') + (R.pdf ? '<a class="btn" href="' + esc(R.pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') + '<button class="btn" id="plCorreo">Copiar correo</button></div></div>' +
     '<div class="tb5">' + kpi('Recomendaciones', F.length, (F.filter(o => o.PRIORIDAD === 'Actuar ya').length) + ' actuar ya') + kpi('Cumplidas', c['Cumplida'] || 0, 'con evidencia') + kpi('En curso', c['En curso'] || 0, 'dentro del plazo') +
       kpi('Vencidas', c['Vencida'] || 0, 'pasan a la nota trimestral', c['Vencida'] ? '#9B2C22' : '') + kpi('Sin respuesta', (c['Sin respuesta'] || 0) + (c['Sin enviar'] || 0), R.enviado ? 'día ' + R.diasRespuesta + ' de ' + R.plazoRespuesta : 'falta marcar el envío') + '</div>' +
@@ -70,6 +70,6 @@ function planPintar() {
     const filas = [...document.querySelectorAll('#main .plr[data-n]')].map(tr => ({ n: tr.dataset.n, responsable: tr.querySelector('.pl-resp').value, fechaPrevista: tr.querySelector('.pl-fecha').value, estado: tr.querySelector('.pl-est').value, evidencia: tr.querySelector('.pl-ev').value, obs: tr.querySelector('.pl-obs').value }));
     const b = $('plGuardar'); b.disabled = true; b.textContent = 'Guardando…';
     try { const r = await api('p_plan_guardar', { codigo: R.codigo, filas: filas, fechaRespuesta: $('plResp').value }); b.disabled = false; b.textContent = 'Guardar cambios';
-      if (!r.ok) return toast(r.mensaje); toast('Plan de acción guardado.'); planDetalle(R.codigo); } catch (e) { b.disabled = false; b.textContent = 'Guardar cambios'; }
+      if (!r.ok) return toast(r.mensaje); toast('Guardado.'); planDetalle(R.codigo); } catch (e) { b.disabled = false; b.textContent = 'Guardar cambios'; }
   };
 }
