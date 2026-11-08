@@ -9,6 +9,7 @@
  * Corre con «Traer de los módulos» y cada mañana con el precalentado (Gestion.gs › gesTraer_). No envía correos.
  * Primera tanda programada: residuos (categoría de generador y acopio, certificados), agua, plagas, incendio e infraestructura
  * (mediciones y respuestas «No» del RGRL). El resto de las reglas del diseño figuran con su fuente como «Por programar».
+ * 08/11/2026: AGU-01 toma solo los análisis NO APTA (antes también entraban los avisos de «pedir muestreo»). limpiarAvisosAgua0811() corrige lo que había entrado.
  */
 const GREG = {
   HOJA: 'GES_REGLAS',
@@ -235,7 +236,9 @@ function gregDetectar_(RG, fresco) {
   corre(['AGU-01', 'PLA-01'], 'Agua NO APTA y plagas', () => {
     const T = tbTablero_(!!fresco); if (!T || T.ok === false || !(T.acciones || []).length) throw new Error('no se pudo leer el tablero');
     T.acciones.forEach(a => {
-      if (a.origen === 'Agua') push({ regla: 'AGU-01', cod: a.cod, sitio: a.donde, clave: 'AGUA|' + a.cod + '|' + a.ref + '|' + a.limite, desc: 'Agua NO APTA en el punto ' + (a.ref || 's/d'), limite: a.limite, ref: a.ref, origen: 'Análisis de agua', estado: 'En curso', recurso: 'Gestión' });
+      // 08/11/2026: solo los análisis que dieron NO APTA. Los avisos de «pedir muestreo parcial o completo» (AguaLab, ref «Muestreo de agua»)
+      // no son hallazgos: siguen en 2 · Agua y en «Próximos 30 días» del Tablero. La clave lleva el lugar para no repetirse entre sitios.
+      if (a.origen === 'Agua' && /NO APTA/i.test(a.que || '')) push({ regla: 'AGU-01', cod: a.cod, sitio: a.donde, clave: 'AGUA|' + a.cod + '|' + (a.donde || a.ref || 's/d') + '|' + (a.limite || 's/d'), desc: 'Agua NO APTA en ' + (a.donde || a.ref || 's/d'), accion: a.que, limite: a.limite, ref: a.ref, origen: 'Análisis de agua', estado: 'En curso', recurso: 'Gestión' });
       else if (/^Plagas/.test(a.origen) && a.vencida) push({ regla: 'PLA-01', cod: a.cod, sitio: a.donde, clave: (a.origen === 'Plagas' ? 'PLAGAS|' : 'MIPYV|') + a.cod + '|' + a.ref, desc: 'Revisión atrasada (desde ' + a.limite + '): ' + a.que, accion: 'Hacer la revisión atrasada y cerrar el caso: ' + a.que, ref: a.ref, origen: 'Caso de plagas', estado: 'En curso', recurso: 'Gestión' });
     });
   });
@@ -326,4 +329,21 @@ function probarReglas() {
   D.det.forEach(d => c[d.regla] = (c[d.regla] || 0) + 1);
   Logger.log(JSON.stringify(c) + (D.errores.length ? ' · errores: ' + D.errores.join(' · ') : ''));
   D.det.slice(0, 40).forEach(d => Logger.log(d.regla + ' · ' + d.cod + ' · ' + d.desc));
+}
+
+// 08/11/2026 · Corrección única: las acciones que entraron como «Agua NO APTA en el punto Muestreo de agua» eran avisos de pedir muestreo.
+// Pasan a «No se realiza» con el motivo y su hallazgo a «Descartado» (no se borra nada; queda en HISTORIAL). Se corre una vez desde el editor.
+function limpiarAvisosAgua0811() {
+  return conLock_(() => {
+    const ahora = gesAhora_(), hoy = gesHoy_(), motivo = 'Aviso de pedir muestreo, no un análisis NO APTA (corrección de la regla AGU-01, 08/11/2026)';
+    const es = c => /^AGUA\|[^|]+\|Muestreo de agua\|/.test(String(c || ''));
+    const as = gesAcc_(), AL = gesLeer_(as, GES.H_ACC), hs = gesHal_(), HL = gesLeer_(hs, GES.H_HAL); let na = 0, nh = 0;
+    AL.forEach(a => { if (!es(a.CLAVE) || GES.ABIERTOS.concat(['Hecha']).indexOf(a.ESTADO) < 0) return;
+      a.HISTORIAL = (a.HISTORIAL ? a.HISTORIAL + '\n' : '') + ahora + ' · ' + a.ESTADO + ' → No se realiza · ' + motivo;
+      a.ESTADO = 'No se realiza'; a.MOTIVO = motivo; a.SEGUIMIENTO = hoy; a.ACTUALIZADO = ahora; gesEscribir_(as, GES.H_ACC, a.fila, a); na++; });
+    HL.forEach(h => { if (!es(h.CLAVE) || h.ESTADO === 'Descartado') return;
+      h.ESTADO = 'Descartado'; h.MOTIVO = motivo; h.ACTUALIZADO = ahora; gesEscribir_(hs, GES.H_HAL, h.fila, h); nh++; });
+    Logger.log('Acciones corregidas: ' + na + ' · hallazgos descartados: ' + nh);
+    return { ok: true, acciones: na, hallazgos: nh };
+  });
 }
