@@ -158,7 +158,9 @@ function plagHorario_(x) {
     const ids = sh.getRange(2, c + 1, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0]).trim()), i = ids.indexOf(id); if (i < 0) return false;
     Object.keys(campos).forEach(k => sh.getRange(i + 2, H.indexOf(k) + 1).setValue(campos[k])); return true; };
   const a = poner('TODO LO CARGADO', 'id', { horario: ini + ' a ' + fin });
-  const b = /^ED/.test(id) ? poner('relevamiento_edificio', 'id_relev', { hora_inicio: ini, hora_fin: fin }) : false;
+  // Cada registro en su hoja (08/11/2026: todos los registros de Javier y Paulo suman; HyS completa el horario que falte)
+  const HOJA = [[/^ED/, 'relevamiento_edificio', 'id_relev'], [/^V-/, 'visitas', 'id_visita'], [/^A-/, 'avances_saneamiento', 'id_avance'], [/^H-/, 'tareas_hys', 'id_tarea']].find(h => h[0].test(id));
+  const b = HOJA ? poner(HOJA[1], HOJA[2], { hora_inicio: ini, hora_fin: fin }) : false;
   if (!a && !b) return { ok: false, mensaje: 'No se encontró ese registro en el libro MIPyV.' };
   CacheService.getScriptCache().remove('mipyv');
   return { ok: true };
