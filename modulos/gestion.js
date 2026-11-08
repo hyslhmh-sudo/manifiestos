@@ -1,5 +1,5 @@
 // Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026) · servidor: Gestion.gs (acciones p_ges_…)
-// Plan de acción único, hallazgos, bandeja de sugeridos, necesidades de inversión y alcance (niveles A y B).
+// Plan de acción (antes «Plan de acción único»; nombre de Belén, 08/11/2026), hallazgos, bandeja de sugeridos, necesidades de inversión y alcance (niveles A y B).
 // Los datos viven en la BASE COMÚN (GES_ALCANCE, GES_EMPRESAS, GES_HALLAZGOS, GES_ACCIONES).
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let GESD = null, GESA = null;
@@ -8,7 +8,7 @@ const GESHF = { cod: '', mod: '', estado: '', origen: '', q: '' };
 const gesNom = c => ((GESD && GESD.establecimientos.find(e => e.cod === c)) || {}).nombre || c;
 const gesMod = m => String(m || '').replace(/^(\d+) · /, '$1 · ');
 const gesCab = (t, s, extra) => '<div class="cab"><div><span class="mu peq">11 · Gestión</span><h1>' + t + '</h1><span class="mu peq">' + s + '</span></div><div class="filtros">' + (extra || '') + '</div></div>';
-const gesTabs = act => '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:0 0 12px">' + [['plan', 'Plan de acción único'], ['hallazgos', 'Hallazgos'], ['bandeja', 'Bandeja de sugeridos'], ['inversion', 'Necesidades de inversión'], ['reglas', 'Reglas'], ['alcance', 'Alcance']]
+const gesTabs = act => '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:0 0 12px">' + [['plan', 'Plan de acción'], ['hallazgos', 'Hallazgos'], ['bandeja', 'Bandeja de sugeridos'], ['inversion', 'Necesidades de inversión'], ['reglas', 'Reglas'], ['alcance', 'Alcance']]
   .map(([k, t]) => '<a class="btn ' + (k === act ? 'pri' : 'sec') + ' peq" href="#ges/' + k + '">' + t + (k === 'bandeja' && GESD ? ' · ' + GESD.hallazgos.filter(h => h.ESTADO === 'Sugerido').length : '') + '</a>').join('') + '</div>';
 const gesKpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
 const gesOpt = (v, t, sel) => '<option value="' + esc(v) + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + esc(t) + '</option>';
@@ -23,7 +23,7 @@ async function gestion(fresco) {
   const sub = (location.hash.split('/')[1] || 'plan');
   if (sub === 'alcance') return gesAlcance(fresco);
   if (sub === 'reglas') return gesReglas(fresco);
-  if (!GESD || fresco) { cargando('#ges', 'Leyendo el plan de acción único…'); try { GESD = await api('p_ges_datos', {}, 180000); GES_T = Date.now(); } catch (e) { return; } }
+  if (!GESD || fresco) { cargando('#ges', 'Leyendo el plan de acción…'); try { GESD = await api('p_ges_datos', {}, 180000); GES_T = Date.now(); } catch (e) { return; } }
   if (!GESD.ok) return marco('#ges', gesCab('Gestión', '') + '<div class="aviso error">' + esc(GESD.mensaje || GESD.error || 'No se pudo leer.') + (/instalar|desconocida/i.test(GESD.mensaje || GESD.error || '') ? ' Falta instalar Gestion.gs en el Sistema HyS.' : '') + '</div>');
   if (sub === 'hallazgos') return gesHallazgos();
   if (sub === 'bandeja') return gesBandeja();
@@ -38,7 +38,7 @@ async function gesTraer() {
   gestion(true);
 }
 
-// ------------------------------------------------------------------ Plan de acción único
+// ------------------------------------------------------------------ Plan de acción
 function gesPlan() {
   const F = GESF, A = GESD.acciones, q = F.q.toLowerCase(), H = {}; GESD.hallazgos.forEach(h => H[h.ID] = h);
   const pasa = a => (!F.cod || a.ESTABLECIMIENTO === F.cod) && (!F.mod || a.MODULO === F.mod) && (!F.resp || a.RESPONSABLE === F.resp) && (!F.rec || (a.TIPO_RECURSO || 'Sin definir') === F.rec) &&
@@ -57,7 +57,7 @@ function gesPlan() {
       (h.DESCRIPCION && h.DESCRIPCION !== a.ACCION ? '<div class="mu peq">Hallazgo: ' + esc(h.DESCRIPCION) + '</div>' : '') + (a.SITIO ? '<div class="mu peq">' + esc(a.SITIO) + '</div>' : '') + '</td><td class="peq">' + esc(a.RESPONSABLE || '—') + '</td><td class="peq"' + (ext(a) ? ' style="color:' + ext(a) + ';font-weight:700"' : '') + '>' + fechaTxt(a.FECHA_LIMITE) + '</td><td class="peq">' + esc(a.TIPO_RECURSO || '—') + (a.REQUIERE_DIRECCION === 'Sí' ? '<div class="mu">Dirección</div>' : '') + '</td></tr>'; };
   const tabla = orden.length ? orden.map(g => (F.por !== 'ninguno' ? '<tr><td colspan="7" style="background:#EEF2F4;font-weight:800;color:var(--az)">' + esc(g) + ' · ' + grupos[g].length + '</td></tr>' : '') + grupos[g].map(fila).join('')).join('')
     : '<tr><td colspan="7" class="mu">No hay acciones con estos filtros.' + (A.length ? '' : ' Tocá «Traer de los módulos» para pasar los planes que ya existen.') + '</td></tr>';
-  marco('#ges', gesCab('Plan de acción único', 'Todas las acciones de los 10 módulos, con responsable, plazo, si requiere Dirección, avance, evidencia y verificación de eficacia.', '<button class="btn sec" id="gTraer">Traer de los módulos</button><button class="btn sec" id="gElevar">Elevar a la Dirección</button><button class="btn pri" id="gNueva">+ Nueva acción</button>') + gesTabs('plan') +
+  marco('#ges', gesCab('Plan de acción', 'Todas las acciones de todos los módulos, con responsable, plazo, si requiere Dirección, avance, evidencia y verificación de eficacia.', '<button class="btn sec" id="gTraer">Traer de los módulos</button><button class="btn sec" id="gElevar">Elevar a la Dirección</button><button class="btn pri" id="gNueva">+ Nueva acción</button>') + gesTabs('plan') +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + gesKpi('Abiertas', ab.length, 'en curso o por empezar') + gesKpi('Vencidas', venc, 'gestión e insumos; sin inversión', venc ? '#B4361F' : '') +
       gesKpi('Elevadas sin respuesta', sinR, 'más de 60 días', sinR ? '#8A5200' : '') + gesKpi('A verificar', ver, 'hechas: falta ver si fueron eficaces') + gesKpi('Pendientes de recursos', rec, 'riesgo informado; no cuentan contra HyS') + '</div>' +
     '<div class="filtros" style="margin:12px 0;flex-wrap:wrap">' +
@@ -266,7 +266,7 @@ async function gesInyectar(activo) {
     .sort((a, b) => (b.vencida - a.vencida) || String(a.FECHA_LIMITE || '9999').localeCompare(String(b.FECHA_LIMITE || '9999')));
   const venc = L.filter(a => a.vencida).length, ver = L.filter(a => a.verificar).length;
   const caja = document.createElement('section'); caja.className = 'card'; caja.id = 'gesCaja'; caja.style.marginTop = '14px';
-  caja.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">Acciones abiertas · plan de acción único</h2><a href="#ges" id="gesCajaIr" class="peq" style="font-weight:700">Ver en el plan</a></div>' +
+  caja.innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="margin:0;font-size:16px">Acciones abiertas · plan de acción</h2><a href="#ges" id="gesCajaIr" class="peq" style="font-weight:700">Ver en el plan</a></div>' +
     '<span class="mu peq">' + (mod ? esc(mod) : esc(gesNom(cod))) + (cod && mod ? ' · ' + esc(gesNom(cod)) : '') + ' · ' + L.length + ' abierta(s)' + (venc ? ' · <b style="color:#B4361F">' + venc + ' vencida(s)</b>' : '') + (ver ? ' · ' + ver + ' a verificar' : '') + '</span>' +
     (L.length ? '<div style="display:flex;flex-direction:column;margin-top:8px">' + L.slice(0, 6).map(a => '<a class="at" href="#ges" data-gca="' + esc(a.ID) + '">' + gesTag(a) + '<span><b>' + esc(a.ACCION) + '</b><small>' + esc((cod ? a.MODULO : a.ESTABLECIMIENTO) + (a.RESPONSABLE ? ' · ' + a.RESPONSABLE : ' · sin responsable') + ' · ' + fechaTxt(a.FECHA_LIMITE)) + '</small></span></a>').join('') + '</div>' + (L.length > 6 ? '<span class="mu peq">Y ' + (L.length - 6) + ' más.</span>' : '')
       : '<div class="mu peq" style="margin-top:6px">No hay acciones abiertas.</div>');
