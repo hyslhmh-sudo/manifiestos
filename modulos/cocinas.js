@@ -138,6 +138,6 @@ function cocPersonaForm(p, base) {
   return m;
 }
 // Tarjeta del plan de acción (12/10/2026): las mejoras del informe (punto 6) pasan solas al plan
-function cocPlanCard() { const I = (DG.D.informes || [])[0]; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Plan de acción</h2><span class="mu peq">' +
-  (I ? 'Las mejoras del informe ' + esc(I.codigo) + ' están en el plan de acción: ahí se carga el envío a la Dirección, la respuesta, el avance y la evidencia.' : 'Al generar el informe, sus mejoras (punto 6) pasan solas al plan de acción.') + '</span></div>' +
-  (I ? '<a class="btn sec" href="#plan/' + encodeURIComponent(I.codigo) + '">Ver el plan de acción</a>' : '') + '</section>'; }
+function cocPlanCard() { const I = (DG.D.informes || [])[0]; return '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Recomendaciones del informe</h2><span class="mu peq">' +
+  (I ? 'Las mejoras del informe ' + esc(I.codigo) + ' están en «Recomendaciones del informe» (envío a la Dirección, respuesta, avance y evidencia) y también en 11 · Gestión › Plan de acción.' : 'Al generar el informe, sus mejoras (punto 6) pasan solas al plan de acción.') + '</span></div>' +
+  (I ? '<a class="btn sec" href="#plan/' + encodeURIComponent(I.codigo) + '">Ver las recomendaciones</a>' : '') + '</section>'; }
