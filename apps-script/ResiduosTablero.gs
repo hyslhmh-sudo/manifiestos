@@ -66,13 +66,14 @@ function resTablero_(fresco) {
   Object.keys(RES_CERT_DE).forEach(hijo => { const padre = est[RES_CERT_DE[hijo]]; if (!padre || !est[hijo]) return;
     Object.keys(padre.certs).forEach(m => { if (!est[hijo].certs[m]) est[hijo].certs[m] = padre.certs[m] + ' (' + RES_CERT_DE[hijo] + ')'; }); });
   // Frecuencia pactada por sitio (BASE COMÚN › SITIOS: CODIGO · SITIO · NOMBRE_OFICIAL · SISA · TIPO · EMPRESA · FRECUENCIA)
-  const frec = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 7).forEach(r => frec[limpio_(r.v[0]) + '|' + sinTildes_(r.v[1])] = limpio_(r.v[6])); } catch (e) {}
+  // 08/11/2026 (Belén): los sitios con ESTADO «Baja» o «Inactivo» en BASE COMÚN › SITIOS (columna K) no se siguen (p. ej. HZT › Internación Salud Mental, sin manifiestos hace más de 3 años)
+  const frec = {}, baja = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 11).forEach(r => { const k = limpio_(r.v[0]) + '|' + sinTildes_(r.v[1]); frec[k] = limpio_(r.v[6]); if (/baja|inactiv/i.test(limpio_(r.v[10]))) baja[k] = true; }); } catch (e) {}
   let diag = {}; try { if (PropertiesService.getScriptProperties().getProperty('DIAG_RES_ID')) diag = pDiagLista_(); } catch (e) {}
   const L = Object.keys(est).map(cod => {
     const e = est[cod], ret = meses.filter(m => e.retiros[m]);
     e.dias = e.ultimo ? dias(e.ultimo) : null;
     e.sinCert = ret.filter(m => m < mesAct && !e.certs[m]).map(m => ({ mes: m, nivel: m === meses[10] ? 'wa' : 'er' }));
-    e.sitios = Object.keys(e.sitios).map(k => { const s = e.sitios[k], fr = frec[cod + '|' + sinTildes_(s.sitio)] || '', lim = resLimiteDias_(fr), d = dias(s.ultimo);
+    e.sitios = Object.keys(e.sitios).filter(k => !baja[cod + '|' + sinTildes_(e.sitios[k].sitio)]).map(k => { const s = e.sitios[k], fr = frec[cod + '|' + sinTildes_(s.sitio)] || '', lim = resLimiteDias_(fr), d = dias(s.ultimo);
       return { sitio: s.sitio, ultimo: s.ultimo, dias: d, frecuencia: fr || 's/d (revisar)', limite: lim, atrasado: d > lim }; }).sort((a, b) => b.dias - a.dias);
     e.activo = ret.length > 0;
     e.fotos = [];
