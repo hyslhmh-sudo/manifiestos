@@ -143,7 +143,7 @@ function tqBotonesDoc() {
 function tqAvisoHtml() { if (!tq.aviso) return ""; const a = tq.aviso; tq.aviso = ""; return `<div class="tq-ok">${escX(a)}</div>`; }
 function tqRenderLugares() {
   const box = tqBox(), L = TANQUES_CAT.lugares || [];
-  let h = tqAvisoHtml() + tqBotonesDoc();
+  let h = tqAvisoHtml() + (typeof avMensajeTanquesHtml === "function" ? avMensajeTanquesHtml() : "") + tqBotonesDoc();   // 08/11/2026: el mensaje de HyS sobre tanques va acá, no en el inicio
   if (!L.length) h += `<div class="ext-card"><div class="ext-preg">Todavía no se descargó la lista de lugares.</div><div class="step-sub">Tocá «Sincronizar» arriba, con señal, y volvé a entrar.</div></div>`;
   h += `<div class="step-sub" style="margin:6px 0 8px">Elegí el lugar. Arriba, los que tienen algo para hacer (❗).</div>`;
   const orden = l => { const T = tqDe(l.id); if (!T.length) return 3; const R = tqResumenLugar(T); return R.limp.nivel === "er" ? 0 : R.rev.nivel === "er" ? 1 : 2; };

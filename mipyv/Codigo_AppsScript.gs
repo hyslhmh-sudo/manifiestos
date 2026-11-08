@@ -505,7 +505,8 @@ function doGet(e) {
 
   // tipos de tarea de HyS (solo esa lista de la hoja configuracion: los correos no se publican)
   out.tipos_tarea = tiposTareaHys(ss);
-  try { out.mensaje_inicio = mensajeInicio(ss); } catch (err) { out.mensaje_inicio = ""; }   // 30/10/2026: mensaje de HyS en el inicio de la app
+  try { out.mensaje_inicio = mensajeInicio(ss); } catch (err) { out.mensaje_inicio = ""; }
+  try { out.mensaje_tanques = mensajeInicio(ss, "mensaje_tanques"); } catch (err) { out.mensaje_tanques = ""; }   // 08/11/2026: mensaje dentro de «Tanques y cisternas»   // 30/10/2026: mensaje de HyS en el inicio de la app
   // casos abiertos (con vencimiento), solicitudes a HyS y cierres recientes (Casos_Solicitudes_MIPyV.gs, 25/10/2026)
   // (las solicitudes y los cierres NO se publican acá: la evaluación la ve solo HyS en el portal)
   try { out.casos = casosParaApp_(ss); } catch (err) { out.casos_error = String(err.message || err); }
@@ -528,11 +529,12 @@ function doGet(e) {
 // "mensaje_inicio" en la columna clave y el texto en valor (admite varias líneas y *negrita* como en WhatsApp).
 // Para sacarlo, borrar el texto (o la fila). Si hay varias filas, se muestran una debajo de otra.
 // {cronograma_tanques} dentro del texto = cronograma de limpieza armado solo, con los datos de RESERVORIOS (03/11/2026).
-function mensajeInicio(ss) {
+function mensajeInicio(ss, clave) {   // clave: "mensaje_inicio" (por defecto) o "mensaje_tanques" (se ve dentro de «Tanques y cisternas», 08/11/2026)
+  clave = clave || "mensaje_inicio";
   const sh = ss.getSheetByName(SHEET_CONFIG);
   if (!sh) return "";
   return sh.getDataRange().getValues().slice(1)
-    .filter((r) => String(r[0]).trim() === "mensaje_inicio" && String(r[1]).trim() !== "")
+    .filter((r) => String(r[0]).trim() === clave && String(r[1]).trim() !== "")
     .map((r) => String(r[1]).trim()).join("\n\n")
     // 03/11/2026: {cronograma_tanques} se reemplaza por la lista armada con los datos reales (Tanques_MIPyV.gs)
     .replace(/\{cronograma_tanques\}/g, () => { try { return cronogramaTanques_(ss, 60); } catch (e) { return "(No se pudo armar el cronograma: " + e.message + ")"; } });

@@ -33,9 +33,10 @@ const avEsc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&"
 const avFecha = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); return m ? m[3] + "/" + m[2] : ""; };
 
 // Lo llama actualizarCatalogosDesdePlanilla (app.js) con lo que devolvió la planilla
-const AVISOS_MSJ_KEY = "mipyv_mensaje_inicio_v1";   // 30/10/2026: mensaje de HyS en la pantalla de inicio (planilla › configuracion › mensaje_inicio)
+const AVISOS_MSJ_KEY = "mipyv_mensaje_inicio_v1"; const AVISOS_MSJ_TQ_KEY = "mipyv_mensaje_tanques_v1";   // 30/10/2026: mensaje de HyS en la pantalla de inicio (planilla › configuracion › mensaje_inicio)
 function avisosDatos(datos) {
   if (datos && typeof datos.mensaje_inicio === "string") { avGuardar(AVISOS_MSJ_KEY, { texto: datos.mensaje_inicio }); avisosPintar(); }
+  if (datos && typeof datos.mensaje_tanques === "string") avGuardar(AVISOS_MSJ_TQ_KEY, { texto: datos.mensaje_tanques });   // 08/11/2026: mensaje de HyS dentro de «Tanques y cisternas»
   if (!datos || !Array.isArray(datos.casos)) return;
   avGuardar(AVISOS_KEY, { fecha: new Date().toISOString(), casos: datos.casos });   // las solicitudes no vuelven a la app: su evaluación la ve solo HyS
   // los cierres que la planilla ya registró no hace falta seguir ocultándolos a mano
@@ -95,10 +96,12 @@ function avExtPendientes() {
 function tq_irLugar(l) { if (typeof tq === "undefined") return; tq.vista = "lugar"; tq.lugar = l; tq.codigo = null; tqRender(); if (typeof screensEl !== "undefined") screensEl.scrollTop = 0; }
 
 // Mensaje de HyS (texto con formato de WhatsApp: *negrita*, viñetas «•»). Se cambia o se borra desde la planilla.
-function avMensajeHtml() {
-  const m = avLeer(AVISOS_MSJ_KEY, null), txt = m && String(m.texto || "").trim(); if (!txt) return "";
+// Mensaje de HyS: el del inicio (configuracion › mensaje_inicio) o el de «Tanques y cisternas» (configuracion › mensaje_tanques, 08/11/2026)
+function avMensajeTanquesHtml() { return avMensajeHtml(AVISOS_MSJ_TQ_KEY, "📌 Mensaje de Higiene y Seguridad · tanques y cisternas"); }
+function avMensajeHtml(clave, titulo) {
+  const m = avLeer(clave || AVISOS_MSJ_KEY, null), txt = m && String(m.texto || "").trim(); if (!txt) return "";
   const lin = txt.split(/\r?\n/).map((l) => avEsc(l).replace(/\*([^*]+)\*/g, "<b>$1</b>"));
-  return `<div class="av-msj"><div class="av-msj-t">📌 Mensaje de Higiene y Seguridad</div>` + lin.map((l) => l.trim() ? `<div class="av-msj-l${/^\s*•/.test(l) ? " av-msj-v" : ""}">${l}</div>` : `<div class="av-msj-sep"></div>`).join("") + `</div>`;
+  return `<div class="av-msj"><div class="av-msj-t">${titulo || "📌 Mensaje de Higiene y Seguridad"}</div>` + lin.map((l) => l.trim() ? `<div class="av-msj-l${/^\s*•/.test(l) ? " av-msj-v" : ""}">${l}</div>` : `<div class="av-msj-sep"></div>`).join("") + `</div>`;
 }
 
 // ---------- Ventana propia (encima de la app) ----------
