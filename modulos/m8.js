@@ -118,7 +118,7 @@ async function m8Relev(arg) {
   if (sid) await traer(); else pintar();
 }
 
-// Plan de acción del módulo
+// Hallazgos del relevamiento (antes «Plan de acción del módulo»; el plan es uno solo: 11 · Gestión)
 async function m8Plan() {
   if (!(await m8cargar('#m8plan'))) return;
   const Hh = M8.hallazgos, hoy = new Date().toISOString().slice(0, 10);
@@ -126,7 +126,7 @@ async function m8Plan() {
   const vis = Hh.filter(h => (M8F.estado === 'todos' || (M8F.estado === 'abiertos' ? !/resuelto|descartado/i.test(h.estado) : h.estado === M8F.estado)) && (!M8F.prio || h.prioridad === M8F.prio) && (!M8F.serv || h.servicio === M8F.serv))
     .sort((a, b) => (['Actuar ya', 'Resolver rápido', 'Planificar'].indexOf(a.prioridad) - ['Actuar ya', 'Resolver rápido', 'Planificar'].indexOf(b.prioridad)) || String(a.limite).localeCompare(String(b.limite)));
   const opt = (v, l, s) => '<option value="' + esc(v) + '"' + (v === s ? ' selected' : '') + '>' + esc(l) + '</option>';
-  marco('#m8plan', m8cab('Plan de acción', 'Hallazgos de los relevamientos. Solo Higiene y Seguridad cambia los estados.',
+  marco('#m8plan', m8cab('Hallazgos del relevamiento', 'Hallazgos de los relevamientos (también están en 11 · Gestión › Plan de acción). Solo Higiene y Seguridad cambia los estados.',
     '<label class="f">Estado<select class="c" id="pE">' + opt('abiertos', 'Abiertos', M8F.estado) + ['Abierto', 'En curso', 'Sin respuesta', 'Resuelto', 'Descartado'].map(x => opt(x, x, M8F.estado)).join('') + opt('todos', 'Todos', M8F.estado) + '</select></label>' +
     '<label class="f">Prioridad<select class="c" id="pP">' + opt('', 'Todas', M8F.prio) + ['Actuar ya', 'Resolver rápido', 'Planificar'].map(x => opt(x, x, M8F.prio)).join('') + '</select></label>' +
     '<label class="f">Servicio<select class="c" id="pS">' + opt('', 'Todos', M8F.serv) + servs.map(x => opt(x, x, M8F.serv)).join('') + '</select></label>') +
