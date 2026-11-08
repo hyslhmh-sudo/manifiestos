@@ -7,6 +7,7 @@
  * Paso de lo que ya existe («Traer de los módulos», también cada mañana con el precalentado):
  *   · DIAGNÓSTICO › PLAN_ACCION (diagnósticos de residuos, agua, plagas y cocinas, y auditorías), con su estado e historial.
  *   · M8 › HALLAZGOS_PLAN (servicios e infraestructura).
+ *   · ERGONOMÍA › MEDIDAS (12 · Ergonomía, Planilla 3 de la Res. SRT 886/15; desde el 08/11/2026). Al cerrar en Gestión se marca «Cumplida» en MEDIDAS.
  *   · Reglas automáticas (Reglas.gs › GES_REGLAS, fase 3): agua NO APTA, plagas atrasadas, residuos (categoría y acopio, certificados),
  *     agua (análisis, limpieza, tapas), incendio (extintores, recorridas) e infraestructura (mediciones, RGRL «No»). Lo abierto en plazo es alerta, no hallazgo.
  * Las hojas de origen no se borran. Al cerrar una acción en Gestión se marca también en su plan de origen (PLAN_ACCION o HALLAZGOS_PLAN).
@@ -14,7 +15,7 @@
 
 const GES = {
   MODULOS: ['1 · Residuos', '2 · Agua', '3 · Plagas', '4 · Cocinas hospitalarias', '5 · Radiaciones ionizantes', '6 · Servicios e infraestructura',
-    '7 · Protección contra incendios', '8 · Personal y RAR', '9 · Capacitaciones', '10 · Documentos', '11 · Gestión'],
+    '7 · Protección contra incendios', '8 · Personal y RAR', '9 · Capacitaciones', '10 · Documentos', '11 · Gestión', '12 · Ergonomía'],   // 12 desde el 08/11/2026
   NIVELES: ['A', 'B', 'Sin habilitar'],
   H_ALC: ['ESTABLECIMIENTO', 'MODULO', 'NIVEL', 'DESDE', 'OBSERVACIONES', 'ACTUALIZADO'],
   H_EMP: ['ESTABLECIMIENTO', 'EMPRESA', 'MODULO', 'QUE_LE_TOCA', 'REFERENCIA_CONTRATO', 'CONTACTO', 'ACTUALIZADO', 'PALABRAS_CLAVE'],   // PALABRAS_CLAVE (14.63): separadas por «|»; vacía = todo el módulo
@@ -101,6 +102,15 @@ function gesSembrarAlcance_() {
     { ESTABLECIMIENTO: 'HMH', EMPRESA: 'SOMI', MODULO: '1 · Residuos', QUE_LE_TOCA: 'Mantenimiento de la planta de efluentes y de equipos de tratamiento de residuos (meses 9 y 10 del plan)', REFERENCIA_CONTRATO: 'Plan de trabajos – Mantenimiento preventivo, Hospital María Humphreys, 12 meses', ACTUALIZADO: hoy, PALABRAS_CLAVE: 'efluente|planta de tratamiento|autoclave|equipo de tratamiento' },
     { ESTABLECIMIENTO: 'HMH', EMPRESA: 'MAREM', MODULO: '7 · Protección contra incendios', QUE_LE_TOCA: 'Colabora en incendio y evacuación (por contrato)', REFERENCIA_CONTRATO: 'Sin contrato ni plan cargado: no se asigna en forma automática', ACTUALIZADO: hoy }]);
   return filas.length;
+}
+// 08/11/2026: suma «12 · Ergonomía» a las listas de MODULO (alcance, hallazgos, acciones) y al alcance en nivel A (HZT, HMH, HSST). Una sola vez.
+function gesSumarErgonomia_() {
+  const P = PropertiesService.getScriptProperties(); if (P.getProperty('GES_ERGO_12') === '1') return;
+  const m = '12 · Ergonomía', alc = gesAlc_(), L = gesLeer_(alc, GES.H_ALC), hoy = gesHoy_();
+  gesAgregar_(alc, GES.H_ALC, GES.NIVEL_A.filter(c => !L.some(o => o.ESTABLECIMIENTO === c && o.MODULO === m))
+    .map(c => ({ ESTABLECIMIENTO: c, MODULO: m, NIVEL: 'A', DESDE: hoy, OBSERVACIONES: 'Programa de seguridad (Res. SRT 886/15)', ACTUALIZADO: hoy })));
+  [[alc, GES.H_ALC], [gesHal_(), GES.H_HAL], [gesAcc_(), GES.H_ACC]].forEach(([sh, H]) => lista_(sh, H.indexOf('MODULO'), 2000, GES.MODULOS));
+  P.setProperty('GES_ERGO_12', '1');
 }
 // 14.63: agrega la columna PALABRAS_CLAVE a GES_EMPRESAS (al final) y completa las de SOMI la primera vez
 function gesEmpColumnas_() {
@@ -259,6 +269,14 @@ function gesDevolver_(a, antes) {
     sh.getRange(o.fila, 21).setValue(gesHoy_());
     return 'PLAN_ACCION: ' + est;
   }
+  if (p[0] === 'ERGO' && typeof ergoLeer_ === 'function') {   // 08/11/2026: 12 · Ergonomía › MEDIDAS
+    const est = a.ESTADO === 'Hecha' || a.ESTADO === 'Eficaz' ? 'Cumplida' : a.ESTADO === 'En curso' ? 'En curso' : '';
+    if (!est) return '';
+    const M = ergoLeer_('MEDIDAS').find(r => r.ID_MEDIDA === p[1]); if (!M) return 'No está en ERGONOMÍA › MEDIDAS.';
+    const m = { ESTADO: est }; if (est === 'Cumplida' && !M.FECHA_IMPLEMENTACION) m.FECHA_IMPLEMENTACION = ergoFecha_(gesHoy_());
+    ergoEscribir_(ergoHoja_('MEDIDAS'), M._fila, m); try { ergoHist_('MEDIDAS', M.ID_MEDIDA, 'Plan de acción', a.ID + ' · ' + a.ESTADO); } catch (e) {}
+    return 'ERGONOMÍA › MEDIDAS: ' + est;
+  }
   if (p[0] === 'M8') {
     const est = a.ESTADO === 'Hecha' || a.ESTADO === 'Eficaz' ? 'Resuelto' : a.ESTADO === 'No se realiza' ? 'Descartado' : a.ESTADO === 'En curso' ? 'En curso' : '';
     if (!est) return '';
@@ -274,7 +292,7 @@ function gesDevolver_(a, antes) {
 function gesTraer_(x) {
   x = x || {};
   return conLock_(() => {
-    gesSembrarAlcance_();
+    gesSembrarAlcance_(); try { gesSumarErgonomia_(); } catch (e) {}
     const hoy = gesHoy_(), ahora = gesAhora_(), hs = gesHal_(), as = gesAcc_(), HL = gesLeer_(hs, GES.H_HAL), AL = gesLeer_(as, GES.H_ACC), ALC = gesLeer_(gesAlc_(), GES.H_ALC);
     const porClave = {}; AL.forEach(a => { if (a.CLAVE) porClave[a.CLAVE] = a; });
     const halClave = {}; HL.forEach(h => { if (h.CLAVE) halClave[h.CLAVE] = h; });
@@ -334,6 +352,22 @@ function gesTraer_(x) {
           motivo: est === 'No se realiza' ? 'Descartado en el plan de infraestructura' : '', alta: pFecha_(r[8]) || hoy }, k, true)) res.m8++;
       });
     } catch (e) { res.errores.push('Infraestructura (M8): ' + e.message); }
+
+    // 2b) 12 · Ergonomía › MEDIDAS (Planilla 3, Res. SRT 886/15): cada medida es una acción del plan (08/11/2026). Entra directo.
+    //     Cumplida en Ergonomía → «Hecha» acá (Belén verifica la eficacia). Las «Cumplida» que nunca entraron no se pasan.
+    if (x.solo !== 'plan') try {
+      if (typeof ergoLeer_ === 'function') ergoLeer_('MEDIDAS').forEach(m => {
+        if (!m.ID_MEDIDA) return; const k = 'ERGO|' + m.ID_MEDIDA, st = String(m.ESTADO || '');
+        if (porClave[k]) { if (/cumplid/i.test(st)) cerrarSi(k, 'Cumplida en Ergonomía (Planilla 4)'); return; }
+        if (/cumplid/i.test(st)) return;
+        const pr = String(m.PLAZO || '').replace(/\s*\(.*$/, '').trim(), resp = /^s\/d/i.test(m.RESPONSABLE || '') ? '' : (m.RESPONSABLE || '');
+        if (alta({ cod: limpio_(m.ESTABLECIMIENTO), modulo: '12 · Ergonomía', sitio: [m.SITIO, m.ID_PUESTO ? 'puesto ' + m.ID_PUESTO : ''].filter(Boolean).join(' · '),
+          desc: 'Ergonomía · ' + (m.FACTOR || 's/d') + ': ' + m.DESCRIPCION, accion: m.DESCRIPCION, origen: 'Relevamiento', ref: m.ID_MEDIDA + (m.ID_EVAL ? ' · ' + m.ID_EVAL : ''),
+          fuente: 'Res. SRT 886/15, Anexo I (Protocolo de Ergonomía, Planilla 3: medidas correctivas y preventivas)', prioridad: GES.PRIORIDADES.indexOf(pr) >= 0 ? pr : '',
+          plazo: (typeof ERGO !== 'undefined' && ERGO.PLAZO_DIAS[m.PLAZO]) || '', limite: m.FECHA_LIMITE || '', dir: /instituc/i.test(m.DEPENDE_DE || '') ? 'Sí' : 'No',
+          estado: /en curso/i.test(st) ? 'En curso' : 'Propuesta', responsable: resp, alta: m.FECHA_ALTA || hoy, directo: true }, k, false)) res.ergo = (res.ergo || 0) + 1;
+      });
+    } catch (e) { res.errores.push('Ergonomía: ' + e.message); }
 
     // 3) Reglas automáticas (fase 3 · Reglas.gs › GES_REGLAS): agua NO APTA, plagas atrasadas, residuos, agua, incendio e infraestructura
     const cambiosH = [];
