@@ -155,7 +155,7 @@ function eeDibujar(cod) {
     const lt = L.filter(x => x.tema === V);
     const extra = {
       'Residuos': ['<dl class="datos">' + dato('Último retiro', fechaTxt(f.ultimoRetiro)) + dato('Días sin retiro', f.diasSinRetiro == null ? 's/d' : String(f.diasSinRetiro)) + dato('Retiros este mes', f.retirosMes == null ? 's/d' : String(f.retirosMes)) + dato('Diagnóstico', chipDiag(f.diag)) + '</dl>',
-        btn('#diag/' + ce, 'Diagnóstico') + btn('#aud', 'Auditorías') + btn('#plan', 'Plan de acción') + '<button class="btn sec" id="eeReg">Registros cargados</button>'],
+        btn('#diag/' + ce, 'Diagnóstico') + btn('#aud', 'Auditorías') + btn('#ges', 'Plan de acción') + '<button class="btn sec" id="eeReg">Registros cargados</button>'],
       'Agua': ['<dl class="datos">' + dato('Tanques y cisternas', String((TB.tanques || []).filter(x => x.cod === cod).length)) + dato('Canillas (bacteriológico)', String((TB.puntos || []).filter(x => x.cod === cod).length)) + dato('NO APTA', String((TB.noApta || []).filter(x => x.cod === cod).length)) + '</dl>',
         '<button class="btn sec" id="eeMi">Ver tanques, canillas y análisis</button>' + btn('#agua', 'Tablero de agua') + btn('#aguadiag', 'Diagnóstico de agua')],
       'Plagas': ['<dl class="datos">' + dato('Casos abiertos', String((TB.plagas || []).filter(x => x.cod === cod).length)) + '</dl>',
