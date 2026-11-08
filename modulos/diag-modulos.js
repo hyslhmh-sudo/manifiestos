@@ -48,9 +48,9 @@ const dgmConfig = m => { const P = DGMP[m]; return {
   volver: '<a href="' + P.ruta + '" class="peq" style="font-weight:700;text-decoration:none">‹ Todos los diagnósticos de ' + (m === 'agua' ? 'agua' : 'plagas') + '</a>',
   titulo: () => P.h1,
   txtLugares: P.txtLugares, txtFaltaLugar: 'Falta relevar al menos un lugar.',
-  extra: () => { const I = (DG.D.informes || [])[0]; return informesDiag() + '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Plan de acción</h2><span class="mu peq">' +
-    (I ? 'Las mejoras del informe ' + esc(I.codigo) + ' están en el plan de acción: ahí se carga el envío a la Dirección, la respuesta, el avance y la evidencia.' : 'Al generar el informe, sus mejoras (punto 6) pasan solas al plan de acción.') + '</span></div>' +
-    (I ? '<a class="btn sec" href="#plan/' + encodeURIComponent(I.codigo) + '">Ver el plan de acción</a>' : '') + '</section>'; },
+  extra: () => { const I = (DG.D.informes || [])[0]; return informesDiag() + '<section class="card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div><h2>Recomendaciones del informe</h2><span class="mu peq">' +
+    (I ? 'Las mejoras del informe ' + esc(I.codigo) + ' están en «Recomendaciones del informe» (envío a la Dirección, respuesta, avance y evidencia) y también en 11 · Gestión › Plan de acción.' : 'Al generar el informe, sus mejoras (punto 6) pasan solas al plan de acción.') + '</span></div>' +
+    (I ? '<a class="btn sec" href="#plan/' + encodeURIComponent(I.codigo) + '">Ver las recomendaciones</a>' : '') + '</section>'; },
   alPintar: () => activarInformes(), accInforme: 'p_dgm_informe_' + m, accCorreo: 'p_dgm_correo_' + m,
   nombre: cod => ((DGMT[m] && DGMT[m].establecimientos && DGMT[m].establecimientos.find(e => e.cod === cod)) || (RES && RES.filas.find(f => f.cod === cod)) || { nombre: cod }).nombre,
   alGuardar: () => { DGMT[m] = null; }
