@@ -14,7 +14,15 @@ const TC_EJES = [
 const TC = { ver: '', dep: '', todos: false, sin: null, sinPidio: false, inc: false, cap: false, rad: false, hist: null, histPidio: false, guardado: '', t0: Date.now() };
 const TC_NIV = { er: 0, wa: 1, av: 2 };
 const tcEsCaps = t => /(^|[^a-z])caps([^a-z]|$)/i.test(String(t || ''));
-const tcCol = (cod, lugar, tipo) => TC_CAPS[cod] && (tcEsCaps(lugar) || /^caps$/i.test(String(tipo || ''))) ? cod + '·CAPS' : cod;
+// 08/11/2026: en la red Trelew los CAPS se llaman sin «CAPS» (Amaya, Corradi…): se reconocen por el TIPO_SITIO «CAPS» de los lugares de incendio (BASE COMÚN)
+const tcNorm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\(.*?\)/g, '').replace(/\bcaps\b/g, '').replace(/\s+/g, ' ').trim();
+let TC_CAPSSET = null;
+function tcCapsSet() {
+  if (INCT && INCT.lugares) { const L = INCT.lugares.filter(l => /^caps$/i.test(String(l.tipo || ''))).map(l => l.cod + '|' + tcNorm(l.sitio)); TC_CAPSSET = new Set(L); LS.set('tcCaps', L); }
+  else if (!TC_CAPSSET) TC_CAPSSET = new Set(LS.get('tcCaps', []) || []);
+  return TC_CAPSSET;
+}
+const tcCol = (cod, lugar, tipo) => TC_CAPS[cod] && (tcEsCaps(lugar) || /^caps$/i.test(String(tipo || '')) || tcCapsSet().has(cod + '|' + tcNorm(String(lugar || '').split(' · ')[0]))) ? cod + '·CAPS' : cod;
 const tcDias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? null : Math.round((d - new Date(new Date().toISOString().slice(0, 10) + 'T12:00:00')) / 864e5); };
 const tcEsPlagas = a => a.origen === 'Plagas' || a.origen === 'Plagas (MIPyV)';
 const tcEsPlan = a => !tcEsPlagas(a) && a.origen !== 'Agua';   // agua NO APTA y muestreos van en 2 · Agua
@@ -54,7 +62,7 @@ function tcPedirExtras() {
 
 // Arma la lista única de hallazgos del tablero (eje × columna)
 function tcHallazgos(ctx) {
-  const { TB, cols } = ctx, H = [], has = {}, okT = {}, enCol = {}; cols.forEach(c => enCol[c.k] = true);
+  const { TB, cols } = ctx, H = [], has = {}, okT = {}, enCol = {}; cols.forEach(c => enCol[c.k] = true); TC_CAPSSET = null; tcCapsSet();
   const add = (eje, col, n, t, h, dep, fecha) => H.push({ eje: eje, col: col, n: n, t: t, h: h || TC_EJES.find(e => e[0] === eje)[3], dep: dep, fecha: fecha || '' });
   const hay = (eje, col, txt) => { (has[eje] = has[eje] || {})[col] = true; if (txt != null) (okT[eje] = okT[eje] || {})[col] = txt; };
   const ficha = (cod, t) => '#ficha/' + encodeURIComponent(cod) + (t ? '/' + t : '');
@@ -135,7 +143,7 @@ function tcHallazgos(ctx) {
   if (altas) add('8', '', 'av', altas + ' alta(s) propuesta(s) para la base de trabajadores', '#bandeja', 'hys');
 
   // 9 · Capacitaciones: personas capacitadas en el ciclo, por establecimiento
-  if (CAPT && CAPT.semaforo) (CAPT.semaforo.porEstablecimiento || []).forEach(e => { const f = RES.filas.find(x => x.cod === e.cod || sinTil(x.nombre) === sinTil(e.nombre)); const cod = f ? f.cod : e.cod;
+  if (CAPT && CAPT.semaforo) (CAPT.semaforo.porEstablecimiento || []).forEach(e => { const f = RES.filas.find(x => x.cod === e.cod || x.cod === e.nombre || sinTil(x.nombre) === sinTil(e.nombre)); const cod = f ? f.cod : e.cod;
     if (cod && enCol[cod]) hay('9', cod, (e.personas || 0) + ' personas capacitadas en el ciclo'); });
   (((TB.modulos || {}).capacitaciones || {}).lista || []).forEach(t => add('9', '', null, 'Capacitación: ' + t.cap + (t.hora ? ' · ' + t.hora : ''), '#capag', 'hys', t.fecha));
 
