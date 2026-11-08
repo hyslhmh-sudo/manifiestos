@@ -112,6 +112,9 @@ function completarTodoLoCargado() {
   } catch (e) { console.log("Tanques: " + e); }
   filas.sort((a, b) => a[0] - b[0]);
   const sh = todoHoja_(ss);
+  // Horarios cargados a mano (portal › Control de horas › «Cargar horario») o que solo están en esta hoja (tanques): se conservan (08/11/2026)
+  if (sh.getLastRow() > 1) { const prev = {}; sh.getRange(2, 1, sh.getLastRow() - 1, TODO_H.length).getValues().forEach(r => { if (r[9] && r[2]) prev[String(r[9])] = r[2]; });
+    filas.forEach(f => { if (!f[2] && prev[f[9]]) f[2] = prev[f[9]]; }); }
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, TODO_H.length).clearContent();
   if (filas.length) sh.getRange(2, 1, filas.length, TODO_H.length).setValues(filas);
   sh.getRange("A:A").setNumberFormat("dd/mm/yyyy HH:mm"); sh.getRange("L:L").setNumberFormat("dd/mm/yyyy HH:mm");

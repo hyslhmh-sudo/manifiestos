@@ -136,11 +136,32 @@ function plagMipyv_(dias) {
   plagTabla_(ss, 'visitas').forEach(r => hAdd(r, 'Plagas', 'Cargó la visita'));
   plagTabla_(ss, 'avances_saneamiento').forEach(r => hAdd(r, 'Saneamiento', 'Cargó el avance'));
   plagTabla_(ss, 'tareas_hys').forEach(r => hAdd(r, 'Otros trabajos HyS' + (r.tipo_tarea ? ' · ' + r.tipo_tarea : ''), 'Cargó la tarea'));
+  // Relevamientos de edificios y tanques (08/11/2026): el horario sale de la hoja TODO LO CARGADO («08:00 a 12:00»); sin horario quedan en «sin horario»
+  plagTabla_(ss, 'TODO LO CARGADO').filter(t => /^(relev_edificio|alta_tanque|inspeccion_tanque|limpieza_tanque)$/.test(String(t.tipo_registro || '').trim())).forEach(t => {
+    const m = String(t.horario || '').match(/(\d{1,2}[:.]\d{2})\D+(\d{1,2}[:.]\d{2})/);
+    hAdd({ fecha: t.fecha, operario: t.operario, operario_acompanante: t.operario_acompanante, establecimiento: t.lugar, hora_inicio: m ? m[1] : '', hora_fin: m ? m[2] : '', id_tarea: t.id }, String(t.que || 'Relevamiento'), 'Cargó el relevamiento'); });
   horas.sort((a, b) => b.fecha.localeCompare(a.fecha) || a.persona.localeCompare(b.persona));
   const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, otros: otros, horas: horas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => v.fecha >= desde && !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;
+}
+// Horario cargado por HyS para un registro de la app que no lo tenía (Control de horas › «Cargar horario», 08/11/2026).
+// Relevamientos de edificios: va a relevamiento_edificio (hora_inicio, hora_fin) y a TODO LO CARGADO. Tanques: a TODO LO CARGADO.
+function plagHorario_(x) {
+  const ini = String(x.ini || '').trim(), fin = String(x.fin || '').trim(), id = String(x.id || '').trim();
+  if (!id || !/^\d{1,2}:\d{2}$/.test(ini) || !/^\d{1,2}:\d{2}$/.test(fin) || fin.padStart(5, '0') <= ini.padStart(5, '0')) return { ok: false, mensaje: 'Poné la hora de inicio y la de fin (la de fin, después).' };
+  const ss = plagMipyvLibro_(), poner = (hoja, campoId, campos) => { const sh = ss.getSheetByName(hoja); if (!sh || sh.getLastRow() < 2) return false;
+    let H = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    Object.keys(campos).forEach(k => { if (H.indexOf(k) < 0) { sh.getRange(1, sh.getLastColumn() + 1).setValue(k).setFontWeight('bold'); H.push(k); } });
+    const c = H.indexOf(campoId); if (c < 0) return false;
+    const ids = sh.getRange(2, c + 1, sh.getLastRow() - 1, 1).getValues().map(r => String(r[0]).trim()), i = ids.indexOf(id); if (i < 0) return false;
+    Object.keys(campos).forEach(k => sh.getRange(i + 2, H.indexOf(k) + 1).setValue(campos[k])); return true; };
+  const a = poner('TODO LO CARGADO', 'id', { horario: ini + ' a ' + fin });
+  const b = /^ED/.test(id) ? poner('relevamiento_edificio', 'id_relev', { hora_inicio: ini, hora_fin: fin }) : false;
+  if (!a && !b) return { ok: false, mensaje: 'No se encontró ese registro en el libro MIPyV.' };
+  CacheService.getScriptCache().remove('mipyv');
+  return { ok: true };
 }
 // ------------------------------------------------------------------ Casos y solicitudes de MIPyV (25/10/2026)
 // 06/11/2026: el servidor MIP pide permiso; el portal se identifica con la huella SHA-256 de la clave MAESTRA (minúsculas), sin mandar la clave

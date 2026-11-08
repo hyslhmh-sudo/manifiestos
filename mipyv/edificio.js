@@ -83,6 +83,8 @@ function edNorm(f) { f.det = f.det || {}; f.fotos = f.fotos || {}; ["agua", "des
 function edFaltan(f) {
   edNorm(f); const r = f.resp, d = f.det, x = [];
   if (f.lugar && f.lugar.id === "HZT" && !String(f.parte || "").trim()) x.push("Qué parte del hospital relevaste");
+  if (!f.hora_inicio || !f.hora_fin) x.push("El horario del relevamiento (de qué hora a qué hora)");   // 08/11/2026: para el control de horas
+  else if (f.hora_fin <= f.hora_inicio) x.push("El horario: la hora de fin tiene que ser después de la de inicio");
   ED_TEMAS.forEach(tm => {
     const T = tm.emo + " " + tm.t;
     if (tm.tiene && !r[tm.id + "_tiene"]) { x.push(T + ": " + tm.tiene); return; }
@@ -183,6 +185,7 @@ function edRenderForm() {
     ${ed.aviso ? `<div class="tq-info" style="border-left:4px solid #B4361F">${escX(ed.aviso)}</div>` : ""}
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
     <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
+    <div class="ext-preg ed-req">Horario de este relevamiento (para el control de horas)</div><div style="display:flex;gap:8px;align-items:center"><span>de</span><input class="ext-inp" type="time" data-dato="hora_inicio" value="${escX(f.hora_inicio || "")}" style="flex:1"><span>a</span><input class="ext-inp" type="time" data-dato="hora_fin" value="${escX(f.hora_fin || "")}" style="flex:1"></div>
     <div class="tq-info">Escribí todo para que se entienda sin haber estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
     <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "(obligatorio)" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
     ${f.lugar.id === "HZT" ? `<div class="step-sub">El hospital es grande: se puede relevar por partes, cargando un relevamiento por cada parte.</div>` : ""}`;
@@ -221,7 +224,7 @@ function edRenderForm() {
     if (lst) lst.outerHTML = fl.length ? `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${fl.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>` : "";
     else if (fl.length) bt.insertAdjacentHTML("afterend", `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${fl.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>`); };
   box.querySelectorAll("[data-det]").forEach(i => { i.oninput = () => { d[i.dataset.det] = i.value; i.classList.toggle("ed-falta", !edTxtOk(i.value)); edBorrador(); refrescarFaltan(); }; });
-  box.querySelectorAll("[data-dato]").forEach(i => { i.oninput = () => { if (i.dataset.dato === "FECHA") f.FECHA = i.value; else if (i.dataset.dato === "parte") f.parte = i.value; else f.obs = i.value; edBorrador(); }; });
+  box.querySelectorAll("[data-dato]").forEach(i => { i.oninput = () => { if (i.dataset.dato === "FECHA") f.FECHA = i.value; else if (i.dataset.dato === "parte") f.parte = i.value; else if (/^hora_/.test(i.dataset.dato)) f[i.dataset.dato] = i.value; else f.obs = i.value; edBorrador(); }; });
   box.querySelectorAll("[data-falta]").forEach(i => { i.oninput = () => { f.falta[i.dataset.falta] = i.value; if (i.classList.contains("ed-falta") || !edTxtOk(i.value)) i.classList.toggle("ed-falta", !edTxtOk(i.value)); edBorrador(); refrescarFaltan(); }; });
   box.querySelectorAll("[data-dato]").forEach(i => { const o = i.oninput; i.oninput = () => { o(); refrescarFaltan(); }; });
   box.querySelectorAll(".ext-opc[data-campo] button").forEach(b => b.onclick = () => {
@@ -264,7 +267,7 @@ async function edGuardar() {
   const otros = rg.map(([id, p]) => p.replace(/^¿Hay |\?$/g, "").replace(/ \(.*\)$/, "") + ": " + (d["rg_" + id] || "").trim()).join(" | ");
   const urg = !!rg.length || ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "er"), arr = ED_TEMAS.some(tm => estados[tm.id + "_nivel"] === "wa");
   const data = { id_relev: f.uid, fecha: new Date().toISOString(), FECHA: f.FECHA, lugar_id: f.lugar.id, lugar: f.lugar.nombre, establecimiento: f.lugar.nombre, parte: (f.parte || "").trim() || "Todo el edificio",
-    operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "",
+    operario: currentOperario ? currentOperario.nombre : "", operario_acompanante: operarioAcompanante || "", hora_inicio: f.hora_inicio || "", hora_fin: f.hora_fin || "",
     agua: estados.agua, desagues: estados.desagues, canaletas: estados.canaletas, techos: estados.techos, techo_tipo: r.techo_tipo || "",
     prioridad: urg ? "Urgente" : arr ? "Requiere arreglos" : "Sin problemas a la vista", respuestas: textos.join("\n"),
     agua_falta: (f.falta.agua || "").trim(), desagues_falta: (f.falta.desagues || "").trim(), canaletas_falta: (f.falta.canaletas || "").trim(), techos_falta: (f.falta.techos || "").trim(),

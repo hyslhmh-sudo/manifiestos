@@ -10,7 +10,7 @@ const SHEET_EDIFICIO = "relevamiento_edificio";
 const ED_H = ["id_relev", "fecha_relevamiento", "lugar_id", "lugar", "parte", "operario", "operario_acompanante", "prioridad",
   "agua", "desagues", "canaletas", "techos", "techo_tipo", "agua_falta", "desagues_falta", "canaletas_falta", "techos_falta",
   "fotos_agua", "fotos_desagues", "fotos_canaletas", "fotos_techos", "observaciones", "respuestas", "cargado", "revisado_hys",
-  "otros_riesgos", "fotos_riesgos"];   // 06/11/2026: otros riesgos (gas, electricidad, algo que se puede caer, otro) con dónde y qué, y sus fotos
+  "otros_riesgos", "fotos_riesgos", "hora_inicio", "hora_fin"];   // 08/11/2026: horario del relevamiento (control de horas)   // 06/11/2026: otros riesgos (gas, electricidad, algo que se puede caer, otro) con dónde y qué, y sus fotos
 
 function edHoja_(ss) {
   let sh = ss.getSheetByName(SHEET_EDIFICIO);
@@ -41,7 +41,7 @@ function guardarRelevEdificio_(ss, data) {
   const s = (v) => String(v == null ? "" : v).trim();
   agregarFila(sh, {
     id_relev: data.id_relev, fecha_relevamiento: s(data.FECHA) || s(data.fecha).slice(0, 10), lugar_id: s(data.lugar_id), lugar: s(data.lugar), parte: s(data.parte) || "Todo el edificio",
-    operario: s(data.operario) || "s/d", operario_acompanante: s(data.operario_acompanante), prioridad: s(data.prioridad) || "s/d",
+    operario: s(data.operario) || "s/d", operario_acompanante: s(data.operario_acompanante), hora_inicio: s(data.hora_inicio), hora_fin: s(data.hora_fin), prioridad: s(data.prioridad) || "s/d",
     agua: s(data.agua) || "s/d", desagues: s(data.desagues) || "s/d", canaletas: s(data.canaletas) || "s/d", techos: s(data.techos) || "s/d", techo_tipo: s(data.techo_tipo) || "s/d",
     agua_falta: s(data.agua_falta), desagues_falta: s(data.desagues_falta), canaletas_falta: s(data.canaletas_falta), techos_falta: s(data.techos_falta),
     fotos_agua: links.agua, fotos_desagues: links.desagues, fotos_canaletas: links.canaletas, fotos_techos: links.techos, otros_riesgos: s(data.otros_riesgos) || "s/d", fotos_riesgos: links.riesgos,

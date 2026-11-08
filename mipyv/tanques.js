@@ -235,6 +235,7 @@ function tqFaltan(f) {
     if (!d.TAPA) x.push("tapa");   // 02/11/2026: la foto del F-AGU-01-T es opcional por ahora (pedido de Belén)
   }
   if (!f.FECHA) x.push("fecha");
+  if (f.accion !== "edit") { if (!d.hora_inicio || !d.hora_fin) x.push("horario (de qué hora a qué hora)"); else if (d.hora_fin <= d.hora_inicio) x.push("horario: el fin tiene que ser después del inicio"); }   // 08/11/2026
   return x;
 }
 // 03/11/2026 (Belén): si no saben cuántos litros tiene, eligen el tamaño más parecido y queda como ESTIMADA.
@@ -253,6 +254,7 @@ function tqRenderForm() {
     <div class="step-title" style="font-size:1.25rem">${TQ_TITULO[f.accion]}</div>
     <div class="step-sub">${escX(f.lugar ? f.lugar.nombre : "")}${t ? " · " + escX(t.codigo) + " · " + escX(t.ubicacion || "") : ""}</div><div class="ext-card tq">`;
   h += `<div class="ext-preg">Fecha</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">`;
+  h += `<div class="ext-preg">Horario (para el control de horas)</div><div style="display:flex;gap:8px;align-items:center"><span>de</span><input class="ext-inp" type="time" data-dato="hora_inicio" value="${escX(f.datos.hora_inicio || "")}" style="flex:1"><span>a</span><input class="ext-inp" type="time" data-dato="hora_fin" value="${escX(f.datos.hora_fin || "")}" style="flex:1"></div>`;
   if (f.accion === "alta" || f.accion === "edit") {
     h += `<div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-dato="UBICACION" value="${escX(d.UBICACION)}" placeholder="Ej.: techo del edificio principal, patio del fondo"><div class="step-sub">Solo dónde está este tanque. Si hay más tanques o una cisterna, agregá cada uno aparte con «Agregar un tanque o cisterna».</div>
       <div class="ext-preg">Tipo</div>${tqOpc("TIPO", TQ_OPC.TIPO, d.TIPO)}
@@ -333,7 +335,7 @@ function tqPintarFotos() {
 async function tqGuardar() {
   const f = tq.form, d = f.datos; if (tqFaltan(f).length) return;
   const base = { operario: currentOperario ? currentOperario.nombre : "", id_operario: currentOperario ? currentOperario.id : "", operario_acompanante: operarioAcompanante || "",
-    fecha: new Date().toISOString(), FECHA: f.FECHA, OBSERVACIONES: f.obs.trim(), lugar_id: f.lugar ? f.lugar.id : "", lugar_nombre: f.lugar ? f.lugar.nombre : "" };
+    fecha: new Date().toISOString(), FECHA: f.FECHA, hora_inicio: d.hora_inicio || "", hora_fin: d.hora_fin || "", OBSERVACIONES: f.obs.trim(), lugar_id: f.lugar ? f.lugar.id : "", lugar_nombre: f.lugar ? f.lugar.nombre : "" };
   const preg = {}; TQ_PREGS.forEach(([k]) => preg[k] = d[k]);
   let item;
   if (f.accion === "alta") item = { tipo: "alta_tanque", data: Object.assign(base, preg, { id_alta: f.uid, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), CAPACIDAD_ESTIMADA: d.CAP_EST ? "Sí" : "", MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, TAPA: d.TAPA, CLORO_MG_L: d.CLORO_MG_L, ULTIMA_LIMPIEZA: d.ULTIMA_LIMPIEZA, fotos_base64: f.fotos.slice() }) };

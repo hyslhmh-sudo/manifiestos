@@ -568,7 +568,10 @@ async function pantallaHoras(fresco) {
     const tDia = dm.length ? '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-size:14px">Día por día (' + dm.length + ')</summary><div style="overflow-x:auto;margin-top:6px"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th>' + (c.contrato ? '<th>Contrato</th>' : '') + '<th>Guardia reloj</th><th>Dónde y qué</th></tr></thead><tbody>' +
       dm.slice().reverse().map(f => { const d = p.dias[f]; return '<tr><td style="white-space:nowrap"><b>' + mpF(f) + '</b></td><td data-l="Horario">' + d.union.map(x => hsHM(x[0]) + ' a ' + hsHM(x[1])).join(' y ') + (d.superpuestos ? '<div class="mu peq">registros superpuestos: contados una vez</div>' : '') + (d.titular ? '<div class="mu peq">sin horario propio: se tomó el del titular</div>' : '') + '</td>' +
         '<td data-l="Horas">' + hsTxt(d.min) + '</td>' + (c.contrato ? '<td data-l="Contrato">' + hsTxt(d.contrato) + '</td>' : '') + '<td data-l="Guardia reloj">' + hsTxt(d.guardia) + '</td><td class="peq" data-l="Dónde">' + Array.from(d.lugares).map(esc).join(', ') + '<div class="mu">' + Array.from(d.tipos).map(esc).join(', ') + '</div></td></tr>'; }).join('') + '</tbody></table></div></details>' : '<div class="mu" style="margin-top:8px">Sin horas cargadas en ' + nomMes(MHS) + '.</div>';
-    const tSin = sinM.length ? '<div class="aviso" style="margin-top:10px">' + sinM.length + ' registro(s) de ' + nomMes(MHS) + ' sin horario o con horario incompleto: no se cuentan. ' + sinM.slice(0, 8).map(r => mpF(r.fecha) + ' · ' + esc(r.lugar || '') + ' (' + esc(String(r.tipo).split(' · ')[0]) + ')').join('; ') + (sinM.length > 8 ? '…' : '') + '</div>' : '';
+    // 08/11/2026: los relevamientos de edificios y de tanques sin horario se pueden completar desde acá («Cargar horario»)
+    const tSin = sinM.length ? '<div class="aviso" style="margin-top:10px"><b>' + sinM.length + ' registro(s) de ' + nomMes(MHS) + ' sin horario o con horario incompleto: no se cuentan.</b>' +
+      '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">' + sinM.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).map(r => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>' + mpF(r.fecha) + ' · ' + esc(r.lugar || '') + ' (' + esc(String(r.tipo).split(' · ')[0]) + ')' + (r.rol === 'Acompañante' ? ' · acompañante' : '') + '</span>' +
+        (/^(ED|TQ)/.test(String(r.id || '')) ? '<button class="btn sec" data-hsh="' + esc(r.id) + '" data-hsl="' + esc(mpF(r.fecha) + ' · ' + (r.lugar || '')) + '" style="padding:3px 8px;font-size:12px">Cargar horario</button>' : '<span class="mu peq">(se corrige en la app o en el libro MIPyV)</span>') + '</div>').join('') + '</div></div>' : '';
     return '<section class="card" style="margin-bottom:16px"><h2 style="margin:0 0 2px;font-size:17px">' + esc(p.nombre) + '</h2><div class="mu peq">' + esc(c.regla) + '</div>' + kpis + tSem + tDia + tSin + '</section>';
   };
   box.innerHTML = '<section class="card" style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><label class="f" style="margin:0">Mes<select class="c" id="hsMes">' + meses.map(m => '<option value="' + m + '"' + (m === MHS ? ' selected' : '') + '>' + nomMes(m) + '</option>').join('') + '</select></label>' +
@@ -576,6 +579,17 @@ async function pantallaHoras(fresco) {
     '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas salen de «hora de inicio» y «hora de fin» de cada registro de la app; el acompañante usa su propio horario y, si no lo cargó, el del titular.</div>';
   $('hsMes').onchange = e => { MHS = e.target.value; pantallaHoras(); };
   $('hsImp').onclick = () => { document.querySelectorAll('#hsBox details').forEach(d => d.open = true); window.print(); };
+  box.querySelectorAll('[data-hsh]').forEach(b => b.onclick = () => {
+    $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Cargar horario"><h2>Cargar horario</h2><p class="mu peq">' + esc(b.dataset.hsl) + '. Vale para el operario y su acompañante.</p>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="f">Desde<input class="c" type="time" id="hsIni"></label><label class="f">Hasta<input class="c" type="time" id="hsFin"></label></div>' +
+      '<div class="acciones"><button class="btn sec" id="hsNo">Cancelar</button><button class="btn pri" id="hsOk">Guardar</button></div></div>';
+    $('ov').hidden = false; const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
+    $('hsNo').onclick = cerrar;
+    $('hsOk').onclick = async () => { const ini = $('hsIni').value, fin = $('hsFin').value; if (!ini || !fin || fin <= ini) return toast('Poné desde y hasta (hasta, después de desde).');
+      $('hsOk').disabled = true; $('hsOk').textContent = 'Guardando…';
+      try { const r = await api('p_mipyv_horario', { id: b.dataset.hsh, ini: ini, fin: fin }, 60000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); cerrar(); toast('Horario guardado.'); pantallaHoras(true); }
+      catch (e) { $('hsOk').disabled = false; $('hsOk').textContent = 'Guardar'; toast(e.message || 'No se pudo guardar.'); } };
+  });
 }
 
 // ------------------------------------------------------------------ Relevamiento de edificios · red Trelew (05/11/2026, pedido de Belén)
