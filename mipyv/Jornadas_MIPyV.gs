@@ -82,7 +82,7 @@ function jornadasParaApp_(ss) {
     v.slice(1).forEach(r => {
       const f = jorFecha_(r[c("fecha")]); if (!f || f < JOR_DESDE || f >= hoy) return;
       const ps = [jorTxt_(r[c("operario")])].concat(jorTxt_(r[c("operario_acompanante")]).split(/\s*[,|]\s*/)).map(jorTxt_).filter(Boolean);
-      const sinH = !/\d{1,2}[:.]\d{2}/.test(String(r[c("horario")] || "")), lugar = jorTxt_(r[c("lugar")]);
+      const sinH = !/\d{1,2}[:.]\d{2}/.test(String(r[c("horario")] || "")) && !/^(trabajo_nuevo|cierre_trabajo|cierre_caso|solicitud|editar_tanque)$/.test(jorTxt_(r[c("tipo_registro")])), lugar = jorTxt_(r[c("lugar")]);   // avisos, cierres e inicio de trabajo no son tiempo de trabajo
       ps.forEach(p => { const k = f + "|" + jorNorm_(p), d = dias[k] = dias[k] || { fecha: f, persona: p, lugares: [], con: [], sinHorario: false };
         if (lugar && d.lugares.indexOf(lugar) < 0) d.lugares.push(lugar); if (sinH) d.sinHorario = true;
         ps.filter(o => o !== p).forEach(o => { if (d.con.indexOf(o) < 0) d.con.push(o); }); });
