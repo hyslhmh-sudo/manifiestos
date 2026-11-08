@@ -1,4 +1,4 @@
-// Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026) · servidor: Gestion.gs (acciones p_ges_…)
+// Portal HyS · 11 · Gestión (fase 3 · 14.64 · 14/10/2026; 15.24 · 08/11/2026: responsable obligatorio) · servidor: Gestion.gs (acciones p_ges_…)
 // Plan de acción (antes «Plan de acción único»; nombre de Belén, 08/11/2026), hallazgos, bandeja de sugeridos, necesidades de inversión y alcance (niveles A y B).
 // Los datos viven en la BASE COMÚN (GES_ALCANCE, GES_EMPRESAS, GES_HALLAZGOS, GES_ACCIONES).
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
@@ -11,6 +11,7 @@ const gesCab = (t, s, extra) => '<div class="cab"><div><span class="mu peq">11 �
 const gesTabs = act => '<div class="filtros" style="flex-wrap:wrap;gap:6px;margin:0 0 12px">' + [['plan', 'Plan de acción'], ['hallazgos', 'Hallazgos'], ['bandeja', 'Bandeja de sugeridos'], ['inversion', 'Necesidades de inversión'], ['reglas', 'Reglas'], ['alcance', 'Alcance']]
   .map(([k, t]) => '<a class="btn ' + (k === act ? 'pri' : 'sec') + ' peq" href="#ges/' + k + '">' + t + (k === 'bandeja' && GESD ? ' · ' + GESD.hallazgos.filter(h => h.ESTADO === 'Sugerido').length : '') + '</a>').join('') + '</div>';
 const gesKpi = (t, v, s, col) => '<div class="kpi2"><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></div>';
+const gesTieneResp = a => { const s = String((a && a.RESPONSABLE) || '').trim(); return !!s && !/^s\/d/i.test(s); };   // 08/11/2026: «s/d» no cuenta como responsable
 const gesOpt = (v, t, sel) => '<option value="' + esc(v) + '"' + (String(v) === String(sel) ? ' selected' : '') + '>' + esc(t) + '</option>';
 function gesTag(a) {
   if (a.vencida) return '<span class="tag er">Vencida</span>';
@@ -43,10 +44,10 @@ function gesPlan() {
   const F = GESF, A = GESD.acciones, q = F.q.toLowerCase(), H = {}; GESD.hallazgos.forEach(h => H[h.ID] = h);
   const pasa = a => (!F.cod || a.ESTABLECIMIENTO === F.cod) && (!F.mod || a.MODULO === F.mod) && (!F.resp || a.RESPONSABLE === F.resp) && (!F.rec || (a.TIPO_RECURSO || 'Sin definir') === F.rec) &&
     (F.estado === 'todas' || (F.estado === 'abiertas' && a.abierta) || (F.estado === 'vencidas' && a.vencida) || (F.estado === 'verificar' && a.verificar) || (F.estado === 'elevadas' && a.ESTADO === 'Elevada') ||
-     (F.estado === 'recursos' && a.ESTADO === 'Pendiente de recursos') || (F.estado === 'cerradas' && !a.abierta) || F.estado === a.ESTADO) &&
+     (F.estado === 'recursos' && a.ESTADO === 'Pendiente de recursos') || (F.estado === 'sinresp' && a.abierta && !gesTieneResp(a)) || (F.estado === 'cerradas' && !a.abierta) || F.estado === a.ESTADO) &&
     (!q || (a.ID + ' ' + a.ACCION + ' ' + a.SITIO + ' ' + a.RESPONSABLE + ' ' + ((H[a.HALLAZGO] || {}).DESCRIPCION || '')).toLowerCase().indexOf(q) >= 0);
   const vis = A.filter(pasa).sort((a, b) => (b.vencida - a.vencida) || String(a.FECHA_LIMITE || '9999').localeCompare(String(b.FECHA_LIMITE || '9999')));
-  const ab = A.filter(a => a.abierta), venc = A.filter(a => a.vencida).length, sinR = A.filter(a => a.sinRespuesta).length, ver = A.filter(a => a.verificar).length, rec = A.filter(a => a.ESTADO === 'Pendiente de recursos').length;
+  const ab = A.filter(a => a.abierta), venc = A.filter(a => a.vencida).length, sinR = A.filter(a => a.sinRespuesta).length, ver = A.filter(a => a.verificar).length, rec = A.filter(a => a.ESTADO === 'Pendiente de recursos').length, sinResp = ab.filter(a => !gesTieneResp(a)).length;
   const ext = a => a.vencida ? '#B4361F' : '';
   const cods = Array.from(new Set(A.map(a => a.ESTABLECIMIENTO))).sort();
   const clave = a => F.por === 'establecimiento' ? gesNom(a.ESTABLECIMIENTO) : F.por === 'responsable' ? (a.RESPONSABLE || 'Sin responsable asignado') : F.por === 'modulo' ? a.MODULO : '';
@@ -54,16 +55,16 @@ function gesPlan() {
   const orden = Object.keys(grupos).sort((a, b) => F.por === 'modulo' ? (parseInt(a) || 99) - (parseInt(b) || 99) : a.localeCompare(b));
   const fila = a => { const h = H[a.HALLAZGO] || {};
     return '<tr class="cl" data-ac="' + esc(a.ID) + '"><td>' + gesTag(a) + '<div class="mu peq">' + esc(a.ID) + '</div></td><td><b>' + esc(a.ESTABLECIMIENTO) + '</b></td><td class="peq">' + esc(a.MODULO) + '</td><td>' + esc(a.ACCION) +
-      (h.DESCRIPCION && h.DESCRIPCION !== a.ACCION ? '<div class="mu peq">Hallazgo: ' + esc(h.DESCRIPCION) + '</div>' : '') + (a.SITIO ? '<div class="mu peq">' + esc(a.SITIO) + '</div>' : '') + '</td><td class="peq">' + esc(a.RESPONSABLE || '—') + '</td><td class="peq"' + (ext(a) ? ' style="color:' + ext(a) + ';font-weight:700"' : '') + '>' + fechaTxt(a.FECHA_LIMITE) + '</td><td class="peq">' + esc(a.TIPO_RECURSO || '—') + (a.REQUIERE_DIRECCION === 'Sí' ? '<div class="mu">Dirección</div>' : '') + '</td></tr>'; };
+      (h.DESCRIPCION && h.DESCRIPCION !== a.ACCION ? '<div class="mu peq">Hallazgo: ' + esc(h.DESCRIPCION) + '</div>' : '') + (a.SITIO ? '<div class="mu peq">' + esc(a.SITIO) + '</div>' : '') + '</td><td class="peq">' + (gesTieneResp(a) ? esc(a.RESPONSABLE) : a.abierta ? '<b style="color:#B4361F">s/d · asignar</b>' : '—') + '</td><td class="peq"' + (ext(a) ? ' style="color:' + ext(a) + ';font-weight:700"' : '') + '>' + fechaTxt(a.FECHA_LIMITE) + '</td><td class="peq">' + esc(a.TIPO_RECURSO || '—') + (a.REQUIERE_DIRECCION === 'Sí' ? '<div class="mu">Dirección</div>' : '') + '</td></tr>'; };
   const tabla = orden.length ? orden.map(g => (F.por !== 'ninguno' ? '<tr><td colspan="7" style="background:#EEF2F4;font-weight:800;color:var(--az)">' + esc(g) + ' · ' + grupos[g].length + '</td></tr>' : '') + grupos[g].map(fila).join('')).join('')
     : '<tr><td colspan="7" class="mu">No hay acciones con estos filtros.' + (A.length ? '' : ' Tocá «Traer de los módulos» para pasar los planes que ya existen.') + '</td></tr>';
   marco('#ges', gesCab('Plan de acción', 'Todas las acciones de todos los módulos, con responsable, plazo, si requiere Dirección, avance, evidencia y verificación de eficacia.', '<button class="btn sec" id="gTraer">Traer de los módulos</button><button class="btn sec" id="gElevar">Elevar a la Dirección</button><button class="btn pri" id="gNueva">+ Nueva acción</button>') + gesTabs('plan') +
     '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + gesKpi('Abiertas', ab.length, 'en curso o por empezar') + gesKpi('Vencidas', venc, 'gestión e insumos; sin inversión', venc ? '#B4361F' : '') +
-      gesKpi('Elevadas sin respuesta', sinR, 'más de 60 días', sinR ? '#8A5200' : '') + gesKpi('A verificar', ver, 'hechas: falta ver si fueron eficaces') + gesKpi('Pendientes de recursos', rec, 'riesgo informado; no cuentan contra HyS') + '</div>' +
+      gesKpi('Elevadas sin respuesta', sinR, 'más de 60 días', sinR ? '#8A5200' : '') + gesKpi('A verificar', ver, 'hechas: falta ver si fueron eficaces') + gesKpi('Pendientes de recursos', rec, 'riesgo informado; no cuentan contra HyS') + gesKpi('Sin responsable', sinResp, 'abiertas: asignar quién la lleva', sinResp ? '#B4361F' : '') + '</div>' +
     '<div class="filtros" style="margin:12px 0;flex-wrap:wrap">' +
       '<label class="f">Establecimiento<select class="c" id="gE">' + gesOpt('', 'Todos', F.cod) + cods.map(c => gesOpt(c, gesNom(c), F.cod)).join('') + '</select></label>' +
       '<label class="f">Módulo<select class="c" id="gM">' + gesOpt('', 'Todos', F.mod) + GESD.listas.modulos.map(m => gesOpt(m, m, F.mod)).join('') + '</select></label>' +
-      '<label class="f">Mostrar<select class="c" id="gS">' + [['abiertas', 'Abiertas'], ['vencidas', 'Vencidas'], ['verificar', 'A verificar eficacia'], ['elevadas', 'Elevadas a la Dirección'], ['recursos', 'Pendientes de recursos'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(o => gesOpt(o[0], o[1], F.estado)).join('') + '</select></label>' +
+      '<label class="f">Mostrar<select class="c" id="gS">' + [['abiertas', 'Abiertas'], ['sinresp', 'Sin responsable'], ['vencidas', 'Vencidas'], ['verificar', 'A verificar eficacia'], ['elevadas', 'Elevadas a la Dirección'], ['recursos', 'Pendientes de recursos'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(o => gesOpt(o[0], o[1], F.estado)).join('') + '</select></label>' +
       '<label class="f">Responsable<select class="c" id="gR">' + gesOpt('', 'Todos', F.resp) + GESD.responsables.map(r => gesOpt(r, r, F.resp)).join('') + '</select></label>' +
       '<label class="f">Recurso<select class="c" id="gT">' + gesOpt('', 'Todos', F.rec) + GESD.listas.recursos.concat(['Sin definir']).map(r => gesOpt(r, r, F.rec)).join('') + '</select></label>' +
       '<label class="f">Ver por<select class="c" id="gP">' + [['modulo', 'Módulo'], ['establecimiento', 'Establecimiento'], ['responsable', 'Responsable'], ['ninguno', 'Lista simple']].map(o => gesOpt(o[0], o[1], F.por)).join('') + '</select></label>' +
@@ -84,8 +85,8 @@ function gesAccion(id) {
     (h.ID ? '<div>Hallazgo ' + esc(h.ID) + ': ' + esc(h.DESCRIPCION) + '</div><div class="mu">Origen: ' + esc(h.ORIGEN) + (h.REFERENCIA_ORIGEN ? ' · ' + esc(h.REFERENCIA_ORIGEN) : '') + (h.FUENTE ? ' · Fuente: ' + esc(h.FUENTE) : '') + (h.PRIORIDAD ? ' · ' + esc(h.PRIORIDAD) : '') + '</div>' : '') +
     '<div class="mu">Alta: ' + fechaTxt(a.FECHA_ALTA) + ' · Último seguimiento: ' + fechaTxt(a.SEGUIMIENTO) + '</div></div>';
   const hist = a.HISTORIAL ? '<details style="margin-top:10px"><summary class="peq"><b>Historial</b></summary><pre class="peq" style="white-space:pre-wrap;margin:6px 0 0">' + esc(a.HISTORIAL) + '</pre></details>' : '';
-  const ayuda = '<p class="mu peq" style="margin:8px 0 0">«Requiere Dirección» solo si hace falta una compra, obra o contratación; un cambio de organización, personal u horarios; una decisión entre servicios o con la Secretaría; o es «Actuar ya» y no se resuelve en el servicio. «Eficaz» pide evidencia; «No eficaz» la devuelve a En curso. Inversión no aprobada pasa a «Pendiente de recursos».</p>';
-  const campos = [['ACCION', 'Acción', null, 1], ['SITIO', 'Sitio o sector'], ['RESPONSABLE', 'Responsable (persona, servicio o empresa)'], ['PLAZO_DIAS', 'Plazo (días)', ['30', '90', '180']], ['FECHA_LIMITE', 'Fecha límite', 'date'],
+  const ayuda = '<p class="mu peq" style="margin:8px 0 0">«Requiere Dirección» solo si hace falta una compra, obra o contratación; un cambio de organización, personal u horarios; una decisión entre servicios o con la Secretaría; o es «Actuar ya» y no se resuelve en el servicio. El responsable es obligatorio para pasarla a Aprobada, En curso, Hecha o Eficaz (elevarla a la Dirección no lo pide). «Eficaz» pide evidencia; «No eficaz» la devuelve a En curso. Inversión no aprobada pasa a «Pendiente de recursos».</p>';
+  const campos = [['ACCION', 'Acción', null, 1], ['SITIO', 'Sitio o sector'], ['RESPONSABLE', 'Responsable (persona, servicio o empresa) · obligatorio'], ['PLAZO_DIAS', 'Plazo (días)', ['30', '90', '180']], ['FECHA_LIMITE', 'Fecha límite', 'date'],
     ['ESTADO', 'Estado', L.estados], ['REQUIERE_DIRECCION', '¿Requiere Dirección?', ['Sí', 'No']], ['TIPO_RECURSO', 'Tipo de recurso', L.recursos], ['COSTO_ESTIMADO', 'Costo estimado'],
     ['FECHA_ELEVADA', 'Fecha en que se elevó', 'date'], ['RESPUESTA_DIRECCION', 'Respuesta de la Dirección'], ['FECHA_RESPUESTA', 'Fecha de la respuesta', 'date'],
     ['AVANCE', 'Avance (lo último que pasó)', null, 1], ['EVIDENCIA', 'Evidencia (enlace o descripción)', null, 1], ['MOTIVO', 'Motivo (si no se realiza o queda pendiente de recursos)', null, 1]];
@@ -102,8 +103,9 @@ function gesAccion(id) {
 function gesNuevaAccion(pre) {
   const L = GESD.listas;
   modal('Nueva acción', [['ESTABLECIMIENTO', 'Establecimiento', GESD.establecimientos.map(e => e.cod)], ['MODULO', 'Módulo', L.modulos], ['HALLAZGO_DESC', 'Hallazgo (qué incumple)', null, 1], ['ORIGEN', 'Origen', L.origenes],
-    ['FUENTE', 'Fuente (norma y artículo, contrato o protocolo)'], ['PRIORIDAD', 'Prioridad', L.prioridades], ['ACCION', 'Acción', null, 1], ['SITIO', 'Sitio o sector'], ['RESPONSABLE', 'Responsable'],
+    ['FUENTE', 'Fuente (norma y artículo, contrato o protocolo)'], ['PRIORIDAD', 'Prioridad', L.prioridades], ['ACCION', 'Acción', null, 1], ['SITIO', 'Sitio o sector'], ['RESPONSABLE', 'Responsable (persona, servicio o empresa) · obligatorio'],
     ['PLAZO_DIAS', 'Plazo (días)', ['30', '90', '180']], ['REQUIERE_DIRECCION', '¿Requiere Dirección?', ['No', 'Sí']], ['TIPO_RECURSO', 'Tipo de recurso', L.recursos]], Object.assign({ REQUIERE_DIRECCION: 'No', ORIGEN: 'Recorrida' }, pre || {}), async o => {
+    if (!gesTieneResp(o)) return 'Indicá el responsable (persona, servicio o empresa).';
     if (!o.PLAZO_DIAS && o.PRIORIDAD) o.PLAZO_DIAS = { 'Actuar ya': '30', 'Resolver rápido': '90' }[o.PRIORIDAD] || '180';
     const r = await api('p_ges_accion', { datos: o }, 120000);
     if (!r.ok) return r.mensaje || 'No se pudo guardar.';
@@ -141,16 +143,18 @@ function gesHallazgo(id) {
   const h = id ? GESD.hallazgos.find(x => x.ID === id) : null, L = GESD.listas, nuevo = !h;
   const campos = [['ESTABLECIMIENTO', 'Establecimiento', GESD.establecimientos.map(e => e.cod)], ['MODULO', 'Módulo', L.modulos], ['DESCRIPCION', 'Hallazgo (qué incumple)', null, 1], ['SITIO', 'Sitio o sector'],
     ['ORIGEN', 'Origen', L.origenes], ['REFERENCIA_ORIGEN', 'Referencia del origen (informe, relevamiento, nota)'], ['FUENTE', 'Fuente (norma y artículo, contrato o protocolo)', null, 1], ['GRAVEDAD', 'Gravedad', L.gu], ['URGENCIA', 'Urgencia', L.gu],
-    ['PRIORIDAD', 'Prioridad (se calcula con gravedad y urgencia si la dejás vacía)', L.prioridades], ['EVIDENCIA', 'Evidencia (enlace o descripción)', null, 1]].concat(nuevo ? [] : [['ESTADO', 'Estado', L.halEstados], ['MOTIVO', 'Motivo (si se descarta)', null, 1]]);
+    ['PRIORIDAD', 'Prioridad (se calcula con gravedad y urgencia si la dejás vacía)', L.prioridades], ['EVIDENCIA', 'Evidencia (enlace o descripción)', null, 1]].concat(nuevo ? [['RESPONSABLE', 'Responsable de la acción (persona, servicio o empresa) · obligatorio']] : [['ESTADO', 'Estado', L.halEstados], ['MOTIVO', 'Motivo (si se descarta)', null, 1]]);
   const val = h ? Object.assign({}, h) : { ORIGEN: 'Recorrida', FECHA: GESD.hoy };
   modal(nuevo ? 'Nuevo hallazgo' : 'Hallazgo ' + h.ID, campos, val, async o => {
     const d = {}; Object.keys(o).forEach(k => { if (nuevo || String(o[k]) !== String(val[k] == null ? '' : val[k])) d[k] = o[k]; });
     if (!nuevo && !Object.keys(d).length) return '';
     if (nuevo && !d.PRIORIDAD && d.GRAVEDAD && d.URGENCIA) d.PRIORIDAD = '';
-    const r = await api('p_ges_hallazgo', { id: h ? h.ID : '', datos: d, conAccion: nuevo }, 120000);
+    const resp = String(d.RESPONSABLE || '').trim(); delete d.RESPONSABLE;
+    if (nuevo && !gesTieneResp({ RESPONSABLE: resp })) return 'Indicá el responsable de la acción (persona, servicio o empresa).';
+    const r = await api('p_ges_hallazgo', { id: h ? h.ID : '', datos: d, conAccion: nuevo, accion: nuevo ? { RESPONSABLE: resp } : {} }, 120000);
     if (!r.ok) return r.mensaje || 'No se pudo guardar.';
-    toast(nuevo ? 'Hallazgo ' + r.id + ' cargado' + (r.accion ? ' con la acción ' + r.accion + ' (completá responsable y plazo en el plan).' : '.') : 'Guardado.'); gestion(true); return '';
-  }, nuevo ? '<p class="mu peq" style="margin:8px 0 0">Se crea también su acción en el plan único, con el plazo según la prioridad (Actuar ya 30 días, Resolver rápido 90, Planificar 180).</p>' : '');
+    toast(nuevo ? 'Hallazgo ' + r.id + ' cargado' + (r.accion ? ' con la acción ' + r.accion + ' en el plan de acción.' : '.') : 'Guardado.'); gestion(true); return '';
+  }, nuevo ? '<p class="mu peq" style="margin:8px 0 0">Se crea también su acción en el plan de acción, a cargo del responsable que indiques, con el plazo según la prioridad (Actuar ya 30 días, Resolver rápido 90, Planificar 180).</p>' : '');
 }
 
 // ------------------------------------------------------------------ Bandeja de sugeridos
@@ -162,9 +166,10 @@ function gesBandeja() {
       '<div style="display:flex;gap:8px"><button class="btn sec" data-bd="' + esc(h.ID) + '">Descartar</button><button class="btn pri" data-bc="' + esc(h.ID) + '">Confirmar</button></div></section>').join('') + '</div>'
       : '<section class="card mu">La bandeja está vacía. Los hallazgos sugeridos aparecen cuando el sistema detecta algo en un establecimiento de nivel B, o en los casos que la regla marca como sugeridos.</section>'));
   $('bTraer').onclick = gesTraer;
-  document.querySelectorAll('[data-bc]').forEach(b => b.onclick = async () => { b.disabled = true; b.textContent = 'Confirmando…';
-    try { const r = await api('p_ges_bandeja', { id: b.dataset.bc, decision: 'confirmar' }, 120000); if (!r.ok) { toast(r.mensaje || 'No se pudo.'); b.disabled = false; b.textContent = 'Confirmar'; return; }
-      toast('Confirmado' + (r.accion ? ': acción ' + r.accion + ' en el plan.' : '.')); gestion(true); } catch (e) { b.disabled = false; b.textContent = 'Confirmar'; } });
+  document.querySelectorAll('[data-bc]').forEach(b => b.onclick = () => modal('Confirmar ' + b.dataset.bc, [['RESPONSABLE', 'Responsable de la acción (persona, servicio o empresa) · obligatorio']], {}, async o => {   // 08/11/2026: responsable obligatorio
+    if (!gesTieneResp(o)) return 'Indicá el responsable (persona, servicio o empresa).';
+    const r = await api('p_ges_bandeja', { id: b.dataset.bc, decision: 'confirmar', accion: { RESPONSABLE: o.RESPONSABLE.trim() } }, 120000);
+    if (!r.ok) return r.mensaje || 'No se pudo.'; toast('Confirmado' + (r.accion ? ': acción ' + r.accion + ' en el plan.' : '.')); gestion(true); return ''; }, '<p class="mu peq" style="margin:8px 0 0">Se crea la acción en el Plan de acción a cargo de este responsable. Plazo según la prioridad (Actuar ya 30 días, Resolver rápido 90, Planificar 180).</p>'));
   document.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => modal('Descartar ' + b.dataset.bd, [['motivo', 'Motivo del descarte', null, 1]], {}, async o => {
     if (!o.motivo.trim()) return 'Escribí el motivo.';
     const r = await api('p_ges_bandeja', { id: b.dataset.bd, decision: 'descartar', motivo: o.motivo.trim() }, 120000);
