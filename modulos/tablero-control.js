@@ -11,7 +11,7 @@ const TC_EJES = [
   ['4', 'Cocinas', 'soup_kitchen', '#coc'], ['5', 'Radiaciones', 'radiology', '#rad'], ['6', 'Infraestructura', 'domain', '#m8'],
   ['7', 'Incendio', 'fire_extinguisher', '#inc'], ['8', 'Personal y RAR', 'personal_injury', '#sin'], ['9', 'Capacitaciones', 'school', '#cap'],
   ['10', 'Documentos', 'folder_open', '#docest'], ['11', 'Plan de acción', 'task_alt', '#ges']];
-const TC = { ver: '', dep: '', todos: false, sin: null, sinPidio: false, inc: false, cap: false, rad: false };
+const TC = { ver: '', dep: '', todos: false, sin: null, sinPidio: false, inc: false, cap: false, rad: false, hist: null, histPidio: false, guardado: '', t0: Date.now() };
 const TC_NIV = { er: 0, wa: 1, av: 2 };
 const tcEsCaps = t => /(^|[^a-z])caps([^a-z]|$)/i.test(String(t || ''));
 const tcCol = (cod, lugar, tipo) => TC_CAPS[cod] && (tcEsCaps(lugar) || /^caps$/i.test(String(tipo || ''))) ? cod + '·CAPS' : cod;
@@ -47,6 +47,7 @@ function tcPedirExtras() {
   if (!TC.inc) { TC.inc = true; api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
   if (!TC.sinPidio) { TC.sinPidio = true; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
     api('p_sin_est', { desde: d.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10), est: '' }, 180000).then(r => { if (r && r.ok) { TC.sin = r; otra(); } }).catch(() => {}); }
+  if (!TC.histPidio) { TC.histPidio = true; api('p_tc_hist', {}, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; else { TC.hist = []; TC.histFalta = true; } otra(); }).catch(() => { TC.hist = []; TC.histFalta = true; }); }
   if (!TC.cap && typeof capApi === 'function') { TC.cap = true; if (!CAPT) CAPT = LS.get('capt', null);
     if (!CAPT || !CAPT.calculado || Date.now() - Date.parse(CAPT.calculado) > 3600000) capApi('c_tablero', {}, 180000).then(r => { if (r) { CAPT = r; LS.set('capt', r); otra(); } }).catch(() => {}); }
 }
@@ -79,12 +80,14 @@ function tcHallazgos(ctx) {
     if (/urgente|vencido/i.test(y.aviso)) add('2', k, 'er', (/^URGENTE/.test(y.que) ? 'Agua NO APTA · ' : 'Muestreo vencido · ') + y.lugar, '#agua', 'hys', y.limite);
     else if (/pedir/i.test(y.aviso)) add('2', k, 'wa', 'Pedir muestreo ' + (/COMPLETO/.test(y.que) ? 'completo' : 'parcial') + ' · ' + y.lugar, '#agua', 'hys', y.limite); });
   const tq = TB.tanques || [], pt = TB.puntos || [];
-  Array.from(new Set(tq.concat(pt).map(t => t.cod))).forEach(cod => { hay('2', cod);
-    const tv = tq.filter(t => t.cod === cod && t.estado === 'vencida').length, pv = pt.filter(t => t.cod === cod && t.estado === 'vencida').length;
-    if (tv) add('2', cod, 'er', tv + (tv > 1 ? ' limpiezas de tanque vencidas' : ' limpieza de tanque vencida'), ficha(cod, 'agua'), 'hys');
-    if (pv) add('2', cod, 'er', pv + (pv > 1 ? ' canillas con el análisis vencido' : ' canilla con el análisis vencido'), ficha(cod, 'agua'), 'hys'); });
-  if (!(TB.lab || []).length) (TB.noApta || []).forEach(a => add('2', a.cod, 'er', 'Agua NO APTA en ' + a.punto, ficha(a.cod), 'hys', a.limite));
-  if (!TB.vacio) cols.filter(c => !c.caps).forEach(c => { if (!tq.some(t => t.cod === c.cod) && !pt.some(t => t.cod === c.cod)) add('2', c.k, 'er', 'Sin inventario de tanques y canillas', ficha(c.cod, 'agua'), 'hys'); });
+  // 08/11/2026: tanques y canillas traen el SITIO (Tablero.gs), así los de los CAPS van en su columna
+  const colAg = t => tcCol(t.cod, t.sitio), kAg = Array.from(new Set(tq.concat(pt).map(colAg)));
+  kAg.forEach(k => { hay('2', k); const cod = k.split('·')[0], deK = l => l.filter(t => colAg(t) === k && t.estado === 'vencida');
+    const tv = deK(tq), pv = deK(pt), lug = l => Array.from(new Set(l.map(t => t.sitio).filter(x => x && x !== cod))).join(', ');
+    if (tv.length) add('2', k, 'er', tv.length + (tv.length > 1 ? ' limpiezas de tanque vencidas' : ' limpieza de tanque vencida') + (lug(tv) ? ' · ' + lug(tv) : ''), ficha(cod, 'agua'), 'hys');
+    if (pv.length) add('2', k, 'er', pv.length + (pv.length > 1 ? ' canillas con el análisis vencido' : ' canilla con el análisis vencido') + (lug(pv) ? ' · ' + lug(pv) : ''), ficha(cod, 'agua'), 'hys'); });
+  if (!(TB.lab || []).length) (TB.noApta || []).forEach(a => add('2', tcCol(a.cod, a.sitio), 'er', 'Agua NO APTA en ' + a.punto + (a.sitio && a.sitio !== a.cod ? ' · ' + a.sitio : ''), ficha(a.cod), 'hys', a.limite));
+  if (!TB.vacio) cols.filter(c => !c.caps).forEach(c => { if (!kAg.some(k => k === c.k)) add('2', c.k, 'er', 'Sin inventario de tanques y canillas', ficha(c.cod, 'agua'), 'hys'); });
   cols.forEach(c => { if (has['2'] && has['2'][c.k]) hay('2', c.k, 'Tanques y análisis al día'); });
 
   // 3 · Plagas: casos abiertos y revisiones (plan único, origen Plagas)
@@ -173,9 +176,18 @@ function tcCelda(eje, c, X) {
   return '<td' + (TC.ver && TC.ver !== c.k ? ' class="dim"' : '') + '><a class="tcCel ' + n + '" href="' + h + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><span class="ms" aria-hidden="true">' + icon[n] + '</span><span>' + esc(t) + '</span></a></td>';
 }
 
+// Historial (TableroHistorial.gs › TC_HISTORIAL): una foto por día de toda la red, cuando ya llegaron todos los datos
+function tcGuardarDia(TB, conNivel) {
+  const hoy = new Date().toISOString().slice(0, 10); if (TB.vacio || TC.guardado === hoy || TC.histFalta) return;   // sin la versión nueva del Apps Script (p_tc_hist) no se intenta guardar
+  const listo = RADT && INCT && TC.sin && CAPT && REST; if (!listo && Date.now() - TC.t0 < 90000) { if (!TC.espera) TC.espera = setTimeout(() => { TC.espera = null; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }, 95000); return; }
+  TC.guardado = hoy; const ejes = {}; TC_EJES.forEach(e => ejes[e[0]] = conNivel.filter(x => x.eje === e[0] && (x.n === 'er' || x.n === 'wa')).length);
+  const foto = { fecha: hoy, er: conNivel.filter(x => x.n === 'er').length, wa: conNivel.filter(x => x.n === 'wa').length, av: conNivel.filter(x => x.n === 'av').length, ejes: ejes };
+  api('p_tc_hist', { guardar: foto }, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; }).catch(() => { TC.guardado = ''; });
+}
+
 function tcBarras(vals, etiquetas, color, aria) {
-  const max = Math.max(1, ...vals);
-  return '<div class="tcBar" role="img" aria-label="' + esc(aria) + '">' + vals.map(v => '<div><span>' + v + '</span><i style="height:' + Math.max(3, Math.round(80 * v / max)) + 'px;background:' + color + '"></i></div>').join('') + '</div>' +
+  const max = Math.max(1, ...vals.filter(v => v != null));
+  return '<div class="tcBar" role="img" aria-label="' + esc(aria) + '">' + vals.map(v => v == null ? '<div><span class="mu">s/d</span></div>' : '<div><span>' + v + '</span><i style="height:' + Math.max(3, Math.round(80 * v / max)) + 'px;background:' + color + '"></i></div>').join('') + '</div>' +
     '<div class="tcBarL" aria-hidden="true">' + etiquetas.map(e => '<span>' + esc(e) + '</span>').join('') + '</div>';
 }
 
@@ -186,6 +198,7 @@ function tcPintar(ctx) {
   Object.keys(TC_CAPS).forEach(cod => { if (cols.some(c => c.cod === cod)) cols.push({ k: cod + '·CAPS', t: TC_CAPS[cod], nombre: TC_CAPS[cod], cod: cod, caps: true }); });
   if (TC.ver && !cols.some(c => c.k === TC.ver)) TC.ver = '';
   const X = tcHallazgos({ TB: TB, cols: cols }), conNivel = X.H.filter(x => x.n);
+  tcGuardarDia(TB, conNivel);
   const enVer = x => !TC.ver || x.col === TC.ver;
   const V = conNivel.filter(enVer), nEr = V.filter(x => x.n === 'er').length, nWa = V.filter(x => x.n === 'wa').length;
   const estEje = eje => { const L = conNivel.filter(x => x.eje === eje && enVer(x)); return L.some(x => x.n === 'er') ? 'er' : L.some(x => x.n === 'wa') ? 'wa' : 'ok'; };
@@ -235,7 +248,11 @@ function tcPintar(ctx) {
   const porEje = TC_EJES.map(e => conNivel.filter(x => x.eje === e[0] && (x.n === 'er' || x.n === 'wa') && enVer(x)).length);
   const tarj = (t, cuerpo, s, link) => '<section class="card" style="display:flex;flex-direction:column;gap:8px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="color:var(--az);font-size:14.5px">' + t + '</b>' + (link ? '<a class="peq" style="font-weight:700" href="' + link + '">Ver</a>' : '') + '</div>' + cuerpo + '<span class="mu peq">' + s + '</span></section>';
   const tend = '<h2 style="margin:18px 0 8px;font-size:17px">Cómo viene · últimos 6 meses</h2><div class="tb3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">' +
-    tarj('Urgente y próximo, por eje (hoy)', tcBarras(porEje, TC_EJES.map(e => e[0]), '#B4361F', 'Temas urgentes y próximos por eje'), 'Número de eje (1 Residuos … 11 Plan de acción). Muestra dónde se concentra lo pendiente.', '#tcMapa') +
+    tarj('Urgente y pronto, mes a mes', (() => { const H = TC.hist || [], ult = {}; H.forEach(f => { ult[f.fecha.slice(0, 7)] = f; });
+      if (!TC.hist) return '<div class="mu peq">Cargando…</div>'; if (TC.histFalta) return '<div class="mu peq">Falta publicar la versión nueva del Apps Script «Sistema HyS» (Tablero.gs con el historial). Mientras tanto no se guarda.</div>'; if (!H.length) return '<div class="mu peq">Empieza a guardarse hoy: cada día que abras el portal queda una foto de toda la red.</div>';
+      return tcBarras(m6.map(m => ult[m] ? (ult[m].er || 0) + (ult[m].wa || 0) : null), mE, '#B4361F', 'Urgente y pronto por mes'); })(),
+      'Toda la red · el último día guardado de cada mes (TC_HISTORIAL, desde el 08/11/2026). «s/d»: ese mes no hay foto.', '#tcMapa') +
+    tarj('Urgente y próximo, por eje (hoy)', tcBarras(porEje, TC_EJES.map(e => e[0]), '#B4361F', 'Temas urgentes y próximos por eje'), 'Número de eje (1 Residuos … 11 Plan de acción): dónde se concentra lo pendiente hoy.', '#tcMapa') +
     tarj('Retiros de residuos (manifiestos Y1 + Y3)', m6.length ? tcBarras(ret, mE, '#0D313F', 'Retiros por mes: ' + ret.join(', ')) : '<div class="mu peq">Cargando…</div>', 'Toda la red, por mes. Que baje puede ser falta de carga, no de retiro.', '#res') +
     tarj('Siniestros laborales', TC.sin ? tcBarras(m6.map(m => sinM[m] || 0), mE, '#0D313F', 'Siniestros por mes') : '<div class="mu peq">Cargando…</div>', 'Casos del período (sin rechazados ni inculpables) · los carga el Servicio de Personal.', '#sinest') +
     tarj('Registros de capacitación', CAPT ? tcBarras(m6.map(m => capM[m] || 0), mE, '#5894A7', 'Registros de capacitación por mes') : '<div class="mu peq">Cargando…</div>', 'Asistencias y evaluaciones registradas en el mes.', '#cap') + '</div>';
