@@ -28,6 +28,7 @@ const GES = {
   ESTADOS: ['Propuesta', 'Elevada', 'Aprobada', 'No aprobada', 'En curso', 'Hecha', 'Eficaz', 'No eficaz', 'No se realiza', 'Pendiente de recursos'],
   ABIERTOS: ['Propuesta', 'Elevada', 'Aprobada', 'En curso', 'No eficaz'],
   CERRADOS: ['Hecha', 'Eficaz', 'No se realiza'],
+  PIDEN_RESPONSABLE: ['Aprobada', 'En curso', 'Hecha', 'Eficaz'],   // 08/11/2026: para pasar a estos estados la acción tiene que tener responsable
   RECURSOS: ['Gestión', 'Insumos', 'Inversión'],
   NIVEL_GU: ['Alta', 'Baja'],
   PRIORIDADES: ['Actuar ya', 'Resolver rápido', 'Planificar', 'Monitorear'],
@@ -49,7 +50,7 @@ function gesHoja_(nombre, titulo, ayuda, cols, listas) {
 const gesAlc_ = () => gesHoja_('GES_ALCANCE', 'Gestión · Alcance por establecimiento', 'Una fila por establecimiento y módulo: nivel A (programa de seguridad), B (lineamientos provinciales) o sin habilitar, y desde cuándo.', GES.H_ALC, { MODULO: GES.MODULOS, NIVEL: GES.NIVELES });
 const gesEmp_ = () => gesHoja_('GES_EMPRESAS', 'Gestión · Empresas contratistas por establecimiento', 'Qué le toca a cada empresa por contrato o plan de trabajo, para asignar acciones y citar la cláusula.', GES.H_EMP, { MODULO: GES.MODULOS });
 const gesHal_ = () => gesHoja_('GES_HALLAZGOS', 'Gestión · Registro único de hallazgos', 'Un hallazgo es un incumplimiento con fuente escrita que pide una acción. Estados: Sugerido (bandeja), Confirmado, Descartado (con motivo), Cerrado.', GES.H_HAL, { MODULO: GES.MODULOS, ORIGEN: GES.ORIGENES, GRAVEDAD: GES.NIVEL_GU, URGENCIA: GES.NIVEL_GU, PRIORIDAD: GES.PRIORIDADES, ESTADO: GES.HAL_ESTADOS });
-const gesAcc_ = () => gesHoja_('GES_ACCIONES', 'Gestión · Plan de acción único', 'Una fila por acción. Inversión no cuenta contra HyS: va a «Necesidades de inversión». El historial de cada acción queda en la columna HISTORIAL.', GES.H_ACC, { MODULO: GES.MODULOS, REQUIERE_DIRECCION: ['Sí', 'No'], TIPO_RECURSO: GES.RECURSOS, ESTADO: GES.ESTADOS });
+const gesAcc_ = () => gesHoja_('GES_ACCIONES', 'Gestión · Plan de acción', 'Una fila por acción. Inversión no cuenta contra HyS: va a «Necesidades de inversión». El historial de cada acción queda en la columna HISTORIAL.', GES.H_ACC, { MODULO: GES.MODULOS, REQUIERE_DIRECCION: ['Sí', 'No'], TIPO_RECURSO: GES.RECURSOS, ESTADO: GES.ESTADOS });
 
 function gesLeer_(sh, H) {
   const n = sh.getLastRow() - 5; if (n < 1) return [];
@@ -69,6 +70,7 @@ function gesPrioridad_(g, u) {
 }
 const gesGU_ = p => ({ 'Actuar ya': ['Alta', 'Alta'], 'Resolver rápido': ['Baja', 'Alta'], 'Planificar': ['Alta', 'Baja'], 'Monitorear': ['Baja', 'Baja'] })[p] || ['', ''];
 const gesRecurso_ = s => { s = String(s || '').toLowerCase(); return /invers|obra|alto|contrat|equip/.test(s) ? 'Inversión' : /sin costo|gesti|organiz|capacit|procedim/.test(s) ? 'Gestión' : /bajo|insum|stock|existente|menor/.test(s) ? 'Insumos' : ''; };
+const gesResp_ = v => { const s = String(v == null ? '' : v).trim(); return !!s && !/^s\/d/i.test(s); };   // ¿tiene responsable? («s/d» no cuenta)
 const gesModNum_ = m => { const k = String(m || '').match(/^(\d+)/); return k ? Number(k[1]) : 0; };
 
 // Estado para mostrar (no se guarda): vencida, sin respuesta, pendiente de recursos
@@ -156,6 +158,7 @@ function gesHallazgoGuardar_(x) {
     const c = x.id ? L.find(o => o.ID === x.id) : null; if (x.id && !c) return { ok: false, mensaje: 'No encuentro el hallazgo ' + x.id + '. Actualizá la pantalla.' };
     const o = Object.assign({}, c || { ID: gesSiguiente_(L, 'HZ')(1), FECHA: hoy, ENTRADA: 'Manual', ESTADO: 'Confirmado', ORIGEN: 'Otro' }, d, { ACTUALIZADO: gesAhora_() });
     if (!o.ESTABLECIMIENTO || !o.MODULO || !o.DESCRIPCION) return { ok: false, mensaje: 'Completá establecimiento, módulo y descripción.' };
+    if (!c && x.conAccion && o.ESTADO === 'Confirmado' && !gesResp_((x.accion || {}).RESPONSABLE)) return { ok: false, mensaje: 'Indicá el responsable de la acción (persona, servicio o empresa): sin responsable no se guarda.' };   // 08/11/2026: responsable obligatorio
     o.ESTABLECIMIENTO = limpio_(o.ESTABLECIMIENTO);
     if (d.GRAVEDAD != null || d.URGENCIA != null) { const p = gesPrioridad_(o.GRAVEDAD, o.URGENCIA); if (p && !d.PRIORIDAD) o.PRIORIDAD = p; }
     if (o.ESTADO === 'Descartado' && !o.MOTIVO) return { ok: false, mensaje: 'Para descartar, escribí el motivo.' };
@@ -172,6 +175,7 @@ function gesBandeja_(x) {
     const sh = gesHal_(), L = gesLeer_(sh, GES.H_HAL), c = L.find(o => o.ID === x.id);
     if (!c) return { ok: false, mensaje: 'No encuentro el hallazgo. Actualizá la pantalla.' };
     if (c.ESTADO !== 'Sugerido') return { ok: false, mensaje: 'Este hallazgo ya está ' + c.ESTADO.toLowerCase() + '.' };
+    if (x.decision !== 'descartar' && !gesResp_((x.accion || {}).RESPONSABLE)) return { ok: false, mensaje: 'Indicá el responsable de la acción (persona, servicio o empresa): sin responsable no se guarda.' };   // 08/11/2026
     if (x.decision === 'descartar') { if (!x.motivo) return { ok: false, mensaje: 'Escribí el motivo del descarte.' }; c.ESTADO = 'Descartado'; c.MOTIVO = x.motivo; }
     else c.ESTADO = 'Confirmado';
     c.ACTUALIZADO = gesAhora_(); gesEscribir_(sh, GES.H_HAL, c.fila, c);
@@ -198,6 +202,7 @@ function gesAccionGuardar_(x) {
     const c = x.id ? L.find(o => o.ID === x.id) : null; if (x.id && !c) return { ok: false, mensaje: 'No encuentro la acción ' + x.id + '. Actualizá la pantalla.' };
     if (!c) {   // acción nueva sin hallazgo previo: se crea también el hallazgo (todo hallazgo tiene su acción y viceversa)
       if (!d.ESTABLECIMIENTO || !d.MODULO || !d.ACCION) return { ok: false, mensaje: 'Completá establecimiento, módulo y acción.' };
+      if (!gesResp_(d.RESPONSABLE)) return { ok: false, mensaje: 'Indicá el responsable de la acción (persona, servicio o empresa): sin responsable no se guarda.' };   // 08/11/2026
       const hs = gesHal_(), HL = gesLeer_(hs, GES.H_HAL), id = gesSiguiente_(HL, 'HZ')(1);
       gesAgregar_(hs, GES.H_HAL, [{ ID: id, FECHA: hoy, ESTABLECIMIENTO: limpio_(d.ESTABLECIMIENTO), MODULO: d.MODULO, SITIO: d.SITIO || '', DESCRIPCION: d.HALLAZGO_DESC || d.ACCION, ORIGEN: d.ORIGEN || 'Otro', FUENTE: d.FUENTE || '', PRIORIDAD: d.PRIORIDAD || '', ENTRADA: 'Manual', ESTADO: 'Confirmado', ACTUALIZADO: gesAhora_() }]);
       ['HALLAZGO_DESC', 'ORIGEN', 'FUENTE', 'PRIORIDAD'].forEach(k => delete d[k]);
@@ -212,6 +217,9 @@ function gesAccionGuardar_(x) {
     if (o.ESTADO === 'Hecha' && !o.FECHA_HECHA) o.FECHA_HECHA = hoy;
     if ((o.ESTADO === 'No se realiza' || o.ESTADO === 'Pendiente de recursos') && !o.MOTIVO) return { ok: false, mensaje: 'Para «' + o.ESTADO + '» escribí el motivo.' };
     if (o.ESTADO === 'Eficaz' && !o.EVIDENCIA) return { ok: false, mensaje: 'Para marcar eficaz hace falta la evidencia.' };
+    // 08/11/2026: responsable obligatorio para avanzar (Aprobada, En curso, Hecha, Eficaz) y no se puede borrar en una acción abierta. Elevar a la Dirección no lo pide.
+    if (!gesResp_(o.RESPONSABLE) && ((c.ESTADO !== o.ESTADO && GES.PIDEN_RESPONSABLE.indexOf(o.ESTADO) >= 0) || (gesResp_(c.RESPONSABLE) && GES.CERRADOS.indexOf(o.ESTADO) < 0)))
+      return { ok: false, mensaje: 'Falta el responsable: indicá quién la lleva adelante (persona, servicio o empresa) antes de pasarla a «' + o.ESTADO + '».' };
     if (o.ESTADO === 'Eficaz' && !o.FECHA_VERIFICACION) o.FECHA_VERIFICACION = hoy;
     if (o.ESTADO === 'No eficaz') { o.FECHA_VERIFICACION = hoy; o.ESTADO = 'En curso'; o.FECHA_HECHA = ''; notas.push('Verificación: no eficaz, vuelve a En curso'); }
     // Plazo: desde el alta, o desde la aprobación si requiere Dirección
