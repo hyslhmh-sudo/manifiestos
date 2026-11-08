@@ -91,3 +91,6 @@ function jornadasParaApp_(ss) {
   const pendientes = Object.keys(dias).filter(k => !hechas[k] && dias[k].sinHorario).map(k => dias[k]).sort((a, b) => a.fecha.localeCompare(b.fecha));
   return { desde: JOR_DESDE, hoy: hoy, pendientes: pendientes, cargadas: cargadas };
 }
+
+// Para revisar desde el editor: muestra en el registro de ejecución los días que falta cargar
+function probarJornadas() { const r = jornadasParaApp_(SpreadsheetApp.getActiveSpreadsheet()); console.log(JSON.stringify(r.pendientes.map(p => p.fecha + " " + p.persona + " · " + p.lugares.join(", ") + (p.con.length ? " · con " + p.con.join(", ") : "")), null, 1)); return r; }
