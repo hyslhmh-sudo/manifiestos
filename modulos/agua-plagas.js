@@ -517,7 +517,7 @@ let MHS = '';
 const hsMin = t => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : null; };
 const hsTxt = min => { min = Math.round(min || 0); const h = Math.floor(min / 60), m = min % 60; return h + ' h' + (m ? ' ' + String(m).padStart(2, '0') + ' min' : ''); };
 const hsHM = min => String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
-function hsCalcular(H) {
+function hsCalcular(H, J) {
   const P = {};   // persona → {conf, dias: {fecha: {tramos, lugares, tipos, notas}}, sin: []}
   H.forEach(r => { const c = HS_CONF.find(x => x.re.test(r.persona)), k = c ? c.nombre : r.persona;
     const p = P[k] = P[k] || { nombre: k, conf: c || { nombre: k, contrato: 0, guardiaMes: null, regla: 'Sin regla cargada: se muestran las horas trabajadas.' }, dias: {}, sin: [] };
@@ -525,6 +525,13 @@ function hsCalcular(H) {
     if (a == null || b == null || b <= a) { p.sin.push(r); return; }
     const d = p.dias[r.fecha] = p.dias[r.fecha] || { tramos: [], lugares: new Set(), tipos: new Set(), titular: false };
     d.tramos.push([a, b]); if (r.lugar) d.lugares.add(r.lugar); d.tipos.add(String(r.tipo).split(' · ')[0]); if (r.delTitular) d.titular = true; });
+  // Jornada diaria (08/11/2026, hoja JORNADAS): si la persona cargó su jornada ese día, manda la jornada (los horarios de los registros no se usan)
+  (J || []).forEach(j => { const c = HS_CONF.find(x => x.re.test(j.persona)), k = c ? c.nombre : j.persona;
+    const p = P[k] = P[k] || { nombre: k, conf: c || { nombre: k, contrato: 0, guardiaMes: null, regla: 'Sin regla cargada: se muestran las horas trabajadas.' }, dias: {}, sin: [] };
+    const ant = p.dias[j.fecha], d = p.dias[j.fecha] = { tramos: [], lugares: ant ? ant.lugares : new Set(), tipos: ant ? ant.tipos : new Set(), titular: false, jornada: j };
+    p.sin.filter(r => r.fecha === j.fecha).forEach(r => { if (r.lugar) d.lugares.add(r.lugar); d.tipos.add(String(r.tipo).split(' · ')[0]); });
+    p.sin = p.sin.filter(r => r.fecha !== j.fecha);
+    if (!j.no) [[j.e1, j.s1], [j.e2, j.s2]].forEach(([x, y]) => { const a = hsMin(x), b = hsMin(y); if (a != null && b != null && b > a) d.tramos.push([a, b]); }); });
   Object.values(P).forEach(p => {
     Object.keys(p.dias).forEach(f => { const d = p.dias[f], t = d.tramos.sort((x, y) => x[0] - y[0]), u = [];
       t.forEach(x => { const l = u[u.length - 1]; if (l && x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else u.push(x.slice()); });
@@ -544,7 +551,7 @@ async function pantallaHoras(fresco) {
   const R = MIPYV, box = $('hsBox'); if (!box) return;
   if (!R.ok) { box.innerHTML = '<section class="card"><div class="aviso error">' + esc(R.mensaje || 'Error') + '</div></section>'; return; }
   if (!Array.isArray(R.horas)) { box.innerHTML = '<section class="card"><div class="aviso">El control de horas aparece cuando se implementa la versión nueva del Apps Script (Implementar › Administrar las implementaciones › Nueva versión).</div></section>'; return; }
-  const P = hsCalcular(R.horas), meses = Array.from(new Set(R.horas.map(r => String(r.fecha).slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))).sort().reverse();
+  const P = hsCalcular(R.horas, R.jornadas || []), meses = Array.from(new Set(R.horas.map(r => String(r.fecha).slice(0, 7)).filter(m => /^\d{4}-\d{2}$/.test(m)))).sort().reverse();
   if (!MHS || meses.indexOf(MHS) < 0) MHS = meses.indexOf(mpYmd(new Date()).slice(0, 7)) >= 0 ? mpYmd(new Date()).slice(0, 7) : (meses[0] || mpYmd(new Date()).slice(0, 7));
   const nomMes = m => MP_MESES[+m.slice(5) - 1] + ' de ' + m.slice(0, 4), hoyY = mpYmd(new Date());
   const orden = Object.values(P).sort((a, b) => (HS_CONF.indexOf(a.conf) < 0 ? 9 : HS_CONF.indexOf(a.conf)) - (HS_CONF.indexOf(b.conf) < 0 ? 9 : HS_CONF.indexOf(b.conf)));
@@ -567,11 +574,14 @@ async function pantallaHoras(fresco) {
       '<div class="mu peq" style="margin-top:4px">Las semanas que empiezan o terminan en otro mes se muestran completas; los totales de arriba cuentan solo los días de ' + nomMes(MHS) + '.</div>' : '';
     const tDia = dm.length ? '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-size:14px">Día por día (' + dm.length + ')</summary><div style="overflow-x:auto;margin-top:6px"><table class="sinTab mpT" style="width:100%;border-collapse:collapse"><thead><tr><th>Día</th><th>Horario</th><th>Horas</th>' + (c.contrato ? '<th>Contrato</th>' : '') + '<th>Guardia reloj</th><th>Dónde y qué</th></tr></thead><tbody>' +
       dm.slice().reverse().map(f => { const d = p.dias[f]; return '<tr><td style="white-space:nowrap"><b>' + mpF(f) + '</b></td><td data-l="Horario">' + d.union.map(x => hsHM(x[0]) + ' a ' + hsHM(x[1])).join(' y ') + (d.superpuestos ? '<div class="mu peq">registros superpuestos: contados una vez</div>' : '') + (d.titular ? '<div class="mu peq">sin horario propio: se tomó el del titular</div>' : '') + '</td>' +
-        '<td data-l="Horas">' + hsTxt(d.min) + '</td>' + (c.contrato ? '<td data-l="Contrato">' + hsTxt(d.contrato) + '</td>' : '') + '<td data-l="Guardia reloj">' + hsTxt(d.guardia) + '</td><td class="peq" data-l="Dónde">' + Array.from(d.lugares).map(esc).join(', ') + '<div class="mu">' + Array.from(d.tipos).map(esc).join(', ') + '</div></td></tr>'; }).join('') + '</tbody></table></div></details>' : '<div class="mu" style="margin-top:8px">Sin horas cargadas en ' + nomMes(MHS) + '.</div>';
-    // 08/11/2026: todos los registros suman; los que no tienen horario se completan desde acá («Cargar horario»), uno por uno
-    const tSin = sinM.length ? '<div class="aviso" style="margin-top:10px"><b>' + sinM.length + ' registro(s) de ' + nomMes(MHS) + ' sin horario o con horario incompleto: no se cuentan.</b>' +
-      '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">' + sinM.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).map(r => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>' + mpF(r.fecha) + ' · ' + esc(r.lugar || '') + ' (' + esc(String(r.tipo).split(' · ')[0]) + ')' + (r.rol === 'Acompañante' ? ' · acompañante' : '') + '</span>' +
-        (r.id ? '<button class="btn sec" data-hsh="' + esc(r.id) + '" data-hsl="' + esc(mpF(r.fecha) + ' · ' + (r.lugar || '')) + '" style="padding:3px 8px;font-size:12px">Cargar horario</button>' : '<span class="mu peq">(sin identificación: se corrige en el libro MIPyV)</span>') + '</div>').join('') + '</div></div>' : '';
+        '<td data-l="Horas">' + hsTxt(d.min) + '</td>' + (c.contrato ? '<td data-l="Contrato">' + hsTxt(d.contrato) + '</td>' : '') + '<td data-l="Guardia reloj">' + hsTxt(d.guardia) + '</td><td class="peq" data-l="Dónde">' + Array.from(d.lugares).map(esc).join(', ') + '<div class="mu">' + Array.from(d.tipos).map(esc).join(', ') + '</div>' +
+          (d.jornada ? '<div class="mu">Jornada' + (d.jornada.no ? ': no trabajó con HyS' : '') + (d.jornada.por && d.jornada.por !== p.nombre ? ' · cargó ' + esc(d.jornada.por) : '') + (d.jornada.e2 ? ' · pausa ' + esc(d.jornada.s1) + ' a ' + esc(d.jornada.e2) : '') + '</div>' : '') +
+          '<button class="link peq" data-hsj="' + esc(p.nombre + '|' + f) + '">' + (d.jornada ? 'Corregir jornada' : 'Cargar jornada') + '</button></td></tr>'; }).join('') + '</tbody></table></div></details>' : '<div class="mu" style="margin-top:8px">Sin horas cargadas en ' + nomMes(MHS) + '.</div>';
+    // 08/11/2026: días con registros y sin jornada ni horario: no suman hasta cargar la jornada («Cargar jornada», una por día)
+    const sinD = {}; sinM.forEach(r => { const x = sinD[r.fecha] = sinD[r.fecha] || { lugares: new Set(), tipos: new Set() }; if (r.lugar) x.lugares.add(r.lugar); x.tipos.add(String(r.tipo).split(' · ')[0]); });
+    const tSin = sinM.length ? '<div class="aviso" style="margin-top:10px"><b>' + Object.keys(sinD).length + ' día(s) de ' + nomMes(MHS) + ' con trabajos y sin jornada: no suman hasta que se cargue.</b> La app se lo pide al abrirla; también la podés cargar vos.' +
+      '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">' + Object.keys(sinD).sort().reverse().map(f => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span><b>' + mpF(f) + '</b> · ' + Array.from(sinD[f].lugares).map(esc).join(', ') + ' <span class="mu">(' + Array.from(sinD[f].tipos).map(esc).join(', ') + ')</span></span>' +
+        '<button class="btn sec" data-hsj="' + esc(p.nombre + '|' + f) + '" style="padding:3px 8px;font-size:12px">Cargar jornada</button></div>').join('') + '</div></div>' : '';
     return '<section class="card" style="margin-bottom:16px"><h2 style="margin:0 0 2px;font-size:17px">' + esc(p.nombre) + '</h2><div class="mu peq">' + esc(c.regla) + '</div>' + kpis + tSem + tDia + tSin + '</section>';
   };
   box.innerHTML = '<section class="card" style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between"><label class="f" style="margin:0">Mes<select class="c" id="hsMes">' + meses.map(m => '<option value="' + m + '"' + (m === MHS ? ' selected' : '') + '>' + nomMes(m) + '</option>').join('') + '</select></label>' +
@@ -579,17 +589,23 @@ async function pantallaHoras(fresco) {
     '<div class="mu peq">Datos al ' + esc(R.actualizado) + '. Las horas salen de «hora de inicio» y «hora de fin» de cada registro de la app; el acompañante usa su propio horario y, si no lo cargó, el del titular.</div>';
   $('hsMes').onchange = e => { MHS = e.target.value; pantallaHoras(); };
   $('hsImp').onclick = () => { document.querySelectorAll('#hsBox details').forEach(d => d.open = true); window.print(); };
-  box.querySelectorAll('[data-hsh]').forEach(b => b.onclick = () => {
-    $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Cargar horario"><h2>Cargar horario</h2><p class="mu peq">' + esc(b.dataset.hsl) + '. Vale para el operario y su acompañante.</p>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap"><label class="f">Desde<input class="c" type="time" id="hsIni"></label><label class="f">Hasta<input class="c" type="time" id="hsFin"></label></div>' +
+  // Cargar o corregir la jornada de una persona en un día (hoja JORNADAS del libro MIPyV, 08/11/2026)
+  box.querySelectorAll('[data-hsj]').forEach(b => b.onclick = () => {
+    const [per, f] = b.dataset.hsj.split('|'), j = (R.jornadas || []).find(x => x.fecha === f && HS_CONF.find(c => c.re.test(x.persona) && c.nombre === per)) || {};
+    $('ov').innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-label="Jornada"><h2>Jornada · ' + esc(per) + '</h2><p class="mu peq">' + mpF(f) + '. La pausa no suma.</p>' +
+      '<label class="f"><input type="checkbox" id="hsNoT"' + (j.no ? ' checked' : '') + '> No trabajó con HyS ese día</label>' +
+      '<div id="hsTr"><div style="display:flex;gap:10px;flex-wrap:wrap"><label class="f">Entrada<input class="c" type="time" id="hsE1" value="' + esc(j.e1 || '') + '"></label><label class="f">Salida<input class="c" type="time" id="hsS1" value="' + esc(j.s1 || '') + '"></label></div>' +
+      '<p class="mu peq" style="margin:6px 0">Si tuvo una pausa (salió y volvió), el segundo tramo:</p><div style="display:flex;gap:10px;flex-wrap:wrap"><label class="f">Entrada 2<input class="c" type="time" id="hsE2" value="' + esc(j.e2 || '') + '"></label><label class="f">Salida 2<input class="c" type="time" id="hsS2" value="' + esc(j.s2 || '') + '"></label></div></div>' +
       '<div class="acciones"><button class="btn sec" id="hsNo">Cancelar</button><button class="btn pri" id="hsOk">Guardar</button></div></div>';
     $('ov').hidden = false; const cerrar = () => { $('ov').hidden = true; $('ov').innerHTML = ''; };
     $('hsNo').onclick = cerrar;
-    $('hsOk').onclick = async () => { const ini = $('hsIni').value, fin = $('hsFin').value; if (!ini || !fin || fin <= ini) return toast('Poné desde y hasta (hasta, después de desde).');
+    $('hsOk').onclick = async () => { const no = $('hsNoT').checked, v = k => $(k).value, e1 = v('hsE1'), s1 = v('hsS1'), e2 = v('hsE2'), s2 = v('hsS2');
+      if (!no) { if (!e1 || !s1 || s1 <= e1) return toast('Poné entrada y salida (la salida, después).');
+        if ((e2 || s2) && (!e2 || !s2 || s2 <= e2 || e2 < s1)) return toast('El segundo tramo: entrada después de la primera salida, y salida después de su entrada.'); }
       $('hsOk').disabled = true; $('hsOk').textContent = 'Guardando…';
-      try { const r = await api('p_mipyv_horario', { id: b.dataset.hsh, ini: ini, fin: fin }, 60000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); cerrar(); toast('Horario guardado.'); pantallaHoras(true); }
+      try { const r = await api('p_mipyv_jornada', { fecha: f, persona: per, entrada1: no ? '' : e1, salida1: no ? '' : s1, entrada2: no ? '' : e2, salida2: no ? '' : s2, no_trabajo: no }, 60000); if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.'); cerrar(); toast('Jornada guardada.'); pantallaHoras(true); }
       catch (e) { $('hsOk').disabled = false; $('hsOk').textContent = 'Guardar'; toast(e.message || 'No se pudo guardar.'); } };
-  });
+  });;
 }
 
 // ------------------------------------------------------------------ Relevamiento de edificios · red Trelew (05/11/2026, pedido de Belén)

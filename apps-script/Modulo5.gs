@@ -141,10 +141,37 @@ function plagMipyv_(dias) {
     const m = String(t.horario || '').match(/(\d{1,2}[:.]\d{2})\D+(\d{1,2}[:.]\d{2})/);
     hAdd({ fecha: t.fecha, operario: t.operario, operario_acompanante: t.operario_acompanante, establecimiento: t.lugar, hora_inicio: m ? m[1] : '', hora_fin: m ? m[2] : '', id_tarea: t.id }, String(t.que || 'Relevamiento'), 'Cargó el relevamiento'); });
   horas.sort((a, b) => b.fecha.localeCompare(a.fecha) || a.persona.localeCompare(b.persona));
-  const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, otros: otros, horas: horas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => v.fecha >= desde && !/^revisad/i.test(String(v.revisado))).length,
+  // Jornada diaria de cada operario (hoja JORNADAS del libro MIPyV, 08/11/2026): manda sobre los horarios de los registros de ese día
+  const jornadas = plagTabla_(ss, 'JORNADAS').filter(j => j.fecha && j.persona).map(j => ({ fecha: plagFecha_(j.fecha), persona: String(j.persona).trim(),
+    e1: hh_(j.entrada1), s1: hh_(j.salida1), e2: hh_(j.entrada2), s2: hh_(j.salida2), no: /^s[ií]/i.test(String(j.no_trabajo || '')), por: String(j.cargado_por || '').trim() }));
+  const out = { ok: true, visitas: visitas, avances: avances, tareas: tareas, otros: otros, jornadas: jornadas, horas: horas, abiertas: abiertas, saneamiento: saneamiento, vencidos: vencidos, casos: casos, solicitudes: solicitudes, cierres: cierres, apiError: api && api.error || '', sinRevisar: visitas.filter(v => v.fecha >= desde && !/^revisad/i.test(String(v.revisado))).length,
     sinLugar: sinLugar, libro: ss.getUrl(), actualizado: Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') };
   if (!dias) try { c.put(k, JSON.stringify(out), 600); } catch (e) {}
   return out;
+}
+// Jornada de una persona en un día, cargada o corregida por HyS desde el portal (Control de horas, 08/11/2026).
+// Misma hoja y mismas reglas que la app (Jornadas_MIPyV.gs del libro MIPyV): una fila por persona y día; queda la última.
+function plagJornada_(x) {
+  const hh = v => { const m = /^(\d{1,2})[:.](\d{2})$/.exec(String(v || '').trim()); return m ? m[1].padStart(2, '0') + ':' + m[2] : ''; };
+  const mi = h => h ? +h.slice(0, 2) * 60 + +h.slice(3) : null;
+  const fecha = String(x.fecha || '').slice(0, 10), persona = String(x.persona || '').trim(), no = x.no_trabajo === true || /^s[ií]/i.test(String(x.no_trabajo || ''));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || !persona) return { ok: false, mensaje: 'Faltan el día o la persona.' };
+  const e1 = hh(x.entrada1), s1 = hh(x.salida1), e2 = hh(x.entrada2), s2 = hh(x.salida2); let min = 0;
+  if (!no) { if (!e1 || !s1 || mi(s1) <= mi(e1)) return { ok: false, mensaje: 'La salida tiene que ser después de la entrada.' };
+    min = mi(s1) - mi(e1);
+    if (e2 || s2) { if (!e2 || !s2 || mi(s2) <= mi(e2) || mi(e2) < mi(s1)) return { ok: false, mensaje: 'Revisá el segundo tramo.' }; min += mi(s2) - mi(e2); } }
+  const ss = plagMipyvLibro_(), H = ['id_jornada', 'fecha', 'persona', 'entrada1', 'salida1', 'entrada2', 'salida2', 'minutos', 'horas', 'no_trabajo', 'cargado_por', 'cargado', 'nota'];
+  let sh = ss.getSheetByName('JORNADAS');
+  if (!sh) { sh = ss.insertSheet('JORNADAS', 1); sh.getRange(1, 1, 1, H.length).setValues([H]).setFontWeight('bold').setBackground('#EAF3F6'); sh.setFrozenRows(1); sh.getRange('B:B').setNumberFormat('@'); sh.getRange('D:G').setNumberFormat('@'); }
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const fila = ['J-' + fecha + '-' + norm(persona).replace(/[^a-z]+/g, ''), fecha, persona, no ? '' : e1, no ? '' : s1, no ? '' : e2, no ? '' : s2, min,
+    Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + String(min % 60).padStart(2, '0') + ' min' : ''), no ? 'Sí' : '', 'Belén Pellegrini (portal)', new Date(), ''];
+  let fn = 0;
+  if (sh.getLastRow() > 1) { const v = sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues();
+    for (let i = v.length - 1; i >= 0; i--) { const f = v[i][1] instanceof Date ? Utilities.formatDate(v[i][1], TZ, 'yyyy-MM-dd') : String(v[i][1]).slice(0, 10); if (f === fecha && norm(v[i][2]) === norm(persona)) { fn = i + 2; break; } } }
+  if (fn) sh.getRange(fn, 1, 1, fila.length).setValues([fila]); else sh.appendRow(fila);
+  CacheService.getScriptCache().remove('mipyv');
+  return { ok: true, minutos: min };
 }
 // Horario cargado por HyS para un registro de la app que no lo tenía (Control de horas › «Cargar horario», 08/11/2026).
 // Relevamientos de edificios: va a relevamiento_edificio (hora_inicio, hora_fin) y a TODO LO CARGADO. Tanques: a TODO LO CARGADO.

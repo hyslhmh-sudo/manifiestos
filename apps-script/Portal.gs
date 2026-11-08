@@ -110,6 +110,7 @@ function portalAccion_(d) {
     case 'p_mipyv_revisar': return conLock_(() => plagRevisar_(x));
     case 'p_mipyv_cerrar': return plagCerrarCaso_(x, x.quien);   // casos y solicitudes de MIPyV (Modulo5.gs, 25/10/2026)
     case 'p_mipyv_protocolo': return conLock_(() => plagProtocolo_(x));
+    case 'p_mipyv_jornada': return conLock_(() => plagJornada_(x));   // jornada diaria de un operario (Control de horas, 08/11/2026)
     case 'p_mipyv_horario': return conLock_(() => plagHorario_(x));   // horario de un relevamiento o tanque sin horario (Control de horas, 08/11/2026)
     case 'p_mipyv_solicitud': return conLock_(() => plagSolicitudResponder_(x));
     // 3 · Plagas › nota interna por falta de producto (PlagasSinProducto.gs, 03/11/2026)

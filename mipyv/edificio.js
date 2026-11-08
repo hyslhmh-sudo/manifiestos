@@ -83,8 +83,6 @@ function edNorm(f) { f.det = f.det || {}; f.fotos = f.fotos || {}; ["agua", "des
 function edFaltan(f) {
   edNorm(f); const r = f.resp, d = f.det, x = [];
   if (f.lugar && f.lugar.id === "HZT" && !String(f.parte || "").trim()) x.push("Qué parte del hospital relevaste");
-  if (!f.hora_inicio || !f.hora_fin) x.push("El horario del relevamiento (de qué hora a qué hora)");   // 08/11/2026: para el control de horas
-  else if (f.hora_fin <= f.hora_inicio) x.push("El horario: la hora de fin tiene que ser después de la de inicio");
   ED_TEMAS.forEach(tm => {
     const T = tm.emo + " " + tm.t;
     if (tm.tiene && !r[tm.id + "_tiene"]) { x.push(T + ": " + tm.tiene); return; }
@@ -185,7 +183,6 @@ function edRenderForm() {
     ${ed.aviso ? `<div class="tq-info" style="border-left:4px solid #B4361F">${escX(ed.aviso)}</div>` : ""}
     <div class="step-title" style="font-size:1.25rem">${escX(f.lugar.nombre)}</div>
     <div class="ext-preg">Fecha del relevamiento</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${edHoy()}">
-    <div class="ext-preg ed-req">Horario de este relevamiento (para el control de horas)</div><div style="display:flex;gap:8px;align-items:center"><span>de</span><input class="ext-inp" type="time" data-dato="hora_inicio" value="${escX(f.hora_inicio || "")}" style="flex:1"><span>a</span><input class="ext-inp" type="time" data-dato="hora_fin" value="${escX(f.hora_fin || "")}" style="flex:1"></div>
     <div class="tq-info">Escribí todo para que se entienda sin haber estado ahí: <b>dónde</b> (qué ambiente o sector), <b>qué</b> se ve y <b>qué</b> hace falta. Si algo no se pudo ver, decí qué parte y por qué. «s/n», «no» o «-» no se aceptan.</div>
     <div class="ext-preg">¿Qué parte del edificio relevaste? ${f.lugar.id === "HZT" ? "(obligatorio)" : "(si es todo, dejalo vacío)"}</div><input class="ext-inp" data-dato="parte" value="${escX(f.parte || "")}" placeholder="${f.lugar.id === "HZT" ? "Ej.: planta baja ala norte, guardia, terraza del 2.º piso…" : "Todo el edificio"}">
     ${f.lugar.id === "HZT" ? `<div class="step-sub">El hospital es grande: se puede relevar por partes, cargando un relevamiento por cada parte.</div>` : ""}`;

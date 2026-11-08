@@ -262,6 +262,10 @@ function doPost(e) {
       if (!r || !r.duplicado) anotarTodo_(ss, tipo, Object.assign({}, data, { lugar: data.lugar_nombre }), []);
       return respuesta(Object.assign({ ok: true }, r));
     }
+    if (tipo === "jornada") {   // jornada diaria de cada operario: entrada, salida y pausa (Jornadas_MIPyV.gs, 08/11/2026)
+      const r = guardarJornada_(ss, data);
+      return respuesta(Object.assign({ ok: true }, r));
+    }
     if (tipo === "relev_edificio") {   // relevamiento de edificios: agua, desagües, canaletas y techos (Edificio_MIPyV.gs, 03/11/2026)
       const r = guardarRelevEdificio_(ss, data);
       if (!r || !r.duplicado) anotarTodo_(ss, tipo, data, []);
@@ -513,6 +517,8 @@ function doGet(e) {
   try { out.tanques = tanquesParaApp_(ss); } catch (err) { out.tanques_error = String(err.message || err); }
   // relevamiento de edificios: último de cada lugar (archivo Edificio_MIPyV.gs, 03/11/2026)
   try { if (typeof edificioParaApp_ === "function") out.edificio = edificioParaApp_(ss); } catch (err) { out.edificio_error = String(err.message || err); }
+  // jornadas diarias: días que le falta cargar a cada uno y jornadas recientes (Jornadas_MIPyV.gs, 08/11/2026)
+  try { if (typeof jornadasParaApp_ === "function") out.jornadas = jornadasParaApp_(ss); } catch (err) { out.jornadas_error = String(err.message || err); }
 
 
   return respuesta(out);
