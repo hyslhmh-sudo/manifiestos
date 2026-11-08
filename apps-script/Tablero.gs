@@ -116,8 +116,8 @@ function tbTablero_(fresco) {
   try { planFilas_().forEach(o => { const e = planEstado_(o, hoy, 30); if (e === 'Cumplida' || e === 'Descartada') return; acciones.push({ cod: o.ESTABLECIMIENTO, origen: /^AUD-/.test(o.CODIGO_INFORME) ? 'Auditorías' : /^DA-/.test(o.ID_DIAG) ? 'Agua (diagnóstico)' : /^DP-/.test(o.ID_DIAG) ? 'Plagas (diagnóstico)' : /^DC-/.test(o.ID_DIAG) ? 'Cocinas (relevamiento)' : 'Diagnóstico', vencida: e === 'Vencida', estado: e, que: o.RECOMENDACION || '', donde: o.LUGAR || '', prioridad: o.PRIORIDAD || '', aCargo: o.RESPONSABLE_DIRECCION || o.A_CARGO || '', limite: o.FECHA_PREVISTA || o.FECHA_LIMITE || '', ref: o.CODIGO_INFORME, ir: '#plan/' + o.CODIGO_INFORME }); }); } catch (e) {}
   const leer = nombre => { try { return miLeer_(nombre).filter(regVivo_); } catch (e) { return []; } };   // lo anulado no cuenta
   const AN = leer('AGUA_ANALISIS'), RV = leer('RESERVORIOS'), CS = leer('PLAGAS_CASOS'), noApta = [];
-  AN.filter(a => a.ESTADO_ACCION === 'Abierta').forEach(a => { const lim = miSumarHabiles_(a.FECHA_RESULTADO || a.FECHA_TOMA, 15); acciones.push({ cod: a.ESTABLECIMIENTO, origen: 'Agua', vencida: hoy > lim, estado: hoy > lim ? 'Vencida' : 'Abierta', que: 'Agua NO APTA: limpiar y repetir el análisis', donde: a.CODIGO_PUNTO || '', prioridad: 'Alta', aCargo: '', limite: lim, ref: a.CODIGO_PUNTO || '', ir: '#ficha/' + a.ESTABLECIMIENTO }); noApta.push({ cod: a.ESTABLECIMIENTO, punto: a.CODIGO_PUNTO, limite: lim }); });
-  const plagas = []; CS.filter(c => c.ESTADO !== 'Cerrado').forEach(c => { const atr = c.PROXIMA_REVISION && c.PROXIMA_REVISION < hoy; acciones.push({ cod: c.ESTABLECIMIENTO, origen: 'Plagas', vencida: !!atr, estado: atr ? 'Revisión atrasada' : (c.ESTADO || 'Abierto'), que: 'Caso de plagas: ' + (c.PLAGA || 's/d'), donde: c.SECTOR || c.LUGAR || '', prioridad: '', aCargo: '', limite: c.PROXIMA_REVISION || '', ref: c.CASO || '', ir: '#plagas' }); plagas.push({ cod: c.ESTABLECIMIENTO, caso: c.CASO, plaga: c.PLAGA, revision: c.PROXIMA_REVISION }); });
+  AN.filter(a => a.ESTADO_ACCION === 'Abierta').forEach(a => { const lim = miSumarHabiles_(a.FECHA_RESULTADO || a.FECHA_TOMA, 15); acciones.push({ cod: a.ESTABLECIMIENTO, origen: 'Agua', vencida: hoy > lim, estado: hoy > lim ? 'Vencida' : 'Abierta', que: 'Agua NO APTA: limpiar y repetir el análisis', donde: a.CODIGO_PUNTO || '', prioridad: 'Alta', aCargo: '', limite: lim, ref: a.CODIGO_PUNTO || '', ir: '#ficha/' + a.ESTABLECIMIENTO }); noApta.push({ cod: a.ESTABLECIMIENTO, punto: a.CODIGO_PUNTO, sitio: a.SITIO || '', limite: lim }); });
+  const plagas = []; CS.filter(c => c.ESTADO !== 'Cerrado').forEach(c => { const atr = c.PROXIMA_REVISION && c.PROXIMA_REVISION < hoy; acciones.push({ cod: c.ESTABLECIMIENTO, origen: 'Plagas', vencida: !!atr, estado: atr ? 'Revisión atrasada' : (c.ESTADO || 'Abierto'), que: 'Caso de plagas: ' + (c.PLAGA || 's/d'), donde: [c.SITIO, c.SECTOR].filter(Boolean).join(' · '), prioridad: '', aCargo: '', limite: c.PROXIMA_REVISION || '', ref: c.CASO || '', ir: '#plagas' }); plagas.push({ cod: c.ESTABLECIMIENTO, sitio: c.SITIO || '', caso: c.CASO, plaga: c.PLAGA, revision: c.PROXIMA_REVISION }); });
   // Plagas · registro MIPyV de los operarios (12/10/2026): intervenciones y saneamientos abiertos, y visitas que pidieron otra visita sin una posterior
   try { if (typeof plagMipyv_ === 'function') { const MP = plagMipyv_(), mas = (f, d) => { const x = new Date(String(f).slice(0, 10) + 'T12:00:00'); x.setDate(x.getDate() + d); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); };
     const add = (cod, que, donde, lim, ref, est) => { const atr = !!lim && lim < hoy; acciones.push({ cod: cod, origen: 'Plagas (MIPyV)', vencida: atr, estado: atr ? 'Revisión atrasada' : est, que: que, donde: donde || '', prioridad: '', aCargo: '', limite: lim || '', ref: ref || '', ir: '#plagas' }); plagas.push({ cod: cod, caso: ref, plaga: que, revision: lim }); };
@@ -130,12 +130,12 @@ function tbTablero_(fresco) {
     const ult = {}; (MP.visitas || []).slice().reverse().forEach(x => { if (/no corresponde/i.test(x.plaga || '')) return; ult[x.lugar + '|' + x.plaga] = x; });
     Object.keys(ult).forEach(k => { const x = ult[k]; if (!/otra visita/i.test(x.resultado || '') || (x.protocolo && conProt[x.protocolo])) return;
       add(x.cod, 'Otra visita pendiente: ' + (x.plaga || 's/d'), x.lugar, x.segunda || mas(x.fecha, 15), x.protocolo || x.id, 'Pendiente'); }); } } } catch (e) {}
-  // Agua: tanques con limpieza al día
+  // Agua: tanques con limpieza al día (08/11/2026: con el SITIO, para separar los CAPS en el tablero de control)
   const tanques = RV.filter(t => !/fuera/i.test(t.ESTADO)).map(t => { const p = t.PROXIMA_LIMPIEZA || (t.ULTIMA_LIMPIEZA ? miSumarMeses_(t.ULTIMA_LIMPIEZA, t.FRECUENCIA_LIMPIEZA_MESES || 12) : ''), d = tbDias_(p);
-    return { cod: t.ESTABLECIMIENTO, aldia: !!p && p >= hoy, estado: /riego/i.test(t.USO) ? 'riego' : !t.ULTIMA_LIMPIEZA ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
+    return { cod: t.ESTABLECIMIENTO, sitio: t.SITIO || '', aldia: !!p && p >= hoy, estado: /riego/i.test(t.USO) ? 'riego' : !t.ULTIMA_LIMPIEZA ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
   // Agua: canillas con análisis bacteriológico al día (cada 6 meses)
   const puntos = leer('PUNTOS_MUESTREO').filter(x => !/fuera/i.test(x.ESTADO)).map(x => { const un = /[uú]nica/i.test(x.ESTADO), eq = /equipo|solo f[ií]sico/i.test(x.ESTADO), v = eq ? (x.ULTIMO_FISICOQUIMICO ? miSumarMeses_(x.ULTIMO_FISICOQUIMICO, 12) : '') : x.ULTIMO_BACTERIOLOGICO ? miSumarMeses_(x.ULTIMO_BACTERIOLOGICO, 6) : '', d = tbDias_(v);   // equipos: físico-químico cada 12 meses (14.37)
-    return { cod: x.ESTABLECIMIENTO, estado: un ? 'unica' : !v ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
+    return { cod: x.ESTABLECIMIENTO, sitio: x.SITIO || '', estado: un ? 'unica' : !v ? 'sin' : d < 0 ? 'vencida' : d <= 30 ? 'porvencer' : 'aldia' }; });
   // Agua: muestreos de laboratorio, qué pedir y cuándo (AguaLab.gs, 28/10/2026): parcial cada 6 meses y completo cada 12 con limpieza previa
   let lab = [], labError = ''; try { if (typeof aguaLab_ === 'function') { lab = aguaLab_(); aguaLabAcciones_(lab).forEach(a => acciones.push(a)); } } catch (e) { labError = e.message; }
   // Auditorías: último cumplimiento de campo o verificación y las que esperan verificación
@@ -190,3 +190,60 @@ function tbModulos_() {
 
 // Prueba (12/10/2026): muestra las acciones de plagas que ve el tablero (casos de «Mi establecimiento» y registro MIPyV)
 function probarTableroPlagas() { const T = tbTablero_(true); Logger.log(JSON.stringify({ plagas: T.plagas, acciones: (T.acciones || []).filter(a => /^Plagas/.test(a.origen)) })); }
+
+// ------------------------------------------------------------------ Historial diario de urgencias del tablero de control (08/11/2026)
+// Pedido de Belén: ver cómo vienen las urgencias mes a mes en el tablero de control del Portal HyS.
+// El portal (modulos/tablero-control.js) cuenta los avisos de los 11 ejes con la misma regla que muestra en pantalla
+// y, una vez por día, guarda acá el resumen de toda la red (urgentes, pronto, avisos y urgentes + pronto por eje).
+// Libro general › hoja TC_HISTORIAL (fila 5 encabezados, datos desde la fila 6, una fila por día; si el mismo día
+// se guarda otra vez, queda lo más nuevo). Se puede corregir o completar a mano en la planilla.
+// Acción del portal: p_tc_hist { guardar?: {fecha, er, wa, av, ejes:{'1':n,…}} } → { ok, filas: [{fecha, er, wa, av, ejes}] } (últimos 400 días).
+// No envía correos.
+const TCH = { HOJA: 'TC_HISTORIAL', H: ['FECHA', 'URGENTE', 'PRONTO', 'AVISOS', 'POR_EJE', 'GUARDADO'] };
+
+function tcHistHoja_() {
+  const g = SpreadsheetApp.openById(CFG.GENERAL);
+  let sh = g.getSheetByName(TCH.HOJA);
+  if (!sh) {
+    sh = g.insertSheet(TCH.HOJA);
+    sh.getRange(1, 1).setValue('Tablero de control · historial diario de urgencias').setFontWeight('bold').setFontSize(13);
+    sh.getRange(2, 1).setValue('Una fila por día con lo que mostraba el tablero de control del Portal HyS para toda la red. POR_EJE: urgentes + pronto de cada eje (1 Residuos … 11 Plan de acción). Lo guarda solo el portal; se puede corregir a mano. s/d = sin dato.');
+    sh.getRange(5, 1, 1, TCH.H.length).setValues([TCH.H]).setFontWeight('bold').setBackground('#0D313F').setFontColor('#FFFFFF');
+    sh.setFrozenRows(5);
+  }
+  return sh;
+}
+
+function tcHistFecha_(v) { return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : String(v || '').slice(0, 10); }
+
+function tcHistLeer_() {
+  const sh = tcHistHoja_(), n = sh.getLastRow() - 5; if (n < 1) return [];
+  const desde = Utilities.formatDate(new Date(Date.now() - 400 * 864e5), TZ, 'yyyy-MM-dd');
+  return sh.getRange(6, 1, n, TCH.H.length).getValues().map(r => {
+    let ejes = {}; try { ejes = JSON.parse(String(r[4] || '{}')); } catch (e) {}
+    const num = v => v === '' || v == null || /s\/d/i.test(String(v)) ? null : Number(v);
+    return { fecha: tcHistFecha_(r[0]), er: num(r[1]), wa: num(r[2]), av: num(r[3]), ejes: ejes };
+  }).filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f.fecha) && f.fecha >= desde).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function tcHistGuardar_(x) {
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(x.fecha || '')) ? x.fecha : Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const n = v => (v === '' || v == null || isNaN(Number(v))) ? 's/d' : Number(v);
+  const fila = [fecha, n(x.er), n(x.wa), n(x.av), JSON.stringify(x.ejes || {}), Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm')];
+  const sh = tcHistHoja_(), k = sh.getLastRow() - 5;
+  const fechas = k > 0 ? sh.getRange(6, 1, k, 1).getValues().map(r => tcHistFecha_(r[0])) : [];
+  const i = fechas.lastIndexOf(fecha);
+  if (i >= 0) sh.getRange(6 + i, 1, 1, fila.length).setValues([fila]);   // el mismo día: queda lo más nuevo
+  else sh.getRange(sh.getLastRow() + 1, 1, 1, fila.length).setValues([fila]);
+  sh.getRange(6, 1, Math.max(1, sh.getLastRow() - 5), 1).setNumberFormat('@');   // la fecha como texto (aaaa-mm-dd)
+}
+
+// Despachada desde el default: de Portal.gs (acciones «p_tc_…»)
+function tcHistPortal_(accion, x) {
+  if (accion !== 'p_tc_hist') return { ok: false, mensaje: 'Acción desconocida.' };
+  if (x && x.guardar) { const lock = LockService.getScriptLock(); lock.waitLock(20000); try { tcHistGuardar_(x.guardar); } finally { lock.releaseLock(); } }
+  return { ok: true, filas: tcHistLeer_() };
+}
+
+// Prueba desde el editor: muestra lo guardado (no escribe nada)
+function probarTcHistorial() { Logger.log(JSON.stringify(tcHistLeer_().slice(-10))); }
