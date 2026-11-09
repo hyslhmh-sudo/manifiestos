@@ -52,7 +52,7 @@ function gregSemilla_() { return [
   ['PLA-02', M_(3), 'Hallazgo crítico en la visita', 'Falta marcar en la visita qué hallazgo es crítico.', 'Sugerido', 'Actuar ya', 30, 'No', 'Resolver el hallazgo crítico', 'Ley 19.587, art. 9 inc. e)', '', 'No', 'Por programar'],
   ['COC-01', M_(4), 'Carnet de manipulador de alimentos vencido', 'Personal de cocina con el carnet vencido.', 'Sugerido', 'Resolver rápido', 30, 'No', 'Renovar el carnet', 'CAA, art. 21 (Res. Conj. 12/2019): vigencia de 3 años', '', 'No', 'Por programar'],
   ['COC-02', M_(4), 'Punto «No cumple» de Buenas Prácticas de Manufactura', 'Relevamiento de cocina. HACCP es oportunidad de mejora, no hallazgo.', 'Sugerido', 'Resolver rápido', 90, 'No', 'Corregir el punto observado', 'Res. GMC 80/96, incorporada al CAA (BPM obligatorias). HACCP: CAA, art. 18 bis, solo para los productos que indica', '', 'No', 'Por programar'],
-  ['RAD-01', M_(5), 'Registro dosimétrico anormal', 'Dosis por encima de los límites.', 'Directo', 'Actuar ya', 30, 'Sí', 'Notificar a la autoridad sanitaria e investigar la exposición', 'Res. SS 273/86 (50 mSv por año y 30 mSv por trimestre); Dto. 6320/68, art. 20 (notificación inmediata)', '', 'No', 'Por programar'],
+  ['RAD-01', M_(5), 'Registro dosimétrico anormal', 'Dosis por encima de los límites.', 'Directo', 'Actuar ya', 30, 'Sí', 'Notificar a la autoridad sanitaria e investigar la exposición', 'Res. SS 273/86 (50 mSv por año y 30 mSv por trimestre); Dto. 6320/68, art. 20 (notificación inmediata)', '', 'Sí', 'Programada'],
   ['RAD-02', M_(5), 'Sala o equipo de rayos X sin habilitación', 'Equipo sin habilitación vigente.', 'Sugerido', 'Planificar', 180, 'Sí', 'Tramitar la habilitación', 'Ley 17.557, art. 2; Dto. 6320/68, arts. 6 y 12', '', 'No', 'Por programar'],
   ['RAD-03', M_(5), 'Informe dosimétrico del bimestre faltante', 'Falta el informe de dosis del bimestre (MKS informa por bimestre: ene–feb, mar–abr, may–jun, jul–ago, sep–oct, nov–dic).', 'Sugerido', 'Resolver rápido', 30, 'No', 'Pedir el informe de dosis', 'Dto. 6320/68, arts. 21, 25 y 26 (informe en períodos que no excedan un trimestre)', '', 'No', 'Por programar'],
   ['RAD-04', M_(5), 'Dosímetro extraviado', 'Dosímetro informado como extraviado.', 'Sugerido', 'Resolver rápido', 30, 'No', 'Reponer el dosímetro', 'Protocolo propio (Dto. 6320/68, art. 25: un dosímetro por persona)', '', 'No', 'Por programar'],
@@ -69,8 +69,8 @@ function gregSemilla_() { return [
   ['INC-03', M_(7), '«No» en la recorrida de seguridad contra incendios', 'Novedad abierta que salió de una recorrida (cada «No» abre una). Un hallazgo por novedad.',
     'Sugerido', 'Resolver rápido', 30, 'No', 'Corregir lo marcado en la recorrida', 'Dto. 351/79, cap. 18 (protección contra incendios: medios de escape, señalización, extintores, detección y alarma)', '', 'Sí', 'Programada'],
   ['INC-04', M_(7), 'Plan de evacuación sin simulacro en el año', 'Falta el registro de simulacros.', 'Sugerido', 'Planificar', 180, 'No', 'Programar el simulacro', 'Dto. 351/79, art. 187 (frecuencia: criterio técnico)', '', 'No', 'Por programar'],
-  ['PER-01', M_(8), 'Siniestro con baja o grave', 'Siniestro cargado con baja o como grave.', 'Directo', 'Actuar ya', 30, 'No', 'Investigar el siniestro (árbol de causas)', 'Res. SRT 905/15, Anexo II, punto 12', '', 'No', 'Por programar'],
-  ['PER-02', M_(8), 'Siniestro sin investigar a los 20 días', 'Siniestro sin investigación cargada.', 'Sugerido', 'Resolver rápido', 30, 'No', 'Completar la investigación', 'Res. SRT 905/15, Anexo II, punto 12 (20 días: criterio propio)', '', 'No', 'Por programar'],
+  ['PER-01', M_(8), 'Siniestro con baja o grave', 'Siniestro cargado con baja o como grave.', 'Directo', 'Actuar ya', 30, 'No', 'Investigar el siniestro (árbol de causas)', 'Res. SRT 905/15, Anexo II, punto 12', 'desde=2026-09-01', 'Sí', 'Programada'],
+  ['PER-02', M_(8), 'Siniestro sin investigar a los 20 días', 'Siniestro sin investigación cargada.', 'Sugerido', 'Resolver rápido', 30, 'No', 'Completar la investigación', 'Res. SRT 905/15, Anexo II, punto 12 (20 días: criterio propio)', 'desde=2026-09-01; dias=20', 'Sí', 'Programada'],
   ['PER-03', M_(8), 'Trabajador expuesto sin nómina de expuestos (NTE)', 'Expuesto sin NTE en el período.', 'Sugerido', 'Planificar', 180, 'No', 'Completar la NTE', 'Res. SRT 37/10, art. 3 inc. 5; Res. SRT 905/15, Anexo I, punto 2.1 (periodicidad anual según el APPC)', '', 'No', 'Por programar'],
   ['CAP-01', M_(9), 'Capacitación obligatoria no cumplida en el plazo', 'Personal que no hizo una capacitación obligatoria del programa anual.', 'Sugerido', 'Planificar', 180, 'No', 'Programar la capacitación', 'Dto. 351/79, arts. 208 y 211 a 213; Ley 19.587, art. 9 inc. k); Res. SRT 905/15', '', 'No', 'Por programar'],
   ['DOC-01', M_(10), 'Documento vencido o sin revisar en su plazo', 'Documento vigente con la próxima revisión pasada.', 'Sugerido', 'Planificar', 90, 'No', 'Revisar el documento', 'Procedimiento propio de control de documentos', '', 'No', 'Por programar']
@@ -298,6 +298,32 @@ function gregDetectar_(RG, fresco) {
     rgrlLeer_('RGRL_RESPUESTAS', RGRL.H_RESP).filter(o => ids[o.ID_RGRL] && o.RESPUESTA === 'No').forEach(o => { const u = ids[o.ID_RGRL];
       push({ regla: 'INF-03', cod: u.cod, sitio: u.lugar, clave: 'REG|INF-03|' + u.cod + '|' + u.lugar + '|' + o.N, desc: 'RGRL ' + u.lugar + ', condición ' + o.N + ' (' + o.SECCION.toLowerCase() + '): ' + o.CONDICION + ' → No.' + (o.OBSERVACION ? ' ' + o.OBSERVACION : ''),
         accion: 'Regularizar: ' + o.CONDICION.replace(/^¿|\?$/g, ''), limite: o.FECHA_REGULARIZACION || '', ref: u.id + ' · cond. ' + o.N, origen: 'RGRL', fuente: o.NORMATIVA }); });
+  });
+
+  // 7 · Siniestros (PER-01, PER-02) · 09/11/2026: libro de siniestros (módulo 4) e INVESTIGACIONES. Se cierran solos al cerrar la investigación.
+  // PARAMETROS: desde=aaaa-mm-dd (siniestros desde esa fecha; por defecto 2026-09-01, para no traer el histórico) · dias=20 (PER-02)
+  corre(['PER-01', 'PER-02'], 'Siniestros (investigación)', () => {
+    const ss = accLibro_(); if (!ss) return;
+    const p1 = Object.assign({ desde: '2026-09-01' }, (RG['PER-01'] || {}).p || {}), p2 = Object.assign({ desde: '2026-09-01', dias: 20 }, (RG['PER-02'] || {}).p || {});
+    const shI = ss.getSheetByName(INV.HOJA), cerr = {}, abie = {};
+    (shI ? accLeer_(shI) : []).filter(r => r.ESTADO !== 'Anulada').forEach(r => { if (r.ESTADO === 'Cerrada') cerr[r.ID_SINIESTRO] = 1; else abie[r.ID_SINIESTRO] = r.ID; });
+    accLeer_(accHoja_(ss)).forEach(s => {
+      const f = accIso_(s.FECHA_ACCIDENTE); if (!f || f > hoy || cerr[s.ID] || s.ESTADO_HYS === 'Anulado' || /anulad|rechaz|inculpable/i.test(String(s.ESTADO || ''))) return;
+      const conBaja = Number(s.DIAS_BAJA) > 0 || s.ESTADO === 'En ILT', cod = limpio_(s.ESTABLECIMIENTO), nro = s.NRO_SINIESTRO || s.ID;
+      const base = 'Siniestro ' + nro + ' del ' + txt(f) + (s.SERVICIO ? ' (' + s.SERVICIO + ')' : '') + (s.TIPO ? ', ' + String(s.TIPO).toLowerCase() : '');
+      const inv = abie[s.ID] ? ' Investigación ' + abie[s.ID] + ' abierta, sin cerrar.' : ' Sin investigación cargada.';
+      if (conBaja && f >= String(p1.desde)) push({ regla: 'PER-01', cod: cod, sitio: s.SITIO, clave: 'REG|PER-01|' + s.ID, desc: base + ', con baja' + (Number(s.DIAS_BAJA) > 0 ? ' (' + s.DIAS_BAJA + ' días)' : '') + '.' + inv, ref: nro, origen: 'Siniestro' });
+      else if (!conBaja && f >= String(p2.desde) && dias(f, hoy) >= Number(p2.dias || 20)) push({ regla: 'PER-02', cod: cod, sitio: s.SITIO, clave: 'REG|PER-02|' + s.ID, desc: base + ': ' + dias(f, hoy) + ' días sin investigación cerrada.' + inv, ref: nro, origen: 'Siniestro' });
+    });
+  });
+
+  // 8 · Radiaciones (RAD-01) · 09/11/2026: dosis por encima de los límites (Radiaciones › DOSIS). Se cierra al anular la fila de dosis.
+  corre(['RAD-01'], 'Radiaciones (dosis)', () => {
+    radDosisLeer_().filter(d => d.ID && !/^anulad/i.test(d.ESTADO || '') && radDosisAnormal_(d)).forEach(d => {
+      const per = (d.PERIODO_DESDE ? txt(accIso_(d.PERIODO_DESDE) || d.PERIODO_DESDE) : 's/d') + ' a ' + (d.PERIODO_HASTA ? txt(accIso_(d.PERIODO_HASTA) || d.PERIODO_HASTA) : 's/d');
+      push({ regla: 'RAD-01', cod: d.ESTABLECIMIENTO, sitio: d.SITIO, clave: 'REG|RAD-01|' + d.ID, desc: 'Dosis por encima del límite: ' + (d.APELLIDO_Y_NOMBRE || 's/d') + ', dosímetro ' + (d.DOSIMETRO || 's/d') + ', período ' + per +
+        ' (período ' + (d.DOSIS_MSV === '' ? 's/d' : d.DOSIS_MSV) + ' mSv; anual ' + (d.ANUAL_C === '' ? 's/d' : d.ANUAL_C) + ' / ' + (d.ANUAL_12 === '' ? 's/d' : d.ANUAL_12) + ' mSv).', ref: d.ID, origen: 'Relevamiento', fuente: 'Res. SS 273/86; Dto. 6320/68, art. 20' });
+    });
   });
   return out;
 }
