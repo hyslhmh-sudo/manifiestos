@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-10-30 · 5.22';
+const VERSION_CAP = '2026-11-09 · 5.23';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -717,6 +717,18 @@ function camposPublico_(d) {
   const req = (v, t) => { if (vacio_(v)) throw new Error('Falta completar: ' + t + '.'); return String(v).trim(); };
   try {
     const o = { PUBLICO: pub, APELLIDOS: req(d.apellidos, 'apellidos'), NOMBRES: req(d.nombres, 'nombres') };
+    // 09/11/2026: «Otra» en el establecimiento de la red + provincia que no es Chubut → Profesionales externos (no entra a la base de trabajadores)
+    if ((d.publico === 'trelew' || d.publico === 'chubut') && /^Otra/i.test(String(d.establecimiento || ''))) {
+      const prov = req(d.provinciaOtra, 'provincia del lugar donde trabajás');
+      if (prov !== 'Chubut') {
+        const lugarTxt = String(d.establecimiento).replace(/^Otra:\s*/i, '').trim();
+        return { PUBLICO: PUBLICOS.ext, APELLIDOS: o.APELLIDOS, NOMBRES: o.NOMBRES, INSTITUCION: lugarTxt || 's/d', ESTABLECIMIENTO: 's/d',
+          SERVICIO: sd_(d.servicio), FUNCION: '', PROFESION: funcionUnica_(req(d.funcion, 'función o puesto') + (d.detalle ? ' · ' + d.detalle : '')),
+          VINCULO: 'No corresponde', EMPRESA: 's/d', CARRERA: 's/d', CIUDAD: sd_(d.ciudad),
+          PAIS: prov === 'Otro país' ? 's/d' : 'Argentina', PROVINCIA: prov === 'Otro país' ? 's/d' : prov,
+          REVISAR: 'Se anotó en ' + PUBLICOS[d.publico] + ' con «Otra» fuera de Chubut: pasó a Profesionales externos' };
+      }
+    }
     if (d.publico === 'trelew' || d.publico === 'chubut') {
       const est = req(d.establecimiento, 'establecimiento').split('|'); o.ESTABLECIMIENTO = est[0]; o.SERVICIO = req(d.servicio, 'servicio o sector');
       o.FUNCION = funcionUnica_(req(d.funcion, 'función o puesto') + (d.detalle ? ' · ' + d.detalle : '')); o.PROFESION = o.FUNCION;

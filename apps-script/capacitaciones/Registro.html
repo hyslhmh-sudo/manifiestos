@@ -304,10 +304,12 @@
   const comunes = () => campo('Apellidos', 'ap', '', '', 'family-name') + campo('Nombres', 'no', '', '', 'given-name') + campo('Correo', 'ma', 'obligatorio', 'email', 'email') + campo('Teléfono', 'te', 'optativo', 'tel', 'tel');
   const funcion = () => lista('Función o puesto', 'fu', L.funciones, 'qué tarea hacés') + '<div id="det"></div>' +
     '<div><span style="font-size:13.5px;font-weight:700">¿Tenés cargo de jefatura o conducción?</span><div class="si" id="jef"><button type="button" data-v="Sí">Sí</button><button type="button" data-v="No" class="on">No</button></div></div>';
+  // 09/11/2026: si el establecimiento es «Otra», se pregunta la provincia. Si no es Chubut, se anota como profesional de otra provincia.
+  const otraProv = conCiudad => '<div id="esProvBox" hidden style="display:flex;flex-direction:column;gap:10px">' + lista('¿En qué provincia queda ese lugar?', 'ep', L.provincias.concat(['Otro país']), 'si no es Chubut, te anotamos como profesional de otra provincia', true) + (conCiudad ? campo('Ciudad', 'ci', '', '', 'address-level2') : '') + '</div>';
   const lugar = paisDefault => campo('Ciudad', 'ci', '', '', 'address-level2') + lista('País', 'pa', L.paises, '', true) + '<div id="provBox">' + lista('Provincia', 'pv', L.provincias, '', true) + '</div>';
   const FORM = {
-    trelew: () => ['Red Trelew', comunes() + lista('Establecimiento o lugar', 'es', L.trelew) + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>'],
-    chubut: () => ['Red Chubut', comunes() + lista('Establecimiento', 'es', L.chubut, 'hospital, CAPS o puesto sanitario') + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>' + campo('Ciudad', 'ci', 'si la dejás vacía, va la del establecimiento', '', 'address-level2')],
+    trelew: () => ['Red Trelew', comunes() + lista('Establecimiento o lugar', 'es', L.trelew) + otraProv(true) + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>'],
+    chubut: () => ['Red Chubut', comunes() + lista('Establecimiento', 'es', L.chubut, 'hospital, CAPS o puesto sanitario') + otraProv(false) + lista('Servicio o sector', 'se', L.servicios, 'dónde trabajás') + funcion() + lista('Vínculo', 've', L.vinculos, '', true) + '<div id="empBox" hidden>' + lista('Empresa', 'em', L.empresas) + '</div>' + campo('Ciudad', 'ci', 'si la dejás vacía, va la del establecimiento', '', 'address-level2')],
     est: () => ['Estudiante', comunes() + lista('Carrera', 'ca', L.carreras) + campo('Institución', 'in', 'donde estudiás') + lugar()],
     ext: () => ['Profesional externo', comunes() + lista('Profesión u ocupación', 'pf', L.profesiones) + campo('Institución o lugar de trabajo', 'in') + lugar()]
   };
@@ -321,11 +323,13 @@
     if ($('fu')) $('fu').addEventListener('change', () => { const d = L.detalle[$('fu').value]; $('det').innerHTML = d && d.length ? lista('Detalle', 'de', d.filter(x => x !== 'Otra')) : ''; if ($('de')) $('de').addEventListener('change', () => { $('deOtra').hidden = $('de').value !== 'Otra'; }); });
     if ($('jef')) $('jef').querySelectorAll('button').forEach(j => j.onclick = () => { $('jef').querySelectorAll('button').forEach(x => x.classList.remove('on')); j.classList.add('on'); });
     if ($('ve')) $('ve').addEventListener('change', () => { $('empBox').hidden = $('ve').value !== 'Tercerizado'; });
+    if ($('esProvBox')) $('es').addEventListener('change', () => { $('esProvBox').hidden = $('es').value !== 'Otra'; });
     if ($('pa')) { $('pa').value = 'Argentina'; $('pa').addEventListener('change', () => { $('provBox').hidden = $('pa').value !== 'Argentina'; }); }
     $('b2c').onclick = () => {
+      if ($('esProvBox') && $('es').value === 'Otra' && !$('ep').value) return error('Elegí en qué provincia queda el lugar donde trabajás.');
       const j = $('jef') ? $('jef').querySelector('.on').dataset.v : '';
       guardar({ modo: 'nuevo', publico: pub, apellidos: valor('ap'), nombres: valor('no'), correo: valor('ma'), telefono: valor('te'), establecimiento: valor('es'), servicio: valor('se'), funcion: valor('fu'), detalle: valor('de'), jefatura: j,
-        vinculo: valor('ve'), empresa: valor('em'), carrera: valor('ca'), institucion: valor('in'), profesion: valor('pf'), ciudad: valor('ci'), pais2: valor('pa'), provincia: valor('pv') }, $('b2c'));
+        vinculo: valor('ve'), empresa: valor('em'), carrera: valor('ca'), institucion: valor('in'), profesion: valor('pf'), ciudad: valor('ci'), pais2: valor('pa'), provincia: valor('pv'), provinciaOtra: $('ep') && $('es').value === 'Otra' ? $('ep').value : '' }, $('b2c'));
     };
     $('volver').onclick = () => ver(modo === 'conocido' ? 's2a' : 's2b');
   });

@@ -9,8 +9,11 @@
 // Correos: solo los de la agenda (confirmación de la reserva o la inscripción, recordatorios 7, 2 y 1 día
 // antes y aviso si HyS suspende un horario), siempre desde belenpellegrini.hys@gmail.com («Enviar como»).
 // Si ese remitente no está configurado no se envía nada y queda el aviso en _AVISOS.
+// 04/11/2026 (7.2): los recordatorios de las clases abiertas y de los programas salen en UN correo por clase
+// con los inscriptos en copia oculta (uno para presenciales y otro para virtuales, en tandas de 45),
+// no uno por persona. La confirmación de cada inscripción y los avisos a jefaturas siguen siendo individuales.
 // =====================================================================
-const VERSION_F7 = '2026-10-25 · 7.1';
+const VERSION_F7 = '2026-11-04 · 7.2';
 const AGENDA_WEB = 'https://hyslhmh-sudo.github.io/capacitaciones/agenda.html';
 const CORREO_HYS = 'belenpellegrini.hys@gmail.com';
 const REMITENTE = 'Higiene y Seguridad Laboral · HZT / HMH';
@@ -18,6 +21,7 @@ const LOGO_HYSL = 'https://hyslhmh-sudo.github.io/logo-hysl.png';
 const HS_CONFIRMA = 48;                                            // reserva de servicio con menos anticipación: la confirma HyS
 const RECORDAR_DIAS = [7, 2, 1];                                   // días antes en que sale el recordatorio
 const HORA_RECORDATORIO = 8;                                       // a partir de esta hora del día
+const CCO_TANDA = 45;                                              // recordatorios en copia oculta: hasta 45 por correo (Google no deja más de 50 destinatarios)
 const SECUENCIA_INCENDIO = ['CAP-HYS-007', 'CAP-HYS-012', 'CAP-HYS-004'];   // extintores › seguridad humana › evacuación (plan de emergencia)
 const NOMBRE_INCENDIO = { 'CAP-HYS-007': 'Extintores', 'CAP-HYS-012': 'Seguridad humana', 'CAP-HYS-004': 'Evacuación' };
 const DURACION_TURNO = 90;                                         // minutos por horario, si no se indica otra cosa
@@ -591,7 +595,7 @@ function confirmarInscripcion_(idDic, correo, token, mod, programa) {
   return enviar_(correo, 'Quedaste inscripto (' + String(mod).toLowerCase() + '): ' + cap.NOMBRE + (programa ? ' · programa completo' : '') + ' · ' + diaCorto_(isoDe_(t.FECHA)),
     mailClase_(cap, t, token, 'confirmacion', 0, mod, programa), 'Confirmación', t.ID_TURNO || '', idDic, t.CODIGO);
 }
-function mailClase_(cap, t, token, tipo, dias, mod, programa) {
+function mailClase_(cap, t, token, tipo, dias, mod, programa, cco) {
   mod = /virtual/i.test(mod || (/^virtual/i.test(t.MODALIDAD || '') ? 'Virtual' : '')) ? 'Virtual' : 'Presencial';
   const zoom = mod === 'Virtual' && tipo !== 'suspension' ? zoomDe_(t) : '';
   const cuando = DIAS_SEMANA[diaSemana_(isoDe_(t.FECHA))] + ' ' + dma_(isoDe_(t.FECHA)) + ' · ' + hhmm_(t.HORA_INICIO) + (t.HORA_FIN ? ' a ' + hhmm_(t.HORA_FIN) : '') + ' h';
@@ -603,7 +607,8 @@ function mailClase_(cap, t, token, tipo, dias, mod, programa) {
   const como = mod === 'Virtual'
     ? (zoom ? boton_('Entrar al Zoom', zoom) : '<p>El link de Zoom te llega en el recordatorio antes de la clase.</p>') + '<p>El día de la clase registrás tu asistencia con el link del certificado (se abre a la hora de la clase):</p>' + (t.ID_DICTADO ? boton_('Link del certificado', asis) : '')
     : '<p>El día de la clase registrás tu asistencia con el QR o el link del certificado que se muestra en el aula.</p>';
-  const pie = tipo === 'suspension' ? boton_('Ver otras fechas', AGENDA_WEB) : como + '<p>' + boton_('Ver la agenda', AGENDA_WEB, true) + (token ? boton_('No puedo ir: cancelar', AGENDA_WEB + '?c=' + token, true) : '') + '</p>';
+  const pie = tipo === 'suspension' ? boton_('Ver otras fechas', AGENDA_WEB) : como + '<p>' + boton_('Ver la agenda', AGENDA_WEB, true) + (token ? boton_('No puedo ir: cancelar', AGENDA_WEB + '?c=' + token, true) : '') + '</p>' +
+    (cco ? '<p>Si no podés ir, respondé este correo así liberamos tu lugar.</p>' : '');
   return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', (programa ? 'Empieza el ' : '') + cuando], ['Modalidad', modalidadTxt_(mod, t.LUGAR)], ['Capacitación', cap.CODIGO + ' · ' + cap.NOMBRE]]) + pie);
 }
 function mailReserva_(cap, t, tipo, dias) {
@@ -640,13 +645,12 @@ function agRecordatorios() {
         enviar_(t.CORREO_AVISOS, 'Recordatorio: ' + cap.NOMBRE + ' · ' + t.JEFATURA + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailReserva_(cap, t, 'recordatorio', dias), 'Recordatorio ' + dias + ' día(s)', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
         setCampos_(A, t._k, { RECORDATORIOS: [t.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(x => !vacio_(x)).join(' · ') });
       } else {
-        let n = 0;
-        inscriptosTurno_(t, I).forEach(x => {
-          if (String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0)) return;
-          const para = correoOk_(x.CORREO) ? x.CORREO : correoDe[x.DNI];
-          enviar_(para, 'Recordatorio: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)), mailClase_(cap, t, x.TOKEN_CANCELAR, 'recordatorio', dias, x.MODALIDAD_ELEGIDA), 'Recordatorio ' + dias + ' día(s)', t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
-          setCampos_(I, x._k, { RECORDATORIOS: [x.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(y => !vacio_(y)).join(' · ') }); n++;
-        });
+        // 04/11/2026: un correo por clase y modalidad, con los inscriptos en copia oculta (no uno por persona)
+        const pend = inscriptosTurno_(t, I).filter(x => !String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0));
+        const n = recordarCco_(pend, I, correoDe, marca, ahora, mod => ({
+          asunto: 'Recordatorio: ' + cap.NOMBRE + ' · ' + diaCorto_(isoDe_(t.FECHA)),
+          html: mailClase_(cap, t, '', 'recordatorio', dias, mod, 0, true),
+          tipo: 'Recordatorio ' + dias + ' día(s) · ' + mod.toLowerCase() }), t.ID_TURNO, t.ID_DICTADO, t.CODIGO);
         if (n) setCampos_(A, t._k, { RECORDATORIOS: [t.RECORDATORIOS, marca + ' ' + n + ' persona(s) ' + Utilities.formatDate(ahora, ZONA, 'dd/MM')].filter(x => !vacio_(x)).join(' · ') });
       }
     });
@@ -658,16 +662,60 @@ function agRecordatorios() {
         const n = num_(o.ENCUENTRO_N), f = isoDe_(o.FECHA), dias = Math.round((fechaHora_(dma_(f)) - fechaHora_(dma_(hoy))) / 864e5);
         if (dias < 1 || (n === 1 ? RECORDAR_DIAS.indexOf(dias) < 0 : dias !== 1)) return;
         const marca = 'E' + n + '-' + dias + 'd';
-        ins.forEach(x => {
-          if (String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0)) return;
-          const para = correoOk_(x.CORREO) ? x.CORREO : correoDe[x.DNI]; if (!correoOk_(para)) return;
-          enviar_(para, 'Recordatorio: ' + p.cap.NOMBRE + ' · encuentro ' + n + ' de ' + p.total + ' · ' + diaCorto_(f), mailPrograma_(p.cap, o, n, p.total, dias, x.MODALIDAD_ELEGIDA), 'Recordatorio programa · encuentro ' + n + ' · ' + dias + ' día(s)', '', o.ID_DICTADO, o.CODIGO);
-          x.RECORDATORIOS = [x.RECORDATORIOS, marca + ' ' + Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm')].filter(y => !vacio_(y)).join(' · ');
-          setCampos_(I, x._k, { RECORDATORIOS: x.RECORDATORIOS });
-        });
+        // 04/11/2026: un correo por encuentro y modalidad, con los inscriptos en copia oculta
+        const pend = ins.filter(x => !String(x.RECORDATORIOS || '').split(/\s*·\s*/).some(y => y.indexOf(marca + ' ') === 0));
+        recordarCco_(pend, I, correoDe, marca, ahora, mod => ({
+          asunto: 'Recordatorio: ' + p.cap.NOMBRE + ' · encuentro ' + n + ' de ' + p.total + ' · ' + diaCorto_(f),
+          html: mailPrograma_(p.cap, o, n, p.total, dias, mod, true),
+          tipo: 'Recordatorio programa · encuentro ' + n + ' · ' + dias + ' día(s) · ' + mod.toLowerCase() }), '', o.ID_DICTADO, o.CODIGO);
       });
     });
   } finally { lock.releaseLock(); }
+}
+// 04/11/2026: recordatorio en copia oculta. Separa por modalidad (Presencial / Virtual) porque el correo cambia
+// (el de virtual lleva el botón de Zoom), arma tandas de CCO_TANDA y marca a cada persona en INSCRIPCIONES › RECORDATORIOS
+// solo si su tanda salió. Si una tanda no sale (cuota diaria, error), queda sin marcar y se reintenta a la hora siguiente.
+// Devuelve cuántas personas quedaron marcadas.
+function recordarCco_(pend, I, correoDe, marca, ahora, armar, idTurno, idDic, codigo) {
+  if (!pend.length) return 0;
+  const sello = Utilities.formatDate(ahora, ZONA, 'dd/MM HH:mm');
+  const marcar = (x, extra) => { x.RECORDATORIOS = [x.RECORDATORIOS, marca + ' ' + sello + (extra ? ' ' + extra : '')].filter(y => !vacio_(y)).join(' · '); setCampos_(I, x._k, { RECORDATORIOS: x.RECORDATORIOS }); };
+  let n = 0;
+  ['Presencial', 'Virtual'].forEach(mod => {
+    const grupo = pend.filter(x => (/virtual/i.test(x.MODALIDAD_ELEGIDA || '') ? 'Virtual' : 'Presencial') === mod);
+    if (!grupo.length) return;
+    grupo.forEach(x => { x._para = String(correoOk_(x.CORREO) ? x.CORREO : (correoDe[x.DNI] || '')).trim().toLowerCase(); });
+    const sin = grupo.filter(x => !correoOk_(x._para));
+    if (sin.length) {
+      agregar_(tabla_('_MENSAJES'), [{ ID_MENSAJE: uid_('MSG', ''), FECHA: ahoraTxt_(), TIPO: armar(mod).tipo, CANAL: 'Correo', DESTINATARIOS: 's/d', ID_DICTADO: idDic || '', CODIGO: codigo || '',
+        ASUNTO: armar(mod).asunto, ESTADO: 'Sin correo', QUIEN: 'Agenda (automático)', ID_TURNO: idTurno || '', DETALLE: 'DNI sin correo: ' + sin.map(x => x.DNI).join(', ') }]);
+      sin.forEach(x => marcar(x, 'sin correo'));
+    }
+    const con = grupo.filter(x => correoOk_(x._para));
+    for (let i = 0; i < con.length; i += CCO_TANDA) {
+      const tanda = con.slice(i, i + CCO_TANDA), m = armar(mod), total = Math.ceil(con.length / CCO_TANDA);
+      const ok = enviarCco_(tanda.map(x => x._para), m.asunto, m.html, m.tipo + (total > 1 ? ' · tanda ' + (i / CCO_TANDA + 1) + ' de ' + total : ''), idTurno, idDic, codigo);
+      if (!ok) break;
+      tanda.forEach(x => marcar(x)); n += tanda.length;
+    }
+  });
+  return n;
+}
+// Un correo desde belenpellegrini.hys@gmail.com, dirigido a esa misma casilla, con la lista en copia oculta.
+// Una sola fila en _MENSAJES («N en copia oculta»; los correos en DETALLE).
+function enviarCco_(lista, asunto, html, tipo, idTurno, idDictado, codigo) {
+  lista = lista.filter(correoOk_).filter((x, i, a) => a.indexOf(x) === i);
+  const reg = (estado, det) => agregar_(tabla_('_MENSAJES'), [{ ID_MENSAJE: uid_('MSG', ''), FECHA: ahoraTxt_(), TIPO: tipo, CANAL: 'Correo', DESTINATARIOS: lista.length + ' en copia oculta',
+    ID_DICTADO: idDictado || '', CODIGO: codigo || '', ASUNTO: asunto, ESTADO: estado, QUIEN: 'Agenda (automático)', ID_TURNO: idTurno || '', DETALLE: (det ? det + ' · ' : '') + lista.join(', ').slice(0, 45000) }]);
+  if (!lista.length) return true;
+  if (!puedeEnviar_()) { reg('No enviado: falta «Enviar como» ' + CORREO_HYS); aviso_('Correo de la agenda sin enviar', '_MENSAJES', idTurno || '', 'Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de la cuenta del libro.'); return false; }
+  const cuota = cuotaHoy_();   // sin MailApp (pediría otro permiso): cuenta lo enviado hoy en _MENSAJES (Código.gs)
+  if (cuota < lista.length + 1) { reg('No enviado: no alcanza la cuota diaria de Google', 'Quedaban ' + cuota + ' envíos; se reintenta a la hora siguiente'); return false; }
+  try {
+    GmailApp.sendEmail(CORREO_HYS, asunto, html.replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n'),
+      { from: CORREO_HYS, name: REMITENTE, htmlBody: html, replyTo: CORREO_HYS, bcc: lista.join(',') });
+    reg('Enviado'); return true;
+  } catch (e) { reg('Error: ' + e.message); aviso_('Error al enviar un recordatorio en copia oculta', '_MENSAJES', idTurno || '', e.message); return false; }
 }
 // Libre que pasó: «Sin uso». Reservado o clase abierta que pasó y tuvo asistentes: «Realizado».
 function cerrarPasados_(ahora) {
@@ -785,13 +833,14 @@ function programasConInscripcion_() {
   });
   return out;
 }
-function mailPrograma_(cap, o, n, total, dias, mod) {
+function mailPrograma_(cap, o, n, total, dias, mod, cco) {
   const f = isoDe_(o.FECHA), cuando = DIAS_SEMANA[diaSemana_(f)] + ' ' + dma_(f) + ' · ' + hhmm_(o.HORA_INICIO) + (o.HORA_FIN ? ' a ' + hhmm_(o.HORA_FIN) : '') + ' h';
   const intro = n === 1 && dias > 1 ? 'Te recordamos que en <b>' + dias + ' días</b> empieza el programa en el que te inscribiste.' :
     'Te recordamos que <b>mañana</b> tenés el <b>encuentro ' + n + ' de ' + total + '</b> del programa.';
   const zoom = (String(o.OBSERVACIONES || '').match(/https?:\/\/[^\s·]*zoom[^\s·]*/i) || [''])[0];
   return marcoMail_(cap.NOMBRE, '<p>' + intro + '</p>' + cajaDato_([['Cuándo', cuando], ['Modalidad', modalidadTxt_(/virtual/i.test(mod || '') || (/virtual/i.test(o.LUGAR + ' ' + o.MODALIDAD) && !/h[ií]brida/i.test(o.MODALIDAD)) ? 'Virtual' : 'Presencial', o.LUGAR)], ['Encuentro', n + ' de ' + total]]) +
-    (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con el link del certificado (se abre a la hora de la clase):</p>' + boton_('Link del certificado', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)));
+    (zoom ? boton_('Entrar al Zoom', zoom) : '') + '<p>El día del encuentro registrás tu asistencia con el link del certificado (se abre a la hora de la clase):</p>' + boton_('Link del certificado', 'https://hyslhmh-sudo.github.io/capacitaciones/?d=' + encodeURIComponent(o.ID_DICTADO)) +
+    (cco ? '<p>Si no podés ir, respondé este correo para avisarnos.</p>' : ''));
 }
 // Cambiar el estado de un horario (siempre con motivo; nunca se borra)
 function agEstado_(d) {
