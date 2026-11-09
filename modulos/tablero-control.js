@@ -26,6 +26,11 @@ const tcCol = (cod, lugar, tipo) => TC_CAPS[cod] && (tcEsCaps(lugar) || /^caps$/
 const tcDias = f => { if (!f) return null; const d = new Date(String(f).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? null : Math.round((d - new Date(new Date().toISOString().slice(0, 10) + 'T12:00:00')) / 864e5); };
 const tcEsPlagas = a => a.origen === 'Plagas' || a.origen === 'Plagas (MIPyV)';
 const tcEsPlan = a => !tcEsPlagas(a) && a.origen !== 'Agua';   // agua NO APTA y muestreos van en 2 · Agua
+// 11 · Plan de acción (09/11/2026): las acciones del Plan de acción (BASE COMÚN › GES_ACCIONES, las mismas de #ges; GESD de modulos/gestion.js)
+const tcGesListo = () => typeof GESD !== 'undefined' && !!GESD && !!GESD.ok;
+const tcEsHys = r => /hys|higiene|pellegrini|bel[eé]n/i.test(String(r || ''));
+const tcPlanGes = () => tcGesListo() ? GESD.acciones.filter(a => a.abierta || a.verificar).map(a => ({ id: a.ID, cod: a.ESTABLECIMIENTO, donde: a.SITIO, limite: String(a.FECHA_LIMITE || '').slice(0, 10), vencida: !!a.vencida,
+  abierta: !!a.abierta, verificar: !!a.verificar, sinRespuesta: !!a.sinRespuesta, estado: a.ESTADO, que: a.ACCION, modulo: a.MODULO, resp: (typeof gesTieneResp === 'function' ? gesTieneResp(a) : !!a.RESPONSABLE) ? a.RESPONSABLE : '' })) : [];
 const tcMesTxt = m => { const n = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return m ? n[Number(String(m).slice(5, 7)) - 1] + ' ' + String(m).slice(0, 4) : ''; };
 
 function tcEstilos() {
@@ -55,6 +60,8 @@ function tcPedirExtras() {
   if (!TC.inc) { TC.inc = true; api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
   if (!TC.sinPidio) { TC.sinPidio = true; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
     api('p_sin_est', { desde: d.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10), est: '' }, 180000).then(r => { if (r && r.ok) { TC.sin = r; otra(); } }).catch(() => {}); }
+  if (!TC.ges && typeof GESD !== 'undefined' && (!GESD || typeof GES_T === 'undefined' || Date.now() - GES_T > 300000)) { TC.ges = true;   // 11 · Plan de acción (09/11/2026)
+    api('p_ges_datos', {}, 180000).then(r => { if (r && r.ok) { GESD = r; if (typeof GES_T !== 'undefined') GES_T = Date.now(); otra(); } }).catch(() => {}); }
   if (!TC.ergo && typeof ergCargar === 'function') { TC.ergo = true; ergCargar().then(() => otra()).catch(() => {}); }   // 12 · Ergonomía (09/11/2026)
   if (!TC.histPidio) { TC.histPidio = true; api('p_tc_hist', {}, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; else { TC.hist = []; TC.histFalta = true; } otra(); }).catch(() => { TC.hist = []; TC.histFalta = true; }); }
   if (!TC.cap && typeof capApi === 'function') { TC.cap = true; if (!CAPT) CAPT = LS.get('capt', null);
@@ -153,13 +160,22 @@ function tcHallazgos(ctx) {
   (TB.docsRevisar || []).forEach(d => add('10', '', d.dias < 0 ? 'er' : 'wa', d.codigo + (d.dias < 0 ? ': revisión vencida' : ': llega a su revisión'), '#bib', 'hys', d.revision));
   cols.filter(c => !c.caps).forEach(c => hay('10', c.k, 'Sin vencimientos'));
 
-  // 11 · Plan de acción: acciones del plan (sin agua ni plagas, que ya están en su eje) y auditorías para verificar
-  const plan = (TB.acciones || []).filter(tcEsPlan);
-  const pc = {}; plan.forEach(a => { const k = tcCol(a.cod, a.donde), d = tcDias(a.limite), x = pc[k] = pc[k] || { v: 0, p: 0, t: 0, hys: 0 }; x.t++; if (/hys|higiene/i.test(a.aCargo || '')) x.hys++;
-    if (a.vencida) x.v++; else if (d != null && d <= 7) x.p++; if (!a.vencida && d != null && d >= 0) add('11', k, null, 'Vence una acción del plan: ' + String(a.que || '').slice(0, 70), '#ges', /hys|higiene/i.test(a.aCargo || '') ? 'hys' : 'inst', a.limite); });
-  Object.keys(pc).forEach(k => { const x = pc[k]; hay('11', k, x.t + ' en plazo');
-    if (x.v) add('11', k, 'er', x.v + (x.v > 1 ? ' acciones vencidas' : ' acción vencida') + ' de ' + x.t, '#ges', x.hys >= x.t / 2 ? 'hys' : 'inst');
-    if (x.p) add('11', k, 'wa', x.p + (x.p > 1 ? ' acciones vencen' : ' acción vence') + ' esta semana', '#ges', x.hys >= x.t / 2 ? 'hys' : 'inst'); });
+  // 11 · Plan de acción (desde el 09/11/2026 lee el Plan de acción, #ges, en lugar de los planes de cada informe) y auditorías para verificar
+  if (tcGesListo()) {
+    const pc = {}, depA = a => a.resp ? (tcEsHys(a.resp) ? 'hys' : 'inst') : 'hys';
+    tcPlanGes().forEach(a => { const k = tcCol(a.cod, a.donde), d = tcDias(a.limite), x = pc[k] = pc[k] || { t: 0, v: 0, p: 0, sr: 0, ver: 0, eleva: 0, hys: 0 };
+      if (a.verificar) { x.ver++; return; }
+      x.t++; if (depA(a) === 'hys') x.hys++; if (!a.resp) x.sr++; if (a.sinRespuesta) x.eleva++;
+      if (a.vencida) x.v++; else if (d != null && d >= 0 && d <= 7) x.p++;
+      if (!a.vencida && d != null && d >= 0) add('11', k, null, 'Vence ' + a.id + ': ' + String(a.que || '').slice(0, 70), '#ges', depA(a), a.limite); });
+    Object.keys(pc).forEach(k => { const x = pc[k], dep = x.hys >= x.t / 2 ? 'hys' : 'inst';
+      hay('11', k, x.t ? x.t + (x.t > 1 ? ' acciones abiertas en plazo' : ' acción abierta en plazo') : 'Sin acciones abiertas');
+      if (x.v) add('11', k, 'er', x.v + (x.v > 1 ? ' acciones vencidas' : ' acción vencida') + ' de ' + x.t, '#ges', dep);
+      if (x.p) add('11', k, 'wa', x.p + (x.p > 1 ? ' acciones vencen' : ' acción vence') + ' esta semana', '#ges', dep);
+      if (x.sr) add('11', k, 'wa', x.sr + (x.sr > 1 ? ' acciones sin responsable' : ' acción sin responsable'), '#ges', 'hys');
+      if (x.eleva) add('11', k, 'av', x.eleva + ' elevada(s) a la Dirección sin respuesta', '#ges', 'inst');
+      if (x.ver) add('11', k, 'av', x.ver + (x.ver > 1 ? ' acciones hechas' : ' acción hecha') + ': verificar la eficacia', '#ges', 'hys'); });
+  }
   ((TB.auditorias || {}).paraVerificar || []).forEach(a => add('11', a.cod, 'wa', 'Auditoría interna para verificar · ' + a.id, '#audr/' + encodeURIComponent(a.id), 'hys'));
   cols.forEach(c => { if (!(has['11'] && has['11'][c.k])) hay('11', c.k, 'Sin acciones abiertas'); });
 
@@ -199,7 +215,7 @@ function tcCelda(eje, c, X) {
   else if (conHosp) { n = 'gr'; t = 'Incluido en ' + c.cod; }
   else if (eje === '4' && c.caps) { n = 'gr'; t = 'No corresponde'; }
   else if (X.has[eje] && X.has[eje][c.k]) { n = 'ok'; t = (X.okT[eje] || {})[c.k] || 'Al día'; }
-  else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : eje === '12' && !(typeof ERG !== 'undefined' && ERG) ? 'Cargando…' : 's/d'; }
+  else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : eje === '12' && !(typeof ERG !== 'undefined' && ERG) ? 'Cargando…' : eje === '11' && !tcGesListo() ? 'Cargando…' : 's/d'; }
   if (!L.length && !c.caps) h = ({ '1': '#ficha/' + encodeURIComponent(c.cod), '2': '#ficha/' + encodeURIComponent(c.cod) + '/agua', '4': '#cocper/' + encodeURIComponent(c.cod), '5': '#radest/' + encodeURIComponent(c.cod), '7': '#incest/' + encodeURIComponent(c.cod), '10': '#docest/' + encodeURIComponent(c.cod) })[eje] || h;
   return '<td' + (TC.ver && TC.ver !== c.k ? ' class="dim"' : '') + '><a class="tcCel ' + n + '" href="' + h + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><span class="ms" aria-hidden="true">' + icon[n] + '</span><span>' + esc(t) + '</span></a></td>';
 }
@@ -207,7 +223,7 @@ function tcCelda(eje, c, X) {
 // Historial (TableroHistorial.gs › TC_HISTORIAL): una foto por día de toda la red, cuando ya llegaron todos los datos
 function tcGuardarDia(TB, conNivel) {
   const hoy = new Date().toISOString().slice(0, 10); if (TB.vacio || TC.guardado === hoy || TC.histFalta) return;   // sin la versión nueva del Apps Script (p_tc_hist) no se intenta guardar
-  const listo = RADT && INCT && TC.sin && CAPT && REST && (typeof ERG === 'undefined' || ERG); if (!listo && Date.now() - TC.t0 < 90000) { if (!TC.espera) TC.espera = setTimeout(() => { TC.espera = null; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }, 95000); return; }
+  const listo = RADT && INCT && TC.sin && CAPT && REST && (typeof ERG === 'undefined' || ERG) && (typeof GESD === 'undefined' || tcGesListo()); if (!listo && Date.now() - TC.t0 < 90000) { if (!TC.espera) TC.espera = setTimeout(() => { TC.espera = null; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }, 95000); return; }
   TC.guardado = hoy; const ejes = {}; TC_EJES.forEach(e => ejes[e[0]] = conNivel.filter(x => x.eje === e[0] && (x.n === 'er' || x.n === 'wa')).length);
   const foto = { fecha: hoy, er: conNivel.filter(x => x.n === 'er').length, wa: conNivel.filter(x => x.n === 'wa').length, av: conNivel.filter(x => x.n === 'av').length, ejes: ejes };
   api('p_tc_hist', { guardar: foto }, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; }).catch(() => { TC.guardado = ''; });
@@ -232,7 +248,7 @@ function tcPintar(ctx) {
   const estEje = eje => { const L = conNivel.filter(x => x.eje === eje && enVer(x)); return L.some(x => x.n === 'er') ? 'er' : L.some(x => x.n === 'wa') ? 'wa' : 'ok'; };
   const ejesEr = TC_EJES.filter(e => estEje(e[0]) === 'er'), alDia = TC_EJES.filter(e => estEje(e[0]) === 'ok').length;
   const urg = V.filter(x => x.n === 'er' || x.n === 'wa'), dHys = urg.filter(x => x.dep === 'hys').length, dInst = urg.length - dHys;
-  const plan = (TB.acciones || []).filter(a => tcEsPlan(a) && (!TC.ver || tcCol(a.cod, a.donde) === TC.ver)), planV = plan.filter(a => a.vencida).length;
+  const plan = tcPlanGes().filter(a => a.abierta && (!TC.ver || tcCol(a.cod, a.donde) === TC.ver)), planV = plan.filter(a => a.vencida).length;   // 09/11/2026: del Plan de acción (#ges)
   const colTxt = TC.ver ? (cols.find(c => c.k === TC.ver) || {}).nombre : '';
 
   // 1) La frase del día
