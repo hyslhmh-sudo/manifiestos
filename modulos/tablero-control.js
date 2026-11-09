@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------ Tablero de control (inicio) · versión 2 (06/11/2026)
 // Pedido de Belén: «no me permite saber de manera rápida qué está pasando, cómo está todo; es difícil de ver; no integra todos los ejes».
-// Una sola fuente: cada aviso de los 11 ejes se arma acá como un «hallazgo del tablero» {eje, col, n, t, h, dep, fecha}.
+// Una sola fuente: cada aviso de los 12 ejes (12 · Ergonomía desde el 09/11/2026) se arma acá como un «hallazgo del tablero» {eje, col, n, t, h, dep, fecha}.
 // De esa lista salen la frase del día, los números, el mapa ejes × establecimientos, «Hoy, primero esto» y los próximos 30 días.
 // Solo lee lo que ya traen p_tablero, p_res_tablero, p_rad_tablero, p_inc_tablero, p_sin_est y el tablero de capacitaciones (c_tablero).
 // No cambia el Apps Script. Lo que el dato no trae por sitio (tanques, canillas, siniestros, radiaciones…) queda en la columna del hospital.
@@ -10,7 +10,7 @@ const TC_EJES = [
   ['1', 'Residuos', 'recycling', '#res'], ['2', 'Agua', 'water_drop', '#agua'], ['3', 'Plagas', 'pest_control', '#plagas'],
   ['4', 'Cocinas', 'soup_kitchen', '#coc'], ['5', 'Radiaciones', 'radiology', '#rad'], ['6', 'Infraestructura', 'domain', '#m8'],
   ['7', 'Incendio', 'fire_extinguisher', '#inc'], ['8', 'Personal y RAR', 'personal_injury', '#sin'], ['9', 'Capacitaciones', 'school', '#cap'],
-  ['10', 'Documentos', 'folder_open', '#docest'], ['11', 'Plan de acción', 'task_alt', '#ges']];
+  ['10', 'Documentos', 'folder_open', '#docest'], ['11', 'Plan de acción', 'task_alt', '#ges'], ['12', 'Ergonomía', 'accessibility_new', '#ergo']];
 const TC = { ver: '', dep: '', todos: false, sin: null, sinPidio: false, inc: false, cap: false, rad: false, hist: null, histPidio: false, guardado: '', t0: Date.now() };
 const TC_NIV = { er: 0, wa: 1, av: 2 };
 const tcEsCaps = t => /(^|[^a-z])caps([^a-z]|$)/i.test(String(t || ''));
@@ -55,6 +55,7 @@ function tcPedirExtras() {
   if (!TC.inc) { TC.inc = true; api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
   if (!TC.sinPidio) { TC.sinPidio = true; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
     api('p_sin_est', { desde: d.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10), est: '' }, 180000).then(r => { if (r && r.ok) { TC.sin = r; otra(); } }).catch(() => {}); }
+  if (!TC.ergo && typeof ergCargar === 'function') { TC.ergo = true; ergCargar().then(() => otra()).catch(() => {}); }   // 12 · Ergonomía (09/11/2026)
   if (!TC.histPidio) { TC.histPidio = true; api('p_tc_hist', {}, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; else { TC.hist = []; TC.histFalta = true; } otra(); }).catch(() => { TC.hist = []; TC.histFalta = true; }); }
   if (!TC.cap && typeof capApi === 'function') { TC.cap = true; if (!CAPT) CAPT = LS.get('capt', null);
     if (!CAPT || !CAPT.calculado || Date.now() - Date.parse(CAPT.calculado) > 3600000) capApi('c_tablero', {}, 180000).then(r => { if (r) { CAPT = r; LS.set('capt', r); otra(); } }).catch(() => {}); }
@@ -162,6 +163,25 @@ function tcHallazgos(ctx) {
   ((TB.auditorias || {}).paraVerificar || []).forEach(a => add('11', a.cod, 'wa', 'Auditoría interna para verificar · ' + a.id, '#audr/' + encodeURIComponent(a.id), 'hys'));
   cols.forEach(c => { if (!(has['11'] && has['11'][c.k])) hay('11', c.k, 'Sin acciones abiertas'); });
 
+  // 12 · Ergonomía (09/11/2026): puestos y medidas del Protocolo de Ergonomía (Res. SRT 886/15), con los datos de modulos/ergonomia.js (ERG)
+  if (typeof ERG !== 'undefined' && ERG && typeof ergResumen === 'function') {
+    const hoyE = ergHoy(), por = {};
+    (ERG.puestos || []).filter(p => !/^baja/i.test(p.ESTADO || '')).forEach(p => { const k = tcCol(p.ESTABLECIMIENTO, p.SITIO), r = ergResumen(p), x = por[k] = por[k] || { p: 0, sinI: 0, falta: 0, n3: 0, reh: 0 };
+      x.p++; if (!r.I.length) x.sinI++; else if (r.estado === 'Falta completar') x.falta++;
+      if (r.peor === 3 && !r.abiertas.length) x.n3++; if (r.estado === 'Rehacer (más de 1 año)') x.reh++; });
+    (ERG.medidas || []).filter(m => m.ESTADO !== 'Cumplida').forEach(m => { const k = tcCol(m.ESTABLECIMIENTO, m.SITIO), lim = ergIso(m.FECHA_LIMITE), d = tcDias(lim), dep = /instituc/i.test(m.DEPENDE_DE || '') ? 'inst' : 'hys';
+      if (lim && lim < hoyE) add('12', k, 'er', 'Medida vencida: ' + String(m.DESCRIPCION || '').slice(0, 60), '#ergomed', dep, lim);
+      else if (d != null && d <= 30) add('12', k, 'wa', 'Medida vence el ' + fechaTxt(lim) + ': ' + String(m.DESCRIPCION || '').slice(0, 50), '#ergomed', dep, lim); });
+    (ERG.medidas || []).filter(m => m.FECHA_IMPLEMENTACION && !m.FECHA_CIERRE).forEach(m => { const f = ergMas(ergIso(m.FECHA_IMPLEMENTACION), 30), d = tcDias(f);
+      if (d != null && d <= 7) add('12', tcCol(m.ESTABLECIMIENTO, m.SITIO), 'wa', 'Reevaluar el puesto (30 días después de implementar la medida)', '#ergomed', 'hys', f); });
+    Object.keys(por).forEach(k => { const x = por[k];
+      if (x.n3) add('12', k, 'er', x.n3 + (x.n3 > 1 ? ' puestos' : ' puesto') + ' en nivel 3 sin medidas cargadas', '#ergo', 'hys');
+      if (x.reh) add('12', k, 'wa', x.reh + (x.reh > 1 ? ' puestos' : ' puesto') + ' para rehacer (más de 1 año)', '#ergo', 'hys');
+      if (x.falta) add('12', k, 'av', x.falta + (x.falta > 1 ? ' puestos' : ' puesto') + ' con algo para completar', '#ergo', 'hys');
+      if (x.sinI) add('12', k, 'av', x.sinI + ' de ' + x.p + ' puestos sin relevar', '#ergo', 'hys');
+      hay('12', k, (x.p - x.sinI) + ' de ' + x.p + ' puestos relevados'); });
+  }
+
   // Lo que no tiene columna propia (otro establecimiento) se cuenta en la red, no en el mapa
   H.forEach(x => { if (x.col && !enCol[x.col]) x.col = ''; });
   return { H: H, has: has, okT: okT };
@@ -179,7 +199,7 @@ function tcCelda(eje, c, X) {
   else if (conHosp) { n = 'gr'; t = 'Incluido en ' + c.cod; }
   else if (eje === '4' && c.caps) { n = 'gr'; t = 'No corresponde'; }
   else if (X.has[eje] && X.has[eje][c.k]) { n = 'ok'; t = (X.okT[eje] || {})[c.k] || 'Al día'; }
-  else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : 's/d'; }
+  else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : eje === '12' && !(typeof ERG !== 'undefined' && ERG) ? 'Cargando…' : 's/d'; }
   if (!L.length && !c.caps) h = ({ '1': '#ficha/' + encodeURIComponent(c.cod), '2': '#ficha/' + encodeURIComponent(c.cod) + '/agua', '4': '#cocper/' + encodeURIComponent(c.cod), '5': '#radest/' + encodeURIComponent(c.cod), '7': '#incest/' + encodeURIComponent(c.cod), '10': '#docest/' + encodeURIComponent(c.cod) })[eje] || h;
   return '<td' + (TC.ver && TC.ver !== c.k ? ' class="dim"' : '') + '><a class="tcCel ' + n + '" href="' + h + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><span class="ms" aria-hidden="true">' + icon[n] + '</span><span>' + esc(t) + '</span></a></td>';
 }
@@ -187,7 +207,7 @@ function tcCelda(eje, c, X) {
 // Historial (TableroHistorial.gs › TC_HISTORIAL): una foto por día de toda la red, cuando ya llegaron todos los datos
 function tcGuardarDia(TB, conNivel) {
   const hoy = new Date().toISOString().slice(0, 10); if (TB.vacio || TC.guardado === hoy || TC.histFalta) return;   // sin la versión nueva del Apps Script (p_tc_hist) no se intenta guardar
-  const listo = RADT && INCT && TC.sin && CAPT && REST; if (!listo && Date.now() - TC.t0 < 90000) { if (!TC.espera) TC.espera = setTimeout(() => { TC.espera = null; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }, 95000); return; }
+  const listo = RADT && INCT && TC.sin && CAPT && REST && (typeof ERG === 'undefined' || ERG); if (!listo && Date.now() - TC.t0 < 90000) { if (!TC.espera) TC.espera = setTimeout(() => { TC.espera = null; if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }, 95000); return; }
   TC.guardado = hoy; const ejes = {}; TC_EJES.forEach(e => ejes[e[0]] = conNivel.filter(x => x.eje === e[0] && (x.n === 'er' || x.n === 'wa')).length);
   const foto = { fecha: hoy, er: conNivel.filter(x => x.n === 'er').length, wa: conNivel.filter(x => x.n === 'wa').length, av: conNivel.filter(x => x.n === 'av').length, ejes: ejes };
   api('p_tc_hist', { guardar: foto }, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; }).catch(() => { TC.guardado = ''; });
@@ -218,15 +238,15 @@ function tcPintar(ctx) {
   // 1) La frase del día
   const frase = '<section class="card tcFrase" style="margin-top:14px"><span class="ms" aria-hidden="true" style="color:' + (nEr ? '#B4361F' : nWa ? '#8A5200' : '#1E6B42') + '">' + (nEr ? 'report' : nWa ? 'schedule' : 'verified') + '</span><div style="flex:1 1 420px">' +
     '<p style="font-size:18px;font-weight:700;color:var(--az)">' + (TB.vacio ? 'Armando el tablero…' : nEr ? (colTxt ? colTxt + ': ' : 'Hoy hay ') + nEr + (nEr > 1 ? ' temas urgentes' : ' tema urgente') + ' en ' + ejesEr.length + (ejesEr.length > 1 ? ' ejes: ' : ' eje: ') + ejesEr.map(e => e[1]).join(', ') + '.' : nWa ? (colTxt ? colTxt + ': ' : '') + 'Nada urgente. Hay ' + nWa + ' tema(s) para atender pronto.' : (colTxt ? colTxt + ': ' : '') + 'Todo al día con los datos cargados.') + '</p>' +
-    '<p class="mu" style="font-size:14px;margin-top:4px">' + (urg.length ? dHys + ' de lo urgente y próximo depende de HyS y ' + dInst + ' de recursos institucionales. ' : '') + alDia + ' de 11 ejes al día.</p></div></section>';
+    '<p class="mu" style="font-size:14px;margin-top:4px">' + (urg.length ? dHys + ' de lo urgente y próximo depende de HyS y ' + dInst + ' de recursos institucionales. ' : '') + alDia + ' de ' + TC_EJES.length + ' ejes al día.</p></div></section>';
   // 2) Números clave
   const kpi = (h, t, v, s, col, uf) => '<a class="kpi2" href="' + h + '"' + (uf ? ' data-tcdep="' + uf + '"' : '') + '><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
   const nums = '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:14px">' +
     kpi('#tcHoy', 'URGENTE', nEr, 'vencido o con riesgo: resolver primero', nEr ? '#B4361F' : '') + kpi('#tcHoy', 'PRONTO', nWa, 'vence en 30 días o hay que verificar', nWa ? '#8A5200' : '') +
-    kpi('#tcMapa', 'EJES AL DÍA', alDia + ' / 11', 'sin nada urgente ni próximo', '#1E6B42') + kpi('#ges', 'PLAN DE ACCIÓN', planV + ' / ' + plan.length, 'acciones vencidas de las abiertas', planV ? '#B4361F' : '') +
+    kpi('#tcMapa', 'EJES AL DÍA', alDia + ' / ' + TC_EJES.length, 'sin nada urgente ni próximo', '#1E6B42') + kpi('#ges', 'PLAN DE ACCIÓN', planV + ' / ' + plan.length, 'acciones vencidas de las abiertas', planV ? '#B4361F' : '') +
     kpi('#tcHoy', 'DEPENDE DE HyS', dHys, 'de lo urgente y próximo · el resto, de la institución', '', 'hys') + '</div>';
   // 3) Mapa ejes × establecimientos
-  const mapa = '<section class="card" id="tcMapa" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="font-size:17px">Mapa de la gestión · 11 ejes × establecimientos</h2><span class="mu peq">Cada casilla dice qué pasa · tocala para ir al detalle</span></div>' +
+  const mapa = '<section class="card" id="tcMapa" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="font-size:17px">Mapa de la gestión · ' + TC_EJES.length + ' ejes × establecimientos</h2><span class="mu peq">Cada casilla dice qué pasa · tocala para ir al detalle</span></div>' +
     '<div class="tcMapa"><table><thead><tr><th>Eje</th>' + cols.map(c => '<th' + (TC.ver === c.k ? ' class="sel"' : '') + ' title="' + esc(c.nombre) + '">' + (c.caps ? esc(c.t) : '<a href="#ficha/' + encodeURIComponent(c.cod) + '">' + esc(c.t) + '</a>') + '</th>').join('') + '</tr></thead><tbody>' +
     TC_EJES.map(e => { const s = estEje(e[0]); return '<tr><td class="eje"><a href="' + e[3] + '"><span class="ms" aria-hidden="true">' + e[2] + '</span><span>' + e[0] + ' · ' + esc(e[1]) + '<small style="color:' + ({ er: '#B4361F', wa: '#8A5200', ok: '#1E6B42' }[s]) + '">' + ({ er: 'Urgente', wa: 'Pronto', ok: 'Al día' }[s]) + '</small></span></a></td>' + cols.map(c => tcCelda(e[0], c, X)).join('') + '</tr>'; }).join('') +
     '</tbody></table></div><div class="tcLey"><span><span class="ms" aria-hidden="true" style="color:#B4361F">error</span>Urgente: vencido o con riesgo</span><span><span class="ms" aria-hidden="true" style="color:#8A5200">schedule</span>Pronto: vence en 30 días o a verificar</span><span><span class="ms" aria-hidden="true" style="color:#2E5E70">info</span>Aviso</span><span><span class="ms" aria-hidden="true" style="color:#1E6B42">check_circle</span>Al día</span><span><span class="ms" aria-hidden="true" style="color:#5B6B73">remove</span>s/d, no corresponde o se ve en el hospital</span></div></section>';
@@ -260,7 +280,7 @@ function tcPintar(ctx) {
       if (!TC.hist) return '<div class="mu peq">Cargando…</div>'; if (TC.histFalta) return '<div class="mu peq">Falta publicar la versión nueva del Apps Script «Sistema HyS» (Tablero.gs con el historial). Mientras tanto no se guarda.</div>'; if (!H.length) return '<div class="mu peq">Empieza a guardarse hoy: cada día que abras el portal queda una foto de toda la red.</div>';
       return tcBarras(m6.map(m => ult[m] ? (ult[m].er || 0) + (ult[m].wa || 0) : null), mE, '#B4361F', 'Urgente y pronto por mes'); })(),
       'Toda la red · el último día guardado de cada mes (TC_HISTORIAL, desde el 08/11/2026). «s/d»: ese mes no hay foto.', '#tcMapa') +
-    tarj('Urgente y próximo, por eje (hoy)', tcBarras(porEje, TC_EJES.map(e => e[0]), '#B4361F', 'Temas urgentes y próximos por eje'), 'Número de eje (1 Residuos … 11 Plan de acción): dónde se concentra lo pendiente hoy.', '#tcMapa') +
+    tarj('Urgente y próximo, por eje (hoy)', tcBarras(porEje, TC_EJES.map(e => e[0]), '#B4361F', 'Temas urgentes y próximos por eje'), 'Número de eje (1 Residuos … 11 Plan de acción, 12 Ergonomía): dónde se concentra lo pendiente hoy.', '#tcMapa') +
     tarj('Retiros de residuos (manifiestos Y1 + Y3)', m6.length ? tcBarras(ret, mE, '#0D313F', 'Retiros por mes: ' + ret.join(', ')) : '<div class="mu peq">Cargando…</div>', 'Toda la red, por mes. Que baje puede ser falta de carga, no de retiro.', '#res') +
     tarj('Siniestros laborales', TC.sin ? tcBarras(m6.map(m => sinM[m] || 0), mE, '#0D313F', 'Siniestros por mes') : '<div class="mu peq">Cargando…</div>', 'Casos del período (sin rechazados ni inculpables) · los carga el Servicio de Personal.', '#sinest') +
     tarj('Registros de capacitación', CAPT ? tcBarras(m6.map(m => capM[m] || 0), mE, '#5894A7', 'Registros de capacitación por mes') : '<div class="mu peq">Cargando…</div>', 'Asistencias y evaluaciones registradas en el mes.', '#cap') + '</div>';
