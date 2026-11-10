@@ -201,6 +201,67 @@ function aguaLabCard(lab, labError) {
     (sinDatos ? '<div class="aviso" style="margin-top:10px">' + (labError ? 'No se pudo leer el tablero de análisis: ' + esc(labError) + '. ' : 'Todavía no llegan los datos de los muestreos: tocá «Actualizar» en el Inicio. ') + 'Mientras tanto, el detalle está en la <a href="' + AGUA_INF.tablero + '" target="_blank" rel="noopener">planilla ↗</a>.</div>'
       : '') + accesos + (sinDatos ? '' : '<div id="aglBox" style="margin-top:4px">' + aglPintar() + '</div>') + como + '</section>';
 }
+// ------------------------------------------------------------------ 2 · Agua · ¿Es potable? Estado del agua por lugar (10/11/2026, pedido de Belén:
+// «que en agua tenga cuántos tienen agua potable, cuántos esperan análisis, cuántos hay que limpiar el tanque, etc.»)
+// Datos: TB.lab (Tablero.gs › AguaLab.gs), los mismos del tablero de muestreos. No hay datos nuevos ni cambios en los .gs.
+// Cada lugar cae en UN solo estado del agua (arriba) y puede tener varias tareas pendientes (abajo).
+//   · Esperando el análisis: el muestreo ya se pidió al DPSB (columna U «Solicitado el» posterior al último muestreo).
+//   · No apta: el último muestreo tuvo alguna muestra NO APTA y todavía no se pidió el nuevo.
+//   · Sin conclusión: el último muestreo tiene muestras sin conclusión (consultar al DPSB).
+//   · Potable: último muestreo apto y vigente (columna H del Tablero = «Vigente»).
+//   · Apta con el análisis vencido: el último dio apta, pero ya pasó el plazo (6 meses): hoy no se puede asegurar.
+//   · Sin análisis: nunca se cargó un muestreo.
+// Tareas: limpiar tanques (toca muestreo completo o hubo NO APTA y los tanques del sitio no están limpios dentro del plazo),
+//   limpiar griferías (NO APTA) y pedir el muestreo (avisos «Urgente», «Vencido · pedir ya» y «Pedir ahora»).
+// Se usa en 2 · Agua (todas las redes) y en Relevamiento de edificios (solo red Trelew). El grupo «Otros» no cuenta.
+const AGUA_EST = [
+  ['ok', '✅ Agua potable', 'último análisis apto y vigente', '#1E6B3A', '#E3F4E8'],
+  ['ven', '⚠️ Apta, con el análisis vencido', 'el último dio apta, pero pasó el plazo: hoy no se puede asegurar', '#8A5A00', '#FFF1D6'],
+  ['esp', '⏳ Esperando el análisis', 'muestreo pedido al DPSB, falta el resultado', '#21788C', '#E4F2F5'],
+  ['no', '❌ No apta', 'el último muestreo dio no apta', '#B4361F', '#FBE3DE'],
+  ['sc', '❔ Sin conclusión', 'muestras sin conclusión: consultar al DPSB', '#55606A', '#EEF1F3'],
+  ['sd', '⬜ Sin análisis', 'nunca se cargó un muestreo', '#55606A', '#EEF1F3']];
+const AGUA_TAREAS = [
+  ['tq', '🧽 Hay que limpiar los tanques', 'antes del muestreo completo o por agua no apta (sin limpieza el DPSB no toma la muestra)', '#B4361F'],
+  ['gr', '🚰 Hay que limpiar griferías', 'canillas que dieron no apta', '#B4361F'],
+  ['pe', '📝 Hay que pedir el muestreo', 'vencido o dentro del plazo de aviso', '#8A5A00']];
+function aguaEstado(x) {
+  if (/^solicitado|^muestra tomada/i.test(x.aviso || '')) return 'esp';
+  if (x.noAptas > 0) return 'no';
+  if (!/^\d{4}/.test(x.ultimo || '')) return 'sd';
+  if (x.sinConclusion > 0) return 'sc';
+  return /vigente/i.test(x.estado || '') ? 'ok' : 'ven';
+}
+function aguaTareas(x) {
+  if (aguaEstado(x) === 'esp') return [];
+  const t = [], limpio = !!(x.tanques && x.tanques.n && x.tanques.limpios === x.tanques.n);
+  if (/COMPLETO|URGENTE/.test(x.que || '') && !limpio) t.push('tq');
+  if (/URGENTE/.test(x.que || '')) t.push('gr');
+  if (/urgente|vencido|pedir/i.test(x.aviso || '')) t.push('pe');
+  return t;
+}
+function aguaEstadoCard(lab, redes, nota) {
+  const L = (Array.isArray(lab) ? lab : []).filter(x => x.grupo !== 'Otros' && redes.indexOf(x.red) >= 0);
+  if (!L.length) return '';
+  const dos = redes.length > 1, cols = dos ? redes.concat(['Total']) : ['Lugares'];
+  const cuenta = (f, red) => L.filter(x => (red === 'Total' || red === 'Lugares' || x.red === red) && f(x));
+  const nombres = A => A.map(x => esc(x.lugar) + (dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '')).join(' · ');
+  const fila = (ico, txt, sub, col, bg, f) => { const tot = cuenta(f, cols[cols.length - 1]);
+    return '<details style="border-top:1px solid var(--ln)"><summary style="list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) repeat(' + cols.length + ',56px);gap:6px;align-items:center;padding:8px 4px' + (tot.length && bg ? ';background:' + bg : '') + '">' +
+      '<span><b>' + ico + txt + '</b><small class="mu" style="display:block">' + sub + '</small></span>' +
+      cols.map(c => { const n = cuenta(f, c).length; return '<b style="text-align:center;font-size:18px;color:' + (n ? col : '#9AA4AC') + '">' + n + '</b>'; }).join('') + '</summary>' +
+      '<div class="peq" style="padding:4px 8px 10px;line-height:1.6">' + (tot.length ? nombres(tot) : '<span class="mu">Ninguno.</span>') + '</div></details>'; };
+  const cab = '<div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(' + cols.length + ',56px);gap:6px;padding:0 4px 4px" class="mu peq"><span></span>' + cols.map(c => '<b style="text-align:center">' + esc(c) + '</b>').join('') + '</div>';
+  return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 2px;font-size:17px">💧 Agua: ¿es potable?</h2>' +
+    '<span class="mu peq" style="display:block;margin-bottom:8px">' + (nota || 'Según el último análisis de laboratorio (DPSB) de cada lugar.') + ' Tocá una fila para ver cuáles son.</span>' +
+    '<div style="max-width:640px"><h3 style="margin:4px 0;font-size:14px">Cómo está el agua</h3>' + cab +
+    AGUA_EST.map(e => fila('', e[1], e[2], e[3], e[4], x => aguaEstado(x) === e[0])).join('') +
+    '<div style="border-top:1px solid var(--ln)"></div>' +
+    '<h3 style="margin:14px 0 4px;font-size:14px">Qué hay que hacer <span class="mu peq" style="font-weight:400">(un lugar puede tener más de una tarea)</span></h3>' + cab +
+    AGUA_TAREAS.map(t => fila('', t[1], t[2], t[3], '', x => aguaTareas(x).indexOf(t[0]) >= 0)).join('') +
+    '<div style="border-top:1px solid var(--ln)"></div></div>' +
+    '<span class="mu peq" style="display:block;margin-top:8px">La limpieza de tanques y el pedido al DPSB dependen de HyS; las reparaciones, del establecimiento. Detalle de cada lugar en <a href="#agua">2 · Agua › Muestreos de laboratorio</a>.</span></section>';
+}
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
   modo = 'agua'; const R = '#' + modo;
@@ -218,7 +279,7 @@ async function agua(modo) {
   const pe = {}; (TB.puntos || []).filter(p => enA(p.cod)).forEach(p => { const x = pe[p.cod] = pe[p.cod] || { t: 0, aldia: 0, porvencer: 0, vencida: 0, sin: 0, unica: 0 }; x.t++; x[p.estado in x ? p.estado : 'sin']++; });
   const ptoEst = Object.keys(pe).sort((a, b) => nom(a).localeCompare(nom(b), 'es')).map(c => [c, pe[c]]);
   const cuerpo = modo === 'agua'
-    ? aguaLabCard(TB.lab, TB.labError) + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Relevamiento de edificios · red Trelew</h2><span class="mu peq" style="display:block;margin-bottom:8px">Agua, desagües, canaletas y techos de cada lugar, cargados por Javier y Paulo desde la app MIP.</span><a class="btn sec" href="#edif">Ver el relevamiento</a></section>' + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
+    ? aguaEstadoCard(TB.lab, ['Trelew', 'Rawson']) + aguaLabCard(TB.lab, TB.labError) + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Relevamiento de edificios · red Trelew</h2><span class="mu peq" style="display:block;margin-bottom:8px">Agua, desagües, canaletas y techos de cada lugar, cargados por Javier y Paulo desde la app MIP.</span><a class="btn sec" href="#edif">Ver el relevamiento</a></section>' + '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Agua NO APTA abierta</h2>' + (noApta.length ? noApta.map(a => fila(esc(nom(a.cod)) + ' · ' + esc(a.punto), 'Nueva muestra antes del ' + fechaTxt(a.limite), '#ficha/' + encodeURIComponent(a.cod) + '/agua')).join('') : '<div class="mu">Ninguna.</div>') + '</section>' +
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Tanques por establecimiento</h2><span class="mu peq" style="display:block;margin-bottom:6px">' + conInv + ' de ' + listaT.length + ' habilitados con inventario cargado' + (A ? ' en ' + esc(A) : '') + '.</span><div style="max-height:560px;overflow-y:auto">' + listaT.map(c => fila(esc(nom(c)), porEst[c] ? porEst[c].ok + ' de ' + porEst[c].t + ' con limpieza al día' : '<span style="color:#B4361F;font-weight:700">Sin inventario de tanques cargado · pendiente</span>', '#ficha/' + encodeURIComponent(c) + '/agua')).join('') + '</div><span class="mu peq" style="display:block;margin-top:8px">Solo los establecimientos habilitados en la aplicación; primero los que ya cargaron tanques. Cada uno tiene su propio inventario, por sitio (edificio, dispositivos y CAPS).</span></section>' +
       // Canillas (puntos de muestreo) y su último análisis bacteriológico (cada 6 meses, Dto. 351/79): TB.puntos (Tablero.gs)
       '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Canillas y análisis por establecimiento</h2>' + ((ptoEst.length || todos.length) ? '<span class="mu peq" style="display:block;margin-bottom:6px">Puntos de muestreo con su análisis bacteriológico (cada 6 meses) y físico-químico (cada 12). Detalle, resultados e informes en la ficha › Agua.</span>' +
@@ -619,7 +680,7 @@ const EDIF_LUGARES = [['HZT', 'Hospital Zonal Trelew (edificio central)'], ['ADO
   ['CAP-PGA', 'CAPS Planta de Gas'], ['CAP-SMA', 'CAPS San Martín (Ing. Franzetti)'], ['CAP-SAR', 'CAPS Sarmiento'], ['CAP-TFE', 'CAPS Tiro Federal'], ['CAP-VIT', 'CAPS Villa Italia']];
 const EDIF_TEMAS = [['agua', '💧 Agua'], ['desagues', '🚿 Desagües'], ['canaletas', '🌧 Canaletas'], ['techos', '🏠 Techos']];
 const EDIF_INFORME = 'https://docs.google.com/document/d/1zdFy2BfuuUtELR5DPnlXKKEFEcgjZH6M6RYVusL12uw/edit';
-let EDIF = null, EDF = { lugar: '', soloUrg: false };
+let EDIF = null, EDF = { lugar: '', soloUrg: false }, EDIF_LABERR = false;
 const edifRg = f => { const t = String(f.otros_riesgos || '').trim(); return t && !/^(no|s\/d)$/i.test(t) ? t : ''; };   // 06/11/2026: otros riesgos (gas, electricidad, caída de objetos)
 function edifNivel(t) { t = String(t || ''); return /urgente/i.test(t) ? 'er' : /arreglo/i.test(t) ? 'wa' : /^(bien|no tiene)$/i.test(t.trim()) ? 'ok' : 'nd'; }
 function edifChip(t) { const n = edifNivel(t), c = { er: ['#FBE3DE', '#B4361F'], wa: ['#FFF1D6', '#8A5A00'], ok: ['#E3F4E8', '#1E6B3A'], nd: ['#EEF1F3', '#55606A'] }[n];
@@ -634,6 +695,11 @@ async function pantallaEdificios(fresco) {
   if (!EDIF || EDIF.ok === false) { $('edBox').innerHTML = '<section class="card"><div class="aviso error">' + esc((EDIF && (EDIF.mensaje || EDIF.error)) || 'No se pudo leer el relevamiento.') + '</div></section>'; return; }
   if (EDIF.libro) { $('edLib').href = EDIF.libro; $('edLib').hidden = false; }
   edifPintar();
+  // 10/11/2026: «💧 Agua: ¿es potable?» usa los análisis de laboratorio (TB.lab). Si no están en memoria, se leen después de pintar.
+  if (!TB || !Array.isArray(TB.lab)) TB = LS.get('tab', null) || TB;
+  if (!TB || !Array.isArray(TB.lab) || fresco) { EDIF_LABERR = false;
+    try { const t = await api('p_tablero', fresco ? { fresco: true } : {}, 240000); if (t && t.ok !== false && Array.isArray(t.lab)) { TB = t; LS.set('tab', TB); if ($('edBox') && EDIF) edifPintar(); } else throw 0; } catch (e) { EDIF_LABERR = true; if ($('edBox') && EDIF) edifPintar(); }
+  }
 }
 function edifPintar() {
   const F = EDIF.filas || [], ult = {};
@@ -649,7 +715,10 @@ function edifPintar() {
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">' + kpi(hechos.length + ' de ' + EDIF_LUGARES.length, 'lugares relevados') + kpi(urg.length, 'con algo urgente', urg.length ? '#B4361F' : '') + kpi(arr.length, 'requieren arreglos', arr.length ? '#8A5A00' : '') + kpi(sinRev.length, 'sin revisar por HyS', sinRev.length ? '#21788C' : '') + '</div>' +
     (urg.length ? '<section class="card" style="border-left:4px solid #B4361F"><h2 style="margin:0 0 6px;font-size:16px">Urgente</h2>' + urg.map(f => { const T = EDIF_TEMAS.filter(t => edifNivel(f[t[0]]) === 'er'), q = (edifRg(f) ? '⚠️ ' + edifRg(f) + ' · ' : '') + (T.map(t => f[t[0] + '_falta']).filter(x => x && !/^s\/?n$/i.test(x.trim())).join(' · ') || f.observaciones);
       return '<div style="margin:8px 0;cursor:pointer" data-u="' + F.indexOf(f) + '"><b>' + esc(f.lugar) + '</b> · ' + ((edifRg(f) ? ['⚠️ Otros riesgos'] : []).concat(T.map(t => t[1])).join(', ') || 'marcado urgente') + '<br><span class="mu peq">' + esc(String(q || '').slice(0, 300)) + '</span></div>'; }).join('') + '</section>' : '') +
-    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Por tema (último relevamiento de cada lugar)</h2><table class="tabla" style="width:100%;max-width:520px"><thead><tr><th>Tema</th><th>Urgente</th><th>Arreglo</th><th>Bien</th><th>No se pudo ver / s/d</th></tr></thead><tbody>' + porTema + '</tbody></table></section>' +
+    '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Por tema (último relevamiento de cada lugar)</h2><table class="tabla" style="width:100%;max-width:520px"><thead><tr><th>Tema</th><th>Urgente</th><th>Arreglo</th><th>Bien</th><th>No se pudo ver / s/d</th></tr></thead><tbody>' + porTema + '</tbody></table>' +
+    '<span class="mu peq" style="display:block;margin-top:6px">La fila Agua es el estado de la instalación (cañerías, tanques, pérdidas) que ven Javier y Paulo. Si el agua es potable lo dice el cuadro de abajo.</span></section>' +
+    (TB && Array.isArray(TB.lab) ? aguaEstadoCard(TB.lab, ['Trelew'], 'Red Trelew, según el último análisis de laboratorio (DPSB) de cada lugar (incluye el HMH, que no está en este relevamiento).')
+      : '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">💧 Agua: ¿es potable?</h2><div class="mu">' + (EDIF_LABERR ? 'No se pudieron leer los análisis de laboratorio. Están en <a href="#agua">2 · Agua</a>.' : 'Leyendo los análisis de laboratorio…') + '</div></section>') +
     '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Relevamientos cargados</h2>' +
     '<div class="filtros" style="margin-bottom:8px"><label class="f">Lugar<select class="c" id="edL"><option value="">Todos</option>' + lugares.map(l => '<option' + (l === EDF.lugar ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select></label><label class="peq" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="edU"' + (EDF.soloUrg ? ' checked' : '') + '> Solo urgentes</label></div>' +
     (ver.length ? '<div style="overflow-x:auto"><table class="tabla edT" style="width:100%"><thead><tr><th>Fecha</th><th>Lugar</th>' + EDIF_TEMAS.map(t => '<th>' + t[1] + '</th>').join('') + '<th>Prioridad</th><th>Revisión HyS</th></tr></thead><tbody>' +
