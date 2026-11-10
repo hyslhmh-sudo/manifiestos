@@ -310,6 +310,7 @@ const TRAB_DICE = /^Dice que trabaja en /;
 function pAConfirmar_(r, conNtear) {
   if (/^(Baja|Traslado)/.test(String(r[19]))) return false;
   if (TRAB_DICE.test(String(r[18]))) return true;
+  if (r[21] === 'SIN_ASIGNAR' || r[21] === 'NC') return false;   // ya están aparte («Sin establecimiento reconocido» y nivel central)
   return !!conNtear[r[21]] && String(r[14]) !== 'Sí' && !limpio_(r[16]) && String(r[8]) !== 'Tercerizado' && !limpio_(r[9]);
 }
 function pTrab_(x) {
