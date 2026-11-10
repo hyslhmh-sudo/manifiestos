@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-11-09 · 5.23';
+const VERSION_CAP = '2026-11-10 · 5.24';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -598,7 +598,11 @@ function regBuscar(q) {
   if (/red/i.test(publico) && vacio_(b ? b.VINCULO : p[i('VINCULO')])) faltan.push('vinculo');
   // 25/10/2026: personal de la red sin servicio o sin función (p. ej. quienes vienen solo de la planilla de sueldos): se piden y se guardan en la base
   if (b || /red/i.test(publico)) { if (vacio_(dato('SERVICIO'))) faltan.unshift('servicio'); if (vacio_(dato('FUNCION'))) faltan.splice(faltan.indexOf('servicio') + 1, 0, 'funcion'); }
-  return { ok: true, encontrado: true, faltan: faltan, desdeBase: !!b, saludo: String(nombre).trim().split(/\s+/).slice(0, 2).join(' '), ficha: ficha, correo: correoOk_(correo) ? correo : '', tieneCorreo: correoOk_(correo) };   // el correo se muestra completo para que la persona sepa si tiene que corregirlo
+  // 10/11/2026 (Belén, 5.24): si la persona está en la base de trabajadores sin el establecimiento confirmado (no figura en la NTEAR y
+  // ULTIMA_CONFIRMACION vacía), se le pregunta «¿Trabajás en …?». Sí = queda confirmado; No = elige dónde y le llega a HyS para aprobar.
+  let preguntaEst = '';
+  if (b && String(b.EN_NTEAR) !== 'Sí' && vacio_(b.ULTIMA_CONFIRMACION)) { const l = listasRegistro_(); if (l.trelew.concat(l.chubut).some(x => x[0] === b.ESTABLECIMIENTO)) preguntaEst = nombreEst_(b.ESTABLECIMIENTO); }
+  return { ok: true, encontrado: true, faltan: faltan, desdeBase: !!b, preguntaEst: preguntaEst, preguntaCod: preguntaEst ? b.ESTABLECIMIENTO : '', saludo: String(nombre).trim().split(/\s+/).slice(0, 2).join(' '), ficha: ficha, correo: correoOk_(correo) ? correo : '', tieneCorreo: correoOk_(correo) };   // el correo se muestra completo para que la persona sepa si tiene que corregirlo
 }
 function enBase_(dni) {
   const lib = MEMO_ON ? (MEMO_.libT = MEMO_.libT || SpreadsheetApp.openById(ID.trabajadores)) : SpreadsheetApp.openById(ID.trabajadores), T = tabla_('TODOS', lib);
@@ -665,6 +669,7 @@ function guardarPersona_(d) {
   // Contacto también en la base de trabajadores (el dato más nuevo manda)
   if (b && (correoNuevo || d.telefono)) actualizarBase_(b, correoNuevo, d.telefono);
   if (b && ((vacio_(b.SERVICIO) && !vacio_(d.servicio)) || (vacio_(b.FUNCION) && !vacio_(d.funcion)) || (vacio_(b.VINCULO) && !vacio_(d.vinculo)))) completarBase_(b, d);
+  if (b && (d.confEst === 'si' || d.confEst === 'no')) confirmarEstBase_(b, d, persona);
   if (d.cambio) aviso_('Cambio informado por la persona', b ? 'Base de trabajadores' : 'PERSONAS', doc + ' · ' + (persona.APELLIDOS || ''), String(d.cambio).slice(0, 500));
   ['ESTABLECIMIENTO', 'SERVICIO', 'FUNCION', 'PROFESION', 'CARRERA', 'INSTITUCION'].forEach(c => { if (/^otr[oa]:/i.test(persona[c] || '')) aviso_('Valor fuera de lista', 'PERSONAS', doc, c + ' = ' + persona[c]); });
   return { doc: doc, persona: persona };
@@ -769,6 +774,31 @@ function completarBase_(b, d) {
     Object.keys(cambios).forEach(c => { const j = T.i(c); if (j < 0) return; T.sh.getRange(fila, j + 1).setValue(cambios[c]);
       historial_('Registro', 'Base de trabajadores · ' + b.ESTABLECIMIENTO, b.DNI, c, b[c] || '', cambios[c], 'Completado por la persona al registrarse (faltaba en la base)'); });
   } catch (e) { aviso_('No se pudo completar la base de trabajadores', 'Base de trabajadores', b.DNI, e.message); }
+}
+
+// 10/11/2026 (5.24): respuesta a «¿Trabajás en …?». Sí → ULTIMA_CONFIRMACION = hoy. No → REVISAR = Sí y MOTIVO_REVISION
+// «Dice que trabaja en <nombre> (<código>) · inscripción dd/mm/aaaa»: no se cambia nada solo; Belén lo ve en el Portal HyS › Personas ›
+// «A confirmar el establecimiento» y decide (corregir o confirmar). Queda también en _AVISOS y en _HISTORIAL.
+function confirmarEstBase_(b, d, persona) {
+  try {
+    const lib = SpreadsheetApp.openById(ID.trabajadores), T = tabla_(b.ESTABLECIMIENTO, lib);
+    const k = T.filas.findIndex(r => soloDni_(r[T.i('DNI')]) === soloDni_(b.DNI) && !/baja|traslado/i.test(r[T.i('ESTADO')])); if (k < 0) return;
+    const fila = k + 6, hoy = Utilities.formatDate(new Date(), ZONA, 'dd/MM/yyyy'), hoja_ = 'Base de trabajadores · ' + b.ESTABLECIMIENTO;
+    if (d.confEst === 'si') {
+      if (T.i('ULTIMA_CONFIRMACION') < 0) return;
+      T.sh.getRange(fila, T.i('ULTIMA_CONFIRMACION') + 1).setValue(hoy);
+      historial_('Registro', hoja_, b.DNI, 'ULTIMA_CONFIRMACION', b.ULTIMA_CONFIRMACION || '', hoy, 'La persona confirmó que trabaja en ' + nombreEst_(b.ESTABLECIMIENTO));
+      return;
+    }
+    const l = listasRegistro_(), cod = String(d.estNuevo || '').split('|')[0].trim(), ok = l.trelew.concat(l.chubut).some(x => x[0] === cod);
+    if (ok && cod === b.ESTABLECIMIENTO) return confirmarEstBase_(b, { confEst: 'si' }, persona);   // eligió un CAPS o dependencia del mismo establecimiento
+    const donde = ok ? nombreEst_(cod) + ' (' + cod + ')' : 'otro lugar: ' + String(d.estOtro || 's/d').trim().slice(0, 120);
+    const motivo = 'Dice que trabaja en ' + donde + ' · inscripción ' + hoy;
+    if (T.i('REVISAR') >= 0) T.sh.getRange(fila, T.i('REVISAR') + 1).setValue('Sí');
+    if (T.i('MOTIVO_REVISION') >= 0) T.sh.getRange(fila, T.i('MOTIVO_REVISION') + 1).setValue(motivo);
+    historial_('Registro', hoja_, b.DNI, 'MOTIVO_REVISION', b.MOTIVO_REVISION || '', motivo, 'La persona dijo que no trabaja en ' + nombreEst_(b.ESTABLECIMIENTO));
+    aviso_('Dice que trabaja en otro establecimiento', 'Base de trabajadores', b.DNI + ' · ' + (persona.APELLIDOS || b.APELLIDOS || ''), 'Figura en ' + nombreEst_(b.ESTABLECIMIENTO) + '. ' + motivo + '. Se resuelve en el Portal HyS › Personas › «A confirmar el establecimiento».');
+  } catch (e) { aviso_('No se pudo guardar la confirmación del establecimiento', 'Base de trabajadores', b.DNI, e.message); }
 }
 
 // ------------------------------------------------------------------ Migración (se corre una sola vez, desde el menú)

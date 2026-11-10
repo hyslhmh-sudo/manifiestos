@@ -101,6 +101,7 @@
         <span class="mu peq">Revisá tus datos. Si cambiaste de correo o de teléfono, escribí el nuevo.</span>
         <dl class="ficha" id="ficha"></dl>
         <span class="mu" style="font-size:12.5px" id="notaBase"></span>
+        <div id="estBox" hidden style="display:flex;flex-direction:column;gap:8px"></div>
         <div class="aviso" id="correoAct"></div>
         <label class="f" for="mail2"><span>Correo nuevo <em id="mailReq">solo si cambió</em></span><input class="c" id="mail2" type="email" autocomplete="email"></label>
         <label class="f" for="tel2"><span>Teléfono <em>optativo</em></span><input class="c" id="tel2" inputmode="tel" autocomplete="tel"></label>
@@ -207,6 +208,7 @@
   let I = <?!= JSON.stringify(i) ?>, MODO = I ? 'inscripcion' : 'registro';
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  let confEst = '', preguntaEst = '';   // 5.24: confirmación del establecimiento
   let L = null, CAP = null, conDni = true, buscado = null, modo = 'nuevo', pub = '', ABIERTA = null, INS = null, datos = null, EV = null, resp = {}, actual = 0, encuestaPend = false, idDicEnc = '', CERT = '', CERT_TIT = '';
   const pasos = n => ['p1', 'p2', 'p3'].forEach((p, i) => $(p).classList.toggle('on', i < n));
   const ver = id => { ['s1', 's2a', 's2b', 's2c', 's3', 'sIns', 'sYa', 'sEv', 'sRes', 'sEnc', 'sVid', 'sSig', 'sFin'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); };
@@ -272,6 +274,21 @@
         $('correoAct').innerHTML = r.tieneCorreo ? 'Tu correo registrado es <b>' + esc(r.correo) + '</b>. Si no es el que usás, escribí el nuevo abajo.' : 'No tenemos tu correo: escribilo abajo.';
         $('mailReq').textContent = r.tieneCorreo ? 'solo si cambió' : 'obligatorio';
         $('cambioBox').hidden = true; buscado.desdeBase = r.desdeBase;
+        // 10/11/2026 (5.24): «¿Trabajás en …?» para quien está en la base sin el establecimiento confirmado. El «No» le llega a HyS para aprobar.
+        confEst = ''; preguntaEst = r.preguntaEst || ''; const eb = $('estBox'); eb.hidden = !preguntaEst;
+        if (preguntaEst) {
+          const red = /^(HZT|HSST)$/.test(r.preguntaCod || '') ? ' (o en alguno de sus CAPS o dependencias)' : '';
+          eb.innerHTML = '<span class="peq"><b>¿Trabajás en ' + esc(preguntaEst) + red + '?</b> Te lo preguntamos una sola vez, para tener bien tus datos.</span>' +
+            '<div class="si"><button type="button" id="estSi">Sí</button><button type="button" id="estNo">No</button></div>' +
+            '<div id="estDonde" hidden style="display:flex;flex-direction:column;gap:8px"><label class="f" for="estN"><span>¿Dónde trabajás?</span><select class="c" id="estN"><option value="">Elegí…</option>' +
+            '<optgroup label="Red Trelew">' + L.trelew.map(o => '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>').join('') + '</optgroup>' +
+            '<optgroup label="Resto de Chubut">' + L.chubut.map(o => '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>').join('') + '</optgroup>' +
+            '<option value="OTRO">Otro lugar (no está en la lista)</option></select></label><div id="estOtroBox" hidden>' + campo('¿Dónde?', 'estOtro') + '</div>' +
+            '<span class="mu peq">Higiene y Seguridad lo revisa y corrige tus datos.</span></div>';
+          const marcar = v => { confEst = v; $('estSi').classList.toggle('on', v === 'si'); $('estNo').classList.toggle('on', v === 'no'); $('estDonde').hidden = v !== 'no'; };
+          $('estSi').onclick = () => marcar('si'); $('estNo').onclick = () => marcar('no');
+          $('estN').onchange = () => { $('estOtroBox').hidden = $('estN').value !== 'OTRO'; };
+        }
         // 23/10/2026: si falta el vínculo, se pide acá
         // 25/10/2026: lo que falta de la persona (servicio, función, vínculo) se pide acá y queda guardado en la base
         const fl = r.faltan || [], fb = $('faltaBox'), fS = fl.indexOf('servicio') >= 0, fF = fl.indexOf('funcion') >= 0, falta = fl.indexOf('vinculo') >= 0;
@@ -293,8 +310,12 @@
     if ($('se2') && !valor('se2')) return error('Elegí tu servicio o sector (si no está en la lista, elegí «Otra» y escribilo).');
     if ($('fu2') && !valor('fu2')) return error('Elegí tu función o puesto (si no está en la lista, elegí «Otra» y escribila).');
     if ($('v2') && !$('v2').value) return error('Elegí tu vínculo (planta, contrato, tercerizado…).');
+    if (preguntaEst && !confEst) return error('Contanos si trabajás en ' + preguntaEst + ': tocá «Sí» o «No».');
+    if (confEst === 'no' && !$('estN').value) return error('Elegí dónde trabajás (si no está en la lista, elegí «Otro lugar»).');
+    if (confEst === 'no' && $('estN').value === 'OTRO' && !$('estOtro').value.trim()) return error('Escribí dónde trabajás.');
     guardar({ modo: 'conocido', correo: $('mail2').value.trim(), telefono: $('tel2').value.trim(), cambio: $('cambio').value.trim(), vinculo: $('v2') ? $('v2').value : '', empresa: $('em2') ? valor('em2') : '',
-      servicio: $('se2') ? valor('se2') : '', funcion: $('fu2') ? valor('fu2') : '', detalle: $('de2') ? valor('de2') : '' }, $('b2a'));
+      servicio: $('se2') ? valor('se2') : '', funcion: $('fu2') ? valor('fu2') : '', detalle: $('de2') ? valor('de2') : '',
+      confEst: confEst, estNuevo: confEst === 'no' && $('estN').value !== 'OTRO' ? $('estN').value : '', estOtro: confEst === 'no' && $('estN').value === 'OTRO' ? $('estOtro').value.trim() : '' }, $('b2a'));
   };
 
   // Formularios por público

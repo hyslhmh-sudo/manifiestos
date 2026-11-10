@@ -300,14 +300,28 @@ function pFilasTrab_(sh) {
   const v = sh.getRange(6, 1, sh.getLastRow() - 5, 22).getValues();
   return v.map((r, i) => ({ fila: 6 + i, v: r })).filter(x => x.v[1] !== '');
 }
+// 10/11/2026 (Belén): «A confirmar» = personas activas que pueden estar en un establecimiento que no es el suyo (caso Friz: de Diadema
+// Argentina, cargado en el HMH por los datos viejos de capacitaciones). Entran:
+//   · en un establecimiento con nómina NTEAR cargada (alguien con EN_NTEAR = Sí: hoy HZT, HMH y HSST), quien no figura en la NTEAR,
+//     no tiene ULTIMA_CONFIRMACION y no es tercerizado (vínculo «Tercerizado» o con EMPRESA: es esperable que no estén en la nómina);
+//   · cualquiera que, al inscribirse a una capacitación, dijo que trabaja en otro lado (MOTIVO_REVISION «Dice que trabaja en …»).
+// Se resuelve desde la ficha: «Confirmar que trabaja acá» (escribe ULTIMA_CONFIRMACION) o «Cambiar de establecimiento».
+const TRAB_DICE = /^Dice que trabaja en /;
+function pAConfirmar_(r, conNtear) {
+  if (/^(Baja|Traslado)/.test(String(r[19]))) return false;
+  if (TRAB_DICE.test(String(r[18]))) return true;
+  return !!conNtear[r[21]] && String(r[14]) !== 'Sí' && !limpio_(r[16]) && String(r[8]) !== 'Tercerizado' && !limpio_(r[9]);
+}
 function pTrab_(x) {
-  const bt = pBT_(), q = sinTildes_(x.q || ''), cod = limpio_(x.cod || '');
+  const bt = pBT_(), q = sinTildes_(x.q || ''), cod = limpio_(x.cod || ''), conf = x.filtro === 'confirmar';
   let filas = [];
-  if ((!cod || cod === '*') && q.length < 3) return { ok: true, filas: [], aviso: 'Escribí al menos 3 letras o números para buscar en todos los establecimientos.' };
-  if (!cod || cod === '*') {
+  if ((!cod || cod === '*') && q.length < 3 && !conf) return { ok: true, filas: [], aviso: 'Escribí al menos 3 letras o números para buscar en todos los establecimientos.' };
+  if (!cod || cod === '*' || conf) {
     // Una sola lectura de la hoja TODOS; después se ubica la fila de cada resultado en su hoja
     const T = bt.getSheetByName('TODOS'), n = T.getLastRow() - 5, v = n > 0 ? T.getRange(6, 1, n, 22).getValues() : [];
-    const hits = v.filter(r => r[1] !== '' && sinTildes_([r[0], r[1], r[2], r[3], r[5], r[7]].join(' ')).indexOf(q) >= 0).slice(0, 400);
+    const conNtear = {}; if (conf) v.forEach(r => { if (String(r[14]) === 'Sí') conNtear[r[21]] = true; });
+    const hits = v.filter(r => r[1] !== '' && (!q || sinTildes_([r[0], r[1], r[2], r[3], r[5], r[7]].join(' ')).indexOf(q) >= 0) &&
+      (!conf || (pAConfirmar_(r, conNtear) && (!cod || cod === '*' || r[21] === cod)))).slice(0, 400);
     const porHoja = {}; hits.forEach(r => (porHoja[r[21]] = porHoja[r[21]] || []).push(r));
     Object.keys(porHoja).forEach(h => {
       const sh = bt.getSheetByName(h); if (!sh) return;
@@ -316,7 +330,7 @@ function pTrab_(x) {
     });
     filas.sort((a, b) => String(a.v[2]).localeCompare(String(b.v[2])));
     Object.keys(porHoja).forEach(h => pExtrasLeer_(bt.getSheetByName(h), filas.filter(f => f.hoja === h)));
-    return { ok: true, cols: TRAB_COLS, filas: filas, total: hits.length };
+    return { ok: true, cols: TRAB_COLS, filas: filas, total: hits.length, filtro: conf ? 'confirmar' : '' };
   }
   [cod].forEach(h => pFilasTrab_(bt.getSheetByName(h)).forEach(f => {
     const texto = sinTildes_([f.v[0], f.v[1], f.v[2], f.v[3], f.v[5], f.v[7]].join(' '));
@@ -351,9 +365,39 @@ function pTrabGuardar_(x) {
   const anotar = (dni, est, campo, antes, despues) => log.push([hoy, dni, est, campo, antes, despues, 'Portal']);
   const ultimaFila = s => { const f = pFilasTrab_(s); return f.length ? f[f.length - 1].fila : 5; };
 
-  if (x.accion === 'baja' || x.accion === 'traslado') {
+  // 10/11/2026: «Confirmar que trabaja acá» (filtro «A confirmar»): queda la fecha en ULTIMA_CONFIRMACION; si la persona había dicho
+  // al inscribirse que trabajaba en otro lado, se limpia ese aviso.
+  if (x.accion === 'confirmar') {
+    const v = sh.getRange(x.fila, 1, 1, 21).getDisplayValues()[0], dni = v[1], hoyT = Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy');
+    if (String(dni).replace(/\D/g, '') !== String(x.dni || dni).replace(/\D/g, '')) return { ok: false, mensaje: 'La fila cambió mientras estaba abierta. Volvé a abrir la ficha.' };
+    sh.getRange(x.fila, 17).setValue(hoyT); anotar(dni, cod, 'ULTIMA_CONFIRMACION', v[16], hoyT + ' (confirmado por HyS: trabaja en ' + cod + ')');
+    if (TRAB_DICE.test(v[18])) { sh.getRange(x.fila, 18, 1, 2).setValues([['', '']]); anotar(dni, cod, 'MOTIVO_REVISION', v[18], ''); }
+    hist.getRange(Math.max(hist.getLastRow(), 5) + 1, 1, log.length, 7).setValues(log);
+    pInvalidar_(cod); return { ok: true };
+  }
+  if (x.accion === 'baja' || x.accion === 'traslado' || x.accion === 'corregir') {
     const v = sh.getRange(x.fila, 1, 1, 21).getValues()[0], dni = v[1];
+    if (x.dni && String(dni).replace(/\D/g, '') !== String(x.dni).replace(/\D/g, '')) return { ok: false, mensaje: 'La fila cambió mientras estaba abierta. Volvé a abrir la ficha.' };
     if (x.accion === 'baja') { sh.getRange(x.fila, 20).setValue('Baja'); anotar(dni, cod, 'ESTADO', v[19], 'Baja'); }
+    else if (x.accion === 'corregir') {
+      // 10/11/2026 (Belén): «Estaba mal cargado». La persona pasa al establecimiento correcto, ya confirmada; la fila vieja queda
+      // «Baja · mal cargado (pasa a …)» (no se borra) y el libro de capacitaciones (PERSONAS) se corrige igual.
+      const destino = limpio_(x.destino), dest = bt.getSheetByName(destino);
+      if (!dest || destino === cod || BT_SISTEMA.indexOf(destino) >= 0) return { ok: false, mensaje: 'Elegí el establecimiento correcto.' };
+      const dniL = String(dni).replace(/\D/g, ''), hoyT = Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy');
+      const ya = pFilasTrab_(dest).find(f => String(f.v[1]).replace(/\D/g, '') === dniL && !/^(Baja|Traslado)/.test(String(f.v[19])));
+      if (ya) { dest.getRange(ya.fila, 17).setValue(hoyT); anotar(dni, destino, 'ULTIMA_CONFIRMACION', '', hoyT + ' (ya estaba cargado acá)'); }
+      else {
+        const nueva = v.slice(); nueva[4] = ''; nueva[15] = limpio_(v[15]) + ' | Corregido desde ' + cod; nueva[16] = hoyT; nueva[17] = ''; nueva[18] = ''; nueva[19] = 'Activo';
+        dest.getRange(ultimaFila(dest) + 1, 1, 1, 21).setValues([nueva]);
+        anotar(dni, destino, 'ALTA', '', 'Corregido: estaba mal cargado en ' + cod);
+      }
+      const est = 'Baja · mal cargado (pasa a ' + destino + ')';
+      sh.getRange(x.fila, 20).setValue(est); anotar(dni, cod, 'ESTADO', v[19], est); pInvalidar_(destino);
+      let cap = ''; try { cap = pCapCorregirEst_(dniL, destino, cod); } catch (e) { cap = 'No se pudo corregir el libro de capacitaciones: ' + e.message; }
+      hist.getRange(Math.max(hist.getLastRow(), 5) + 1, 1, log.length, 7).setValues(log);
+      pInvalidar_(cod); return { ok: true, capacitaciones: cap };
+    }
     else {
       const dest = bt.getSheetByName(limpio_(x.destino)); if (!dest || limpio_(x.destino) === cod) return { ok: false, mensaje: 'Elegí el establecimiento de destino.' };
       const nueva = v.slice(); nueva[19] = 'Activo'; nueva[20] = hoy; nueva[15] = limpio_(v[15]) + ' | Traslado desde ' + cod;
@@ -397,6 +441,26 @@ function pTrabGuardar_(x) {
   pInvalidar_(x && x.cod);
   let comite = ''; try { comite = pComiteDesdePersona_(cod, d, dni); } catch (e) { comite = 'No se pudo actualizar el comité: ' + e.message; }
   return { ok: true, cambios: log.length, comite: comite };
+}
+
+// 10/11/2026: al corregir el establecimiento de una persona («Estaba mal cargado»), también en el libro de capacitaciones › PERSONAS:
+// ESTABLECIMIENTO, INSTITUCION, PUBLICO (Red Trelew si es HZT o HMH; si no, Red Chubut) y CIUDAD; cada cambio queda en su _HISTORIAL.
+function pCapCorregirEst_(dni, destino, origen) {
+  const lib = SpreadsheetApp.openById(CG.LIBRO), sh = lib.getSheetByName('PERSONAS'); if (!sh || sh.getLastRow() < 6) return 'No está en capacitaciones.';
+  const H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(String), c = k => H.indexOf(k);
+  const v = sh.getRange(6, 1, sh.getLastRow() - 5, H.length).getValues();
+  const k = v.findIndex(r => String(r[c('DNI')]).replace(/\D/g, '') === dni && (!limpio_(r[c('PAIS_DOCUMENTO')]) || limpio_(r[c('PAIS_DOCUMENTO')]) === 'Argentina'));
+  if (k < 0) return 'No está en capacitaciones.';
+  const E = pEstablecimientos_(), e = E.filas.find(f => limpio_(f.v[0]) === destino), jLoc = E.H.map(String).indexOf('LOCALIDAD');
+  const nuevo = { ESTABLECIMIENTO: destino, INSTITUCION: e ? limpio_(e.v[1]) : destino, PUBLICO: ['HZT', 'HMH'].indexOf(destino) >= 0 ? 'Red Trelew' : 'Red Chubut' };
+  if (e && jLoc >= 0 && limpio_(e.v[jLoc])) nuevo.CIUDAD = limpio_(e.v[jLoc]);
+  const ahora = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'), hs = lib.getSheetByName('_HISTORIAL'), HH = hs ? hs.getRange(5, 1, 1, hs.getLastColumn()).getValues()[0].map(String) : [], hist = [];
+  Object.keys(nuevo).forEach(campo => { const j = c(campo); if (j < 0 || String(v[k][j]) === nuevo[campo]) return;
+    hist.push({ FECHA: ahora, QUIEN: 'Portal HyS', HOJA: 'PERSONAS', ID: dni, CAMPO: campo, ANTES: v[k][j], DESPUES: nuevo[campo], MOTIVO: 'Estaba mal cargado en ' + origen + ' (corregido desde Personas)' });
+    sh.getRange(k + 6, j + 1).setValue(nuevo[campo]); });
+  if (c('ULTIMA_ACTUALIZACION') >= 0 && hist.length) sh.getRange(k + 6, c('ULTIMA_ACTUALIZACION') + 1).setValue(ahora);
+  if (hs && hist.length) hs.getRange(Math.max(hs.getLastRow(), 5) + 1, 1, hist.length, HH.length).setValues(hist.map(o => HH.map(h => o[h] == null ? '' : o[h])));
+  return hist.length ? 'También se corrigió en capacitaciones.' : 'En capacitaciones ya estaba bien.';
 }
 
 // ------------------------------------------------------------------ COMITÉS COMPARTIDOS Y CAMINO PERSONA → COMITÉ

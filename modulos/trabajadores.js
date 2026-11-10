@@ -1,22 +1,32 @@
 // Portal HyS · Trabajadores e importación de la base de Personal
 // Se carga desde portal.html (<script src>). Para el portal de respaldo de Google, herramientas/armar_respaldo.py lo junta en un solo archivo.
 // ------------------------------------------------------------------ Trabajadores
+// 10/11/2026 (Belén): todos los establecimientos (no solo los activos del piloto), para buscar a una persona y para cambiarla de establecimiento
+function estTodosOpts(sel, conTodos) {
+  const F = (RES ? RES.filas : []).slice().sort((a, b) => String(a.area || '~').localeCompare(String(b.area || '~'), 'es') || String(a.nombre).localeCompare(String(b.nombre), 'es'));
+  return (conTodos ? '<option value="*"' + (sel === '*' ? ' selected' : '') + '>Todos los establecimientos</option>' : '<option value="">Elegí…</option>') + optsEst(F, sel) +
+    CODS_EXTRA.map(c => '<option value="' + c[0] + '"' + (c[0] === sel ? ' selected' : '') + '>' + c[1] + '</option>').join('');
+}
+const TRAB_DICE = /^Dice que trabaja en /;
 async function trabajadores(cod) {
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando('#trab'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   TRAB.cod = cod || TRAB.cod || '';
   const pintar = () => {
     const D = TRAB.datos;
     marco('#trab', '<div class="cab"><div><span class="mu peq">8 · Personal y RAR</span><h1>Personas</h1></div>' +
-      '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + selectorEst(TRAB.cod || '*', true, true) + '</select></label>' +
+      '<div class="filtros"><label class="f">Establecimiento<select class="c" id="tEst">' + estTodosOpts(TRAB.cod || '*', true) + '</select></label>' +
+      '<label class="f">Mostrar<select class="c" id="tFil"><option value="">Todos</option><option value="confirmar"' + (TRAB.filtro === 'confirmar' ? ' selected' : '') + '>A confirmar el establecimiento</option></select></label>' +
       '<label class="f">Buscar por CUIL, DNI, apellido, función o servicio<input class="c" id="tQ" value="' + esc(TRAB.q) + '" style="min-width:260px"></label><button class="btn sec" id="tBus">Buscar</button>' +
       (TRAB.cod && TRAB.cod !== '*' ? '<button class="btn pri" id="tNuevo">Agregar trabajador</button>' : '') + '<a class="btn sec" href="#importar">Importar base de Personal</a></div></div>' +
       (!D ? '<div class="card vacio">Elegí un establecimiento o buscá en todos.</div>' : D.aviso ? '<div class="aviso">' + esc(D.aviso) + '</div>' :
+      (TRAB.filtro === 'confirmar' ? '<div class="aviso">«A confirmar»: personas activas que pueden estar en un establecimiento que no es el suyo. Son las que no figuran en la NTEAR de un establecimiento que la tiene cargada (HZT, HMH, HSST), no son tercerizadas y nunca se confirmaron, y las que al inscribirse dijeron que trabajan en otro lado. Tocá una fila: «Confirmar que trabaja acá» o «Cambiar de establecimiento».</div>' : '') +
       '<p class="mu peq" style="margin:0">' + D.total + ' persona(s)' + (D.total > D.filas.length ? ' · se muestran ' + D.filas.length : '') + '. Tocá una fila para ver o editar.</p>' +
       '<section class="card tabla"><table><thead><tr><th>CUIL</th><th>DNI</th><th>Apellido y nombre</th>' + (TRAB.cod === '*' ? '<th>Establecimiento</th>' : '') + '<th>Sitio</th><th>Función</th><th>Servicio</th><th>Vínculo</th><th>Estado</th></tr></thead><tbody>' +
-      D.filas.map((f, i) => '<tr class="cl" data-i="' + i + '"><td class="peq">' + esc(f.v[0]) + '</td><td>' + esc(f.v[1]) + '</td><td><b>' + esc(f.v[2]) + '</b>, ' + esc(f.v[3]) + (f.v[17] === 'Sí' ? ' <span class="chip wa">Revisar</span>' : '') + '</td>' + (TRAB.cod === '*' ? '<td>' + esc(f.hoja) + '</td>' : '') +
+      D.filas.map((f, i) => '<tr class="cl" data-i="' + i + '"><td class="peq">' + esc(f.v[0]) + '</td><td>' + esc(f.v[1]) + '</td><td><b>' + esc(f.v[2]) + '</b>, ' + esc(f.v[3]) + (f.v[17] === 'Sí' ? ' <span class="chip wa">Revisar</span>' : '') + (TRAB_DICE.test(f.v[18]) ? '<div class="peq" style="color:var(--wa)">' + esc(f.v[18]) + '</div>' : '') + '</td>' + (TRAB.cod === '*' ? '<td>' + esc(f.hoja) + '</td>' : '') +
         '<td class="peq">' + esc(f.v[4]) + '</td><td class="peq">' + esc(f.v[5]) + '</td><td class="peq">' + esc(f.v[7]) + '</td><td class="peq">' + esc(f.v[8]) + '</td><td><span class="chip ' + (!f.v[19] || f.v[19] === 'Activo' ? 'ok' : /^(Baja|Traslado)/.test(f.v[19]) ? 'gr' : 'wa') + '">' + esc(f.v[19] || 'Activo') + '</span></td></tr>').join('') +
       '</tbody></table>' + (D.filas.length ? '' : '<div class="vacio">Nadie coincide con la búsqueda.</div>') + '</section>'));
     $('tEst').onchange = e => { location.hash = '#trab/' + encodeURIComponent(e.target.value); };
+    $('tFil').onchange = e => { TRAB.filtro = e.target.value; if (TRAB.filtro && !TRAB.cod) TRAB.cod = '*'; cargar(); };
     const buscar = () => { let q = $('tQ').value.trim(); if (/^[\d.\s-]+$/.test(q)) q = q.replace(/\D/g, ''); TRAB.q = q; cargar(); };   // DNI con puntos: se busca sin puntos
     $('tBus').onclick = buscar; $('tQ').onkeydown = e => { if (e.key === 'Enter') buscar(); };
     if ($('tNuevo')) $('tNuevo').onclick = () => fichaTrab(null);
@@ -25,10 +35,10 @@ async function trabajadores(cod) {
   const cargar = async () => {
     if (!TRAB.cod) { TRAB.datos = null; return pintar(); }
     cargando('#trab', 'Buscando…');
-    try { TRAB.datos = await api('p_trab', { cod: TRAB.cod, q: TRAB.q }); } catch (e) { return; }
+    try { TRAB.datos = await api('p_trab', { cod: TRAB.cod, q: TRAB.q, filtro: TRAB.filtro || '' }); } catch (e) { return; }
     pintar();
   };
-  if (cod !== undefined && (TRAB.datos == null || TRAB.datos._cod !== TRAB.cod)) { await cargar(); if (TRAB.datos) TRAB.datos._cod = TRAB.cod; } else pintar();
+  if (cod !== undefined && (TRAB.datos == null || TRAB.datos._cod !== TRAB.cod + '|' + (TRAB.filtro || ''))) { await cargar(); if (TRAB.datos) TRAB.datos._cod = TRAB.cod + '|' + (TRAB.filtro || ''); } else pintar();
 }
 function fichaTrab(f) {
   const v = {}; TRAB_COLS.forEach((c, i) => v[c] = f ? f.v[i] : ''); if (!f) v.ESTADO = 'Activo';
@@ -65,14 +75,36 @@ function fichaTrab(f) {
     }).catch(() => { box4.innerHTML = '<b>Siniestros y exposición</b><p class="mu peq">No se pudieron consultar.</p>'; });
   }
   if (f && !/^(Baja|Traslado)/.test(v.ESTADO)) {
-    m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button><button class="btn sec" id="tTras">Traslado</button>';
-    $('tBaja').onclick = async ev => { const b = ev.currentTarget; if (b.disabled) return; if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
-      b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'baja' }); } finally { b.disabled = false; } if (r.ok) { toast('Baja registrada.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
-    $('tTras').onclick = () => {
-      m.extra.innerHTML = '<label class="f">Trasladar a<select class="c" id="tDest">' + selectorEst('', true) + '</select></label><button class="btn pri" id="tTrasOk" style="align-self:flex-end">Confirmar traslado</button>';
-      $('tTrasOk').onclick = async ev => { const dest = $('tDest').value, b = ev.currentTarget; if (!dest || b.disabled) return;
-        b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, accion: 'traslado', destino: dest }); } finally { b.disabled = false; } if (r.ok) { toast('Traslado registrado.'); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); } else toast(r.mensaje); };
+    // 10/11/2026 (Belén): «Cambiar de establecimiento» arriba y a la vista. «Estaba mal cargado» corrige (y también el libro de capacitaciones);
+    // «Traslado» es un cambio real de lugar de trabajo (como antes). Si la persona figura «A confirmar», también «Confirmar que trabaja acá».
+    const nomEst = c => { const e = (RES ? RES.filas : []).find(x => x.cod === c); return e ? e.nombre : c; };
+    const dice = TRAB_DICE.test(v.MOTIVO_REVISION || ''), sugerido = dice ? ((/\(([^()]+)\)/.exec(String(v.MOTIVO_REVISION)) || [])[1] || '') : '';
+    const sinConf = !String(v.ULTIMA_CONFIRMACION || '').trim(), aConf = dice || (sinConf && v.EN_NTEAR !== 'Sí' && v.VINCULO !== 'Tercerizado' && !String(v.EMPRESA || '').trim());
+    const top = document.createElement('div'); top.className = 'card'; top.style.cssText = 'padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:8px;margin-bottom:10px';
+    top.innerHTML = '<div><b>Establecimiento: ' + esc(nomEst(hoja)) + '</b><div class="mu peq">' + (v.ULTIMA_CONFIRMACION ? 'Confirmado el ' + esc(v.ULTIMA_CONFIRMACION) + '.' : v.EN_NTEAR === 'Sí' ? 'Figura en la NTEAR de este establecimiento.' : 'Sin confirmar: no figura en la NTEAR.') + '</div>' +
+      (dice ? '<div class="peq" style="color:var(--wa);margin-top:4px"><b>' + esc(v.MOTIVO_REVISION) + '</b></div>' : '') + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (aConf ? '<button class="btn sec" id="tConf">Confirmar que trabaja en ' + esc(hoja) + '</button>' : '') + '<button class="btn sec" id="tCam">Cambiar de establecimiento</button></div><div id="tCamBox" hidden></div>';
+    document.querySelector('#ov .campos').before(top);
+    const recargar = msg => { toast(msg); m.cerrar(); TRAB.datos = null; FICHAS = {}; trabajadores(TRAB.cod); };
+    if ($('tConf')) $('tConf').onclick = async ev => { const b = ev.currentTarget; if (b.disabled) return; b.disabled = true; let r;
+      try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, dni: v.DNI, accion: 'confirmar' }); } finally { b.disabled = false; }
+      if (r.ok) recargar('Confirmado: trabaja en ' + nomEst(hoja) + '.'); else toast(r.mensaje); };
+    $('tCam').onclick = () => {
+      const box = $('tCamBox'); box.hidden = false;
+      box.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="tMot" value="corregir" checked><span><b>Estaba mal cargado</b><span class="mu peq" style="display:block">Nunca trabajó en ' + esc(hoja) + '. Pasa al establecimiento correcto, ya confirmada; acá queda «Baja · mal cargado». También se corrige en capacitaciones.</span></span></label>' +
+        '<label style="display:flex;gap:8px;align-items:flex-start"><input type="radio" name="tMot" value="traslado"><span><b>Traslado</b><span class="mu peq" style="display:block">Trabajaba acá y ahora pasó a otro lugar. Acá queda «Traslado a …».</span></span></label>' +
+        '<label class="f">Establecimiento correcto<select class="c" id="tDest">' + estTodosOpts(sugerido) + '</select></label>' +
+        '<div><button class="btn pri" id="tCamOk">Confirmar el cambio</button></div></div>';
+      $('tCamOk').onclick = async ev => { const dest = $('tDest').value, mot = (document.querySelector('input[name=tMot]:checked') || {}).value, b = ev.currentTarget;
+        if (!dest) return toast('Elegí el establecimiento.'); if (dest === hoja) return toast('Ya está en ' + hoja + '.'); if (b.disabled) return;
+        if (!confirm((mot === 'corregir' ? 'Corregir: ' : 'Traslado: ') + v.APELLIDOS + ', ' + v.NOMBRES + ' pasa de ' + nomEst(hoja) + ' a ' + nomEst(dest) + '. ¿Seguimos?')) return;
+        b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, dni: v.DNI, accion: mot, destino: dest }); } finally { b.disabled = false; }
+        if (r.ok) recargar((mot === 'corregir' ? 'Corregido: ahora está en ' : 'Traslado registrado a ') + nomEst(dest) + '.' + (r.capacitaciones ? ' ' + r.capacitaciones : '')); else toast(r.mensaje); };
     };
+    m.extra.innerHTML = '<button class="btn peligro" id="tBaja">Dar de baja</button>';
+    $('tBaja').onclick = async ev => { const b = ev.currentTarget; if (b.disabled) return; if (!confirm('¿Dar de baja a ' + v.APELLIDOS + ', ' + v.NOMBRES + '? La fila no se borra: queda con estado «Baja».')) return;
+      b.disabled = true; let r; try { r = await api('p_trab_guardar', { cod: hoja, fila: f.fila, dni: v.DNI, accion: 'baja' }); } finally { b.disabled = false; } if (r.ok) recargar('Baja registrada.'); else toast(r.mensaje); };
   }
 }
 
