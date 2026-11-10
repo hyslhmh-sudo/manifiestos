@@ -1,11 +1,13 @@
 /**
- * SISTEMA HyS · MÓDULO 1 · RESIDUOS · TABLERO GENERAL (versión 14.22, 13/10/2026)
+ * SISTEMA HyS · MÓDULO 1 · RESIDUOS · TABLERO GENERAL (versión 14.22, 13/10/2026; total anual por hospital 14.28, 10/11/2026)
  * Lee solo el libro general (MANIFIESTOS y CERTIFICADOS) y BASE COMÚN › SITIOS. No escribe nada.
  * Por establecimiento: último retiro y días sin retiro, retiros y cantidades por mes (Y1 y Y3), certificados de tratamiento por mes y meses
  * con retiros sin certificado, manifiestos sin foto (los establecimientos que cargan con la aplicación) y sitios atrasados según la
  * frecuencia pactada (BASE COMÚN › SITIOS › FRECUENCIA_PACTADA). Se guarda 10 minutos; si cambia la cantidad de filas de los manifiestos
  * o de los certificados, se recalcula en el momento.
  * Normativa: Ley 24.051 y Dto. 831/93 (manifiesto y certificado de tratamiento); Ley XI N.º 35 (Código Ambiental del Chubut).
+ * 10/11/2026 (Belén, 14.28): «Total anual por hospital» — por establecimiento y por año calendario (todos los años del libro), Y1 y Y3
+ * retirados y cantidad de retiros, en total y por sitio (hospital, CAPS y demás dependencias). Y3 incluye las mezclas «Y48+Y3».
  * Entrada: Portal.gs › case 'p_res_tablero'.
  */
 // 19/10/2026 (Belén): el certificado de tratamiento y disposición final que se carga en el HZT abarca los residuos de toda la red Trelew
@@ -32,22 +34,27 @@ function resFecha_(v) {   // Date o texto dd/mm/aaaa o aaaa-mm-dd → aaaa-mm-dd
 function resTablero_(fresco) {
   const cache = CacheService.getScriptCache(), g = SpreadsheetApp.openById(CFG.GENERAL);
   const gm = g.getSheetByName('MANIFIESTOS'), gc = g.getSheetByName('CERTIFICADOS'), huella = gm.getLastRow() + '|' + (gc ? gc.getLastRow() : 0);
-  if (!fresco) { try { const c = typeof cacheGet_ === 'function' ? cacheGet_('res_tablero2') : JSON.parse(cache.get('res_tablero') || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
+  if (!fresco) { try { const c = typeof cacheGet_ === 'function' ? cacheGet_('res_tablero3') : JSON.parse(cache.get('res_tablero') || 'null'); if (c && c.huella === huella) return c; } catch (e) {} }
   const hoy = new Date(), hoyISO = Utilities.formatDate(hoy, TZ, 'yyyy-MM-dd'), mesAct = hoyISO.slice(0, 7);
   const meses = []; for (let i = 11; i >= 0; i--) meses.push(Utilities.formatDate(new Date(hoy.getFullYear(), hoy.getMonth() - i, 1), TZ, 'yyyy-MM'));
   const desde = meses[0], dias = f => Math.floor((hoy - new Date(f + 'T12:00:00')) / 86400000);
   const E = pEstablecimientos_().filas, porNombre = {}, info = {};
   E.forEach(f => { const cod = limpio_(f.v[0]); if (!cod) return; porNombre[sinTildes_(f.v[1])] = cod; info[cod] = { cod: cod, nombre: limpio_(f.v[1]), tipo: limpio_(f.v[3]), area: limpio_(f.v[4]) }; });
   const codDe = nom => porNombre[sinTildes_(nom)] || '';
-  const est = {}, nuevo = cod => est[cod] = est[cod] || Object.assign({ ultimo: '', retiros: {}, y1: {}, y3: {}, unidadY1: '', unidadY3: '', certs: {}, sitios: {}, origenApp: false }, info[cod]);
+  const est = {}, nuevo = cod => est[cod] = est[cod] || Object.assign({ ultimo: '', retiros: {}, y1: {}, y3: {}, unidadY1: '', unidadY3: '', certs: {}, sitios: {}, anual: {}, origenApp: false }, info[cod]);
   // Manifiestos: Establecimiento · Sitio · Área · Fecha · Año · Mes · N.º · Corriente · Recipientes · Cantidad · Unidad · Origen
-  const n = gm.getLastRow() - 5, vistos = {};
+  const n = gm.getLastRow() - 5, vistos = {}, vistosA = {};
   if (n > 0) gm.getRange(6, 1, n, 12).getValues().forEach(r => {
     const cod = codDe(r[0]); if (!cod || !r[3]) return;
     const f = resFecha_(r[3]); if (!f) return;
     const e = nuevo(cod), sitio = limpio_(r[1]) || e.nombre, mes = f.slice(0, 7), cor = limpio_(r[7]);
     if (f > e.ultimo) e.ultimo = f;
     const s = e.sitios[sitio] = e.sitios[sitio] || { sitio: sitio, ultimo: '' }; if (f > s.ultimo) s.ultimo = f;
+    // 14.28 · Total anual (año calendario, todos los años): establecimiento y sitio
+    const anio = f.slice(0, 4), A = e.anual[anio] = e.anual[anio] || { y1: 0, y3: 0, ret: 0, sitios: {} }, AS = A.sitios[sitio] = A.sitios[sitio] || { y1: 0, y3: 0, ret: 0 };
+    const kA = cod + '|' + sitio + '|' + limpio_(r[6]) + '|' + f; if (!vistosA[kA]) { vistosA[kA] = 1; A.ret++; AS.ret++; }
+    const cantA = Number(String(r[9]).replace(',', '.')) || 0;
+    if (cor === 'Y1') { A.y1 += cantA; AS.y1 += cantA; } else if (/Y3/.test(cor)) { A.y3 += cantA; AS.y3 += cantA; }
     if (mes < desde) return;
     if (/^app$/i.test(limpio_(r[11]))) e.origenApp = true;
     const k = cod + '|' + sitio + '|' + limpio_(r[6]) + '|' + f; if (!vistos[k]) { vistos[k] = 1; e.retiros[mes] = (e.retiros[mes] || 0) + 1; }
@@ -67,7 +74,7 @@ function resTablero_(fresco) {
     Object.keys(padre.certs).forEach(m => { if (!est[hijo].certs[m]) est[hijo].certs[m] = padre.certs[m] + ' (' + RES_CERT_DE[hijo] + ')'; }); });
   // Frecuencia pactada por sitio (BASE COMÚN › SITIOS: CODIGO · SITIO · NOMBRE_OFICIAL · SISA · TIPO · EMPRESA · FRECUENCIA)
   // 08/11/2026 (Belén): los sitios con ESTADO «Baja» o «Inactivo» en BASE COMÚN › SITIOS (columna K) no se siguen (p. ej. HZT › Internación Salud Mental, sin manifiestos hace más de 3 años)
-  const frec = {}, baja = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 11).forEach(r => { const k = limpio_(r.v[0]) + '|' + sinTildes_(r.v[1]); frec[k] = limpio_(r.v[6]); if (/baja|inactiv/i.test(limpio_(r.v[10]))) baja[k] = true; }); } catch (e) {}
+  const frec = {}, baja = {}, tipoS = {}; try { pTabla_(pBC_().getSheetByName('SITIOS'), 11).forEach(r => { const k = limpio_(r.v[0]) + '|' + sinTildes_(r.v[1]); frec[k] = limpio_(r.v[6]); tipoS[k] = limpio_(r.v[4]); if (/baja|inactiv/i.test(limpio_(r.v[10]))) baja[k] = true; }); } catch (e) {}
   let diag = {}; try { if (PropertiesService.getScriptProperties().getProperty('DIAG_RES_ID')) diag = pDiagLista_(); } catch (e) {}
   const L = Object.keys(est).map(cod => {
     const e = est[cod], ret = meses.filter(m => e.retiros[m]);
@@ -79,6 +86,9 @@ function resTablero_(fresco) {
     e.fotos = [];
     if (e.origenApp && typeof fotosPendientes_ === 'function') { try { e.fotos = fotosPendientes_(cod).filter(p => p.mes >= desde).map(p => ({ mes: p.mes, n: p.n, limite: p.limite, vencida: hoyISO > p.limite })); } catch (x) {} }
     const d = diag[cod]; e.diag = d ? { pct: d.PORCENTAJE, fecha: d.FECHA, estado: d.ESTADO, criticos: d.CRITICOS_NO_CUMPLE } : null;
+    // 14.28 · Total anual: tipo de cada sitio (BASE COMÚN › SITIOS › TIPO) y cantidades redondeadas
+    Object.keys(e.anual).forEach(a => { const A = e.anual[a]; A.y1 = Math.round(A.y1 * 10) / 10; A.y3 = Math.round(A.y3 * 10) / 10;
+      A.sitios = Object.keys(A.sitios).map(k => ({ sitio: k, tipo: tipoS[cod + '|' + sinTildes_(k)] || '', y1: Math.round(A.sitios[k].y1 * 10) / 10, y3: Math.round(A.sitios[k].y3 * 10) / 10, ret: A.sitios[k].ret })); });
     delete e.origenApp; return e;
   });
   // Establecimientos sin ninguna carga (para la lista completa)
@@ -92,6 +102,6 @@ function resTablero_(fresco) {
       fotos: act.reduce((a, e) => a + e.fotos.reduce((b, f) => b + f.n, 0), 0), sitiosAtrasados: act.reduce((a, e) => a + e.sitios.filter(s => s.atrasado).length, 0),
       conDiag: Object.keys(diag).length },
     actualizado: new Date().toISOString() };
-  if (typeof cachePut_ === 'function') cachePut_('res_tablero2', out, 3600); else try { cache.put('res_tablero', JSON.stringify(out), 600); } catch (e) {}   // comprimido y en trozos: el tablero pasa de 100 KB (14.50)
+  if (typeof cachePut_ === 'function') cachePut_('res_tablero3', out, 3600); else try { cache.put('res_tablero', JSON.stringify(out), 600); } catch (e) {}   // comprimido y en trozos: el tablero pasa de 100 KB (14.50)
   return out;
 }

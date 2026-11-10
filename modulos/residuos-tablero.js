@@ -1,6 +1,6 @@
-// Portal HyS · 1 · Residuos · Tablero general (versión 14.22, 13/10/2026). Lee p_res_tablero (ResiduosTablero.gs): manifiestos y certificados del
+// Portal HyS · 1 · Residuos · Tablero general (versión 14.22, 13/10/2026; «Total anual por hospital» 14.28, 10/11/2026). Lee p_res_tablero (ResiduosTablero.gs): manifiestos y certificados del
 // libro general, en el momento (guardado 10 minutos). Además actualiza en la matriz (RES) el último retiro de cada establecimiento.
-let REST = null, RESF = { verTodos: false };
+let REST = null, RESF = { verTodos: false, anio: '', abiertos: {} };
 const RES_MES = m => { const x = /^(\d{4})-(\d{2})/.exec(m || ''); return x ? ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][+x[2] - 1] + ' ' + x[1].slice(2) : (m || ''); };
 const resNum = n => (Math.round((Number(n) || 0) * 10) / 10).toLocaleString('es-AR');
 // Pone en RES (matriz provincial) el último retiro, los retiros Y1 del mes y los días sin retiro que trae el tablero de residuos
@@ -21,6 +21,32 @@ async function resDatos(fresco) {
     resDatos.pidio = true; api('p_res_tablero', {}, 180000).then(r => { if (r && r.ok) { REST = r; LS.set('resTab', r); resActualizarRes(r); if ($('ov').hidden) { if (location.hash === '#res') resTablero(); else if (/^#res\//.test(location.hash)) resEst(decodeURIComponent(location.hash.split('/')[1])); } } }).catch(() => {});
   }
   return true;
+}
+// 14.28 · Total anual de Y1 y Y3 por hospital (año calendario). Tocá un hospital para ver cada sitio: el hospital, sus CAPS y demás dependencias.
+const RES_TIPO_ORDEN = t => /hospital/i.test(t) ? 0 : /^caps/i.test(t) ? 2 : 1;   // hospital, dependencias (dispositivos), CAPS
+function resAnualHtml(E) {
+  if (!E.some(e => e.anual)) return '<section class="card"><h2>Total anual por hospital</h2><p class="mu peq" style="margin:0">Tocá «Actualizar» (arriba) para traer los totales anuales.</p></section>';
+  const anios = Array.from(new Set([].concat(...E.map(e => Object.keys(e.anual || {}))))).sort().reverse();
+  if (!anios.length) return '';
+  const anio = anios.indexOf(RESF.anio) >= 0 ? RESF.anio : anios[0], hoy = REST.hoy, enCurso = anio === hoy.slice(0, 4);
+  const L = E.filter(e => e.anual && e.anual[anio]).map(e => ({ e: e, A: e.anual[anio] })).sort((a, b) => b.A.y1 - a.A.y1);
+  const u1 = L.map(x => x.e.unidadY1).find(Boolean) || 'dm³', u3 = L.map(x => x.e.unidadY3).find(Boolean) || u1;
+  const tot = L.reduce((a, x) => ({ y1: a.y1 + x.A.y1, y3: a.y3 + x.A.y3, ret: a.ret + x.A.ret }), { y1: 0, y3: 0, ret: 0 });
+  const pct = (v, t) => t ? '<br><span class="mu peq">' + Math.round(100 * v / t) + ' %</span>' : '';
+  const cant = (v, u) => '<span style="white-space:nowrap">' + resNum(v) + ' ' + esc(u) + '</span>';
+  // TIPO de BASE COMÚN › SITIOS: «Edificio» = el hospital; «Dispositivo» = dependencia (consultorios, PROSATE…); «CAPS»
+  const sitioNom = (e, s) => { let t = s.tipo; if (/edificio/i.test(t)) t = 'Hospital'; else if (/dispositivo/i.test(t)) t = 'Dependencia';
+    else if (!t) t = s.sitio === e.cod || /central/i.test(s.sitio) ? 'Hospital' : /^caps/i.test(s.sitio) ? 'CAPS' : 's/d'; return { t: t, o: RES_TIPO_ORDEN(t) }; };
+  const filas = L.map(x => { const e = x.e, A = x.A, ab = !!RESF.abiertos[e.cod];
+    const S = A.sitios.map(s => Object.assign({ k: sitioNom(e, s) }, s)).sort((a, b) => a.k.o - b.k.o || b.y1 - a.y1);
+    return '<tr class="ra" data-ra="' + esc(e.cod) + '" style="cursor:pointer"><td><span class="ms" aria-hidden="true" style="font-size:18px;vertical-align:-4px">' + (ab ? 'expand_less' : 'expand_more') + '</span> <b>' + esc(e.nombre) + '</b><div class="mu peq">' + esc(e.cod) + ' · ' + A.sitios.length + ' sitio' + (A.sitios.length === 1 ? '' : 's') + '</div></td>' +
+      '<td><b>' + cant(A.y1, e.unidadY1 || u1) + '</b>' + pct(A.y1, tot.y1) + '</td><td>' + (A.y3 ? '<b>' + cant(A.y3, e.unidadY3 || u3) + '</b>' + pct(A.y3, tot.y3) : '—') + '</td><td>' + A.ret + '</td></tr>' +
+      (ab ? S.map(s => '<tr style="background:var(--fondo2,#F4F8FA)"><td style="padding-left:34px">' + esc(s.sitio) + ' <span class="chip ' + (s.k.o === 0 ? 'ok' : 'gr') + ' mini">' + esc(s.k.t) + '</span></td><td>' + (s.y1 ? cant(s.y1, e.unidadY1 || u1) + pct(s.y1, A.y1) : '—') + '</td><td>' + (s.y3 ? cant(s.y3, e.unidadY3 || u3) + pct(s.y3, A.y3) : '—') + '</td><td>' + s.ret + '</td></tr>').join('') : ''); }).join('');
+  return '<section class="card tabla"><div style="padding:14px 18px;border-bottom:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between"><div><h2>Total anual por hospital</h2><span class="mu peq">Y1 y Y3 retirados en el año ' + (enCurso ? '(en curso, hasta hoy)' : 'calendario') + ', según los manifiestos cargados. Tocá un hospital para ver cada sitio: el hospital, sus CAPS y demás dependencias.</span></div>' +
+    '<label class="f">Año<select class="c" id="rsAnio">' + anios.map(a => '<option' + (a === anio ? ' selected' : '') + '>' + a + '</option>').join('') + '</select></label></div>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Hospital</th><th>Y1 · biopatogénicos</th><th>Y3 · farmacéuticos</th><th>Retiros</th></tr></thead><tbody>' +
+    (L.length ? filas + '<tr style="border-top:2px solid var(--ln)"><td><b>Total</b></td><td><b>' + cant(tot.y1, u1) + '</b></td><td><b>' + cant(tot.y3, u3) + '</b></td><td><b>' + tot.ret + '</b></td></tr>' : '<tr><td colspan="4" class="mu">Sin manifiestos cargados en ' + anio + '.</td></tr>') +
+    '</tbody></table></div><p class="mu peq" style="padding:0 18px 12px;margin:0">Y3 incluye los retiros cargados como mezcla «Y48+Y3». El porcentaje debajo de cada cantidad es la parte de cada hospital en el total (y de cada sitio en su hospital). Tipo de sitio: BASE COMÚN › SITIOS › TIPO.</p></section>';
 }
 async function resTablero(fresco) {
   if (!(await resDatos(fresco))) return;
@@ -54,7 +80,7 @@ async function resTablero(fresco) {
       kpi('Más de 10 días sin retiro', K.m10, K.m30 ? K.m30 + ' con más de 30 días' : 'ninguno con más de 30 días', K.m30 ? 'var(--er)' : K.m10 ? 'var(--wa)' : '') +
       kpi('Certificados faltantes', K.sc, (K.scp ? K.scp + ' establecimiento(s) esperan el del mes pasado · ' : '') + 'meses con retiros sin certificado', K.sc ? 'var(--er)' : '') +
       kpi('Manifiestos sin foto', K.fo, 'de los que cargan con la aplicación (plazo: día 10 del mes siguiente)', K.fo ? 'var(--wa)' : '') +
-      kpi('Con diagnóstico', K.conDiag + ' de ' + total, 'diagnóstico de residuos', '', '#diag') + '</div>' +
+      kpi('Con diagnóstico', K.conDiag + ' de ' + total, 'diagnóstico de residuos', '', '#diag') + '</div>' + resAnualHtml(E) +
     '<div class="tb2"><section class="card" style="min-width:0"><h2>Retiros por mes</h2><span class="mu peq">Cantidad de manifiestos (retiros) de los establecimientos con cargas' + (A ? ' del área' : '') + '. Debajo, lo retirado de Y1 y Y3.</span>' +
       '<div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:150px;margin-top:14px">' + serie.map(s => '<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%" title="' + RES_MES(s.m) + ': ' + s.r + ' retiro(s) · Y1 ' + resNum(s.y1) + ' · Y3 ' + resNum(s.y3) + '"><b class="peq">' + (s.r || '') + '</b><span style="width:100%;max-width:34px;height:' + Math.max(2, Math.round(110 * s.r / maxR)) + 'px;background:' + (s.m === mesAct ? 'var(--az2,#5A8DA6)' : 'var(--az)') + ';border-radius:4px 4px 0 0"></span></div>').join('') + '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;margin-top:4px">' + serie.map(s => '<span class="mu" style="font-size:10.5px;text-align:center">' + RES_MES(s.m).replace(' ', '<br>') + '</span>').join('') + '</div>' +
@@ -71,6 +97,8 @@ async function resTablero(fresco) {
     '<p class="mu peq">Días sin retiro: desde el último manifiesto cargado (verde hasta 10 días, amarillo de 11 a 30, rojo más de 30). Certificado: uno por mes con retiros, del operador (Ley 24.051 y Dto. 831/93); el del mes pasado figura «pendiente» hasta fin de este mes. Frecuencia pactada de cada sitio: BASE COMÚN › SITIOS. Los datos se guardan 10 minutos; «Actualizar» los trae en el momento.</p>');
   $('rsA').onchange = e => { FILTRO.area = e.target.value; resTablero(); };
   $('rsAct').onclick = () => resTablero(true);
+  if ($('rsAnio')) $('rsAnio').onchange = e => { RESF.anio = e.target.value; resTablero(); };
+  document.querySelectorAll('tr.ra[data-ra]').forEach(tr => tr.onclick = () => { const c = tr.dataset.ra; RESF.abiertos[c] = !RESF.abiertos[c]; resTablero(); });
   document.querySelectorAll('tr.cl[data-cod]').forEach(tr => tr.onclick = () => location.hash = '#res/' + encodeURIComponent(tr.dataset.cod));
 }
 // Detalle de un establecimiento: meses (retiros, cantidades, certificado, fotos) y sitios (último manifiesto y frecuencia pactada)
