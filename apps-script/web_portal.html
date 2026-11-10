@@ -2196,27 +2196,50 @@ function aeLista(k) {
     '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + (def[1] || '') + ' · ' + A.length + '</b><button class="link" onclick="aeLista(\'' + k + '\')">Cerrar ✕</button></div>' +
     (A.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 16px;margin-top:6px">' + A.map(x => '<div class="peq" style="padding:4px 0;border-bottom:1px solid #EEF2F4"><b>' + esc(x.lugar) + '</b>' + (AE.dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '') + (det(x) ? '<span class="mu" style="display:block">' + esc(det(x)) + '</span>' : '') + '</div>').join('') + '</div>' : '<div class="mu peq" style="margin-top:6px">Ninguno.</div>') + '</div>';
 }
+// 10/11/2026 (Belén: «diseñá mejor el cuadro, ocupando más ancho y no una fila vertical tan larga; de título, resumen»):
+// «Resumen del agua» con tres bloques lado a lado (en celular quedan uno debajo del otro), cada estado es una tarjeta con su número
+// (por red, si hay dos) y al tocarla se abre abajo la lista de lugares con sus fechas.
+function aguaResVer(el, k) {
+  const sec = el.closest('section'); if (!sec) return;
+  const abierto = el.getAttribute('aria-pressed') === 'true';
+  sec.querySelectorAll('[data-ark]').forEach(b => { b.setAttribute('aria-pressed', 'false'); b.style.outline = ''; });
+  sec.querySelectorAll('[data-ard]').forEach(d => { d.hidden = true; });
+  if (abierto) return;
+  el.setAttribute('aria-pressed', 'true'); el.style.outline = '3px solid var(--az)';
+  const d = sec.querySelector('[data-ard="' + k + '"]'); if (d) { d.hidden = false; d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
 function aguaEstadoCard(lab, redes, nota) {
   const L = (Array.isArray(lab) ? lab : []).filter(x => x.grupo !== 'Otros' && redes.indexOf(x.red) >= 0);
   if (!L.length) return '';
-  AE = { L: L, dos: redes.length > 1, sel: '' };
-  const ficha = (g, e, f, conBg) => { const A = L.filter(f), n = A.length, k = g + ':' + e[0];
-    const sub = AE.dos && n ? redes.map(r => r + ' ' + A.filter(x => x.red === r).length).join(' · ') : e[2];
-    return '<button type="button" class="aeT" data-k="' + k + '" onclick="aeLista(\'' + k + '\')" style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;width:100%;text-align:left;border:1px solid ' + (n ? 'transparent' : 'var(--ln)') + ';border-radius:10px;padding:6px 8px;margin:0 0 6px;cursor:pointer;font:inherit;color:inherit;background:' + (n && conBg ? e[4] : n ? '#F6F8F9' : '#fff') + (n ? '' : ';opacity:.6') + '">' +
-      '<b style="font-size:24px;line-height:1;text-align:center;color:' + (n ? e[3] : '#9AA4AC') + '">' + n + '</b>' +
-      '<span style="min-width:0"><b style="font-size:13.5px;display:block">' + e[1] + '</b><small class="mu" style="display:block;line-height:1.3">' + sub + '</small></span></button>'; };
-  const col = (tit, sub, fichas) => '<div style="min-width:0"><h3 style="margin:0 0 2px;font-size:14px">' + tit + '</h3><small class="mu" style="display:block;margin-bottom:8px;min-height:2.6em">' + sub + '</small>' + fichas + '</div>';
-  const total = L.length, porRed = AE.dos ? ' (' + redes.map(r => r + ' ' + L.filter(x => x.red === r).length).join(' · ') + ')' : '';
-  return '<section class="card" style="grid-column:1/-1"><style>.aeT:hover{filter:brightness(.97)}.aeT.on{outline:3px solid var(--az);outline-offset:-3px}</style>' +
-    '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px"><h2 style="margin:0;font-size:17px">💧 Agua en CAPS, hospitales y dependencias</h2>' +
-    '<span class="mu peq"><b style="font-size:15px;color:#0D313F">' + total + '</b> establecimientos' + porRed + '</span></div>' +
-    '<span class="mu peq" style="display:block;margin:2px 0 12px">' + (nota || 'Según el último análisis de laboratorio (DPSB) de cada establecimiento y la fecha de limpieza de sus tanques.') + ' Tocá una ficha para ver cuáles son.</span>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px 20px">' +
-    col('¿Es potable?', 'según el último análisis de laboratorio', AGUA_EST.map(e => ficha('est', e, x => aguaEstado(x) === e[0], true)).join('')) +
-    col('Tanques y cisternas', 'la limpieza vale un año, aunque se esté esperando un resultado', AGUA_TQ.map(e => ficha('tq', e, x => aguaTanques(x) === e[0], true)).join('')) +
-    col('Qué más hay que hacer', 'después de limpiar los tanques', AGUA_TAREAS.map(t => ficha('ta', [t[0], t[1], t[2], t[3], '#FFF1D6'], x => aguaTareas(x).indexOf(t[0]) >= 0, true)).join('') +
-      '<small class="mu" style="display:block;margin-top:6px;line-height:1.4">La limpieza de tanques y el pedido al DPSB dependen de HyS; las reparaciones, del establecimiento. Detalle en <a href="#agua">2 · Agua › Muestreos de laboratorio</a>.</small>') +
-    '</div><div id="aeDet"></div></section>';
+  const dos = redes.length > 1;
+  const fd = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '';
+  const anio = v => /^\d{4}-/.test(v || '') ? (+v.slice(0, 4) + 1) + v.slice(4, 10) : '';
+  const tqDet = x => { const t = x.tanques || {}, e = aguaTanques(x);
+    if (e === 'ok') return 'limpieza vigente hasta el ' + fd(anio(t.primera));
+    if (e === 'na') return 'última limpieza ' + fd(t.ultima) + ', antes del muestreo no apto del ' + fd(x.ultimo);
+    if (e === 'urg') return (t.ultima ? 'última limpieza ' + fd(t.primera) + (t.primera !== t.ultima ? ' a ' + fd(t.ultima) : '') + ' (venció el ' + fd(anio(t.primera)) + ')' : 'sin limpieza registrada') + ' · ' + t.limpios + ' de ' + t.n + ' al día';
+    return ''; };
+  const agDet = x => /^\d{4}/.test(x.ultimo || '') ? 'último muestreo ' + fd(x.ultimo) + (aguaEstado(x) === 'esp' && x.solicitado ? ' · pedido el ' + fd(x.solicitado) : '') : '';
+  let det = '';
+  const tarjeta = (k, txt, sub, col, bg, f, dt) => {
+    const A = L.filter(f), n = A.length;
+    const porRed = dos ? redes.map(r => r + ' ' + A.filter(x => x.red === r).length).join(' · ') : '';
+    det += '<div data-ard="' + k + '" hidden style="margin-top:12px;border:1px solid var(--ln);border-radius:12px;padding:10px 12px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px"><b style="color:' + col + '">' + txt + ' (' + n + ')</b><button class="link" onclick="aguaResVer(this.closest(\'section\').querySelector(\'[data-ark=&quot;' + k + '&quot;]\'),\'' + k + '\')">Cerrar</button></div>' +
+      (n ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px" class="peq">' + A.sort((a, b) => a.red.localeCompare(b.red) || a.lugar.localeCompare(b.lugar, 'es')).map(x => '<div style="padding:3px 0;border-bottom:1px solid #EEF2F4"><b>' + esc(x.lugar) + '</b>' + (dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '') + (dt && dt(x) ? '<br><span class="mu">' + esc(dt(x)) + '</span>' : '') + '</div>').join('') + '</div>' : '<span class="mu peq">Ninguno.</span>') + '</div>';
+    return '<button type="button" data-ark="' + k + '" aria-pressed="false" onclick="aguaResVer(this,\'' + k + '\')" title="' + esc(sub) + '" style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;border:1px solid ' + (n ? 'transparent' : 'var(--ln)') + ';background:' + (n ? bg : '#fff') + ';min-height:86px">' +
+      '<b style="font-size:26px;line-height:1.1;color:' + (n ? col : '#9AA4AC') + '">' + n + '</b>' +
+      '<b style="font-size:13px;line-height:1.25;color:' + (n ? '#0D313F' : '#7A858D') + '">' + txt + '</b>' +
+      '<small class="mu" style="font-size:11.5px;line-height:1.3">' + (porRed || sub) + '</small></button>'; };
+  const bloque = (titulo, sub, tarjetas) => '<div style="border:1px solid var(--ln);border-radius:14px;padding:12px;background:#FAFCFD"><h3 style="margin:0;font-size:14.5px">' + titulo + '</h3>' +
+    '<span class="mu peq" style="display:block;margin:2px 0 10px">' + sub + '</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">' + tarjetas + '</div></div>';
+  const b1 = bloque('💧 Cómo está el agua', 'Según el último análisis del laboratorio (DPSB).', AGUA_EST.map(e => tarjeta('a' + e[0], e[1], e[2], e[3], e[4], x => aguaEstado(x) === e[0], agDet)).join(''));
+  const b2 = bloque('🛢️ Tanques y cisternas', 'La limpieza vale un año, aunque se esté esperando un resultado.', AGUA_TQ.map(e => tarjeta('t' + e[0], e[1], e[2], e[3], e[4], x => aguaTanques(x) === e[0], tqDet)).join(''));
+  const b3 = bloque('📋 Qué más hay que hacer', 'Un lugar puede tener más de una tarea.', AGUA_TAREAS.map(t => tarjeta('h' + t[0], t[1], t[2], t[3], t[3] === '#B4361F' ? '#FBE3DE' : '#FFF1D6', x => aguaTareas(x).indexOf(t[0]) >= 0, agDet)).join(''));
+  return '<section class="card" style="grid-column:1/-1"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:baseline"><h2 style="margin:0;font-size:18px">Resumen del agua</h2>' +
+    '<span class="mu peq">' + (nota || 'Red Trelew y red Rawson, ' + L.length + ' lugares.') + ' Tocá una tarjeta para ver qué lugares son.</span></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;margin-top:10px">' + b1 + b2 + b3 + '</div>' + det +
+    '<span class="mu peq" style="display:block;margin-top:10px">La limpieza de tanques y el pedido al DPSB dependen de HyS; las reparaciones, del establecimiento. Detalle de cada lugar en <a href="#agua">2 · Agua › Muestreos de laboratorio</a>.</span></section>';
 }
 async function agua(modo) {
   if (modo === 'plagas') return pantallaPlagas();
@@ -2672,7 +2695,7 @@ function edifPintar() {
     (urg.length ? '<section class="card" style="border-left:4px solid #B4361F"><h2 style="margin:0 0 6px;font-size:16px">Urgente</h2>' + urg.map(f => { const T = EDIF_TEMAS.filter(t => edifNivel(f[t[0]]) === 'er'), q = (edifRg(f) ? '⚠️ ' + edifRg(f) + ' · ' : '') + (T.map(t => f[t[0] + '_falta']).filter(x => x && !/^s\/?n$/i.test(x.trim())).join(' · ') || f.observaciones);
       return '<div style="margin:8px 0;cursor:pointer" data-u="' + F.indexOf(f) + '"><b>' + esc(f.lugar) + '</b> · ' + ((edifRg(f) ? ['⚠️ Otros riesgos'] : []).concat(T.map(t => t[1])).join(', ') || 'marcado urgente') + '<br><span class="mu peq">' + esc(String(q || '').slice(0, 300)) + '</span></div>'; }).join('') + '</section>' : '') +
     '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">Por tema (último relevamiento de cada lugar)</h2><table class="tabla" style="width:100%;max-width:520px"><thead><tr><th>Tema</th><th>Urgente</th><th>Arreglo</th><th>Bien</th><th>No se pudo ver / s/d</th></tr></thead><tbody>' + porTema + '</tbody></table>' +
-    '<span class="mu peq" style="display:block;margin-top:6px">La fila Agua es el estado de la instalación (cañerías, tanques, pérdidas) que ven Javier y Paulo. Si el agua es potable lo dice el cuadro de abajo.</span></section>' +
+    '<span class="mu peq" style="display:block;margin-top:6px">La fila Agua es el estado de la instalación (cañerías, tanques, pérdidas) que ven Javier y Paulo. Si el agua es potable lo dice el «Resumen del agua» de abajo.</span></section>' +
     (TB && Array.isArray(TB.lab) ? aguaEstadoCard(TB.lab, ['Trelew'], 'Red Trelew, según el último análisis de laboratorio (DPSB) y la limpieza de tanques de cada establecimiento (incluye el HMH, que no está en este relevamiento).')
       : '<section class="card"><h2 style="margin:0 0 6px;font-size:16px">💧 Agua en CAPS, hospitales y dependencias</h2><div class="mu">' + (EDIF_LABERR ? 'No se pudieron leer los análisis de laboratorio. Están en <a href="#agua">2 · Agua</a>.' : 'Leyendo los análisis de laboratorio…') + '</div></section>') +
     '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 6px;font-size:16px">Relevamientos cargados</h2>' +
