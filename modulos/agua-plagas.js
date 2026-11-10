@@ -204,15 +204,22 @@ function aguaLabCard(lab, labError) {
 // ------------------------------------------------------------------ 2 · Agua · ¿Es potable? Estado del agua por lugar (10/11/2026, pedido de Belén:
 // «que en agua tenga cuántos tienen agua potable, cuántos esperan análisis, cuántos hay que limpiar el tanque, etc.»)
 // Datos: TB.lab (Tablero.gs › AguaLab.gs), los mismos del tablero de muestreos. No hay datos nuevos ni cambios en los .gs.
-// Cada lugar cae en UN solo estado del agua (arriba) y puede tener varias tareas pendientes (abajo).
-//   · Esperando el análisis: el muestreo ya se pidió al DPSB (columna U «Solicitado el» posterior al último muestreo).
+// Tres bloques; cada lugar cae en UN estado del agua y en UN estado de los tanques, y puede tener varias tareas.
+// 1) Cómo está el agua:
+//   · Esperando el análisis: el muestreo ya se pidió al DPSB (columna U «Solicitado el» posterior al último muestreo) o la muestra ya se tomó.
 //   · No apta: el último muestreo tuvo alguna muestra NO APTA y todavía no se pidió el nuevo.
 //   · Sin conclusión: el último muestreo tiene muestras sin conclusión (consultar al DPSB).
 //   · Potable: último muestreo apto y vigente (columna H del Tablero = «Vigente»).
 //   · Apta con el análisis vencido: el último dio apta, pero ya pasó el plazo (6 meses): hoy no se puede asegurar.
 //   · Sin análisis: nunca se cargó un muestreo.
-// Tareas: limpiar tanques (toca muestreo completo o hubo NO APTA y los tanques del sitio no están limpios dentro del plazo),
-//   limpiar griferías (NO APTA) y pedir el muestreo (avisos «Urgente», «Vencido · pedir ya» y «Pedir ahora»).
+// 2) Tanques y cisternas (corrección del 10/11/2026, Belén: «si aún no se cumple el año de la última limpieza, está ok;
+//    si ya pasó un año, es urgente limpiar»). La limpieza vale un año («Días de validez de la limpieza», pestaña «Formulario DPSB»
+//    del tablero, hoy 365), sin importar si se está esperando un resultado:
+//   · Al día: todos los tanques del lugar limpiados hace menos de un año.
+//   · Urgente limpiar: algún tanque con la última limpieza de hace más de un año o sin limpieza registrada.
+//   · Repetir por agua no apta: la última limpieza es anterior al muestreo que dio no apta (regla de toda la red).
+//   · Sin tanques cargados: el lugar no tiene tanques en BASE COMÚN › RESERVORIOS (columna AA del Tablero).
+// 3) Qué hay que hacer: limpiar griferías (NO APTA) y pedir el muestreo (avisos «Urgente», «Vencido · pedir ya» y «Pedir ahora»).
 // Se usa en 2 · Agua (todas las redes) y en Relevamiento de edificios (solo red Trelew). El grupo «Otros» no cuenta.
 const AGUA_EST = [
   ['ok', '✅ Agua potable', 'último análisis apto y vigente', '#1E6B3A', '#E3F4E8'],
@@ -221,10 +228,14 @@ const AGUA_EST = [
   ['no', '❌ No apta', 'el último muestreo dio no apta', '#B4361F', '#FBE3DE'],
   ['sc', '❔ Sin conclusión', 'muestras sin conclusión: consultar al DPSB', '#55606A', '#EEF1F3'],
   ['sd', '⬜ Sin análisis', 'nunca se cargó un muestreo', '#55606A', '#EEF1F3']];
+const AGUA_TQ = [
+  ['ok', '✅ Limpieza al día', 'limpiados hace menos de un año', '#1E6B3A', '#E3F4E8'],
+  ['urg', '🔴 Urgente limpiar', 'pasó más de un año de la última limpieza, o no hay limpieza registrada', '#B4361F', '#FBE3DE'],
+  ['na', '🔴 Repetir la limpieza por agua no apta', 'la última limpieza es anterior al muestreo que dio no apta', '#B4361F', '#FBE3DE'],
+  ['sd', '⬜ Sin tanques cargados', 'cargar los tanques y cisternas del lugar (app MIP o ficha › Agua)', '#55606A', '#EEF1F3']];
 const AGUA_TAREAS = [
-  ['tq', '🧽 Hay que limpiar los tanques', 'antes del muestreo completo o por agua no apta (sin limpieza el DPSB no toma la muestra)', '#B4361F'],
   ['gr', '🚰 Hay que limpiar griferías', 'canillas que dieron no apta', '#B4361F'],
-  ['pe', '📝 Hay que pedir el muestreo', 'vencido o dentro del plazo de aviso', '#8A5A00']];
+  ['pe', '📝 Hay que pedir el muestreo', 'vencido o dentro del plazo de aviso (el completo, con los tanques ya limpios)', '#8A5A00']];
 function aguaEstado(x) {
   if (/^solicitado|^muestra tomada/i.test(x.aviso || '')) return 'esp';
   if (x.noAptas > 0) return 'no';
@@ -232,10 +243,15 @@ function aguaEstado(x) {
   if (x.sinConclusion > 0) return 'sc';
   return /vigente/i.test(x.estado || '') ? 'ok' : 'ven';
 }
+function aguaTanques(x) {
+  const t = x.tanques;
+  if (!t || !t.n) return 'sd';
+  if (t.antesNoApta) return 'na';
+  return t.limpios >= t.n ? 'ok' : 'urg';
+}
 function aguaTareas(x) {
   if (aguaEstado(x) === 'esp') return [];
-  const t = [], limpio = !!(x.tanques && x.tanques.n && x.tanques.limpios === x.tanques.n);
-  if (/COMPLETO|URGENTE/.test(x.que || '') && !limpio) t.push('tq');
+  const t = [];
   if (/URGENTE/.test(x.que || '')) t.push('gr');
   if (/urgente|vencido|pedir/i.test(x.aviso || '')) t.push('pe');
   return t;
@@ -245,21 +261,30 @@ function aguaEstadoCard(lab, redes, nota) {
   if (!L.length) return '';
   const dos = redes.length > 1, cols = dos ? redes.concat(['Total']) : ['Lugares'];
   const cuenta = (f, red) => L.filter(x => (red === 'Total' || red === 'Lugares' || x.red === red) && f(x));
-  const nombres = A => A.map(x => esc(x.lugar) + (dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '')).join(' · ');
-  const fila = (ico, txt, sub, col, bg, f) => { const tot = cuenta(f, cols[cols.length - 1]);
+  const fd = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '';
+  const anio = v => /^\d{4}-/.test(v || '') ? (+v.slice(0, 4) + 1) + v.slice(4, 10) : '';
+  // detalle de los tanques de cada lugar (fechas), para las filas del bloque 2
+  const tqDet = x => { const t = x.tanques || {}, e = aguaTanques(x);
+    if (e === 'ok') return 'limpieza vigente hasta el ' + fd(anio(t.primera));
+    if (e === 'na') return 'última limpieza ' + fd(t.ultima) + ', antes del muestreo no apto del ' + fd(x.ultimo);
+    if (e === 'urg') return (t.ultima ? 'última limpieza ' + fd(t.primera) + (t.primera !== t.ultima ? ' a ' + fd(t.ultima) : '') + ' (venció el ' + fd(anio(t.primera)) + ')' : 'sin limpieza registrada') + ' · ' + t.limpios + ' de ' + t.n + ' al día';
+    return ''; };
+  const nombres = (A, det) => A.map(x => '<span style="display:block">' + esc(x.lugar) + (dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '') + (det && det(x) ? ' <span class="mu">· ' + esc(det(x)) + '</span>' : '') + '</span>').join('');
+  const fila = (txt, sub, col, bg, f, det) => { const tot = cuenta(f, cols[cols.length - 1]);
     return '<details style="border-top:1px solid var(--ln)"><summary style="list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) repeat(' + cols.length + ',56px);gap:6px;align-items:center;padding:8px 4px' + (tot.length && bg ? ';background:' + bg : '') + '">' +
-      '<span><b>' + ico + txt + '</b><small class="mu" style="display:block">' + sub + '</small></span>' +
+      '<span><b>' + txt + '</b><small class="mu" style="display:block">' + sub + '</small></span>' +
       cols.map(c => { const n = cuenta(f, c).length; return '<b style="text-align:center;font-size:18px;color:' + (n ? col : '#9AA4AC') + '">' + n + '</b>'; }).join('') + '</summary>' +
-      '<div class="peq" style="padding:4px 8px 10px;line-height:1.6">' + (tot.length ? nombres(tot) : '<span class="mu">Ninguno.</span>') + '</div></details>'; };
+      '<div class="peq" style="padding:4px 8px 10px;line-height:1.6">' + (tot.length ? nombres(tot, det) : '<span class="mu">Ninguno.</span>') + '</div></details>'; };
   const cab = '<div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(' + cols.length + ',56px);gap:6px;padding:0 4px 4px" class="mu peq"><span></span>' + cols.map(c => '<b style="text-align:center">' + esc(c) + '</b>').join('') + '</div>';
+  const fin = '<div style="border-top:1px solid var(--ln)"></div>';
   return '<section class="card" style="grid-column:1/-1"><h2 style="margin:0 0 2px;font-size:17px">💧 Agua: ¿es potable?</h2>' +
     '<span class="mu peq" style="display:block;margin-bottom:8px">' + (nota || 'Según el último análisis de laboratorio (DPSB) de cada lugar.') + ' Tocá una fila para ver cuáles son.</span>' +
     '<div style="max-width:640px"><h3 style="margin:4px 0;font-size:14px">Cómo está el agua</h3>' + cab +
-    AGUA_EST.map(e => fila('', e[1], e[2], e[3], e[4], x => aguaEstado(x) === e[0])).join('') +
-    '<div style="border-top:1px solid var(--ln)"></div>' +
-    '<h3 style="margin:14px 0 4px;font-size:14px">Qué hay que hacer <span class="mu peq" style="font-weight:400">(un lugar puede tener más de una tarea)</span></h3>' + cab +
-    AGUA_TAREAS.map(t => fila('', t[1], t[2], t[3], '', x => aguaTareas(x).indexOf(t[0]) >= 0)).join('') +
-    '<div style="border-top:1px solid var(--ln)"></div></div>' +
+    AGUA_EST.map(e => fila(e[1], e[2], e[3], e[4], x => aguaEstado(x) === e[0])).join('') + fin +
+    '<h3 style="margin:14px 0 4px;font-size:14px">Tanques y cisternas <span class="mu peq" style="font-weight:400">(la limpieza vale un año, aunque se esté esperando un resultado)</span></h3>' + cab +
+    AGUA_TQ.map(e => fila(e[1], e[2], e[3], e[4], x => aguaTanques(x) === e[0], tqDet)).join('') + fin +
+    '<h3 style="margin:14px 0 4px;font-size:14px">Qué más hay que hacer</h3>' + cab +
+    AGUA_TAREAS.map(t => fila(t[1], t[2], t[3], '', x => aguaTareas(x).indexOf(t[0]) >= 0)).join('') + fin + '</div>' +
     '<span class="mu peq" style="display:block;margin-top:8px">La limpieza de tanques y el pedido al DPSB dependen de HyS; las reparaciones, del establecimiento. Detalle de cada lugar en <a href="#agua">2 · Agua › Muestreos de laboratorio</a>.</span></section>';
 }
 async function agua(modo) {
