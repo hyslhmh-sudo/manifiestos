@@ -36,7 +36,7 @@ const AGUA_LAB_ID = '1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM';   // Drive �
 
 function aguaLab_() {
   const ss = SpreadsheetApp.openById(AGUA_LAB_ID), out = [], rem = aguaLabRemitente_(ss);
-  let RES = []; try { if (typeof miLeer_ === 'function') RES = miLeer_('RESERVORIOS'); } catch (e) {}
+  let RES = []; try { if (typeof miLeer_ === 'function') RES = aguaLabRes_(); } catch (e) {}
   const dias = Number(rem.diasLimpieza) || 30, desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
   const f = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'yyyy-MM-dd') : String(x == null ? '' : x).trim();
   const REG = aguaLabRegistros_(ss);   // 03/11/2026: resultado de cada muestra (pestañas «Registro Trelew» y «Registro Rawson»)
@@ -55,9 +55,12 @@ function aguaLab_() {
         // 03/11/2026 (Belén: «no me salen los resultados»): si el último muestreo dio NO APTA, solo cuenta como limpio el tanque
         // limpiado DESPUÉS de ese muestreo (una limpieza anterior no corrige el resultado).
         const ultM = aguaLabIso_(r[2]), tras = y.noAptas > 0 ? ultM : '';
-        if (sitio) { const T = RES.filter(t => t.ESTABLECIMIENTO === y.cod && t.SITIO === sitio && !/fuera|baja/i.test(t.ESTADO)), fs = T.map(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10)).filter(v => /^\d{4}-/.test(v)).sort();
+        if (sitio) { const T = aguaLabTanques_(RES, y.cod, sitio), fs = T.map(t => String(t.ULTIMA_LIMPIEZA || '').slice(0, 10)).filter(v => /^\d{4}-/.test(v)).sort();
           y.tanques = { n: T.length, limpios: T.filter(t => { const u = String(t.ULTIMA_LIMPIEZA || '').slice(0, 10); return /^\d{4}-/.test(u) && u >= desde && (!tras || u > tras); }).length, ultima: fs.length ? fs[fs.length - 1] : '', primera: fs.length ? fs[0] : '', dias: dias,
-            antesNoApta: !!(tras && fs.length && fs[fs.length - 1] <= tras) }; }
+            antesNoApta: !!(tras && fs.length && fs[fs.length - 1] <= tras),
+            // 10/11/2026: tanques cuya limpieza no hace HyS (p. ej. Internación de Salud Mental: la hace Mantenimiento del lugar)
+            ajenos: T.filter(t => AGUA_LAB_AJENO.test(String(t.QUIEN_LIMPIA || ''))).length,
+            quien: Array.from(new Set(T.map(t => String(t.QUIEN_LIMPIA || '').trim()).filter(q => q && !/^s\/d/i.test(q)))).join(' · ') }; }
         y.res = (REG[red + '|' + lugar] || []).filter(m => m.fecha === ultM); }
       // 02/11/2026: «Solicitado el» (columna U, la completa HyS al pedir el muestreo). Si es posterior al último muestreo,
       // el pedido ya está hecho: el aviso pasa a «Solicitado el …» y deja de figurar como acción abierta.
@@ -81,6 +84,25 @@ function aguaLabRegistros_(ss) {
         resultado: String(r[9]).trim() || 's/d', detalle: String(r[10]).trim(), url: m ? m[1] : '', recibido: aguaLabIso_(r[15]) }); });   // P: «Resultado cargado el»
   });
   return o;
+}
+
+// 10/11/2026 (Belén: «separalos»): en la Sede ex ADOS cada lugar tiene sus propios tanques. La columna AA del Tablero acepta
+// «SITIO|LUGAR_MIPYV» (ej. «Sede ex ADOS|PROS»): toma solo los tanques de ese sitio con ese LUGAR_MIPYV (columna R de BASE COMÚN ›
+// RESERVORIOS). Sin «|» toma todos los tanques del sitio, como antes. Se excluyen los tanques «Fuera de uso» o de «Baja»
+// (antes también quedaban afuera los «Fuera del alcance de MIPyV», como los de Internación de Salud Mental; ahora se cuentan y,
+// si QUIEN_LIMPIA dice «No corresponde a HySL…», el portal los muestra como limpieza a cargo de otro).
+const AGUA_LAB_AJENO = /no corresponde/i;   // ej. «No corresponde a HySL (mantenimiento del lugar)»; «Empresa de mantenimiento» (HMH) sí cuenta como limpieza registrada por HyS
+function aguaLabRes_() {
+  const RES = miLeer_('RESERVORIOS');
+  try {   // LUGAR_MIPYV no está en MI_H (lo agrega la app MIP en la columna R): se lee aparte, por fila
+    const sh = miHoja_('RESERVORIOS'), H = sh.getRange(5, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim()), j = H.indexOf('LUGAR_MIPYV');
+    if (j >= 0 && sh.getLastRow() > 0) { const v = sh.getRange(1, j + 1, sh.getLastRow(), 1).getValues(); RES.forEach(t => { t.LUGAR_MIPYV = String((v[t.fila - 1] || [''])[0] || '').trim(); }); }
+  } catch (e) {}
+  return RES;
+}
+function aguaLabTanques_(RES, cod, aa) {
+  const p = String(aa || '').split('|').map(x => x.trim()), sitio = p[0], lug = p[1] || '';
+  return (RES || []).filter(t => t.ESTABLECIMIENTO === cod && t.SITIO === sitio && (!lug || String(t.LUGAR_MIPYV || '') === lug) && !/fuera de uso|baja/i.test(String(t.ESTADO || '')));
 }
 
 function aguaLabIso_(v) {
@@ -147,7 +169,7 @@ function aguaLabAviso_(x) {
     const cod = red === 'Rawson' ? 'HSST' : /^HMH/.test(lugar) ? 'HMH' : 'HZT', sitio = String(r[26] || '').trim(), dias = Number(g('Días de validez de la limpieza (completo)', 30)) || 30;
     const desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
     if (sitio && typeof miLeer_ === 'function') {
-      const tq = miLeer_('RESERVORIOS').filter(t => t.ESTABLECIMIENTO === cod && t.SITIO === sitio && !/fuera|baja/i.test(t.ESTADO)).map(t => t.CODIGO_TANQUE);
+      const tq = aguaLabTanques_(aguaLabRes_(), cod, sitio).map(t => t.CODIGO_TANQUE);
       const L = miLeer_('AGUA_LIMPIEZAS').filter(l => tq.indexOf(l.CODIGO_TANQUE) >= 0 && String(l.FECHA).slice(0, 10) >= desde);
       if (L.length) {
         const fechas = Array.from(new Set(L.map(l => String(l.FECHA).slice(0, 10)))).sort().map(v => v.split('-').reverse().join('/'));

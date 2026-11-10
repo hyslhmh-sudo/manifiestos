@@ -146,7 +146,7 @@ function aglPintar() {
       (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde que se cargó el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
       // 2) Pasos en orden
       '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
-      (comp ? paso(limpio, (urg ? 'Repetir la limpieza y desinfección de ' : 'Limpiar y desinfectar ') + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + (x.cod === 'HZT' ? ' (Javier y Paulo, con el F-AGU-01-T). ' : ' (la hace el establecimiento y la registra con el formulario de limpieza de tanques). ') +
+      (comp ? paso(limpio, (urg ? 'Repetir la limpieza y desinfección de ' : 'Limpiar y desinfectar ') + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + (aguaTanques(x) === 'mant' ? ' (la hace el mantenimiento del lugar, no HyS: pedir el comprobante). ' : x.cod === 'HZT' ? ' (Javier y Paulo, con el F-AGU-01-T). ' : ' (la hace el establecimiento y la registra con el formulario de limpieza de tanques). ') +
         (limpio ? 'Hecho: última limpieza ' + fT(tq.ultima) + '.' : tq && tq.antesNoApta ? '<b style="color:var(--er)">Falta: la última limpieza (' + fT(tq.ultima) + ') es anterior al muestreo no apto.</b>' : tq ? '<b style="color:var(--er)">Falta: ' + tq.limpios + ' de ' + tq.n + ' limpios' + (tq.ultima ? ' (última ' + fT(tq.ultima) + ')' : '') + '.</b>' : '<b style="color:var(--er)">Falta: no hay tanques cargados para este lugar.</b>') + ' Sin la limpieza el DPSB no toma la muestra.') : '') +
       (urg ? paso(false, 'Limpiar y desinfectar las griferías afectadas' + (na.length ? ': <b>' + esc(na.map(m => m.donde).join(', ')) + '</b>' : '') + ' (además de los tanques).') : '') +
       paso(e === 'sol' ? true : false, (e === 'sol' ? 'Pedido al DPSB el ' + fT(x.solicitado) + '.' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB' + (comp && !limpio ? ' <b>después</b> de limpiar' : '') + '.')) +
@@ -218,7 +218,8 @@ function aguaLabCard(lab, labError) {
 //   · Al día: todos los tanques del lugar limpiados hace menos de un año.
 //   · Urgente limpiar: algún tanque con la última limpieza de hace más de un año o sin limpieza registrada.
 //   · Repetir por agua no apta: la última limpieza es anterior al muestreo que dio no apta (regla de toda la red).
-//   · Sin tanques cargados: el lugar no tiene tanques en BASE COMÚN › RESERVORIOS (columna AA del Tablero).
+//   · Limpieza a cargo de Mantenimiento: todos sus tanques dicen en QUIEN_LIMPIA «No corresponde a HySL…» (Internación de Salud Mental).
+//   · Sin tanques cargados: el lugar no tiene tanques en BASE COMÚN › RESERVORIOS (columna AA del Tablero; «SITIO|LUGAR_MIPYV» separa los de la Sede ex ADOS).
 // 3) Qué hay que hacer: limpiar griferías (NO APTA) y pedir el muestreo (avisos «Urgente», «Vencido · pedir ya» y «Pedir ahora»).
 // Se usa en 2 · Agua (todas las redes) y en Relevamiento de edificios (solo red Trelew). El grupo «Otros» no cuenta.
 const AGUA_EST = [
@@ -232,6 +233,7 @@ const AGUA_TQ = [
   ['ok', '✅ Limpieza al día', 'limpiados hace menos de un año', '#1E6B3A', '#E3F4E8'],
   ['urg', '🔴 Urgente limpiar', 'pasó más de un año de la última limpieza, o no hay limpieza registrada', '#B4361F', '#FBE3DE'],
   ['na', '🔴 Repetir la limpieza por agua no apta', 'la última limpieza es anterior al muestreo que dio no apta', '#B4361F', '#FBE3DE'],
+  ['mant', '🔧 Limpieza a cargo de Mantenimiento', 'no la hace HyS: la gestiona el mantenimiento del lugar', '#55606A', '#EEF1F3'],
   ['sd', '⬜ Sin tanques cargados', 'cargar los tanques y cisternas del lugar (app MIP o ficha › Agua)', '#55606A', '#EEF1F3']];
 const AGUA_TAREAS = [
   ['gr', '🚰 Hay que limpiar griferías', 'canillas que dieron no apta', '#B4361F'],
@@ -246,6 +248,7 @@ function aguaEstado(x) {
 function aguaTanques(x) {
   const t = x.tanques;
   if (!t || !t.n) return 'sd';
+  if (t.ajenos && t.ajenos >= t.n) return 'mant';   // 10/11/2026: p. ej. Internación de Salud Mental (QUIEN_LIMPIA «No corresponde a HySL…»)
   if (t.antesNoApta) return 'na';
   return t.limpios >= t.n ? 'ok' : 'urg';
 }
@@ -276,6 +279,7 @@ function aguaEstadoCard(lab, redes, nota) {
   const anio = v => /^\d{4}-/.test(v || '') ? (+v.slice(0, 4) + 1) + v.slice(4, 10) : '';
   const tqDet = x => { const t = x.tanques || {}, e = aguaTanques(x);
     if (e === 'ok') return 'limpieza vigente hasta el ' + fd(anio(t.primera));
+    if (e === 'mant') return 'a cargo de: ' + (t.quien || 'mantenimiento del lugar') + (t.ultima ? ' · última limpieza informada ' + fd(t.ultima) : ' · sin limpieza informada');
     if (e === 'na') return 'última limpieza ' + fd(t.ultima) + ', antes del muestreo no apto del ' + fd(x.ultimo);
     if (e === 'urg') return (t.ultima ? 'última limpieza ' + fd(t.primera) + (t.primera !== t.ultima ? ' a ' + fd(t.ultima) : '') + ' (venció el ' + fd(anio(t.primera)) + ')' : 'sin limpieza registrada') + ' · ' + t.limpios + ' de ' + t.n + ' al día';
     return ''; };
