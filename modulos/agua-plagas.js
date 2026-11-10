@@ -256,30 +256,6 @@ function aguaTareas(x) {
   if (/urgente|vencido|pedir/i.test(x.aviso || '')) t.push('pe');
   return t;
 }
-// 10/11/2026 (Belén: «diseñalo mejor, ocupando más ancho y no una fila vertical tan larga; que el título diga CAPS o similar»):
-// tres columnas lado a lado (agua · tanques · qué más hacer) con fichas chicas; al tocar una ficha, la lista de establecimientos
-// aparece abajo, a todo el ancho. Las fichas en 0 quedan grises. En celular las columnas se apilan.
-let AE = { L: [], dos: false, sel: '' };
-function aeLista(k) {
-  const d = document.getElementById('aeDet'); if (!d) return;
-  if (AE.sel === k) { AE.sel = ''; d.innerHTML = ''; document.querySelectorAll('.aeT').forEach(t => t.classList.remove('on')); return; }
-  AE.sel = k; document.querySelectorAll('.aeT').forEach(t => t.classList.toggle('on', t.dataset.k === k));
-  const [g, c] = k.split(':'), def = (g === 'est' ? AGUA_EST : g === 'tq' ? AGUA_TQ : AGUA_TAREAS).find(e => e[0] === c) || [];
-  const f = g === 'est' ? x => aguaEstado(x) === c : g === 'tq' ? x => aguaTanques(x) === c : x => aguaTareas(x).indexOf(c) >= 0;
-  const fd = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '';
-  const anio = v => /^\d{4}-/.test(v || '') ? (+v.slice(0, 4) + 1) + v.slice(4, 10) : '';
-  const tqDet = x => { const t = x.tanques || {}, e = aguaTanques(x);
-    if (e === 'ok') return 'limpieza vigente hasta el ' + fd(anio(t.primera));
-    if (e === 'na') return 'última limpieza ' + fd(t.ultima) + ', antes del muestreo no apto del ' + fd(x.ultimo);
-    if (e === 'urg') return (t.ultima ? 'última limpieza ' + fd(t.primera) + (t.primera !== t.ultima ? ' a ' + fd(t.ultima) : '') + ' (venció el ' + fd(anio(t.primera)) + ')' : 'sin limpieza registrada') + ' · ' + t.limpios + ' de ' + t.n + ' al día';
-    return ''; };
-  const estDet = x => /^\d{4}/.test(x.ultimo || '') ? 'último muestreo ' + fd(x.ultimo) + (/^solicitado|^muestra tomada/i.test(x.aviso || '') ? ' · ' + x.aviso : '') : '';
-  const det = g === 'tq' ? tqDet : g === 'est' ? estDet : x => x.aviso || '';
-  const A = AE.L.filter(f);
-  d.innerHTML = '<div style="border:1px solid var(--ln);border-left:4px solid ' + (def[3] || 'var(--az)') + ';border-radius:10px;padding:10px 12px;margin-top:10px">' +
-    '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>' + (def[1] || '') + ' · ' + A.length + '</b><button class="link" onclick="aeLista(\'' + k + '\')">Cerrar ✕</button></div>' +
-    (A.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 16px;margin-top:6px">' + A.map(x => '<div class="peq" style="padding:4px 0;border-bottom:1px solid #EEF2F4"><b>' + esc(x.lugar) + '</b>' + (AE.dos ? ' <span class="mu">(' + esc(x.red) + ')</span>' : '') + (det(x) ? '<span class="mu" style="display:block">' + esc(det(x)) + '</span>' : '') + '</div>').join('') + '</div>' : '<div class="mu peq" style="margin-top:6px">Ninguno.</div>') + '</div>';
-}
 // 10/11/2026 (Belén: «diseñá mejor el cuadro, ocupando más ancho y no una fila vertical tan larga; de título, resumen»):
 // «Resumen del agua» con tres bloques lado a lado (en celular quedan uno debajo del otro), cada estado es una tarjeta con su número
 // (por red, si hay dos) y al tocarla se abre abajo la lista de lugares con sus fechas.
