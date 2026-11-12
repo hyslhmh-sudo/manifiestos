@@ -537,10 +537,10 @@ async function capDictados() {
   marco('#capdic', capTit('Dictados', sub, '<a class="btn pri" href="#capdicnuevo">+ Nuevo dictado</a>' + btnAnt + '<a class="btn sec" href="#capcat">Catálogo</a><a class="btn sec" href="#capfir">Firmantes</a>') +
     (!lista.length ? '<div class="card vacio">' + (CAPDIC_ANT ? 'No hay dictados anteriores en los últimos 60 días.' : 'No hay clases próximas.' + (nAnt ? ' Los anteriores están en «Ver anteriores».' : '')) + '</div>' :
     '<section class="card tabla soloEsc"><table><thead><tr><th>Fecha</th><th>Capacitación</th><th>Modalidad y lugar</th><th>Estado</th><th>Inscriptos</th><th>Asistentes</th><th>Compartir</th></tr></thead><tbody>' +
-    lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + esc(x.fecha) + ' ' + esc(x.hora || '') + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
+    lista.map((x, j) => '<tr class="cl" data-d="' + esc(x.id) + '"><td style="white-space:nowrap">' + (x.auto ? '<span class="mu">Siempre disponible</span>' : esc(x.fecha) + ' ' + esc(x.hora || '')) + '</td><td><b>' + esc(x.nombre) + '</b><div class="mu peq">' + esc(x.codigo) + (Number(x.encuentro) > 1 || /programa/i.test(x.nombre) ? ' · encuentro ' + esc(x.encuentro) : '') + '</div></td><td>' + esc(x.modalidad) + (capVacio(x.lugar) || /virtual/i.test(x.lugar) ? '' : ' · ' + esc(x.lugar)) + '</td>' +
       '<td><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></td><td>' + (x.linkInscripcion ? esc(x.inscriptos) + (capVacio(x.cupo) || /sin/i.test(x.cupo) ? '' : ' / ' + esc(x.cupo)) : '<span class="mu">—</span>') + '</td><td>' + esc(x.asistentes) + '</td>' +
       '<td style="white-space:nowrap">' + (x.linkInscripcion ? '<div><span class="mu peq">Inscripción:</span> <button class="link" data-copi="' + j + '" title="Copiar el link de inscripción">Link</button> · <a class="link" href="' + esc(qrIns(x)) + '" target="_blank" rel="noopener" title="QR de inscripción">QR</a></div>' : '') + '<div><span class="mu peq">Certificado:</span> <button class="link" data-cop="' + j + '" title="Copiar el link del certificado (registro de asistencia)">Link</button> · <a class="link" href="' + esc(x.qr) + '" target="_blank" rel="noopener" title="QR del certificado">QR</a></div><div><button class="link" data-wa="' + j + '">WhatsApp</button></div></td></tr>').join('') + '</tbody></table></section>' +
-    '<div class="tarjetas">' + lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + esc(x.fecha) + ' ' + esc(x.hora || '') + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
+    '<div class="tarjetas">' + lista.map(x => '<a class="tarj" href="#capins/' + encodeURIComponent(x.id) + '"><b>' + (x.auto ? 'Autoadministrada' : esc(x.fecha) + ' ' + esc(x.hora || '')) + ' · ' + esc(x.nombre) + '</b><span class="mu peq">' + esc(x.modalidad) + ' · inscriptos ' + esc(x.inscriptos) + ' · asistentes ' + esc(x.asistentes) + '</span><span><span class="chip ' + chip(x) + '">' + esc(x.ahora) + '</span></span></a>').join('') + '</div>'));
   $('dicAnt').onclick = () => { CAPDIC_ANT = !CAPDIC_ANT; capDictados(); };
   document.querySelectorAll('tr.cl[data-d]').forEach(tr => tr.onclick = e => { if (e.target.closest('button,a')) return; location.hash = '#capins/' + encodeURIComponent(tr.dataset.d); });
   document.querySelectorAll('[data-cop]').forEach(b => b.onclick = () => capCopiar(lista[b.dataset.cop].link, 'Link del certificado copiado.'));
@@ -622,6 +622,7 @@ async function capInscriptos(id) {
   cargando('#capdic', 'Leyendo el dictado…');
   let r; try { r = await capApi('c_inscriptos', { id: id }); await capCargar().catch(() => {}); } catch (e) { return capFalla('#capdic', 'Dictado', e); }
   if (location.hash.split('/')[0] !== '#capins') return;
+  if (r.auto) return capAutoVer(id, r);
   const D = r.dictado, R = r.resumen, cancelado = /cancel|suspend/i.test(D.estado);
   const capN = ((CAPC && CAPC.lista) || []).find(c => c.codigo === D.codigo), nomFir = String(D.firmantes || '').split(/[,;]\s*/).map(x => { const f = ((CAPC && CAPC.firmantes) || []).find(y => y.id === x); return f ? f.nombre : x; }).join(' · ');
   const kp = (t, v, s) => '<div class="kpi2"><span>' + t + '</span><b>' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>';
@@ -650,6 +651,37 @@ async function capInscriptos(id) {
   capCertsDictado(D);
 }
 
+// ---------- Una autoadministrada (video): quién la hizo y quién la está haciendo (11/11/2026)
+// No es una fila de DICTADOS: el servidor arma la tarjeta «AUTO-<CODIGO>» con REGISTROS (ID_DICTADO = VIDEO) y _VIDEOS_VISTOS.
+let CAPAUTO_CICLO = '';
+function capAutoVer(id, r) {
+  const D = r.dictado, capN = ((CAPC && CAPC.lista) || []).find(c => c.codigo === D.codigo);
+  const ciclos = Array.from(new Set(r.personas.map(g => g.ciclo).concat([r.ciclo]))).sort().reverse();
+  if (ciclos.indexOf(CAPAUTO_CICLO) < 0) CAPAUTO_CICLO = r.ciclo;
+  const gente = r.personas.filter(g => g.ciclo === CAPAUTO_CICLO);
+  const hechos = gente.filter(g => g.aprobado), enCurso = gente.filter(g => !g.aprobado);
+  const kp = (t, v, s) => '<div class="kpi2"><span>' + t + '</span><b>' + v + '</b>' + (s ? '<small>' + s + '</small>' : '') + '</div>';
+  const chipE = e => '<span class="chip ' + (/complet/i.test(e) ? 'ok' : /sin aprobar/i.test(e) ? 'er' : /vio el video/i.test(e) ? 'wa' : 'pa') + '">' + esc(e) + '</span>';
+  const porc = g => g.porc === null ? '<span class="mu">—</span>' : esc(Math.min(g.porc, 100)) + ' %';
+  const tabla = (l, vacio) => !l.length ? '<div class="vacio">' + vacio + '</div>' : '<table><thead><tr><th>Persona</th><th>Público</th><th>Video</th><th>Nota</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>' +
+    l.map(g => '<tr><td><b>' + esc(g.nombre) + '</b><div class="mu peq">' + esc(g.doc) + '</div></td><td>' + esc(g.publico) + '<div class="mu peq">' + esc(g.detalle) + '</div></td><td>' + porc(g) + '</td><td>' + (g.nota !== '' ? esc(g.nota) : '<span class="mu">—</span>') + '</td><td>' + chipE(g.estado) + '</td>' +
+      '<td class="peq" style="white-space:nowrap">' + (g.aprobado ? esc(g.fecha) + (g.certificado ? '<div class="mu">' + esc(g.certificado) + '</div>' : '') : 'Última vez: ' + esc(String(g.ultima || g.inicio || 's/d').slice(0, 16))) + '</td></tr>').join('') + '</tbody></table>';
+  const mails = gente.map(g => g.correo).filter(m => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(m || '').trim())).filter((m, k, a) => a.indexOf(m) === k).join(', ');
+  marco('#capdic', '<div><a href="#capdic" class="peq">← Dictados</a></div>' +
+    capTit(capN ? capN.nombre : D.codigo, esc(D.codigo) + ' · Autoadministrada (video) · siempre disponible · ' + capEst(D.estado),
+      '<button class="btn sec" id="auCop">Copiar link</button><a class="btn sec" href="' + esc(D.qr) + '" target="_blank" rel="noopener">QR ↗</a>' + (mails ? '<button class="btn sec" id="auMails">Copiar correos</button>' : '') +
+      (ciclos.length > 1 ? '<select class="c" id="auCiclo" style="width:auto">' + ciclos.map(c => '<option' + (c === CAPAUTO_CICLO ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>' : '')) +
+    '<div class="tb5">' + kp('La completaron', hechos.length, 'ciclo ' + esc(CAPAUTO_CICLO)) + kp('En curso', enCurso.length, 'mirando o sin aprobar') + kp('Total', gente.length, 'personas que entraron') + '</div>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>La completaron</h2><span class="mu peq">Aprobaron la evaluación (o, si no tiene evaluación, vieron el video). Con su certificado.</span></div>' + tabla(hechos, 'Todavía nadie la completó en este ciclo.') + '</section>' +
+    '<section class="card tabla"><div style="padding:14px 18px"><h2>En curso</h2><span class="mu peq">Entraron con su DNI y todavía no terminaron: están mirando el video (hace falta el 80 %) o rindieron sin aprobar (pueden volver a intentarlo).</span></div>' + tabla(enCurso, 'No hay personas a mitad de camino.') + '</section>' +
+    '<section class="card" id="diCert"><h2>Certificados y constancias</h2><div class="mu peq" style="margin-top:6px">Leyendo los certificados…</div></section>' +
+    '<section class="card peq mu">Lo hecho con video queda en el libro, hoja REGISTROS (ID_DICTADO VIDEO, CODIGO ' + esc(D.codigo) + '), y lo visto en la hoja _VIDEOS_VISTOS. Para sumar a alguien a mano, usá CARGA_MANUAL.</section>');
+  $('auCop').onclick = () => capCopiar(D.link, 'Link de la autoadministrada copiado.');
+  if ($('auMails')) $('auMails').onclick = () => capCopiar(mails, 'Correos copiados: pegalos en «CCO» de tu correo (belenpellegrini.hys@gmail.com).');
+  if ($('auCiclo')) $('auCiclo').onchange = () => { CAPAUTO_CICLO = $('auCiclo').value; capAutoVer(id, r); };
+  capCertsDictado(D);
+}
+
 // ---------- Certificados de un dictado (fase 6)
 async function capCertsDictado(D) {
   const box = $('diCert'); if (!box) return;
@@ -662,12 +694,12 @@ async function capCertsDictado(D) {
       (vivos.length ? '<button class="btn sec" id="ceLote">PDF con todos (' + vivos.length + ')</button>' : '') +
       (r.programa ? '<button class="btn ' + (r.ultimo && !r.cerrado ? 'pri' : 'sec') + '" id="ceCerrar">' + (r.cerrado ? 'Revisar cierre del programa' : 'Cerrar programa') + '</button>' : '') + '</div></div>' +
     '<p class="mu peq" style="margin:6px 0 10px">Cada persona puede descargar el suyo al registrarse o desde «Mis certificados». El PDF se arma la primera vez que alguien lo abre.' + (r.programa ? ' Programa: la constancia de cada encuentro sale sola; la aprobación (asistencia mínima + evaluación final) o la participación salen al cerrar el programa' + (r.cerrado ? ' (cerrado el ' + esc(r.cerrado) + ')' : '') + '.' : '') + '</p>' +
-    (!r.lista.length ? '<div class="vacio">Todavía no hay certificados de este dictado.</div>' : '<div class="tabla" style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Tipo</th><th>Código</th><th>Estado</th><th></th></tr></thead><tbody>' +
+    (!r.lista.length ? '<div class="vacio">Todavía no hay certificados ' + (r.auto ? 'de esta autoadministrada' : 'de este dictado') + '.</div>' : '<div class="tabla" style="overflow-x:auto"><table><thead><tr><th>Persona</th><th>Tipo</th><th>Código</th><th>Estado</th><th></th></tr></thead><tbody>' +
       r.lista.map((c, j) => '<tr><td><b>' + esc(c.nombre) + '</b><div class="mu peq">' + esc(c.dni) + '</div></td><td>' + esc(c.tipo) + '</td><td class="peq">' + esc(c.codigo) + '</td><td>' + chipE(c.estado) + (c.motivo ? '<div class="mu peq">' + esc(c.motivo) + '</div>' : '') + '</td><td class="peq" style="white-space:nowrap">' + pdfBtn(c, j) + '</td></tr>').join('') + '</tbody></table></div>') +
-    '<h3 style="margin:16px 0 6px;font-size:15px">Disertantes invitados <span class="mu peq" style="font-weight:500">(hasta 3 · constancia sin vencimiento)</span></h3>' +
+    (r.auto ? '' : '<h3 style="margin:16px 0 6px;font-size:15px">Disertantes invitados <span class="mu peq" style="font-weight:500">(hasta 3 · constancia sin vencimiento)</span></h3>' +
     (r.disertantes.length ? r.disertantes.map((x, j) => '<div class="item"><span><b>' + esc(x.nombre) + '</b> <span class="mu peq">' + esc(x.detalle || '') + '</span><div class="mu peq">' + (x.dni ? 'DNI ' + esc(x.dni) : '<span style="color:var(--er)">Falta el DNI</span>') + (x.correo ? ' · ' + esc(x.correo) : '') + '</div></span><span class="cpn"><button class="link" data-ded="' + j + '">Editar</button>' +
       (x.codigo ? '<span class="chip ok">' + esc(x.codigo) + '</span><button class="link" data-dpdf="' + j + '">PDF</button>' : '<button class="btn sec" data-dem="' + j + '">Emitir constancia</button>') + '</span></div>').join('') : '<div class="mu peq">Sin disertantes invitados.</div>') +
-    (r.disertantes.length < 3 ? '<button class="btn sec" id="ceDisN" style="margin-top:8px">+ Agregar disertante</button>' : '');
+    (r.disertantes.length < 3 ? '<button class="btn sec" id="ceDisN" style="margin-top:8px">+ Agregar disertante</button>' : ''));
   const abrirPdf = (b, url) => { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Abrir PDF ↗'; b.replaceWith(a); };
   const pdf = async (b, codigo) => { const x = await capHacer('c_cert_pdf', { codigo: codigo }, b, 'Armando…'); if (x) abrirPdf(b, x.url); };
   box.querySelectorAll('[data-cpdf]').forEach(b => b.onclick = () => pdf(b, r.lista[b.dataset.cpdf].codigo));
