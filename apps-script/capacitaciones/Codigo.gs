@@ -12,7 +12,7 @@
 // Correos: solo los de la agenda (Agenda.gs), desde belenpellegrini.hys@gmail.com. Ningún otro sale solo.
 // Si el portal falla, el mismo tablero queda en la hoja TABLERO.
 // =====================================================================
-const VERSION_CAP = '2026-11-10 · 5.24';
+const VERSION_CAP = '2026-11-11 · 5.25';
 const PORTAL_API = 'https://script.google.com/macros/s/AKfycbwEf6wxSyzMPh0vu2qoeMJnBwZHNu6IRJgCnAG1sykyuu5N4N4JEFUd_Ve_0Zlu5nME/exec';   // portal HyS: valida la clave
 const ZONA = 'America/Argentina/Buenos_Aires';
 const ID = {
@@ -1324,9 +1324,10 @@ function dictadosLista_(d) {
     const v = ventana_(o), ahora = new Date(); x.ahora = /cancel|suspend/i.test(o.ESTADO) ? o.ESTADO : ahora < v.abre ? 'Próximo' : ahora <= v.cierra ? 'Registro abierto' : 'Cerrado';
     x.whatsapp = textoWhatsapp_(caps[o.CODIGO] || { NOMBRE: x.nombre, ENCUENTROS: 1 }, o); return x;
   }).sort((a, b) => fechaHora_(a.abre) - fechaHora_(b.abre));
-  return { ok: true, lista: lista };
+  return { ok: true, lista: lista.concat(autoLista_(R, nom, caps)) };
 }
 function dictadoEstado_(d) {
+  if (autoCod_(d.id)) return { ok: false, error: 'Una autoadministrada no se suspende desde Dictados: cambiá el estado en el Catálogo.' };
   return conLock_(() => {
     const D = tabla_('DICTADOS'), k = D.filas.findIndex(r => r[D.i('ID_DICTADO')] === d.id);
     if (k < 0) return { ok: false, error: 'No existe el dictado ' + d.id + '.' };
@@ -1487,6 +1488,7 @@ function inscConsulta_(d) {
   setCampos_(I, k, { ESTADO_CONSULTA: d.estado || 'Respondida' }); return { ok: true };
 }
 function inscriptos_(id) {
+  if (autoCod_(id)) return autoInscriptos_(id);
   const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === id); if (!r) return { ok: false, error: 'No existe el dictado.' };
   const o = obj_(D, r), I = tabla_('INSCRIPCIONES'), P = tabla_('PERSONAS'), R = tabla_('REGISTROS'), per = {};
   P.filas.forEach(x => per[x[P.i('DNI')]] = obj_(P, x));
@@ -1507,6 +1509,7 @@ function inscriptos_(id) {
 }
 // Agregar un asistente fuera de la ventana de 48 h (solo la administradora, desde el portal)
 function asistenteAgregar_(d) {
+  if (autoCod_(d.idDictado)) return { ok: false, error: 'En las autoadministradas no se agregan asistentes desde acá: cargalo por CARGA_MANUAL del libro.' };
   return conLock_(() => {
     const D = tabla_('DICTADOS'), r = D.filas.find(x => x[D.i('ID_DICTADO')] === d.idDictado); if (!r) return { ok: false, error: 'No existe el dictado.' };
     const o = obj_(D, r), cap = capDe_(o.CODIGO), doc = soloDni_(d.doc);
@@ -2253,6 +2256,12 @@ function certPagina_(p) {
 // ------------------------------------------------------------------ Portal (con clave)
 function certsDictado_(id) {
   prepararF6_();
+  const codAuto = autoCod_(id);
+  if (codAuto) {
+    const C = tabla_('CERTIFICADOS');
+    const lista = C.filas.map(r => obj_(C, r)).filter(c => c.ID_DICTADO === VIDEO_DIC && c.CODIGO === codAuto).map(c => ({ codigo: c.ID_CERTIFICADO, nombre: c.NOMBRE, dni: c.DNI, tipo: c.TIPO, estado: c.ESTADO, motivo: c.MOTIVO_ANULACION, pdf: c.LINK_PDF }));
+    return { ok: true, lista: lista, disertantes: [], programa: false, ultimo: false, cerrado: '', institucion: '', auto: true };
+  }
   const D = tabla_('DICTADOS'), k = D.filas.findIndex(r => r[D.i('ID_DICTADO')] === id); if (k < 0) return { ok: false, error: 'No existe el dictado.' };
   const o = obj_(D, D.filas[k]), cap = capDe_(o.CODIGO) || {}, C = tabla_('CERTIFICADOS');
   const lista = C.filas.map(r => obj_(C, r)).filter(c => c.ID_DICTADO === id).map(c => ({ codigo: c.ID_CERTIFICADO, nombre: c.NOMBRE, dni: c.DNI, tipo: c.TIPO + (num_(c.ENCUENTRO_N) ? ' · enc. ' + c.ENCUENTRO_N : ''), estado: c.ESTADO, motivo: c.MOTIVO_ANULACION, pdf: c.LINK_PDF }));
@@ -2520,6 +2529,67 @@ function videosDe_(codigo) {
 }
 // Carga horaria del certificado hecho con video: suma de la columna HORAS de la hoja VIDEOS; vacía = la del catálogo
 function horasVideo_(codigo) { const h = videosDe_(codigo).reduce((t, v) => t + (v.horas || 0), 0); return h ? String(Math.round(h * 10) / 10).replace('.', ',') : undefined; }
+
+// ------------------------------------------------------------------ Autoadministradas en «Dictados e inscriptos» (11/11/2026)
+// REGLA (Belén, 11/11/2026): cada capacitación autoadministrada (con video en la hoja VIDEOS del sitio) aparece en
+// Dictados como una tarjeta fija «AUTO-<CODIGO>» que no vence ni se cierra. Al abrirla muestra quién la hizo (REGISTROS con
+// ID_DICTADO = VIDEO), quién está mirando el video (_VIDEOS_VISTOS) y sus certificados. No es una fila de DICTADOS:
+// lo hecho con video sigue guardándose con ID_DICTADO = VIDEO, como siempre.
+const AUTO_PRE = 'AUTO-';
+function autoCod_(id) { id = String(id || ''); return id.indexOf(AUTO_PRE) === 0 ? id.slice(AUTO_PRE.length) : ''; }
+function autoCodigos_(R) {
+  const cods = {};
+  try {
+    const sh = SpreadsheetApp.openById(ID_PORTAL_PUBLICO).getSheetByName('VIDEOS');
+    if (sh) { const v = sh.getDataRange().getDisplayValues(), H = v[0].map(x => String(x).trim()), c = n => H.indexOf(n);
+      if (c('CODIGO') >= 0) v.slice(1).forEach(r => { const k = String(r[c('CODIGO')]).trim().toUpperCase(); if (/^CAP-/.test(k) && !/^no/i.test(String(r[c('VISIBLE')]).trim()) && idYT_(r[c('ENLACE')])) cods[k] = 1; }); }
+  } catch (e) { /* si no se puede leer el sitio, quedan las que ya tienen registros */ }
+  R.filas.forEach(r => { if (r[R.i('ID_DICTADO')] === VIDEO_DIC && !/anulad/i.test(r[R.i('ESTADO')])) cods[r[R.i('CODIGO')]] = 1; });
+  return Object.keys(cods).sort();
+}
+function autoResumen_(cap, cod) {
+  const link = linkPub_('av=' + encodeURIComponent(cod));
+  return { id: AUTO_PRE + cod, codigo: cod, encuentro: 1, fecha: '', hora: '', horaFin: '', modalidad: 'Autoadministrada (video)', lugar: 'Virtual', servicios: sd_(cap.DESTINATARIOS),
+    organizador: 'Higiene y Seguridad', institucion: 's/d', disertantes: 'Belén Pellegrini', firmantes: cap.FIRMANTES || FIRMA_HYS, abre: '', cierra: '', link: link, qr: qrDe_(link),
+    linkInscripcion: '', qrInscripcion: '', cierreInscripcion: '', cupo: 'sin cupo', estado: sd_(cap.ESTADO), observaciones: 'Siempre disponible. Se mira el video (al menos el ' + Math.round(VIDEO_MIN * 100) + ' %) y se sigue con la evaluación o la constancia.', auto: true };
+}
+function autoTextoWa_(cap, cod) {
+  return ['*Capacitación de Higiene y Seguridad*', cap.NOMBRE, 'Modalidad: autoadministrada (la hacés cuando quieras, a tu ritmo)', '',
+    'Mirás el video, respondés la evaluación y descargás tu certificado. Para empezar solo necesitás tu DNI:', linkPub_('av=' + encodeURIComponent(cod)), '',
+    'Al abrir el link, la página puede tardar entre 10 y 30 segundos en cargar. Es normal: no la cierres.'].join('\n');
+}
+function autoLista_(R, nom, caps) {
+  const ciclo = cicloDe_(iso_(new Date())), hechos = {};
+  R.filas.forEach(r => { if (r[R.i('ID_DICTADO')] === VIDEO_DIC && !/anulad/i.test(r[R.i('ESTADO')]) && String(r[R.i('CICLO')]) === ciclo) { const k = r[R.i('CODIGO')]; hechos[k] = hechos[k] || {}; hechos[k][r[R.i('DNI')]] = 1; } });
+  return autoCodigos_(R).filter(cod => caps[cod] && !/inactiv|anulad|borrador/i.test(caps[cod].ESTADO || '')).map(cod => {
+    const x = autoResumen_(caps[cod], cod); x.nombre = nom[cod] || cod; x.inscriptos = 0; x.asistentes = Object.keys(hechos[cod] || {}).length;
+    x.ahora = 'Siempre abierta'; x.whatsapp = autoTextoWa_(caps[cod], cod); return x;
+  });
+}
+// Quién hizo (o está haciendo) una autoadministrada: todos los ciclos, del más reciente al más antiguo
+function autoInscriptos_(id) {
+  const cod = autoCod_(id), cap = capDe_(cod); if (!cap) return { ok: false, error: 'No existe la capacitación ' + cod + '.' };
+  const P = tabla_('PERSONAS'), R = tabla_('REGISTROS'), T = vistos_(), per = {};
+  P.filas.forEach(x => per[x[P.i('DNI')]] = obj_(P, x));
+  const desc = p => !p ? 's/d' : /estud/i.test(p.PUBLICO) ? sd_(p.CARRERA) + ' · ' + sd_(p.INSTITUCION) : /red/i.test(p.PUBLICO) ? sd_(p.SERVICIO) + ' · ' + sd_(p.ESTABLECIMIENTO) : sd_(p.PROFESION) + ' · ' + sd_(p.INSTITUCION);
+  const nVideos = Math.max(1, videosDe_(cod).length), gente = {};
+  const fila = (dni, ciclo) => { const k = dni + '|' + ciclo; if (!gente[k]) { const p = per[dni]; gente[k] = { doc: dni, ciclo: ciclo, nombre: p ? p.APELLIDOS + ', ' + p.NOMBRES : 's/d', publico: p ? sd_(p.PUBLICO) : 's/d', detalle: desc(p), correo: p ? p.CORREO : '', inicio: '', ultima: '', porcs: [], nota: '', aprobado: false, fecha: '', certificado: '' }; } return gente[k]; };
+  T.filas.forEach(x => { if (x[T.i('CODIGO')] !== cod) return; const g = fila(x[T.i('DNI')], String(x[T.i('CICLO')]));
+    g.porcs.push(num_(x[T.i('PORCENTAJE')])); const f = String(x[T.i('FECHA')] || ''), u = String(x[T.i('ACTUALIZADO')] || f);
+    if (!g.inicio || fechaHora_(f) < fechaHora_(g.inicio)) g.inicio = f; if (!g.ultima || fechaHora_(u) > fechaHora_(g.ultima)) g.ultima = u; });
+  R.filas.forEach(x => { if (x[R.i('ID_DICTADO')] !== VIDEO_DIC || x[R.i('CODIGO')] !== cod || /anulad/i.test(x[R.i('ESTADO')])) return;
+    const o = obj_(R, x), g = fila(o.DNI, String(o.CICLO || cicloDe_(isoDe_(o.FECHA)))), ap = o.TIPO !== 'Evaluación' || siNo_(o.APROBADO);
+    if (ap && !g.aprobado) { g.aprobado = true; g.fecha = dma_(isoDe_(o.FECHA)); g.nota = vacio_(o.NOTA) ? '' : String(o.NOTA); g.certificado = vacio_(o.ID_CERTIFICADO) ? '' : o.ID_CERTIFICADO; }
+    else if (!g.aprobado && !vacio_(o.NOTA)) g.nota = String(o.NOTA); });
+  const lista = Object.keys(gente).map(k => { const g = gente[k];
+    g.porc = g.porcs.length ? Math.round(g.porcs.reduce((t, v) => t + v, 0) / nVideos) : null; delete g.porcs;
+    g.estado = g.aprobado ? 'La completó' : g.nota !== '' ? 'Rindió sin aprobar' : (g.porc !== null && g.porc >= VIDEO_MIN * 100) ? 'Vio el video' : 'Mirando el video';
+    return g; }).sort((a, b) => b.ciclo.localeCompare(a.ciclo) || (fechaHora_(b.fecha || b.ultima) - fechaHora_(a.fecha || a.ultima)));
+  const ciclo = cicloDe_(iso_(new Date())), act = lista.filter(g => g.ciclo === ciclo);
+  return { ok: true, dictado: autoResumen_(cap, cod), auto: true, ciclo: ciclo, personas: lista, lista: [], sinInscripcion: [],
+    resumen: { completaron: act.filter(g => g.aprobado).length, enCurso: act.filter(g => !g.aprobado).length, total: act.length },
+    correos: act.map(g => g.correo).filter(correoOk_).filter((m, k, a) => a.indexOf(m) === k).join(', ') };
+}
 function vistos_() {
   const lib = SpreadsheetApp.getActive();
   if (!lib.getSheetByName('_VIDEOS_VISTOS')) {
