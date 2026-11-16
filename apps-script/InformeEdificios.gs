@@ -14,7 +14,7 @@
  * El documento queda en Drive › … › carpeta de informes de la red (INF_EDIF.CARPETA). El PDF se exporta cuando Belén da el visto bueno.
  * Usa los formatos de Informes.gs (infConfig_, infEst_, infCelda_, infTabla2_, infNotas_) y el logo de HySL del pie (DGM_LOGO_PIE).
  */
-const INF_EDIF = { JSON: '15tPk5797gDzwcT-DV5bV4LtFBcYkEVvr', CARPETA: '1utwg8StwNrmysye8lKvE3JVofr1ogt2P', PROP: 'INF_EDIF_DOC' };
+const INF_EDIF = { JSON: '1xkm5GfuqNGSfjRiidEYr__qmARQSZTCo', CARPETA: '1utwg8StwNrmysye8lKvE3JVofr1ogt2P', PROP: 'INF_EDIF_DOC' };
 
 function informeEdificios() {
   const idJson = INF_EDIF.JSON || PropertiesService.getScriptProperties().getProperty('INF_EDIF_JSON');
