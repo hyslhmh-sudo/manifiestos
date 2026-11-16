@@ -144,13 +144,13 @@ function informeEdificiosFotos() {
     const t = b.insertTable(b.getChildIndex(par), filas); t.setBorderWidth(0);
     L.forEach((x, i) => {
       const c = t.getCell(Math.floor(i / 2), i % 2); c.setWidth(238).setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(4).setPaddingRight(4);
-      const p = c.getChild(0).asParagraph(); p.setText(''); p.setAlignment(CEN);
-      try { const im = p.appendInlineImage(infEdifImg_(x.id)), w = im.getWidth(), h = im.getHeight(), k = Math.min(226 / w, 240 / h); im.setWidth(Math.round(w * k)).setHeight(Math.round(h * k)); }
+      const p = c.getChild(0).asParagraph(); p.setAlignment(CEN);   // la celda trae un espacio (Docs no admite texto vacío): la imagen va delante
+      try { const im = p.insertInlineImage(0, infEdifImg_(x.id)), w = im.getWidth(), h = im.getHeight(), k = Math.min(226 / w, 240 / h); im.setWidth(Math.round(w * k)).setHeight(Math.round(h * k)); }
       catch (e) { p.setText('(foto no disponible)'); }
       const cap = c.appendParagraph('Foto ' + (i + 1) + ' · ' + x.tema); infEst_(cap, 8, INF2.PATA, false); cap.setAlignment(CEN).setSpacingAfter(8).setLineSpacing(1.1);
       total++;
     });
-    if (L.length % 2) { const c = t.getCell(t.getNumRows() - 1, 1); c.getChild(0).asParagraph().setText(''); c.setWidth(238); }
+    if (L.length % 2) t.getCell(t.getNumRows() - 1, 1).setWidth(238);
     b.removeChild(par);
     doc.saveAndClose();
   }
