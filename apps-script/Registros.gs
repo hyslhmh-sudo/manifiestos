@@ -85,7 +85,9 @@ function regAnularCert_(cod, id, quien, motivo, excluir) {
 function regFotoMan_(cod, id, archivo, quien) {
   if (!archivo || !archivo.base64) return { ok: false, mensaje: 'Falta el archivo.' };
   const L = regLibro_(cod), M = regManifiestos_(L.ss, '1900-01-01').find(m => m.id === id); if (!M) return { ok: false, mensaje: 'No encontré ese manifiesto.' };
-  const url = guardarFoto_(L.E.carpeta, 'Fotos manifiestos', M.fecha.slice(0, 4), fechaPunto_(M.fecha) + ' - ' + nro12_(M.nro), 'data:' + (archivo.tipo || 'image/jpeg') + ';base64,' + String(archivo.base64).replace(/^data:[^,]+,/, ''));
+  // Hasta 5 fotos o un PDF (24/11/2026): archivo.mas trae las fotos 2 a 5; con varias queda una carpeta y se enlaza la carpeta (Codigo.gs › guardarFotos_)
+  const v = { base64: 'data:' + (archivo.tipo || 'image/jpeg') + ';base64,' + String(archivo.base64).replace(/^data:[^,]+,/, ''), mas: Array.isArray(archivo.mas) ? archivo.mas.slice(0, 4) : [] };
+  const url = guardarFoto_(L.E.carpeta, 'Fotos manifiestos', M.fecha.slice(0, 4), fechaPunto_(M.fecha) + ' - ' + nro12_(M.nro), v);
   if (!url) return { ok: false, mensaje: 'El archivo no se pudo leer.' };
   const nueva = o => { o = String(o || ''); const t = 'Foto: ' + url + ' (subida el ' + regHoy_() + (quien ? ' por ' + quien : '') + ')';
     return /Sin foto|En lote escaneado:[^·]*/.test(o) ? o.replace(/Sin foto|En lote escaneado:[^·]*/, t + ' ') : t + ' · ' + o; };
