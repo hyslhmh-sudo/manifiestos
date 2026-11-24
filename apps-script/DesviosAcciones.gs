@@ -36,6 +36,21 @@ const DAC = {
     'establecen que los residuos se separan en el lugar donde se generan, se acondicionan en recipientes adecuados y permanecen contenidos hasta su retiro. ' +
     'La Ley N.º 19.587 de Higiene y Seguridad en el Trabajo y su Decreto Reglamentario N.º 351/79 exigen mantener condiciones de trabajo que protejan al personal que manipula los residuos.'
 };
+// Apertura de las notas (modelo del 11/11/2026: «Me dirijo a usted {{MOTIVO}}.»): el motivo empieza con un conector.
+// Si el texto no trae uno («a los fines de…», «con motivo de…»), se agrega «a los fines de».
+function dacConector_(m) {
+  m = String(m || '').trim();
+  if (!m) return '';
+  if (/^(a fin |a los fines|a efectos|con motivo|con el objeto|en relación|en respuesta|por medio|para )/i.test(m)) return m;
+  return 'a los fines de ' + m;
+}
+// Si la nota no cita antecedentes, se quita el renglón «Antecedentes:» (en vez de escribir «no se registran»)
+function dacQuitarAntecedentes_(body) {
+  const r = body.findText('Antecedentes: \\{\\{ANTECEDENTES\\}\\}');
+  let e = r && r.getElement();
+  while (e && e.getType() !== DocumentApp.ElementType.PARAGRAPH) e = e.getParent();
+  if (e) e.removeFromParent();
+}
 const DAC_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 // ------------------------------------------------------------------ LECTURA
@@ -145,6 +160,20 @@ function dacProximoNro_(LS, tipo, anio) {
 }
 function dacCarpeta_(padre, nombre) { const it = padre.getFoldersByName(nombre); return it.hasNext() ? it.next() : padre.createFolder(nombre); }
 function dacSinCursiva_(par) { try { par.editAsText().setItalic(false); } catch (e) {} }
+// Plazo técnico de la nota según la gravedad más alta de sus desvíos: Crítica → inmediato · Alta → 30 · Media → 90 · Baja → 180 días
+// Sin gravedad (s/d) queda «[30 / 90 / 180]» para completar a mano.
+function dacPlazoNota_(body, desvios) {
+  const n = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const orden = ['critica', 'alta', 'media', 'baja'], dias = { alta: 30, media: 90, baja: 180 };
+  const g = orden.find(o => desvios.some(d => n(d.GRAVEDAD) === o));
+  if (!g) return;
+  const r = body.findText('\\[30 / 90 / 180\\]');
+  if (!r) return;
+  let par = r.getElement(); while (par && par.getType() !== DocumentApp.ElementType.PARAGRAPH) par = par.getParent();
+  if (g === 'critica') body.replaceText('\\[30 / 90 / 180\\] días, contados desde', 'inmediato, a partir de');
+  else body.replaceText('\\[30 / 90 / 180\\]', String(dias[g]));
+  if (par) dacSinCursiva_(par);
+}
 
 // desvios: lista de objetos de dacDatos_().L · t: tipo de TIPOS_ACCION · x: { destinatario, asunto, nro, fundamento, motivo, pedido, antecedentes }
 function dacCrearNota_(desvios, t, x, LS) {
@@ -161,7 +190,8 @@ function dacCrearNota_(desvios, t, x, LS) {
   const mapa = { NRO_NOTA: (sinNro ? 's/n' : nro) + '/' + anio, CODIGO: tipo.texto + ' ' + (sinNro ? 's/n' : nro) + '/' + anio, SITIO: 'HMH', PROBLEMATICA: 'Residuos',
     FECHA: hoy.getDate() + ' de ' + DAC_MESES[hoy.getMonth()] + ' de ' + anio,
     DEST_NOMBRE: dest.nombre && !/^s\/d/.test(dest.nombre) ? dest.nombre : '[Nombre y apellido]', DEST_CARGO: dest.cargo || etiqueta, DEST_DEPENDENCIA: dest.dependencia || DAC.DEPENDENCIA,
-    ASUNTO: asunto, ANTECEDENTES: limpio_(x.antecedentes) || 'no se registran', MOTIVO: limpio_(x.motivo) || t.motivo || '[motivo de la nota]' };
+    ASUNTO: asunto, ANTECEDENTES: limpio_(x.antecedentes) || 'no se registran', MOTIVO: dacConector_(limpio_(x.motivo) || t.motivo) || '[a los fines de… / con motivo de…]' };
+  if (!limpio_(x.antecedentes)) dacQuitarAntecedentes_(body);
   [body, doc.getHeader(), doc.getFooter()].forEach(p => { if (p) Object.keys(mapa).forEach(k => p.replaceText('\\{\\{' + k + '\\}\\}', String(mapa[k]).replace(/\$/g, '\\$'))); });
 
   // Hechos: un párrafo de introducción y un punto por desvío (con enlace a la foto)
@@ -202,6 +232,7 @@ function dacCrearNota_(desvios, t, x, LS) {
     });
     if (pedidos.length < 2 && li2) li2.removeFromParent();
   }
+  dacPlazoNota_(body, desvios);   // plazo técnico según la gravedad
   doc.saveAndClose();
   const url = copia.getUrl();
 

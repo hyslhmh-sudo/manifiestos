@@ -59,7 +59,7 @@ function pspNota_(x) {
   const mapa = { NRO_NOTA: (sinNro ? 's/n' : nro) + '/' + anio, FECHA: hoy.getDate() + ' de ' + DAC_MESES[hoy.getMonth()] + ' de ' + anio,
     DEST_NOMBRE: dest.nombre && !/^s\/d/.test(dest.nombre) ? dest.nombre : '[Nombre y apellido]', DEST_CARGO: dest.cargo || PSP.DESTINO, DEST_DEPENDENCIA: dest.dependencia || DAC.DEPENDENCIA,
     ASUNTO: asunto, ANTECEDENTES: antecedentes,
-    MOTIVO: 'informar las intervenciones de control de plagas que no pudieron resolverse por no contar con los biocidas adecuados' + (epp ? ', y reiterar que el personal operativo del Servicio continúa sin la provisión de elementos de protección personal (EPP) y ropa de trabajo' : '') };
+    MOTIVO: dacConector_('informar las intervenciones de control de plagas que no pudieron resolverse por no contar con los biocidas adecuados' + (epp ? ', y reiterar que el personal operativo del Servicio continúa sin la provisión de elementos de protección personal (EPP) y ropa de trabajo' : '')) };
   [body, doc.getHeader(), doc.getFooter()].forEach(p => { if (p) Object.keys(mapa).forEach(k => p.replaceText('\\{\\{' + k + '\\}\\}', String(mapa[k]).replace(/\$/g, '\\$'))); });
   const txt = el => { try { el.editAsText().setItalic(false).setForegroundColor(PSP.COLOR); } catch (e) {} return el; };
   const parDe = r => { let e = r && r.getElement(); while (e && e.getType() !== DocumentApp.ElementType.PARAGRAPH && e.getType() !== DocumentApp.ElementType.LIST_ITEM) e = e.getParent(); return e; };

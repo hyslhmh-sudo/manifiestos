@@ -160,7 +160,7 @@ function incnNota_(x) {
   quitar(/^S \/ D$/);
   try { doc.getFootnotes().forEach(fn => { if (fn.getFootnoteContents().findText('905/2015')) fn.removeFromParent(); }); } catch (e) {}
   const pm = parDe(body.findText('Me dirijo a usted'));
-  if (pm) { pm.setText('Me dirijo a usted a fin de ' + motivo + '.'); pm.editAsText().setFontFamily('Plus Jakarta Sans').setFontSize(10.5).setBold(false).setItalic(false).setForegroundColor(INCN.COLOR); }
+  if (pm) { pm.setText('Me dirijo a usted a fin de ' + motivo + '.'); pm.editAsText().setFontFamily('Plus Jakarta Sans').setFontSize(10).setBold(false).setItalic(false).setForegroundColor(INCN.COLOR); }
   const parrafo = (idx, t, o) => { const p = body.insertParagraph(idx, t); p.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY).setLineSpacing(1.5).setSpacingAfter(o && o.i ? 3 : 6); txt(p);
     if (o && o.i) p.setIndentStart(18).setIndentFirstLine(0).editAsText().setItalic(true); if (o && o.b) p.editAsText().setBold(true); return p; };
 
