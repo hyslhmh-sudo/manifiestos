@@ -216,10 +216,11 @@ function tcCelda(eje, c, X) {
     t = L[0].t + (L.length > 1 ? ' (y ' + (L.length - 1) + ' más)' : '');
     h = L[0].h; tip = L.map(x => '• ' + x.t).join('\n'); }
   else if (conHosp) { n = 'gr'; t = 'Incluido en ' + c.cod; }
+  else if (eje === '5' && c.cod === 'HMH' && RADT && RADT.ok && !(X.has['5'] && X.has['5'][c.k])) { n = 'gr'; t = 'Incluido en HZT'; }   // 24/11/2026: Radiología HZT/HMH es una sola unidad (dosímetros y habilitaciones se cargan en HZT)
   else if (eje === '4' && c.caps) { n = 'gr'; t = 'No corresponde'; }
   else if (X.has[eje] && X.has[eje][c.k]) { n = 'ok'; t = (X.okT[eje] || {})[c.k] || 'Al día'; }
   else { n = 'gr'; t = eje === '5' && !RADT ? 'Cargando…' : eje === '7' && !INCT ? 'Sin avisos' : eje === '8' && !TC.sin ? 'Cargando…' : eje === '9' && !CAPT ? 'Cargando…' : eje === '12' && !(typeof ERG !== 'undefined' && ERG) ? 'Cargando…' : eje === '11' && !tcGesListo() ? 'Cargando…' : 's/d'; }
-  if (!L.length && !c.caps) h = ({ '1': '#ficha/' + encodeURIComponent(c.cod), '2': '#ficha/' + encodeURIComponent(c.cod) + '/agua', '4': '#cocper/' + encodeURIComponent(c.cod), '5': '#radest/' + encodeURIComponent(c.cod), '7': '#incest/' + encodeURIComponent(c.cod), '10': '#docest/' + encodeURIComponent(c.cod) })[eje] || h;
+  if (!L.length && !c.caps) h = ({ '1': '#ficha/' + encodeURIComponent(c.cod), '2': '#ficha/' + encodeURIComponent(c.cod) + '/agua', '4': '#cocper/' + encodeURIComponent(c.cod), '5': '#radest/' + encodeURIComponent(t === 'Incluido en HZT' ? 'HZT' : c.cod), '7': '#incest/' + encodeURIComponent(c.cod), '10': '#docest/' + encodeURIComponent(c.cod) })[eje] || h;
   return '<td' + (TC.ver && TC.ver !== c.k ? ' class="dim"' : '') + '><a class="tcCel ' + n + '" href="' + h + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><span class="ms" aria-hidden="true">' + icon[n] + '</span><span>' + esc(t) + '</span></a></td>';
 }
 
