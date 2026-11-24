@@ -10,6 +10,10 @@
 // Las decisiones quedan en la hoja REVISION_UBIC (se crea sola). Respaldo sin GitHub: en esa hoja se elige ESTADO con la lista, y el menú
 // Sistema HyS › Incendio arma la lista para SOMI y aplica los «Movido».
 // Entra por Incendio.gs › incPortal_ (p_inc_ubic, p_inc_ubic_guardar, p_inc_ubic_movido, p_inc_ubic_lista).
+// 24/11/2026 (pedido de Belén: «es lento; necesito una tabla, ver las fotos si accedo y aceptar de a uno o de varios a la vez»):
+//   p_inc_ubic_guardar acepta también varios extintores juntos (x.ids) con decision «queda», «borrar» o «movido»: lee las hojas una sola
+//   vez y escribe todo junto. Devuelve cómo quedó cada uno (rev) para que el portal no tenga que volver a leer toda la lista.
+//   No hace falta tocar Incendio.gs (la acción es la misma).
 
 const INCU = {
   HOJA: 'REVISION_UBIC',
@@ -42,19 +46,23 @@ function incuListar_() {
     .map(e => { const r = R.reg[e.ID] || null;
       return { ID: e.ID, NRO: limpio_(e.NRO_EXTINTOR), PLANTA: limpio_(e.PLANTA), SECTOR: limpio_(e.SECTOR), UBICACION: limpio_(e.UBICACION), TIPO: limpio_(e.TIPO), AGENTE: limpio_(e.AGENTE), KG: limpio_(e.CAPACIDAD_KG), INV: limpio_(e.NRO_INVENTARIO),
         foto: incuFoto_(e.FOTO_PANORAMICA), fotoUrl: limpio_(e.FOTO_PANORAMICA),
-        rev: r ? { ESTADO: r.ESTADO, A_NRO: limpio_(r.A_NRO), A_PLANTA: limpio_(r.A_PLANTA), A_SECTOR: limpio_(r.A_SECTOR), A_UBICACION: limpio_(r.A_UBICACION), NOTA: limpio_(r.NOTA), DECIDIDO: r.DECIDIDO || '', MOVIDO: r.MOVIDO || '' } : null }; });
+        rev: incuRev_(r) }; });
   const c = k => ext.filter(e => e.rev && e.rev.ESTADO === k).length;
   return { ok: true, ext: ext, plantas: incPlantas_(INCU.EST), resumen: { total: ext.length, sinRevisar: ext.filter(e => !e.rev).length, quedan: c('Queda'), mover: c('Mover (pendiente)'), movidos: c('Movido') },
     libro: pInc_().getUrl() + '#gid=' + R.sh.getSheetId() };
 }
 
-// Decisión: «queda», «mover» (con destino) o «borrar» (vuelve a sin revisar)
+// Cómo quedó un extintor en REVISION_UBIC, con el mismo formato que usa incuListar_ (para devolverlo al portal)
+const incuRev_ = r => r ? { ESTADO: r.ESTADO, A_NRO: limpio_(r.A_NRO), A_PLANTA: limpio_(r.A_PLANTA), A_SECTOR: limpio_(r.A_SECTOR), A_UBICACION: limpio_(r.A_UBICACION), NOTA: limpio_(r.NOTA), DECIDIDO: incISO_(r.DECIDIDO) || '', MOVIDO: incISO_(r.MOVIDO) || '' } : null;
+
+// Decisión: «queda», «mover» (con destino) o «borrar» (vuelve a sin revisar). Con x.ids (lista) va en lote: «queda», «borrar» o «movido».
 function incuGuardar_(x, quien) {
+  if (Array.isArray(x.ids)) return incuLote_(x.ids, x.decision, quien);
   const D = incDatos_(), e = D.ext.find(z => z.ID === x.id); if (!e) return { ok: false, mensaje: 'Ese extintor ya no está en la lista.' };
-  const R = incuRegistro_(), r = R.reg[x.id], hoy = incFecha_(incHoy_());
-  if (x.decision === 'borrar') { if (r) R.sh.deleteRow(r.fila); return { ok: true }; }
+  const R = incuRegistro_(), r = R.reg[x.id], hoy = incFecha_(incHoy_()), rev = {};
+  if (x.decision === 'borrar') { if (r) R.sh.deleteRow(r.fila); rev[x.id] = null; return { ok: true, rev: rev }; }
   if (r && r.ESTADO === 'Movido') return { ok: false, mensaje: 'Ese extintor ya figura como movido.' };
-  const v = { ID: e.ID, NRO: limpio_(e.NRO_EXTINTOR), PLANTA: limpio_(e.PLANTA), SECTOR: limpio_(e.SECTOR), UBICACION: limpio_(e.UBICACION), ESTADO: 'Queda', A_NRO: '', A_PLANTA: '', A_SECTOR: '', A_UBICACION: '', NOTA: limpio_(x.nota), DECIDIDO: hoy, MOVIDO: '', QUIEN: quien };
+  const v = incuFila_(e, quien, hoy, x.nota);
   if (x.decision === 'mover') {
     Object.assign(v, { ESTADO: 'Mover (pendiente)', A_NRO: limpio_(x.a_nro), A_PLANTA: limpio_(x.a_planta), A_SECTOR: limpio_(x.a_sector), A_UBICACION: limpio_(x.a_ubic) });
     if (!v.A_PLANTA || !v.A_SECTOR || !v.A_UBICACION) return { ok: false, mensaje: 'Para mover, completá a qué planta, a qué sector y dónde exactamente.' };
@@ -62,18 +70,53 @@ function incuGuardar_(x, quien) {
   }
   const fila = INCU.H.map(h => v[h]);
   if (r) R.sh.getRange(r.fila, 1, 1, fila.length).setValues([fila]); else R.sh.appendRow(fila);
-  return { ok: true };
+  rev[x.id] = incuRev_(v); return { ok: true, rev: rev };
+}
+// Fila base de REVISION_UBIC para un extintor (decisión «Queda»)
+function incuFila_(e, quien, hoy, nota) {
+  return { ID: e.ID, NRO: limpio_(e.NRO_EXTINTOR), PLANTA: limpio_(e.PLANTA), SECTOR: limpio_(e.SECTOR), UBICACION: limpio_(e.UBICACION), ESTADO: 'Queda', A_NRO: '', A_PLANTA: '', A_SECTOR: '', A_UBICACION: '', NOTA: limpio_(nota), DECIDIDO: hoy, MOVIDO: '', QUIEN: quien };
+}
+
+// Varios a la vez (24/11/2026). Los que no se pueden se informan en «errores» y el resto se guarda igual.
+function incuLote_(ids, decision, quien) {
+  ids = (ids || []).map(limpio_).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+  if (!ids.length) return { ok: false, mensaje: 'No elegiste ningún extintor.' };
+  if (['queda', 'borrar', 'movido'].indexOf(decision) < 0) return { ok: false, mensaje: 'En lote solo se puede marcar «Queda», «Ya lo movieron» o «Deshacer».' };
+  const R = incuRegistro_(), rev = {}, errores = [], hoy = incFecha_(incHoy_());
+  if (decision === 'movido') {
+    ids.forEach(id => { const x = incuMovido_(id, quien, R); if (x.ok) rev[id] = x.rev; else errores.push(id + ': ' + x.mensaje); });
+    return { ok: true, rev: rev, errores: errores, n: Object.keys(rev).length };
+  }
+  if (decision === 'borrar') {
+    const filas = [];
+    ids.forEach(id => { const r = R.reg[id]; if (r) filas.push(r.fila); rev[id] = null; });
+    filas.sort((a, b) => b - a).forEach(f => R.sh.deleteRow(f));   // de abajo hacia arriba, para no correr las filas
+    return { ok: true, rev: rev, errores: errores, n: ids.length };
+  }
+  // «queda»: los que ya tienen fila se reescriben; los nuevos se agregan todos juntos al final
+  const D = incDatos_(), porId = {}; D.ext.forEach(e => { if (e.ID) porId[e.ID] = e; });
+  const nuevas = [];
+  ids.forEach(id => { const e = porId[id], r = R.reg[id];
+    if (!e) return errores.push(id + ': ya no está en la lista.');
+    if (r && r.ESTADO === 'Movido') return errores.push('Puesto ' + (limpio_(e.NRO_EXTINTOR) || 's/d') + ': ya figura como movido.');
+    const v = incuFila_(e, quien, hoy, r ? r.NOTA : ''), fila = INCU.H.map(h => v[h]);
+    if (r) R.sh.getRange(r.fila, 1, 1, fila.length).setValues([fila]); else nuevas.push(fila);
+    rev[id] = incuRev_(v); });
+  if (nuevas.length) R.sh.getRange(Math.max(R.sh.getLastRow(), 5) + 1, 1, nuevas.length, INCU.H.length).setValues(nuevas);
+  return { ok: true, rev: rev, errores: errores, n: Object.keys(rev).length };
 }
 
 // «Ya lo movieron»: aplica el destino al extintor (queda anotado en CAMBIOS) y la etiqueta pasa a pendiente sola
-function incuMovido_(id, quien) {
-  const R = incuRegistro_(), r = R.reg[id]; if (!r || r.ESTADO !== 'Mover (pendiente)') return { ok: false, mensaje: 'Ese extintor no está para mover.' };
+function incuMovido_(id, quien, Rya) {
+  const R = Rya || incuRegistro_(), r = R.reg[id]; if (!r || r.ESTADO !== 'Mover (pendiente)') return { ok: false, mensaje: 'Ese extintor no está para mover.' };
   const y = { ID: id, ESTABLECIMIENTO: INCU.EST, PLANTA: r.A_PLANTA, SECTOR: r.A_SECTOR, UBICACION: r.A_UBICACION };
   if (limpio_(r.A_NRO)) y.NRO_EXTINTOR = limpio_(r.A_NRO);
   const res = incExtGuardar_(y, quien + ' · revisión de ubicaciones'); if (!res.ok) return res;
+  const hoy = incFecha_(incHoy_());
   R.sh.getRange(r.fila, INCU.H.indexOf('ESTADO') + 1).setValue('Movido');
-  R.sh.getRange(r.fila, INCU.H.indexOf('MOVIDO') + 1).setValue(incFecha_(incHoy_()));
-  return { ok: true };
+  R.sh.getRange(r.fila, INCU.H.indexOf('MOVIDO') + 1).setValue(hoy);
+  r.ESTADO = 'Movido'; r.MOVIDO = hoy;
+  return { ok: true, rev: incuRev_(r) };
 }
 
 // Lista para SOMI o Mantenimiento (HTML para imprimir o guardar en PDF; no se manda por correo)
