@@ -417,17 +417,19 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
 // «Lo que tenés pendiente» en «Mi establecimiento» del ESTABLECIMIENTO, solo para quien se llama como PARA (vacío = todos los que tienen
 // el MODULO; Higiene y Seguridad la ve siempre). PLAZO y PLAZO_2 (segundo plazo, opcional). ESTADO = Hecha la saca de la lista.
 // Si MODULO = Incendio, muestra cuántos extintores hay cargados en el lugar (SITIO vacío = todo el establecimiento) y cuántos se cargaron desde la fecha CREADO.
+// 24/11/2026 (Belén, 2.ª parte): REGISTRO también puede ser un extintor, hidrante o pulsador («Extintor 57» = puesto, o el ID EXT-HMH-055) o un
+// siniestro («Siniestro <N.º CH>»): «Ver y revisar» abre su ficha con el aviso. Toda tarea se cierra desde «Mi establecimiento» con «✅ Listo».
 // 24/11/2026 (Belén): PARA admite varias personas separadas por coma (ej.: «Melani, Macarena»). REGISTRO (opcional) apunta a un registro
 // cargado para que lo revisen (ej.: «Manifiesto 133074»): en «Mis registros» ese registro aparece primero, marcado, con «Corregir» y
 // «Está correcto como se cargó». Cualquiera de las dos cierra la tarea (ESTADO = Hecha) y deja en OBSERVACIONES quién, cuándo y qué hizo.
 const TH_H = ['ID', 'ESTABLECIMIENTO', 'SITIO', 'PARA', 'MODULO', 'TAREA', 'DETALLE', 'PLAZO', 'PLAZO_2', 'ESTADO', 'CREADO', 'OBSERVACIONES', 'REGISTRO'];
-const TH_IR = { incendio: 'incendio', residuos: 'fotos', agua: 'agua_alta', plagas: 'plagas_intervencion', documentos: 'documentos' };
+const TH_IR = { incendio: 'incendio', residuos: 'fotos', agua: 'agua_alta', plagas: 'plagas_intervencion', documentos: 'documentos', siniestros: 'siniestros', accidentes: 'siniestros' };
 function thHoja_() {
   const ss = pBC_(); let sh = ss.getSheetByName('TAREAS_HYS'); if (sh) return sh;
   sh = ss.insertSheet('TAREAS_HYS');
   encabezar_(sh, 'Tareas que asigna Higiene y Seguridad', 'Una fila por tarea. Aparece como «Urgente» en «Lo que tenés pendiente» de Mi establecimiento del ESTABLECIMIENTO, para la persona de PARA (vacío = todos los que tienen el MODULO). PLAZO_2: segundo plazo (opcional). Para sacarla: ESTADO = Hecha (no borrar la fila).', TH_H,
-    ['Lo pone el sistema o a mano (TH-001…).', 'Código (HMH, HZT…).', 'Lugar (opcional): como en SITIOS.', 'Nombre de la persona (opcional; varias, separadas por coma).', 'Incendio · Residuos · Agua · Plagas · Documentos', 'Qué hay que hacer (corto).', 'Más detalle (opcional).', 'dd/mm/aaaa', 'dd/mm/aaaa (opcional)', 'Abierta · Hecha', 'dd/mm/aaaa', 'Al cerrarla, el sistema anota quién, cuándo y qué hizo.', 'Registro a revisar (opcional). Ej.: Manifiesto 133074']);
-  lista_(sh, 4, 500, ['Incendio', 'Residuos', 'Agua', 'Plagas', 'Documentos']); lista_(sh, 9, 500, ['Abierta', 'Hecha']);
+    ['Lo pone el sistema o a mano (TH-001…).', 'Código (HMH, HZT…).', 'Lugar (opcional): como en SITIOS.', 'Nombre de la persona (opcional; varias, separadas por coma).', 'Incendio · Residuos · Agua · Plagas · Documentos · Siniestros', 'Qué hay que hacer (corto).', 'Más detalle (opcional).', 'dd/mm/aaaa', 'dd/mm/aaaa (opcional)', 'Abierta · Hecha', 'dd/mm/aaaa', 'Al cerrarla, el sistema anota quién, cuándo y qué hizo.', 'Registro a revisar (opcional). Ej.: Manifiesto 133074 · Extintor 57 (puesto) o EXT-HMH-055 · Siniestro <N.º CH>']);
+  lista_(sh, 4, 500, ['Incendio', 'Residuos', 'Agua', 'Plagas', 'Documentos', 'Siniestros']); lista_(sh, 9, 500, ['Abierta', 'Hecha']);
   sh.getRange(6, 8, 500, 2).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 11, 500, 1).setNumberFormat('dd/mm/yyyy');
   return sh;
 }
@@ -455,8 +457,8 @@ function thPendientes_(G, P) {
 function thApunta_(ref, r) {
   const s = sinTildes_(ref).toLowerCase(); if (!s || !r) return false;
   if (r.tipo && s.indexOf(String(r.tipo).toLowerCase()) !== 0 && s.indexOf(String(r.id || '').toLowerCase()) < 0) return false;
-  const num = String(r.nro || (r.datos && (r.datos.nro || r.datos.ncert)) || '').trim();
-  return (num && new RegExp('(^|\\D)' + num + '(\\D|$)').test(s)) || (r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
+  const num = String(r.nro || (r.datos && (r.datos.nro || r.datos.ncert)) || '').trim(), numRe = num.toLowerCase().replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+  return (num && new RegExp('(^|\\D)' + numRe + '(\\D|$)').test(s)) || (r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
 }
 // Cerrar una tarea desde «Mi establecimiento»: x = { id, resultado ('Está correcto como se cargó' | 'Lo corrigió'), comentario }
 function thCerrar_(cod, x, quien) {
