@@ -109,7 +109,9 @@ function miRed_(d) {
     case 'm_form2': return conLock_(() => miForm2_(cod, x, quien));   // Formulario 2 firmado: personal designado y capacitado (29/10/2026)
     case 'm_plaga_aviso': return conLock_(() => x.CASO_EDITAR ? regEditar_(cod, 'PLAGAS_CASOS', 'CASO', x.CASO_EDITAR, maestra, x, quien) : miPlagaAviso_(cod, x, quien));
     case 'm_plaga_registro': return conLock_(() => corr('plaga', () => miPlagaRegistro_(cod, x, quien)));
-    case 'm_accidente': return conLock_(() => typeof accGuardar_ === 'function' ? accGuardar_(cod, x, quien) : { ok: false, mensaje: 'El módulo de accidentes no está instalado.' });   // Modulo4.gs
+    case 'm_accidente': return conLock_(() => { const res = typeof accGuardar_ === 'function' ? accGuardar_(cod, x, quien) : { ok: false, mensaje: 'El módulo de accidentes no está instalado.' };   // Modulo4.gs
+      if (res && res.ok && x.op === 'corregir' && x._thCerrar) { try { thCerrar_(cod, { id: x._thCerrar, resultado: 'Lo corrigió' }, quien); } catch (e) {} }   // tarea de HyS que pedía revisar el siniestro (24/11/2026)
+      return res; });
     case 'm_documento': if (typeof docSoloPdf_ === 'function') { const ep = docSoloPdf_(x.archivo); if (ep) return { ok: false, mensaje: ep }; } return conLock_(() => x.ID_EDITAR ? regEditar_(cod, 'DOCUMENTOS_EST', 'ID', x.ID_EDITAR, maestra, x, quien) : miDocumento_(cod, x, quien));
     case 'm_registros': return regListar_(cod, maestra, Math.min(12, Math.max(1, Number(x.meses) || 1)));
     case 'm_foto_man': return conLock_(() => regFotoMan_(cod, String(x.id || ''), x.archivo, quien));
@@ -419,6 +421,7 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
 // Si MODULO = Incendio, muestra cuántos extintores hay cargados en el lugar (SITIO vacío = todo el establecimiento) y cuántos se cargaron desde la fecha CREADO.
 // 24/11/2026 (Belén, 2.ª parte): REGISTRO también puede ser un extintor, hidrante o pulsador («Extintor 57» = puesto, o el ID EXT-HMH-055) o un
 // siniestro («Siniestro <N.º CH>»): «Ver y revisar» abre su ficha con el aviso. Toda tarea se cierra desde «Mi establecimiento» con «✅ Listo».
+// Al guardar la corrección del equipo (i_ext_editar) o del siniestro (m_accidente op corregir), la tarea se cierra sola con «Lo corrigió».
 // 24/11/2026 (Belén): PARA admite varias personas separadas por coma (ej.: «Melani, Macarena»). REGISTRO (opcional) apunta a un registro
 // cargado para que lo revisen (ej.: «Manifiesto 133074»): en «Mis registros» ese registro aparece primero, marcado, con «Corregir» y
 // «Está correcto como se cargó». Cualquiera de las dos cierra la tarea (ESTADO = Hecha) y deja en OBSERVACIONES quién, cuándo y qué hizo.

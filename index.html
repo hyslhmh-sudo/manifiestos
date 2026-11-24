@@ -1758,7 +1758,7 @@ function guardarAccidente() {
   if (archPeso(F.archivos) > 30e6) return miErr('Los archivos pesan demasiado juntos. Cargá algunos ahora y el resto con «Corregir datos».');
   const sede = String(F.SEDE || (sinSedes()[0] || [''])[0]).split('|');
   const d = Object.assign({}, F, { DNI: dni, NRO_SINIESTRO: nro, VIENE_DE: String(F.VIENE_DE || '').replace(/\s+/g, '').toUpperCase(), ESTABLECIMIENTO: sede[0] || SES.est, SITIO: sede[1] || '', archivos: (F.archivos || []).slice() });
-  if (F._sinCorr) { d.op = 'corregir'; d.ID_SINIESTRO = F._sinCorr; }
+  if (F._sinCorr) { d.op = 'corregir'; d.ID_SINIESTRO = F._sinCorr; const thT = thDeSin(sinDe(F._sinCorr)); if (thT) d._thCerrar = thT.id; }   // tarea de HyS que pedía revisarlo (24/11/2026)
   ['SEDE', '_f', '_sinCorr', 'archivosYa', 'foto', 'fotoNombre'].forEach(k => delete d[k]);
   SIN = null; encolarMi('m_accidente', d, (F._sinCorr ? 'Corrección del siniestro ' : 'Siniestro ') + nro + ' (' + d.ESTABLECIMIENTO + ')');
 }
@@ -1922,6 +1922,12 @@ async function thIr(id) {
   }
   if (tipo === 'registro') { F = null; REGF = t.tema === 'residuos' ? 'Residuos' : 'Todos'; return registros(true); }
   const a = ACT[TH_IRMAP[t.ir]]; return a ? a({ dataset: {} }) : inicio();
+}
+// Cierra la tarea al guardar la corrección del equipo (resultado «Lo corrigió»). Si falla, la tarea queda abierta y se cierra con «Listo».
+async function thCerrarAlCorregir(t) {
+  if (!t) return false;
+  try { const x = await api('m_th_hecha', { id: t.id, resultado: 'Lo corrigió', quien: SES.persona.nombre }); if (x && x.ok) { miCargar(true); return true; } } catch (e) {}
+  return false;
 }
 function thListo(id) {
   const t = thBuscar(id); if (!t) return;
@@ -2370,9 +2376,11 @@ async function incEditGuardar() {
   INC_FOT.forEach(f => { if (/^data:image\//.test(F[f[0]] || '')) d.fotos[f[0]] = F[f[0]]; });
   const b = document.querySelector('[data-act="incEditGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   const antes = ESPERA_MS; if (Object.keys(d.fotos).length) ESPERA_MS = 180000;
+  const thT = thDeExt(F._e);   // tarea de HyS que pedía revisar este equipo: se cierra sola al guardar (24/11/2026)
   try { const r = await api('i_ext_editar', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    const thC = await thCerrarAlCorregir(thT);
     F = null; INCX = null; vista('form');
-    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.' + (thC ? '<br>La tarea «' + esc(thT.tarea) + '» quedó cerrada.' : '') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
 }
 // Marcar resuelto el problema abierto de un extintor (Incendio.gs › i_resolver): se dejan de mandar los recordatorios y se avisa el cierre
@@ -2439,9 +2447,11 @@ async function incEditGuardarEq() {
   const fot = incFotosDe('FOTO_PANORAMICA').filter(x => /^data:image\//.test(x)); if (fot.length) d.fotos.FOTO_PANORAMICA = fot;
   const b = document.querySelector('[data-act="incEditGuardar"]'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
   const antes = ESPERA_MS; if (fot.length) ESPERA_MS = 180000;
+  const thT = thDeExt(F._e);   // tarea de HyS que pedía revisar este equipo: se cierra sola al guardar (24/11/2026)
   try { const r = await api('i_ext_editar', d); ESPERA_MS = antes; if (!r.ok) throw new Error(r.mensaje || 'No se pudo guardar.');
+    const thC = await thCerrarAlCorregir(thT);
     F = null; INCX = null; vista('form');
-    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
+    $('app').innerHTML = '<div class="notice ok" style="margin-top:24px"><b>Cambios guardados.</b><br>Higiene y Seguridad los va a verificar.' + (thC ? '<br>La tarea «' + esc(thT.tarea) + '» quedó cerrada.' : '') + '</div><div class="menu"><button class="big main" data-act="incLista"><b>Volver a la lista</b></button><button class="big" data-act="inicio"><b>Volver al inicio</b></button></div>'; bar(null);
   } catch (x) { ESPERA_MS = antes; if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } miErr(x.message === 'tiempo' ? 'El sistema tardó demasiado. Probá de nuevo.' : x.message); }
 }
 function formIncAlta() {
