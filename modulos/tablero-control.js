@@ -31,6 +31,9 @@ const tcGesListo = () => typeof GESD !== 'undefined' && !!GESD && !!GESD.ok;
 const tcEsHys = r => /hys|higiene|pellegrini|bel[eé]n/i.test(String(r || ''));
 const tcPlanGes = () => tcGesListo() ? GESD.acciones.filter(a => a.abierta || a.verificar).map(a => ({ id: a.ID, cod: a.ESTABLECIMIENTO, donde: a.SITIO, limite: String(a.FECHA_LIMITE || '').slice(0, 10), vencida: !!a.vencida,
   abierta: !!a.abierta, verificar: !!a.verificar, sinRespuesta: !!a.sinRespuesta, estado: a.ESTADO, que: a.ACCION, modulo: a.MODULO, resp: (typeof gesTieneResp === 'function' ? gesTieneResp(a) : !!a.RESPONSABLE) ? a.RESPONSABLE : '' })) : [];
+// 24/11/2026: ¿ya llegaron los datos del eje? Mientras no, el eje dice «Cargando…» (antes decía «Al día» y el Plan de acción «0 / 0» los primeros segundos)
+const tcEjeListo = e => ({ '5': !!RADT, '7': !!INCT, '8': !!TC.sin, '9': !!CAPT, '11': tcGesListo(), '12': typeof ERG === 'undefined' || !!ERG })[e] !== false;
+const tcCorto = (t, n) => { t = String(t || ''); return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; };
 const tcMesTxt = m => { const n = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return m ? n[Number(String(m).slice(5, 7)) - 1] + ' ' + String(m).slice(0, 4) : ''; };
 
 function tcEstilos() {
@@ -166,18 +169,18 @@ function tcHallazgos(ctx) {
     tcPlanGes().forEach(a => { const k = tcCol(a.cod, a.donde), d = tcDias(a.limite), x = pc[k] = pc[k] || { t: 0, v: 0, p: 0, sr: 0, ver: 0, eleva: 0, hys: 0 };
       if (a.verificar) { x.ver++; return; }
       x.t++; if (depA(a) === 'hys') x.hys++; if (!a.resp) x.sr++; if (a.sinRespuesta) x.eleva++;
-      if (a.vencida) x.v++; else if (d != null && d >= 0 && d <= 7) x.p++;
-      if (!a.vencida && d != null && d >= 0) add('11', k, null, 'Vence ' + a.id + ': ' + String(a.que || '').slice(0, 70), '#ges', depA(a), a.limite); });
-    Object.keys(pc).forEach(k => { const x = pc[k], dep = x.hys >= x.t / 2 ? 'hys' : 'inst';
-      hay('11', k, x.t ? x.t + (x.t > 1 ? ' acciones abiertas en plazo' : ' acción abierta en plazo') : 'Sin acciones abiertas');
-      if (x.v) add('11', k, 'er', x.v + (x.v > 1 ? ' acciones vencidas' : ' acción vencida') + ' de ' + x.t, '#ges', dep);
-      if (x.p) add('11', k, 'wa', x.p + (x.p > 1 ? ' acciones vencen' : ' acción vence') + ' esta semana', '#ges', dep);
+      // 24/11/2026: una línea por acción vencida o que vence esta semana (antes una sola línea «2 acciones vencidas de 12», que el gráfico por eje contaba como 1)
+      if (a.vencida) { x.v++; add('11', k, 'er', 'Vencida ' + a.id + ': ' + tcCorto(a.que, 70), '#ges', depA(a), a.limite); }
+      else if (d != null && d >= 0 && d <= 7) { x.p++; add('11', k, 'wa', 'Vence esta semana ' + a.id + ': ' + tcCorto(a.que, 60), '#ges', depA(a), a.limite); }
+      else if (d != null && d >= 0) add('11', k, null, 'Vence ' + a.id + ': ' + tcCorto(a.que, 70), '#ges', depA(a), a.limite); });   // solo para «Próximos 30 días»
+    Object.keys(pc).forEach(k => { const x = pc[k], enPlazo = x.t - x.v;
+      hay('11', k, enPlazo ? enPlazo + (enPlazo > 1 ? ' acciones abiertas en plazo' : ' acción abierta en plazo') : 'Sin acciones abiertas');
       if (x.sr) add('11', k, 'wa', x.sr + (x.sr > 1 ? ' acciones sin responsable' : ' acción sin responsable'), '#ges', 'hys');
       if (x.eleva) add('11', k, 'av', x.eleva + ' elevada(s) a la Dirección sin respuesta', '#ges', 'inst');
       if (x.ver) add('11', k, 'av', x.ver + (x.ver > 1 ? ' acciones hechas' : ' acción hecha') + ': verificar la eficacia', '#ges', 'hys'); });
   }
   ((TB.auditorias || {}).paraVerificar || []).forEach(a => add('11', a.cod, 'wa', 'Auditoría interna para verificar · ' + a.id, '#audr/' + encodeURIComponent(a.id), 'hys'));
-  cols.forEach(c => { if (!(has['11'] && has['11'][c.k])) hay('11', c.k, 'Sin acciones abiertas'); });
+  if (tcGesListo()) cols.forEach(c => { if (!(has['11'] && has['11'][c.k])) hay('11', c.k, 'Sin acciones abiertas'); });   // sin el Plan de acción todavía: «Cargando…»
 
   // 12 · Ergonomía (09/11/2026): puestos y medidas del Protocolo de Ergonomía (Res. SRT 886/15), con los datos de modulos/ergonomia.js (ERG)
   if (typeof ERG !== 'undefined' && ERG && typeof ergResumen === 'function') {
@@ -245,8 +248,8 @@ function tcPintar(ctx) {
   tcGuardarDia(TB, conNivel);
   const enVer = x => !TC.ver || x.col === TC.ver;
   const V = conNivel.filter(enVer), nEr = V.filter(x => x.n === 'er').length, nWa = V.filter(x => x.n === 'wa').length;
-  const estEje = eje => { const L = conNivel.filter(x => x.eje === eje && enVer(x)); return L.some(x => x.n === 'er') ? 'er' : L.some(x => x.n === 'wa') ? 'wa' : 'ok'; };
-  const ejesEr = TC_EJES.filter(e => estEje(e[0]) === 'er'), alDia = TC_EJES.filter(e => estEje(e[0]) === 'ok').length;
+  const estEje = eje => { const L = conNivel.filter(x => x.eje === eje && enVer(x)); return L.some(x => x.n === 'er') ? 'er' : L.some(x => x.n === 'wa') ? 'wa' : tcEjeListo(eje) ? 'ok' : 'ld'; };
+  const ejesEr = TC_EJES.filter(e => estEje(e[0]) === 'er'), alDia = TC_EJES.filter(e => estEje(e[0]) === 'ok').length, nCarga = TC_EJES.filter(e => estEje(e[0]) === 'ld').length;
   const urg = V.filter(x => x.n === 'er' || x.n === 'wa'), dHys = urg.filter(x => x.dep === 'hys').length, dInst = urg.length - dHys;
   const plan = tcPlanGes().filter(a => a.abierta && (!TC.ver || tcCol(a.cod, a.donde) === TC.ver)), planV = plan.filter(a => a.vencida).length;   // 09/11/2026: del Plan de acción (#ges)
   const colTxt = TC.ver ? (cols.find(c => c.k === TC.ver) || {}).nombre : '';
@@ -254,26 +257,29 @@ function tcPintar(ctx) {
   // 1) La frase del día
   const frase = '<section class="card tcFrase" style="margin-top:14px"><span class="ms" aria-hidden="true" style="color:' + (nEr ? '#B4361F' : nWa ? '#8A5200' : '#1E6B42') + '">' + (nEr ? 'report' : nWa ? 'schedule' : 'verified') + '</span><div style="flex:1 1 420px">' +
     '<p style="font-size:18px;font-weight:700;color:var(--az)">' + (TB.vacio ? 'Armando el tablero…' : nEr ? (colTxt ? colTxt + ': ' : 'Hoy hay ') + nEr + (nEr > 1 ? ' temas urgentes' : ' tema urgente') + ' en ' + ejesEr.length + (ejesEr.length > 1 ? ' ejes: ' : ' eje: ') + ejesEr.map(e => e[1]).join(', ') + '.' : nWa ? (colTxt ? colTxt + ': ' : '') + 'Nada urgente. Hay ' + nWa + ' tema(s) para atender pronto.' : (colTxt ? colTxt + ': ' : '') + 'Todo al día con los datos cargados.') + '</p>' +
-    '<p class="mu" style="font-size:14px;margin-top:4px">' + (urg.length ? dHys + ' de lo urgente y próximo depende de HyS y ' + dInst + ' de recursos institucionales. ' : '') + alDia + ' de ' + TC_EJES.length + ' ejes al día.</p></div></section>';
+    '<p class="mu" style="font-size:14px;margin-top:4px">' + (urg.length ? dHys + ' de lo urgente y próximo depende de HyS y ' + dInst + ' de recursos institucionales. ' : '') + alDia + ' de ' + TC_EJES.length + ' ejes al día' + (nCarga ? ' (' + nCarga + ' todavía cargando)' : '') + '.</p></div></section>';
   // 2) Números clave
   const kpi = (h, t, v, s, col, uf) => '<a class="kpi2" href="' + h + '"' + (uf ? ' data-tcdep="' + uf + '"' : '') + '><span>' + t + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b><small>' + s + '</small></a>';
   const nums = '<div class="tb5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:14px">' +
     kpi('#tcHoy', 'URGENTE', nEr, 'vencido o con riesgo: resolver primero', nEr ? '#B4361F' : '') + kpi('#tcHoy', 'PRONTO', nWa, 'vence en 30 días o hay que verificar', nWa ? '#8A5200' : '') +
-    kpi('#tcMapa', 'EJES AL DÍA', alDia + ' / ' + TC_EJES.length, 'sin nada urgente ni próximo', '#1E6B42') + kpi('#ges', 'PLAN DE ACCIÓN', planV + ' / ' + plan.length, 'acciones vencidas de las abiertas', planV ? '#B4361F' : '') +
+    kpi('#tcMapa', 'EJES AL DÍA', alDia + ' / ' + TC_EJES.length, 'sin nada urgente ni próximo', '#1E6B42') + (tcGesListo() ? kpi('#ges', 'PLAN DE ACCIÓN', planV + ' / ' + plan.length, 'acciones vencidas de las abiertas', planV ? '#B4361F' : '') : kpi('#ges', 'PLAN DE ACCIÓN', '…', 'cargando el Plan de acción', '#5B6B73')) +
     kpi('#tcHoy', 'DEPENDE DE HyS', dHys, 'de lo urgente y próximo · el resto, de la institución', '', 'hys') + '</div>';
   // 3) Mapa ejes × establecimientos
   const mapa = '<section class="card" id="tcMapa" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h2 style="font-size:17px">Mapa de la gestión · ' + TC_EJES.length + ' ejes × establecimientos</h2><span class="mu peq">Cada casilla dice qué pasa · tocala para ir al detalle</span></div>' +
     '<div class="tcMapa"><table><thead><tr><th>Eje</th>' + cols.map(c => '<th' + (TC.ver === c.k ? ' class="sel"' : '') + ' title="' + esc(c.nombre) + '">' + (c.caps ? esc(c.t) : '<a href="#ficha/' + encodeURIComponent(c.cod) + '">' + esc(c.t) + '</a>') + '</th>').join('') + '</tr></thead><tbody>' +
-    TC_EJES.map(e => { const s = estEje(e[0]); return '<tr><td class="eje"><a href="' + e[3] + '"><span class="ms" aria-hidden="true">' + e[2] + '</span><span>' + e[0] + ' · ' + esc(e[1]) + '<small style="color:' + ({ er: '#B4361F', wa: '#8A5200', ok: '#1E6B42' }[s]) + '">' + ({ er: 'Urgente', wa: 'Pronto', ok: 'Al día' }[s]) + '</small></span></a></td>' + cols.map(c => tcCelda(e[0], c, X)).join('') + '</tr>'; }).join('') +
+    TC_EJES.map(e => { const s = estEje(e[0]); return '<tr><td class="eje"><a href="' + e[3] + '"><span class="ms" aria-hidden="true">' + e[2] + '</span><span>' + e[0] + ' · ' + esc(e[1]) + '<small style="color:' + ({ er: '#B4361F', wa: '#8A5200', ok: '#1E6B42', ld: '#5B6B73' }[s]) + '">' + ({ er: 'Urgente', wa: 'Pronto', ok: 'Al día', ld: 'Cargando…' }[s]) + '</small></span></a></td>' + cols.map(c => tcCelda(e[0], c, X)).join('') + '</tr>'; }).join('') +
     '</tbody></table></div><div class="tcLey"><span><span class="ms" aria-hidden="true" style="color:#B4361F">error</span>Urgente: vencido o con riesgo</span><span><span class="ms" aria-hidden="true" style="color:#8A5200">schedule</span>Pronto: vence en 30 días o a verificar</span><span><span class="ms" aria-hidden="true" style="color:#2E5E70">info</span>Aviso</span><span><span class="ms" aria-hidden="true" style="color:#1E6B42">check_circle</span>Al día</span><span><span class="ms" aria-hidden="true" style="color:#5B6B73">remove</span>s/d, no corresponde o se ve en el hospital</span></div></section>';
   // 4) Hoy, primero esto
   const ejeN = k => (TC_EJES.find(e => e[0] === k) || [k, ''])[1], colN = k => { const c = cols.find(z => z.k === k); return c ? (c.caps ? c.t : c.cod) : 'Red'; };
   let lista = urg.concat(V.filter(x => x.n === 'av')).sort((a, b) => TC_NIV[a.n] - TC_NIV[b.n] || (a.fecha || '9').localeCompare(b.fecha || '9'));
-  const cuentaDep = { '': lista.length, hys: lista.filter(x => x.dep === 'hys').length, inst: lista.filter(x => x.dep !== 'hys').length };
+  // 24/11/2026: los botones cuentan lo urgente y pronto, igual que el número «DEPENDE DE HyS» y la frase de arriba; los avisos van aparte, al final de la lista
+  const urgL = lista.filter(x => x.n !== 'av'), nAv = lista.length - urgL.length;
+  const cuentaDep = { '': urgL.length, hys: urgL.filter(x => x.dep === 'hys').length, inst: urgL.filter(x => x.dep !== 'hys').length };
   if (TC.dep) lista = lista.filter(x => TC.dep === 'hys' ? x.dep === 'hys' : x.dep !== 'hys');
   const verN = TC.todos ? lista.length : 6;
   const hoyHtml = '<section class="card tcHoy" id="tcHoy" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><h2 style="font-size:17px">Hoy, primero esto</h2>' + (lista.length > 6 ? '<button class="link" id="tcTodos">' + (TC.todos ? 'Ver menos' : 'Ver las ' + lista.length) + '</button>' : '') + '</div>' +
     '<div class="tcCols" role="group" aria-label="Filtrar por de quién depende">' + [['', 'Todo'], ['hys', 'Depende de HyS'], ['inst', 'Institución']].map(d => '<button data-tcd="' + d[0] + '" class="' + (TC.dep === d[0] ? 'on' : '') + '" aria-pressed="' + (TC.dep === d[0]) + '">' + d[1] + ' (' + cuentaDep[d[0]] + ')</button>').join('') + '</div>' +
+    (nAv ? '<span class="mu peq">Los números cuentan lo urgente y pronto. Al final de la lista van además ' + nAv + (nAv > 1 ? ' avisos' : ' aviso') + '.</span>' : '') +
     (lista.length ? lista.slice(0, verN).map(x => '<a class="fila" href="' + x.h + '"><span class="ms" aria-hidden="true" style="color:' + ({ er: '#B4361F', wa: '#8A5200', av: '#2E5E70' }[x.n]) + '">' + (TC_EJES.find(e => e[0] === x.eje) || [])[2] + '</span><span style="flex:1;min-width:0"><b>' + esc(colN(x.col)) + ' · ' + esc(x.t) + '</b><small>' + ({ er: 'Urgente', wa: 'Pronto', av: 'Aviso' }[x.n]) + ' · ' + x.eje + ' · ' + esc(ejeN(x.eje)) + (x.fecha ? ' · ' + fechaTxt(x.fecha) : '') + '</small><i style="color:' + (x.dep === 'hys' ? 'var(--az)' : 'var(--pa)') + '">' + (x.dep === 'hys' ? 'Depende de HyS' : 'Depende de la institución') + '</i></span><span class="ms" aria-hidden="true" style="color:var(--pa)">chevron_right</span></a>').join('')
       : '<div class="mu">Nada pendiente con los datos cargados.</div>') + '</section>';
   // 5) Próximos 30 días
@@ -304,7 +310,7 @@ function tcPintar(ctx) {
   const acc = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><a class="btn sec" href="' + NOTA_URL + '" target="_blank" rel="noopener">Nueva nota ↗</a><a class="btn sec" href="' + SEG_URL + '" target="_blank" rel="noopener">Envío y respuesta ↗</a><a class="btn sec" href="' + REC_URL + '" target="_blank" rel="noopener">Nota recibida ↗</a><a class="btn sec" href="#notas">Notas enviadas y recibidas</a></div>';
   const pie = '<div class="tcPie"><img src="https://hyslhmh-sudo.github.io/manifiestos/desvios/logo-hysl.png" alt="Higiene y Seguridad Laboral · Hospitales más seguros para las personas"></div>';
 
-  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (TB.vacio ? ' · cargando datos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR')) + '</span></div>' +
+  marco('#inicio', '<div class="cab"><div><span class="mu peq">Inicio</span><h1>Tablero de control</h1><span class="mu peq">' + new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (TB.vacio ? ' · cargando datos…' : ' · datos al ' + new Date(TB.actualizado).toLocaleString('es-AR') + (TC.act && Date.parse(TB.actualizado) < TC.act ? ' · <b>actualizando…</b>' : '')) + '</span></div>' +
     '<div class="filtros" style="align-items:center"><div class="tcCols" role="group" aria-label="Ver un establecimiento">' + [{ k: '', t: 'Toda la red' }].concat(cols).map(c => '<button data-tcv="' + esc(c.k) + '" class="' + (TC.ver === c.k ? 'on' : '') + '" aria-pressed="' + (TC.ver === c.k) + '">' + esc(c.caps ? c.t.replace(' (Rawson)', '') : c.t) + '</button>').join('') + '</div><button class="btn sec" id="tbAct">Actualizar</button></div></div>' +
     frase + nums + '<div class="tcGrid"><div class="tcMain">' + mapa + '</div><div class="tcSide">' + hoyHtml + agHtml + '</div></div>' + tend + acc + pie);
   document.querySelectorAll('[data-tcv]').forEach(b => b.onclick = () => { TC.ver = b.dataset.tcv; inicio(); });
@@ -312,6 +318,8 @@ function tcPintar(ctx) {
   document.querySelectorAll('[data-tcdep]').forEach(a => a.onclick = e => { e.preventDefault(); TC.dep = a.dataset.tcdep; inicio(); setTimeout(() => { const l = $('tcHoy'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); });
   document.querySelectorAll('a[href="#tcHoy"],a[href="#tcMapa"]').forEach(a => a.onclick = e => { e.preventDefault(); const l = $(a.getAttribute('href').slice(1)); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   if ($('tcTodos')) $('tcTodos').onclick = () => { TC.todos = !TC.todos; inicio(); };
-  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); TC.rad = TC.inc = TC.sinPidio = TC.cap = false; if (CAPT) CAPT.calculado = ''; inicio(true); };
+  // 24/11/2026: «Actualizar» también vuelve a leer el Plan de acción y Ergonomía, y la fecha dice «actualizando…» hasta que llegan los datos nuevos
+  $('tbAct').onclick = () => { CAMBIO_RES = true; refrescarRes(); TC.rad = TC.inc = TC.sinPidio = TC.cap = TC.ges = false; TC.act = Date.now(); if (CAPT) CAPT.calculado = ''; if (typeof GES_T !== 'undefined') GES_T = 0;
+    if (typeof ergCargar === 'function') ergCargar(true).then(() => { if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); }).catch(() => {}); inicio(true); };
 }
 const sinTil = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
