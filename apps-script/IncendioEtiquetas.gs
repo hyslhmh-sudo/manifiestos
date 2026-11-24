@@ -13,6 +13,8 @@
 // Así no hace falta tocar ninguna carga (portal, Mi establecimiento, MIPyV, planilla): el estado sale solo.
 // Entra por Incendio.gs › incPortal_ (p_inc_etiq, p_inc_etiq_hoja, p_inc_etiq_marcar). Respaldo sin GitHub: menú Sistema HyS › Incendio.
 // Usa QrLib.gs (qrcode-generator 1.4.4, Kazuhiko Arase, licencia MIT).
+// 24/11/2026 (pedido de Belén): hidrantes y pulsadores de alarma también llevan QR. Una sola etiqueta por equipo (no tienen chapa baliza):
+// ?q=HMH-H001 (HID-HMH-001) y ?q=HMH-P001 (PUL-HMH-001). En la hoja A4 van primero los pares de extintores y después las de los equipos.
 
 const INCQ = {
   HOJA: 'ETIQUETAS_QR',
@@ -31,7 +33,8 @@ function incqLugar_(s, nomEst) {
   return s.SITIO;
 }
 const incqPlanta_ = p => { p = limpio_(p); return /^única$/i.test(p) ? 'Planta única' : p; };
-const incqCodigo_ = id => String(id || '').replace(/^EXT-/i, '');   // EXT-HZT-005 → HZT-005
+// EXT-HZT-005 → HZT-005 · HID-HMH-001 → HMH-H001 · PUL-HMH-001 → HMH-P001
+const incqCodigo_ = id => { const m = /^(HID|PUL)-([A-Z]+)-(\d+)$/i.exec(String(id || '')); return m ? m[2] + '-' + (/^HID/i.test(m[1]) ? 'H' : 'P') + m[3] : String(id || '').replace(/^EXT-/i, ''); };
 
 function incqHoja_() {
   const ss = pInc_(); let sh = ss.getSheetByName(INCQ.HOJA); if (sh) return sh;
@@ -44,7 +47,7 @@ function incqHoja_() {
 
 // Datos impresos de un extintor (lo que va en la etiqueta)
 function incqDatosExt_(e, s, nomEst) {
-  return { ID: e.ID, COD: incqCodigo_(e.ID), EST: e.ESTABLECIMIENTO, SITIO: e.SITIO, LUGAR: incqLugar_(s, nomEst), NRO: limpio_(e.NRO_EXTINTOR) || 's/d',
+  return { ID: e.ID, COD: incqCodigo_(e.ID), EQ: incEq_(e), EST: e.ESTABLECIMIENTO, SITIO: e.SITIO, LUGAR: incqLugar_(s, nomEst), NRO: incEqNro_(e) || 's/d',
     TIPO: limpio_(e.TIPO) || 's/d', AGENTE: limpio_(e.AGENTE) || 's/d', KG: limpio_(e.CAPACIDAD_KG) || 's/d', INV: limpio_(e.NRO_INVENTARIO) || 's/d',
     PLANTA: incqPlanta_(e.PLANTA) || 's/d', SECTOR: limpio_(e.SECTOR) || 's/d', UBICACION: limpio_(e.UBICACION) };
 }
@@ -56,7 +59,7 @@ function incqListar_() {
   const lugares = [], ext = [];
   D.sit.filter(incqAlcance_).forEach(s => {
     const l = D.ext.filter(e => e.ID && e.ESTABLECIMIENTO === s.ESTABLECIMIENTO && sinTildes_(e.SITIO) === sinTildes_(s.SITIO) && !/baja/i.test(e.ESTADO || ''))
-      .sort((a, b) => (Number(a.NRO_EXTINTOR) || 9999) - (Number(b.NRO_EXTINTOR) || 9999));
+      .sort((a, b) => INC_EQ.LISTA.indexOf(incEq_(a)) - INC_EQ.LISTA.indexOf(incEq_(b)) || (Number(a.NRO_EXTINTOR) || 9999) - (Number(b.NRO_EXTINTOR) || 9999));   // extintores, hidrantes y pulsadores
     const L = { cod: s.ESTABLECIMIENTO, sitio: s.SITIO, lugar: incqLugar_(s, nomEst), total: l.length, pend: 0, texto: 0, aldia: 0 };
     l.forEach(e => {
       const d = incqDatosExt_(e, s, nomEst), r = reg[e.ID]; let ant = null; try { ant = r && r.DATOS ? JSON.parse(r.DATOS) : null; } catch (x) {}
@@ -87,14 +90,19 @@ const incqEsc_ = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&'
 // Hoja A4 lista para imprimir (HTML completo). ids: extintores en el orden en que van; cada uno da 2 etiquetas (cilindro y chapa).
 function incqHojaHtml_(ids) {
   const T = incqListar_(), por = {}; T.ext.forEach(e => por[e.ID] = e);
-  const L = (ids || []).map(i => por[i]).filter(Boolean);
-  if (!L.length) return { ok: false, mensaje: 'Elegí al menos un extintor.' };
+  const L0 = (ids || []).map(i => por[i]).filter(Boolean), L = L0.filter(e => e.EQ === 'Extintor').concat(L0.filter(e => e.EQ !== 'Extintor'));   // primero los pares de extintores
+  if (!L.length) return { ok: false, mensaje: 'Elegí al menos un equipo.' };
   const kg = v => /^s\/d/.test(v) ? 'kg s/d' : String(v).replace('.', ',') + '\u00a0kg';
   const lab = (e, cual, cod) => '<div class="lab"><div class="lug">' + incqEsc_(e.LUGAR) + '</div><div class="mid">' + incqQrSvg_(INCQ.URL + cod) +
     '<div class="dat"><div class="cual">' + cual + '</div><div class="num">N.º\u00a0' + incqEsc_(e.NRO) + '</div><div class="t">' + incqEsc_(e.TIPO + ' · ' + e.AGENTE) + '</div><div class="t">' + kg(e.KG) + '</div><div class="i">Inv. ' + incqEsc_(e.INV) + '</div></div></div>' +
     '<div class="ub"><b>' + incqEsc_(e.PLANTA + ' · ' + e.SECTOR) + '</b>' + (e.UBICACION ? '<br>' + incqEsc_(e.UBICACION) : '') + '</div><img class="logo" src="' + INCQ.LOGO + '" alt=""></div>';
-  const pares = L.map(e => lab(e, 'EXTINTOR', e.COD) + lab(e, 'CHAPA BALIZA', e.COD + '-C'));
-  const hojas = []; for (let i = 0; i < pares.length; i += INCQ.POR_HOJA / 2) hojas.push('<div class="a4">' + pares.slice(i, i + INCQ.POR_HOJA / 2).join('') + '</div>');
+  // Hidrantes y pulsadores (24/11/2026): una etiqueta, con el tipo y sin agente, kilos ni inventario
+  const labEq = e => '<div class="lab"><div class="lug">' + incqEsc_(e.LUGAR) + '</div><div class="mid">' + incqQrSvg_(INCQ.URL + e.COD) +
+    '<div class="dat"><div class="cual">' + incqEsc_(INC_EQ[e.EQ].etiqueta) + '</div><div class="num">' + incqEsc_(e.NRO) + '</div><div class="t" style="white-space:normal">' + incqEsc_(e.TIPO) + '</div></div></div>' +
+    '<div class="ub"><b>' + incqEsc_(e.PLANTA + ' · ' + e.SECTOR) + '</b>' + (e.UBICACION ? '<br>' + incqEsc_(e.UBICACION) : '') + '</div><img class="logo" src="' + INCQ.LOGO + '" alt=""></div>';
+  const etiq = []; L.forEach(e => { if (e.EQ === 'Extintor') etiq.push(lab(e, 'EXTINTOR', e.COD), lab(e, 'CHAPA BALIZA', e.COD + '-C')); else etiq.push(labEq(e)); });
+  const hojas = []; for (let i = 0; i < etiq.length; i += INCQ.POR_HOJA) hojas.push('<div class="a4">' + etiq.slice(i, i + INCQ.POR_HOJA).join('') + '</div>');
+  const nExt = L.filter(e => e.EQ === 'Extintor').length, nEq = L.length - nExt;
   const css = '@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#eee}' +
     '.bar{position:sticky;top:0;background:#343A40;color:#fff;padding:10px 16px;font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;z-index:2}.bar button{font:inherit;font-weight:700;padding:8px 14px;border:0;border-radius:6px;background:#FF682C;color:#fff;cursor:pointer}' +
     '.a4{width:210mm;height:297mm;margin:10px auto;background:#fff;padding:12mm 0;display:grid;grid-template-columns:repeat(2,50mm);grid-template-rows:repeat(5,50mm);column-gap:25mm;row-gap:7mm;justify-content:center;align-content:start;page-break-after:always;break-after:page}' +
@@ -104,8 +112,8 @@ function incqHojaHtml_(ids) {
     '.dat{display:flex;flex-direction:column;line-height:1.15;min-width:0}.cual{font-size:6.5pt;font-weight:700;letter-spacing:.3px}.num{font-size:15pt;font-weight:700;line-height:1.05}.t{font-size:7pt;font-weight:700;white-space:nowrap}.i{font-size:7pt}' +
     '.ub{font-size:6.5pt;line-height:1.2;text-align:center;max-height:10.5mm;overflow:hidden}.ub b{font-size:7pt}.logo{width:38mm;margin:auto auto 0;filter:grayscale(1)}' +
     '@media print{body{background:#fff}.bar{display:none}.a4{margin:0}}';
-  const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas QR · extintores</title><style>' + css + '</style></head><body>' +
-    '<div class="bar"><span>' + L.length + (L.length > 1 ? ' extintores' : ' extintor') + ' · ' + (L.length * 2) + ' etiquetas · ' + hojas.length + (hojas.length > 1 ? ' hojas A4' : ' hoja A4') + '. Imprimí al 100 % (tamaño real), sin «Ajustar a la página».</span><button onclick="window.print()">🖨️ Imprimir</button></div>' +
+  const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas QR · extintores, hidrantes y pulsadores</title><style>' + css + '</style></head><body>' +
+    '<div class="bar"><span>' + [nExt ? nExt + (nExt > 1 ? ' extintores' : ' extintor') : '', nEq ? nEq + (nEq > 1 ? ' hidrantes o pulsadores' : ' hidrante o pulsador') : ''].filter(Boolean).join(' y ') + ' · ' + etiq.length + ' etiquetas · ' + hojas.length + (hojas.length > 1 ? ' hojas A4' : ' hoja A4') + '. Imprimí al 100 % (tamaño real), sin «Ajustar a la página».</span><button onclick="window.print()">🖨️ Imprimir</button></div>' +
     hojas.join('') + '</body></html>';
   return { ok: true, html: html, n: L.length };
 }
@@ -116,7 +124,7 @@ function incqMarcar_(ids, accion, quien) {
   const sh = incqHoja_(), filas = {}; pTabla_(sh, 1).forEach(r => filas[limpio_(r.v[0])] = r.fila);
   const hoy = incHoy_(); let n = 0;
   (ids || []).forEach(id => { const e = por[id]; if (!e) return;
-    const datos = JSON.stringify({ LUGAR: e.LUGAR, NRO: e.NRO, TIPO: e.TIPO, AGENTE: e.AGENTE, KG: e.KG, INV: e.INV, PLANTA: e.PLANTA, SECTOR: e.SECTOR, UBICACION: e.UBICACION });
+    const datos = JSON.stringify({ LUGAR: e.LUGAR, NRO: e.NRO, TIPO: e.TIPO, AGENTE: e.AGENTE, KG: e.KG, INV: e.INV, PLANTA: e.PLANTA, SECTOR: e.SECTOR, UBICACION: e.UBICACION, EQ: e.EQ });
     const f = filas[id], antes = f ? sh.getRange(f, 1, 1, INCQ.H.length).getValues()[0] : null;
     const fila = accion === 'nohace' && antes
       ? [id, e.LUGAR, e.NRO, datos, antes[4], antes[5], 'No hacía falta reimprimir (' + incTxt_(hoy) + ', ' + quien + ')' + (e.motivo ? ': ' + e.motivo : ''), incFecha_(hoy)]
@@ -132,7 +140,7 @@ function menuEtiquetasQR() {
   const T = incqListar_();
   const fila = (L, i) => '<tr><td><b>' + incqEsc_(L.lugar) + '</b><br><small>' + L.total + ' extintor(es) · ' + L.pend + ' pendiente(s)' + (L.texto ? ' · ' + L.texto + ' con texto viejo' : '') + '</small><div id="r' + i + '"></div></td>' +
     '<td style="white-space:nowrap"><button ' + (L.pend ? '' : 'disabled ') + 'onclick="hoja(' + i + ',\'pend\',this)">Pendientes</button> <button ' + (L.total ? '' : 'disabled ') + 'onclick="hoja(' + i + ',\'todas\',this)">Todas</button></td></tr>';
-  const html = '<div style="font-family:Arial,sans-serif;font-size:13px"><p>Hoja A4 de 10 etiquetas de 5 × 5 cm (cilindro + chapa baliza de cada extintor). Se abre en otra ventana para imprimir. Después de pegarlas, tocá «Ya las imprimí».</p>' +
+  const html = '<div style="font-family:Arial,sans-serif;font-size:13px"><p>Hoja A4 de 10 etiquetas de 5 × 5 cm (cilindro + chapa baliza de cada extintor; una sola para cada hidrante o pulsador). Se abre en otra ventana para imprimir. Después de pegarlas, tocá «Ya las imprimí».</p>' +
     '<table style="border-collapse:collapse;width:100%">' + T.lugares.map(fila).join('') + '</table>' +
     '<script>const L=' + JSON.stringify(T.lugares.map(L => ({ cod: L.cod, sitio: L.sitio, ids: T.ext.filter(e => e.EST === L.cod && e.SITIO === L.sitio).map(e => [e.ID, e.estado]) }))) + ';' +
     'function hoja(i,modo,b){const ids=L[i].ids.filter(x=>modo==="todas"||x[1]==="nueva"||x[1]==="cambio").map(x=>x[0]);b.disabled=true;' +

@@ -169,8 +169,9 @@ function maudIncendio_(cod) {
     return maudItem_({ id: limpio_(r.ID), tipo: 'Recorrida de seguridad', fecha: maudF_(r.FECHA), estado: limpio_(r.RESULTADO) || 's/d', res: { t: con ? 'Con novedades' : 'Sin novedades', n: con ? 'wa' : 'ok' },
       lugar: limpio_(r.SECTOR), quien: limpio_(r.QUIEN), obs: limpio_(r.OBSERVACIONES), extra: [['Puntos en «No»', limpio_(r.PUNTOS_NO)]] });
   });
-  const E = incLeer_('EXTINTORES', INC.H_EXT).filter(e => limpio_(e.ESTABLECIMIENTO) === cod && !/baja/i.test(e.ESTADO || '')), activos = E.length, M = {};
-  incLeer_('CONTROLES', INC.H_CON).filter(c => limpio_(c.ESTABLECIMIENTO) === cod && c.ESTADO !== 'Anulado' && /^\d{4}-\d{2}/.test(maudF_(c.FECHA))).forEach(c => {
+  const E = incLeer_('EXTINTORES', INC.H_EXT).filter(e => limpio_(e.ESTABLECIMIENTO) === cod && !/baja/i.test(e.ESTADO || '') && (typeof incEq_ !== 'function' || incEq_(e) === 'Extintor')), activos = E.length, M = {}, esExt = {};   // solo extintores (24/11/2026)
+  E.forEach(e => esExt[e.ID] = true);
+  incLeer_('CONTROLES', INC.H_CON).filter(c => limpio_(c.ESTABLECIMIENTO) === cod && c.ESTADO !== 'Anulado' && esExt[c.ID_EXTINTOR] && /^\d{4}-\d{2}/.test(maudF_(c.FECHA))).forEach(c => {
     const k = maudF_(c.FECHA).slice(0, 7), m = M[k] = M[k] || { ext: {}, prob: {}, quien: {} };
     m.ext[c.ID_EXTINTOR] = true; if (limpio_(c.PROBLEMAS) || /problema|no ok|falla/i.test(c.RESULTADO || '')) m.prob[c.ID_EXTINTOR] = true; if (c.QUIEN) m.quien[limpio_(c.QUIEN)] = true; });
   Object.keys(M).forEach(k => { const m = M[k], n = Object.keys(m.ext).length, p = Object.keys(m.prob).length;

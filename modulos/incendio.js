@@ -3,7 +3,12 @@
 // obligatorias (panorámica con el entorno, marbete y N.º de inventario). Alarma: 3 meses sin control.
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let INCT = null, INCD = {}, INCF = { sitio: '', ver: 'todos', q: '' }, INCNL = null;
-const INC_CARGA = { vencida: ['Vencida', 'er'], porvencer: ['Vence pronto', 'wa'], aldia: ['Al día', 'ok'], sd: ['Sin dato', 'gr'] };
+const INC_CARGA = { vencida: ['Vencida', 'er'], porvencer: ['Vence pronto', 'wa'], aldia: ['Al día', 'ok'], sd: ['Sin dato', 'gr'], nc: ['No corresponde', 'gr'] };
+// Hidrantes y pulsadores de alarma (24/11/2026, Incendio.gs › INC_EQ): mismo inventario, columna EQUIPO. Por ahora solo en el HMH.
+const incEqDe = e => (e && e.EQUIPO) || 'Extintor';
+const incEqCfg = (D, q) => ((D && D.listas && D.listas.equipos) || {})[q] || null;
+const incEqNroP = (D, e) => { const C = incEqCfg(D, incEqDe(e)); return C && e.NRO_EXTINTOR ? C.letra + '-' + e.NRO_EXTINTOR : e.NRO_EXTINTOR; };
+const incEqTxt = (D, e) => incEqDe(e) === 'Extintor' ? (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) : (incEqDe(e) === 'Hidrante' ? '🚒 Hidrante ' : '🔔 Pulsador ') + (incEqNroP(D, e) || e.ID);
 const INC_CTRL = { aldia: ['Al día', 'ok'], atrasado: ['Más de 3 meses', 'er'], sin: ['Sin control', 'gr'] };
 const incChip = (m, k, extra) => { const x = m[k] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (extra ? '<div class="mu peq">' + extra + '</div>' : ''); };
 const incChipEst = e => '<span class="chip ' + (/^Operativo/.test(e) ? 'ok' : /Baja/.test(e) ? 'gr' : /^s\/d/.test(e || 's/d') ? 'gr' : 'er') + '">' + esc(e || 's/d (revisar)') + '</span>';
@@ -34,9 +39,9 @@ async function incTablero(fresco) {
   if (!INCF.abiertos) INCF.abiertos = new Set(codigos.length === 1 ? codigos : []);
   const urg = avisos.filter(a => a.nivel === 'er').length;
   const tabTxt = k => (INC_TABS.find(t => t[0] === k) || [])[1] + '<span class="chip mini ' + (k === 'atencion' ? (urg ? 'er' : avisos.length ? 'wa' : 'ok') : 'gr') + '" id="icB_' + k + '" style="margin-left:6px' + (k === 'lugares' || k === 'atencion' ? '' : ';display:none') + '">' + (k === 'lugares' ? INCT.lugares.length : k === 'atencion' ? avisos.length : '') + '</span>';
-  marco('#inc', '<div class="cab"><div><span class="mu peq">7 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual. Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
+  marco('#inc', '<div class="cab"><div><span class="mu peq">7 · Protección contra incendios</span><h1>Extintores de la red</h1><span class="mu peq">Inventario, vencimientos y control mensual (en el HMH, también hidrantes y pulsadores de alarma). Red Trelew y HSST con sus CAPS · Dto. 351/79, cap. 18 y Anexo VII.</span></div>' +
     '<div class="filtros">' + incLink(INCT.libro, 'Planilla del módulo') + ' ' + incLink(INCT.carpeta, 'Carpeta de fotos') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
-    '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)', '', 'lugares') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '', 'notas') +
+    '<div class="tb5">' + kpi('Extintores', T.total, 'en uso (sin contar bajas)' + (T.equipos && (T.equipos.Hidrante.total || T.equipos.Pulsador.total) ? ' · además ' + T.equipos.Hidrante.total + ' hidrantes y ' + T.equipos.Pulsador.total + ' pulsadores' : ''), '', 'lugares') + kpi('Carga vencida', T.cargaVencida, T.porVencer + ' vencen en 30 días', T.cargaVencida ? 'var(--er)' : '', 'notas') +
     kpi('Con observación', T.conObs, 'sobrecarga, recargar o fuera de servicio', T.conObs ? 'var(--er)' : '', 'atencion') + kpi('Controlados', T.controlAlDia, (T.sinControl + T.controlAtrasado) + ' sin control en los últimos 3 meses', T.controlAtrasado ? 'var(--wa)' : '', 'atencion') +
     kpi('Prueba hidráulica', T.pruebaVencida, (T.pruebaPorVencer ? T.pruebaPorVencer + ' vencen en 30 días · ' : '') + T.pruebaSd + ' sin dato (revisar)', T.pruebaVencida ? 'var(--er)' : '', 'notas') + '</div>' +
     '<div class="tabs" role="tablist" style="margin:14px 0">' + INC_TABS.map(t => '<button class="btn ' + (t[0] === INCF.tab ? 'pri' : 'sec') + '" role="tab" data-ictab="' + t[0] + '" aria-selected="' + (t[0] === INCF.tab) + '">' + tabTxt(t[0]) + '</button>').join('') + '</div>' +
@@ -55,7 +60,7 @@ async function incTablero(fresco) {
   // ---- Pestaña «Por lugar»: un grupo plegable por establecimiento, con buscador y «solo con algo para resolver»
   const fila = L => { const r = L.r, h = '#incest/' + encodeURIComponent(L.cod) + '/' + encodeURIComponent(L.sitio);
     return '<tr class="cl" data-h="' + esc(h) + '"><td><b>' + esc(L.sitio) + '</b>' + (r.paraVerificar ? ' <span class="chip wa mini">' + r.paraVerificar + ' para verificar</span>' : '') + '<div class="mu peq">' + esc(L.tipo || '') + (L.obs ? ' · ' + esc(L.obs) : '') + '</div></td><td class="peq">' + esc(L.responsables || 's/d') + '</td>' +
-      '<td>' + (r.total || '<span class="mu">Sin cargar</span>') + '</td>' +
+      '<td>' + (r.total || '<span class="mu">Sin cargar</span>') + (r.equipos && r.equipos.Hidrante.total ? ' <span class="chip gr mini">🚒 ' + r.equipos.Hidrante.total + ' hidrantes</span>' : '') + (r.equipos && r.equipos.Pulsador.total ? ' <span class="chip gr mini">🔔 ' + r.equipos.Pulsador.total + ' pulsadores</span>' : '') + '</td>' +
       '<td>' + (r.cargaVencida ? '<span class="chip er">' + r.cargaVencida + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + (r.porVencer ? ' <span class="chip wa mini">' + r.porVencer + ' por vencer</span>' : '') + (r.cargaSd ? ' <span class="chip gr mini">' + r.cargaSd + ' sin dato</span>' : '') + '</td>' +
       '<td>' + (r.conObs ? '<span class="chip er">' + r.conObs + '</span>' : r.total ? '<span class="mu">0</span>' : '—') + '</td>' +
       '<td>' + (L.ultimoControl ? fechaTxt(L.ultimoControl) : '<span class="mu">Nunca</span>') + (r.controlAtrasado ? ' <span class="chip er mini">' + r.controlAtrasado + ' con más de 3 meses</span>' : '') + '</td></tr>'; };
@@ -154,30 +159,30 @@ async function incEst(a, fresco) {
   if (sitio !== undefined) INCF.sitio = sitio || '';
   if (!INCD[cod] || fresco) { cargando('#incest', 'Abriendo los extintores de ' + incNom(cod) + '…'); try { INCD[cod] = await api('p_inc_detalle', { cod: cod }, 180000); } catch (e) { return; } }
   const D = INCD[cod]; if (!D.ok) { delete INCD[cod]; return incNoInstalado('#incest', D); }
-  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'verificar' && incPend(e)) || (INCF.ver === 'falla' && e.falla) || (INCF.ver === 'porvencer' && (e.est.carga === 'porvencer' || e.est.prueba === 'porvencer')) || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
+  const q = sinTildesJs(INCF.q), L = D.extintores.filter(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (INCF.ver === 'todos' || (INCF.ver === 'eq_Extintor' && incEqDe(e) === 'Extintor') || (INCF.ver === 'eq_Hidrante' && incEqDe(e) === 'Hidrante') || (INCF.ver === 'eq_Pulsador' && incEqDe(e) === 'Pulsador') || (INCF.ver === 'vencida' && e.est.carga === 'vencida') || (INCF.ver === 'verificar' && incPend(e)) || (INCF.ver === 'falla' && e.falla) || (INCF.ver === 'porvencer' && (e.est.carga === 'porvencer' || e.est.prueba === 'porvencer')) || (INCF.ver === 'obs' && e.est.conObs) || (INCF.ver === 'sinctl' && e.est.control !== 'aldia') || (INCF.ver === 'baja' && e.est.baja))
     && (!q || sinTildesJs([e.ID, e.NRO_EXTINTOR, e.NRO_INVENTARIO, e.SECTOR, e.UBICACION, e.PLANTA].join(' ')).indexOf(q) >= 0));
   const ult = id => D.controles.find(c => c.ID_EXTINTOR === id);
   const fila = e => { const c = ult(e.ID), i = D.extintores.indexOf(e);
-    return '<tr><td><b>' + esc(e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) + '</b><div class="mu peq">' + esc(e.ID) + (INCF.sitio ? '' : ' · ' + esc(e.SITIO)) + '</div></td>' +
+    return '<tr><td><b>' + esc(incEqTxt(D, e)) + '</b><div class="mu peq">' + esc(e.ID) + (INCF.sitio ? '' : ' · ' + esc(e.SITIO)) + '</div></td>' +
       '<td>' + esc([e.PLANTA ? 'Planta ' + e.PLANTA.toLowerCase() : '', e.SECTOR].filter(Boolean).join(' · ')) + '<div class="mu peq">' + esc(e.UBICACION || '') + '</div></td>' +
-      '<td>' + esc([e.TIPO, e.AGENTE].filter(Boolean).join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : '') + '</div></td>' +
+      '<td>' + esc([e.TIPO, e.AGENTE].filter(x => x && x !== 'No corresponde').join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG && e.CAPACIDAD_KG !== 'No corresponde' ? e.CAPACIDAD_KG + ' kg' : '') + '</div></td>' +
       '<td class="peq">' + esc(e.NRO_INVENTARIO || 's/d') + '</td>' +
       '<td>' + incChip(INC_CARGA, e.est.carga, e.VTO_CARGA ? fechaTxt(e.VTO_CARGA) : '') + '</td>' +
       '<td>' + incChip(INC_CARGA, INC_CARGA[e.est.prueba] ? e.est.prueba : 'sd', /^\d{4}-/.test(e.PRUEBA_HIDRAULICA_VENCE || '') ? fechaTxt(e.PRUEBA_HIDRAULICA_VENCE) : '') + '</td>' +
       '<td>' + incChipEst(e.ESTADO) + '</td>' +
       '<td>' + incChip(INC_CTRL, e.est.control, e.ULTIMO_CONTROL ? fechaTxt(e.ULTIMO_CONTROL) + (e.RESULTADO_CONTROL ? ' · ' + esc(e.RESULTADO_CONTROL) : '') : '') +
-        (c || e.FOTO_PANORAMICA ? '<div class="peq">' + [incLink(e.FOTO_PANORAMICA, 'Panorámica'), incLink(e.FOTO_MARBETE, 'Marbete'), incLink(e.FOTO_INVENTARIO, 'Inventario')].filter(Boolean).join(' · ') + '</div>' : '') + '</td>' +
+        (c || e.FOTO_PANORAMICA ? '<div class="peq">' + [incLink(e.FOTO_PANORAMICA, incEqDe(e) === 'Extintor' ? 'Panorámica' : 'Fotos'), incLink(e.FOTO_MARBETE, 'Marbete'), incLink(e.FOTO_INVENTARIO, 'Inventario')].filter(Boolean).join(' · ') + '</div>' : '') + '</td>' +
       '<td class="peq" style="max-width:260px">' + esc(e.OBSERVACIONES || '') + (e.CAMBIOS ? '<div class="mu peq" style="margin-top:4px;white-space:pre-line" title="' + esc(e.CAMBIOS) + '"><b>Último cambio:</b> ' + esc(String(e.CAMBIOS).split('\n')[0]) + '</div>' : '') + '</td>' +
       '<td style="white-space:nowrap">' + (e.falla ? '<span class="chip er" title="' + esc(e.falla.PROBLEMAS || '') + '">Problema abierto desde ' + fechaTxt(e.falla.FECHA) + '</span><div class="mu peq" style="white-space:normal;max-width:220px">' + esc(e.falla.PROBLEMAS || '') + ' · ' + (e.falla.AVISOS || 0) + ' correo(s)</div><button class="btn pri" data-resol="' + i + '" style="margin:4px 0">Marcar resuelto</button><br>' : '') + (incPend(e) ? '<span class="chip wa">Para verificar</span><br><button class="btn pri" data-verif="' + esc(e.ID) + '" style="margin:4px 0">Verificar</button><br>' : '') +
         '<button class="btn pri" data-ctl="' + i + '">Control</button> <button class="btn sec" data-edit="' + i + '">Editar</button></td></tr>'; };
   const pend = L.filter(incPend);
-  const ver = [['todos', 'Todos'], ['falla', 'Con problema abierto'], ['verificar', 'Para verificar'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']];
+  const hayEq = D.extintores.some(e => incEqDe(e) !== 'Extintor'), ver = [['todos', 'Todos']].concat(hayEq ? [['eq_Extintor', 'Solo extintores'], ['eq_Hidrante', 'Solo hidrantes'], ['eq_Pulsador', 'Solo pulsadores']] : []).concat([ ['falla', 'Con problema abierto'], ['verificar', 'Para verificar'], ['vencida', 'Carga vencida'], ['porvencer', 'Vence en 30 días'], ['obs', 'Con observación'], ['sinctl', 'Sin control reciente'], ['baja', 'De baja']]);
   marco('#incest', '<div class="cab"><div><span class="mu peq"><a class="link" href="#inc">7 · Protección contra incendios</a> › ' + esc(cod) + '</span><h1>' + esc(INCF.sitio || incNom(cod)) + '</h1><span class="mu peq">' +
     L.length + ' extintor(es) en la lista · ' + D.extintores.filter(e => e.est.carga === 'vencida' && (!INCF.sitio || e.SITIO === INCF.sitio)).length + ' con la carga vencida · controlan: ' + esc(((D.sitios.find(s => s.SITIO === INCF.sitio) || D.sitios[0] || {}).RESPONSABLES_CONTROL) || 's/d') + '</span></div>' +
     '<div class="filtros"><label class="f">Lugar<select class="c" id="icSit"><option value="">Todos los lugares</option>' + D.sitios.map(s => '<option' + (s.SITIO === INCF.sitio ? ' selected' : '') + '>' + esc(s.SITIO) + '</option>').join('') + '</select></label>' +
     '<label class="f">Ver<select class="c" id="icVer">' + ver.map(v => '<option value="' + v[0] + '"' + (v[0] === INCF.ver ? ' selected' : '') + '>' + v[1] + '</option>').join('') + '</select></label>' +
     '<label class="f">Buscar<input class="c" id="icQ" value="' + esc(INCF.q) + '" placeholder="N.º, inventario, sector"></label>' +
-    (pend.length ? '<button class="btn pri" id="icVerTodo">Verificar los ' + pend.length + ' pendientes</button>' : '') + '<button class="btn sec" id="icNuevo">Agregar extintor</button><button class="btn sec" id="icAct">Actualizar</button></div></div>' +
+    (pend.length ? '<button class="btn pri" id="icVerTodo">Verificar los ' + pend.length + ' pendientes</button>' : '') + '<button class="btn sec" id="icNuevo">Agregar extintor</button>' + (((D.listas.equipos || {}).disponibles || []).indexOf('Hidrante') >= 0 ? '<button class="btn sec" id="icNuevoH">Agregar hidrante</button><button class="btn sec" id="icNuevoP">Agregar pulsador</button>' : '') + '<button class="btn sec" id="icAct">Actualizar</button></div></div>' +
     (pend.length ? '<div class="aviso">' + pend.length + (pend.length > 1 ? ' extintores fueron agregados o cambiados' : ' extintor fue agregado o cambiado') + ' desde la aplicación o MIPyV (nombre, lugar, planta, sector o ubicación). Revisalos: «Verificar» si está bien, o «Editar» para corregir (al guardar desde acá queda verificado).</div>' : '') +
     '<section class="card" id="icNotasEst" style="display:none"></section>' +
     '<section class="card tabla"><div style="overflow-x:auto"><table><thead><tr><th>Extintor</th><th>Ubicación</th><th>Tipo</th><th>N.º inventario</th><th>Carga</th><th>Prueba hidráulica</th><th>Estado</th><th>Último control</th><th>Observaciones</th><th></th></tr></thead><tbody>' +
@@ -189,6 +194,7 @@ async function incEst(a, fresco) {
   $('icQ').onchange = e => { INCF.q = e.target.value; recargar(); };
   $('icAct').onclick = () => incEst(encodeURIComponent(cod), true);
   $('icNuevo').onclick = () => incExtForm(D, null);
+  if ($('icNuevoH')) { $('icNuevoH').onclick = () => incEqForm(D, null, 'Hidrante'); $('icNuevoP').onclick = () => incEqForm(D, null, 'Pulsador'); }
   const verificar = async ids => { const r = await api('p_inc_verificar', { ids: ids }, 120000); if (!r.ok) return toast(r.mensaje || 'No se pudo verificar.'); incRecargar(D, r.verificados + (r.verificados === 1 ? ' extintor verificado.' : ' extintores verificados.')); };
   if ($('icVerTodo')) $('icVerTodo').onclick = () => verificar(pend.map(e => e.ID));
   document.querySelectorAll('[data-resol]').forEach(b => b.onclick = () => { const e = D.extintores[+b.dataset.resol];
@@ -197,8 +203,8 @@ async function incEst(a, fresco) {
       incRecargar(D, 'Problema marcado como resuelto.' + (r.aviso ? ' ' + r.aviso : '')); return '';
     }, '<p class="mu peq" style="margin:0">Problemas: ' + esc(e.falla.PROBLEMAS || '') + '. Detectado el ' + fechaTxt(e.falla.FECHA) + ' por ' + esc(e.falla.DETECTO || 's/d') + '. Al marcarlo resuelto deja de ir en el correo y el cierre se avisa en el próximo correo.</p>'); });
   document.querySelectorAll('[data-verif]').forEach(b => b.onclick = () => { b.disabled = true; verificar([b.dataset.verif]); });
-  document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => incControlForm(D, D.extintores[+b.dataset.ctl]));
-  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => incExtForm(D, D.extintores[+b.dataset.edit]));
+  document.querySelectorAll('[data-ctl]').forEach(b => b.onclick = () => { const e = D.extintores[+b.dataset.ctl]; incEqDe(e) === 'Extintor' ? incControlForm(D, e) : incEqControlForm(D, e); });
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { const e = D.extintores[+b.dataset.edit]; incEqDe(e) === 'Extintor' ? incExtForm(D, e) : incEqForm(D, e, incEqDe(e)); });
   if (D.extintores.some(e => (!INCF.sitio || e.SITIO === INCF.sitio) && (e.est.carga === 'vencida' || e.est.prueba === 'vencida'))) { $('icNotasEst').style.display = ''; incNotasPintar('icNotasEst', cod, INCF.sitio || null, !!fresco); }
 }
 function incRecargar(D, msg) { if (msg) toast(msg); INCT = null; TB = null; INCNL = null; delete INCD[D.cod]; incEst(encodeURIComponent(D.cod), true); }
@@ -251,6 +257,51 @@ function incControlForm(D, e) {
     incRecargar(D, 'Control guardado: ' + r.resultado + '.' + (r.aviso ? ' Correo: ' + r.aviso : '')); return '';
   }, extra);
   incFotosOnchange(fotos);
+}
+
+// ---------- Hidrantes y pulsadores de alarma (24/11/2026): alta, corrección y control. Hasta 5 fotos por campo; en el alta, al menos una.
+function incEqFotosHtml(titulo) {
+  return '<div class="card" style="margin:12px 0;padding:12px 14px;background:var(--pa1)"><b>' + esc(titulo) + '</b><div class="campos" style="margin-top:8px"><label class="f">Fotos del equipo (hasta 5)<input class="c" type="file" accept="image/*" multiple data-inceqfoto><span class="mu peq" id="if_EQ">El equipo y su entorno: que se vea dónde está, el cartel y el acceso.</span></label></div></div>';
+}
+function incEqFotosOnchange(fotos) {
+  const inp = document.querySelector('#ov [data-inceqfoto]'); if (!inp) return;
+  inp.onchange = async () => { const msg = $('if_EQ'), L = Array.from(inp.files || []).slice(0, 5); fotos.FOTO_PANORAMICA = [];
+    try { for (const f of L) { if (!/^image\//.test(f.type)) throw new Error('Tienen que ser fotos.'); fotos.FOTO_PANORAMICA.push(await achicar(f)); }
+      if (!L.length) delete fotos.FOTO_PANORAMICA; msg.textContent = L.length ? L.length + ' foto(s) lista(s)' + ((inp.files || []).length > 5 ? ' (se toman las primeras 5)' : '') : 'Sin fotos'; msg.style.color = 'var(--ok)'; }
+    catch (x) { delete fotos.FOTO_PANORAMICA; msg.textContent = x.message || 'No se pudo leer la foto.'; msg.style.color = 'var(--er)'; } };
+}
+function incEqForm(D, e, q) {
+  const C = incEqCfg(D, q) || { tipos: [], equipamiento: [], nombre: q, letra: '' }, R = (D.listas.equipos && D.listas.equipos.respuestas) || ['Sí', 'No', 'No sé'], fotos = {};
+  const v = Object.assign({ SITIO: INCF.sitio || (D.sitios[0] || {}).SITIO, ESTADO: 'Operativo', TIPO: C.tipos.length === 1 ? C.tipos[0] : '' }, e || {});
+  const campos = [['SITIO', 'Lugar', D.sitios.map(s => s.SITIO)], ['NRO_EXTINTOR', 'N.º del cartel (solo el número; se muestra ' + C.letra + '-1, ' + C.letra + '-2…)'], ['PLANTA', 'Planta', D.listas.plantas], ['SECTOR', 'Sector o servicio'], ['UBICACION', 'Ubicación (detalle)'], ['TIPO', 'Tipo', C.tipos]]
+    .concat(e ? [['ESTADO', 'Estado', ['Operativo', 'Fuera de servicio', 'Baja']]] : C.equipamiento.map(x => [x[0], x[1], R])).concat([['OBSERVACIONES', 'Observaciones', null, 1]]);
+  modal(e ? C.nombre + ' ' + (incEqNroP(D, e) || e.ID) : 'Agregar ' + C.nombre.toLowerCase(), campos, v, async out => {
+    if (!out.SITIO) return 'Elegí el lugar.'; if (!/^\d{1,3}$/.test(String(out.NRO_EXTINTOR || '').trim())) return 'El N.º del cartel lleva solo números (hasta 3).';
+    const faltan = [['PLANTA', 'la planta'], ['SECTOR', 'el sector'], ['UBICACION', 'la ubicación'], ['TIPO', 'el tipo']].concat(e ? [] : C.equipamiento.map(x => [x[0], '«' + x[1].toLowerCase() + '»'])).filter(r => !String(out[r[0]] || '').trim()).map(r => r[1]);
+    if (faltan.length) return 'Falta completar: ' + faltan.join(', ') + '.';
+    if (!e && !(fotos.FOTO_PANORAMICA || []).length) return 'Falta al menos una foto del ' + C.nombre.toLowerCase() + '.';
+    const r = await api('p_inc_ext_guardar', Object.assign({ ID: e ? e.ID : '', ESTABLECIMIENTO: D.cod, EQUIPO: q, fotos: fotos }, out), 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    incRecargar(D, e ? C.nombre + ' actualizado.' : C.nombre + ' agregado: ' + (r.nro || '') + ' (' + r.id + ').'); return '';
+  }, (e && e.CAMBIOS ? '<div class="card" style="margin:12px 0;padding:10px 14px"><b>Cambios anteriores</b><div class="mu peq" style="white-space:pre-line;max-height:140px;overflow:auto">' + esc(e.CAMBIOS) + '</div></div>' : '') +
+    (e && incPend(e) ? '<p class="mu peq" style="margin:0 0 8px">Está pendiente de verificar: al guardar desde acá queda verificado.</p>' : '') +
+    incEqFotosHtml(e ? 'Fotos (opcional: solo para reemplazar las que tiene)' : 'Fotos: al menos una') +
+    '<p class="mu peq" style="margin:0">Agente, kilos, inventario, carga y prueba hidráulica: no corresponden. Cada tipo numera su cartel desde 1 en cada edificio. Versión 0.</p>');
+  incEqFotosOnchange(fotos);
+}
+function incEqControlForm(D, e) {
+  const C = incEqCfg(D, incEqDe(e)) || { chequeos: [], problemas: [], nombre: incEqDe(e) }, fotos = {}, hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const campos = [['FECHA', 'Fecha del control', 'date']].concat(C.chequeos.map(c => [c[0], c[1], ['Sí', 'No']]), [['ESTADO', 'Estado (si cambió)', ['Operativo', 'Fuera de servicio']], ['OBSERVACIONES', 'Observaciones', null, 1]]);
+  const extra = '<div class="card" style="margin:12px 0;padding:12px 14px"><b>¿Tiene algún problema?</b> <span class="mu peq">Marcá todos los que correspondan; si no tiene ninguno, no marques nada.</span><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 12px;margin-top:8px">' +
+    C.problemas.map(p => '<label class="peq" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-incprob value="' + esc(p) + '">' + esc(p) + '</label>').join('') + '</div></div>' + incEqFotosHtml('Fotos: al menos una') +
+    '<p class="mu peq" style="margin:0">' + esc([e.ID, e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + '. Si alguna verificación da «No» o marcás un problema, el control queda «Con observaciones».</p>';
+  modal('Control · ' + C.nombre.toLowerCase() + ' ' + (incEqNroP(D, e) || e.ID), campos, { FECHA: hoy }, async out => {
+    const faltan = C.chequeos.filter(c => !out[c[0]]).map(c => c[1]); if (faltan.length) return 'Falta responder: ' + faltan.join(', ') + '.';
+    if (!(fotos.FOTO_PANORAMICA || []).length) return 'Falta al menos una foto.';
+    const datos = Object.assign({ ID_EXTINTOR: e.ID, fotos: fotos, PROBLEMAS: Array.from(document.querySelectorAll('#ov [data-incprob]:checked')).map(x => x.value) }, out); if (!datos.ESTADO) delete datos.ESTADO;
+    const r = await api('p_inc_control', datos, 180000); if (!r.ok) return r.mensaje || 'No se pudo guardar.';
+    incRecargar(D, 'Control guardado: ' + r.resultado + '.'); return '';
+  }, extra);
+  incEqFotosOnchange(fotos);
 }
 
 // ------------------------------------------------------------------ Novedades y recorridas de seguridad (IncendioServicios.gs)

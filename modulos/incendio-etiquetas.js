@@ -2,6 +2,7 @@
 // Recuadro del tablero de incendio: dos etiquetas por extintor (cilindro y chapa baliza), 5 × 5 cm, blanco y negro, 10 por hoja A4.
 // Alcance: HMH y CAPS de la red Trelew. Estado de cada etiqueta (lo calcula el sistema comparando con lo impreso):
 //   Nueva / Cambió (pendientes) · Texto viejo (solo cambió la ubicación: se reimprime si querés) · Al día.
+// 24/11/2026: hidrantes y pulsadores de alarma (HMH) también, con una sola etiqueta cada uno (sin chapa baliza).
 // Se carga desde portal.html (<script src>). Para el portal de respaldo, herramientas/armar_respaldo.py lo junta en un solo archivo.
 let INCQT = null, INCQS = '', INCQSEL = null;
 const INCQ_EST = { nueva: ['Nueva', 'er'], cambio: ['Cambió', 'er'], texto: ['Texto viejo', 'wa'], aldia: ['Al día', 'ok'] };
@@ -20,16 +21,16 @@ async function incqPintar(idCaja, fresco) {
   const chip = e => { const x = INCQ_EST[e.estado] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + ' mini">' + x[0] + '</span>'; };
   const sub = e => [e.estado === 'aldia' || e.estado === 'texto' ? (e.impresa ? 'Impresa el ' + fechaTxt(e.impresa) : '') : '', e.motivo, e.nota].filter(Boolean).join(' · ');
   caja.innerHTML = '<h2>🏷️ Etiquetas QR para imprimir</h2>' +
-    '<span class="mu peq">Dos por extintor (una para el cilindro y otra para la chapa baliza), de 5 × 5 cm, 10 por hoja A4. HMH y CAPS de Trelew (aparecen los lugares que tienen extintores cargados). ' +
+    '<span class="mu peq">Dos por extintor (una para el cilindro y otra para la chapa baliza) y una por cada hidrante o pulsador, de 5 × 5 cm, 10 por hoja A4. HMH y CAPS de Trelew (aparecen los lugares que tienen extintores cargados). ' +
     (pendTot ? '<b>' + pendTot + (pendTot > 1 ? ' extintores pendientes' : ' extintor pendiente') + '</b> (nuevos o con datos cambiados).' : 'No hay etiquetas pendientes.') + ' ' +
     '<a class="link" href="' + esc(INCQT.libro) + '" target="_blank" rel="noopener">Planilla ETIQUETAS_QR ↗</a></span>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:10px 0"><label class="f">Lugar<select class="c" id="iqLugar">' +
-    LL.map(x => '<option value="' + esc(incqClave(x)) + '"' + (incqClave(x) === INCQS ? ' selected' : '') + '>' + esc(x.lugar) + ' · ' + x.total + ' extintor(es)' + (x.pend ? ' · ' + x.pend + ' pendiente(s)' : '') + (x.texto ? ' · ' + x.texto + ' texto viejo' : '') + '</option>').join('') + '</select></label>' +
+    LL.map(x => '<option value="' + esc(incqClave(x)) + '"' + (incqClave(x) === INCQS ? ' selected' : '') + '>' + esc(x.lugar) + ' · ' + x.total + ' equipo(s)' + (x.pend ? ' · ' + x.pend + ' pendiente(s)' : '') + (x.texto ? ' · ' + x.texto + ' texto viejo' : '') + '</option>').join('') + '</select></label>' +
     '<button class="btn sec" id="iqPend">Tildar pendientes</button><button class="btn sec" id="iqTodas">Tildar todas</button><button class="btn sec" id="iqNada">Destildar</button></div>' +
     (L && L.cod === 'HMH' ? '<div class="aviso">HMH: conviene imprimir después de la revisión de ubicaciones, para no pegar dos veces.</div>' : '') +
     (E.length ? '<div style="max-height:360px;overflow:auto;border:1px solid var(--ln);border-radius:8px">' + E.map(e =>
       '<label class="at" style="align-items:flex-start;cursor:pointer;margin:0;border-radius:0"><input type="checkbox" data-iq="' + esc(e.ID) + '"' + (INCQSEL.has(e.ID) ? ' checked' : '') + ' style="margin-top:4px">' +
-      '<span style="flex:1"><b>N.º ' + esc(e.NRO) + '</b> · ' + esc(e.TIPO + ' · ' + e.AGENTE + ' · ' + e.KG + ' kg') + ' · inv. ' + esc(e.INV) +
+      '<span style="flex:1"><b>' + (e.EQ === 'Hidrante' ? '🚒 Hidrante ' : e.EQ === 'Pulsador' ? '🔔 Pulsador ' : 'N.º ') + esc(e.NRO) + '</b> · ' + esc(e.EQ && e.EQ !== 'Extintor' ? e.TIPO + ' · una etiqueta' : e.TIPO + ' · ' + e.AGENTE + ' · ' + e.KG + ' kg · inv. ' + e.INV) +
       '<br><small class="mu">' + esc(e.PLANTA + ' · ' + e.SECTOR + (e.UBICACION ? ' · ' + e.UBICACION : '')) + '</small>' + (sub(e) ? '<br><small>' + esc(sub(e)) + '</small>' : '') + '</span>' + chip(e) + '</label>').join('') + '</div>'
       : '<div class="mu peq">Este lugar no tiene extintores cargados.</div>') +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn pri" id="iqHoja">🖨️ Armar hoja (<span id="iqN">' + INCQSEL.size + '</span>)</button>' +

@@ -40,6 +40,12 @@
  *  - Lugares con dependencias (SITIOS_INC › DEPENDENCIAS, separadas por «·»; hoy Sede ex ADOS): el sector se elige de esa lista.
  *  - «Casa de convivencia» pasa a llamarse «Casa Tutelada»; se agrega «UGD - Ex APT». Ejecutar una vez actualizarModuloIncendio29oct().
  *  - Los errores llevan un código (no_existe, puesto, inventario, datos, fecha, lugar) para que la aplicación los explique.
+ *
+ * Cambios del 24/11/2026 (pedido de Belén): HIDRANTES y PULSADORES DE ALARMA en el mismo inventario (hoja EXTINTORES, columna EQUIPO =
+ * Extintor · Hidrante · Pulsador; vacío = Extintor). Por ahora solo en el HMH (INC_EQ.EST). Cada tipo numera su cartel desde 1 en cada edificio
+ * (se muestra H-1, P-1) y su ID es HID-HMH-001 / PUL-HMH-001. Agente, kilos, inventario, carga y prueba hidráulica = «No corresponde».
+ * Alta: Melani y Macarena («Mi establecimiento») y HyS (portal), con hasta 5 fotos; SOMI hace el control mensual (5 verificaciones propias de
+ * cada tipo, «Todo OK» sin fotos; si algo está mal, problemas y al menos una foto). Etiqueta QR propia (IncendioEtiquetas.gs). Versión 0.
  */
 const INC = {
   SIS: '16AIJZcmxG9EBM3-D-J4vRtvruHK9DVrA',   // SISTEMA HyS
@@ -49,7 +55,7 @@ const INC = {
   H_SIT: ['ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'RESPONSABLES_CONTROL', 'ACTIVO', 'OBSERVACIONES', 'ACTUALIZADO', 'CORREOS_FALLA'],   // CORREOS_FALLA: a quién avisar por correo si un extintor queda con problemas
   H_EXT: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO',
     'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ESTADO', 'ULTIMO_CONTROL', 'RESULTADO_CONTROL', 'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'ACTUALIZADO',
-    'VERIFICACION', 'CAMBIOS'],   // VERIFICACION: «Pendiente» si lo agregó o cambió alguien desde la aplicación o MIPyV; «Verificado …» cuando HyS lo revisa
+    'VERIFICACION', 'CAMBIOS', 'POTENCIAL', 'EQUIPO'],   // EQUIPO (24/11/2026): Extintor · Hidrante · Pulsador (vacío = Extintor) · VERIFICACION: «Pendiente» si lo agregó o cambió alguien desde la aplicación o MIPyV; «Verificado …» cuando HyS lo revisa
   H_CON: ['ID', 'FECHA', 'ESTABLECIMIENTO', 'SITIO', 'ID_EXTINTOR', 'EN_LUGAR', 'ACCESO_LIBRE', 'MANOMETRO', 'PRECINTO', 'SENALIZACION', 'RESULTADO',
     'FOTO_PANORAMICA', 'FOTO_MARBETE', 'FOTO_INVENTARIO', 'OBSERVACIONES', 'QUIEN', 'CARGADO', 'ESTADO', 'PROBLEMAS', 'AVISO_CORREO', 'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'],   // vencimientos que se leyeron en el control (marbete)
   CHEQUEOS: [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manómetro en verde (o peso correcto si es CO2)'],
@@ -78,6 +84,59 @@ const INC = {
   RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
   CORREOS_HMH: ''   // los correos de SOMI y Mantenimiento HMH se cargan solo en la hoja SITIOS › CORREOS_FALLA (no en el código, que es público) · 29/10/2026
 };
+
+// ------------------------------------------------------------------ HIDRANTES Y PULSADORES DE ALARMA (24/11/2026, pedido de Belén · versión 0)
+// Van en la hoja EXTINTORES con la columna EQUIPO. Las 5 verificaciones del control usan las mismas columnas de CONTROLES, con su propio texto.
+// Normativa: Dto. 351/79, cap. 18 (art. 160 y ss.) y Anexo VII (instalaciones fijas contra incendio y sistemas de alarma).
+const INC_EQ = {
+  LISTA: ['Extintor', 'Hidrante', 'Pulsador'],
+  EST: { HMH: ['Extintor', 'Hidrante', 'Pulsador'] },   // dónde se cargan hidrantes y pulsadores (por ahora solo el HMH, Belén 24/11/2026)
+  NC: 'No corresponde',
+  RESP: ['Sí', 'No', 'No sé'],
+  FOTO: [['FOTO_PANORAMICA', 'Fotos del equipo', 'El equipo y su entorno: que se vea dónde está, el cartel y el acceso. Hasta 5 fotos.']],
+  Hidrante: { pref: 'HID', letra: 'H', nombre: 'Hidrante', plural: 'hidrantes', etiqueta: 'HIDRANTE',
+    tipos: ['Interno (con gabinete)', 'Externo'],
+    equipamiento: [['EQ_GABINETE', 'Gabinete completo y en condiciones'], ['EQ_MANGUERA', 'Manguera'], ['EQ_LANZA', 'Lanza (boquilla)'], ['EQ_LLAVE', 'Llave de ajuste']],
+    chequeos: [['EN_LUGAR', 'Gabinete en su lugar y completo (manguera, lanza y llave)'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Manguera sin daños, enrollada y conectada'],
+      ['PRECINTO', 'Puerta o vidrio del gabinete en condiciones y válvula operable'], ['SENALIZACION', 'Señalización completa']],
+    problemas: ['Falta la manguera, la lanza o la llave', 'Manguera dañada, con pérdida o desenrollada', 'Válvula dura, rota o con pérdida', 'Gabinete roto, sin vidrio o sin puerta',
+      'Tapado u obstruido (no se puede usar)', 'Sin cartel o señalización', 'Otro (contalo en observaciones)'] },
+  Pulsador: { pref: 'PUL', letra: 'P', nombre: 'Pulsador de alarma', plural: 'pulsadores de alarma', etiqueta: 'PULSADOR DE ALARMA',
+    tipos: ['Pulsador manual de alarma'],
+    equipamiento: [['EQ_TAPA', 'Tiene tapa o vidrio protector'], ['EQ_CENTRAL', 'Conectado a la central de alarma']],
+    chequeos: [['EN_LUGAR', 'En su lugar y a la vista'], ['ACCESO_LIBRE', 'Acceso libre (sin obstáculos)'], ['MANOMETRO', 'Sin golpes ni daños'],
+      ['PRECINTO', 'Tapa o vidrio protector en su lugar'], ['SENALIZACION', 'Señalización completa']],
+    problemas: ['Roto o golpeado', 'Falta la tapa o el vidrio protector', 'Quedó accionado (activado)', 'Tapado u obstruido (no se llega)', 'Sin cartel o señalización', 'Otro (contalo en observaciones)'] }
+};
+// Qué equipo es una fila: columna EQUIPO o, si está vacía, el prefijo del ID (HID-, PUL-); lo demás es Extintor
+function incEq_(e) {
+  const v = sinTildes_(e && e.EQUIPO || ''), id = String(e && e.ID || '');
+  if (/^hid/.test(v) || /^HID-/i.test(id)) return 'Hidrante';
+  if (/^pul/.test(v) || /^PUL-/i.test(id)) return 'Pulsador';
+  return 'Extintor';
+}
+const incEquiposEst_ = cod => INC_EQ.EST[limpio_(cod)] || ['Extintor'];
+const incEqNro_ = e => { const q = incEq_(e), n = limpio_(e.NRO_EXTINTOR); return q === 'Extintor' ? n : (n ? INC_EQ[q].letra + '-' + n : ''); };   // H-1, P-1
+const incEqNombre_ = e => { const q = incEq_(e); return q === 'Extintor' ? 'extintor' : INC_EQ[q].nombre.toLowerCase(); };
+// Listas de cada equipo para las pantallas (Mi establecimiento y portal)
+function incEqListas_(cod) {
+  const o = { disponibles: incEquiposEst_(cod), nc: INC_EQ.NC, respuestas: INC_EQ.RESP, fotos: INC_EQ.FOTO };
+  ['Hidrante', 'Pulsador'].forEach(q => { const C = INC_EQ[q]; o[q] = { letra: C.letra, nombre: C.nombre, plural: C.plural, tipos: C.tipos, equipamiento: C.equipamiento, chequeos: C.chequeos, problemas: C.problemas }; });
+  return o;
+}
+// Encabezado EQUIPO en EXTINTORES (columna Z, después de POTENCIAL), con su lista. Se ejecuta solo la primera vez que se agrega un hidrante o
+// un pulsador; también se puede ejecutar a mano desde el editor: actualizarIncendioEquipos24nov(). Las filas sin dato quedan como Extintor.
+function actualizarIncendioEquipos24nov() {
+  const sh = pInc_().getSheetByName('EXTINTORES'), n = INC.H_EXT.length; if (sh.getMaxColumns() < n) sh.insertColumnsAfter(sh.getMaxColumns(), n - sh.getMaxColumns());
+  const H = sh.getRange(5, 1, 1, n).getValues()[0];
+  INC.H_EXT.forEach((h, i) => { if (!limpio_(H[i])) sh.getRange(5, i + 1).setValue(h).setFontWeight('bold'); });
+  lista_(sh, INC.H_EXT.indexOf('EQUIPO'), 2000, INC_EQ.LISTA);
+  try { const a = pInc_().getSheetByName('AYUDA'); if (a && !a.createTextFinder('Hidrantes y pulsadores (HMH').findNext()) a.appendRow(INC_AYUDA.find(r => /^Hidrantes y pulsadores/.test(r[0]))); } catch (e) {}
+  CacheService.getScriptCache().remove('inc_tablero');
+  return { ok: true, mensaje: 'Columna EQUIPO lista en EXTINTORES.' };
+}
+function incEqColumna_() { try { const sh = pInc_().getSheetByName('EXTINTORES'); if (limpio_(sh.getRange(5, INC.H_EXT.indexOf('EQUIPO') + 1).getValue()) !== 'EQUIPO') actualizarIncendioEquipos24nov(); } catch (e) {} }
+const INC_REQ_EQ = [['SITIO', 'el lugar'], ['NRO_EXTINTOR', 'el N.º (el del cartel)'], ['PLANTA', 'la planta'], ['SECTOR', 'el sector o servicio'], ['UBICACION', 'dónde está exactamente'], ['TIPO', 'el tipo']];
 
 // ------------------------------------------------------------------ INSTALACIÓN (se puede volver a ejecutar sin pisar nada)
 function construirModuloIncendio() {
@@ -175,6 +234,7 @@ const INC_AYUDA = [
   ['Notas por extintores vencidos', 'Portal › 7 · Incendio: el cuadro «📄 Notas por extintores vencidos» (en el tablero y en cada lugar) lista cada CAPS, hospital, dispositivo, ambulancias y, en Sede ex ADOS, cada dependencia con extintores con la carga o la prueba hidráulica vencida. Dos botones: «Nota: recarga» y «Recarga + adquisición» (pide además la compra de extintores nuevos por agente, clase y kg, hasta 3 tipos; por cada extintor nuevo, su chapa baliza y su soporte; y chapas baliza de reposición). Todas piden los equipos de reserva mientras dura la recarga (IRAM 3517-2, 3.4.3). La nota va a la Dirección Asociada Administrativa con el modelo de notas internas (sin S/D, sin plazo y sin bloque de firma, como la corrigió Belén el 07/11/2026), el texto de fundamento (Ley 19.587 y Dto. 351/79, Cap. 18), la tabla (N.º, inventario, tipo, agente, peso y vencimiento) y, en Antecedentes, el relevamiento y los N.º de las notas internas anteriores sobre extintores (se agregan solas; también se pueden escribir). Queda como borrador sin número (s/n) en DOCUMENTOS › REGISTRO, con los ID de los extintores en Observaciones. Sin GitHub: menú Sistema HyS › Incendio › Notas de extintores vencidos.'],
   ['Etiquetas QR', 'Portal › 7 · Incendio › tablero › «🏷️ Etiquetas QR para imprimir» (o menú Sistema HyS › Incendio › Etiquetas QR para imprimir). Dos por extintor de 5 × 5 cm (cilindro y chapa baliza), 10 por hoja A4. HMH y CAPS de Trelew. Hoja ETIQUETAS_QR: lo que se imprimió; si cambia un dato impreso, la etiqueta queda pendiente (si cambia solo el texto de la ubicación, «Texto viejo»). El QR abre el control del extintor en «Mi establecimiento».'],
   ['Revisión de ubicaciones HMH', 'Portal › 7 · Incendio › Revisión de ubicaciones HMH: foto de cada extintor, «Queda acá» o «Mover a…», lista para SOMI y «Ya lo movieron» (actualiza el extintor). Hoja REVISION_UBIC; sin GitHub, ESTADO con la lista y menú Sistema HyS › Incendio › HMH · Aplicar los marcados como «Movido».'],
+  ['Hidrantes y pulsadores (HMH, 24/11/2026, versión 0)', 'Van en EXTINTORES con la columna EQUIPO (Extintor · Hidrante · Pulsador; vacío = Extintor). ID HID-HMH-001 / PUL-HMH-001; N.º del cartel en NRO_EXTINTOR (cada tipo numera desde 1 en cada edificio; se muestra H-1, P-1). Agente, kilos, inventario, carga y prueba hidráulica: «No corresponde». Los agregan Melani, Macarena y HyS (hasta 5 fotos, al menos una); SOMI hace el control mensual con sus 5 verificaciones (mismas columnas de CONTROLES). Una etiqueta QR cada uno (?q=HMH-H001, ?q=HMH-P001). Para cargar uno a mano: una fila nueva con EQUIPO, ESTABLECIMIENTO, SITIO, NRO_EXTINTOR, PLANTA, SECTOR, UBICACION y TIPO (el ID lo podés poner siguiendo la serie).'],
   ['Fotos', 'Drive › SISTEMA HyS › MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS › Establecimientos › establecimiento › Controles › año-mes.'],
   ['Normativa', 'Ley 19.587; Dto. 351/79, capítulo 18 (protección contra incendios) y Anexo VII; Res. SRT 463/09 (RGRL).']
 ];
@@ -276,18 +336,22 @@ function incSumarMeses_(f, m) { const x = new Date(f + 'T12:00:00'); x.setMonth(
 
 // Estado de un extintor: carga y prueba hidráulica (vencida · porvencer: 30 días antes · aldia · sd) y control (sin · atrasado · aldia)
 function incEstadoExt_(e, hoy) {
+  if (incEq_(e) !== 'Extintor') {   // hidrantes y pulsadores: sin carga ni prueba hidráulica (24/11/2026)
+    const uc0 = incISO_(e.ULTIMO_CONTROL), ctl = !uc0 ? 'sin' : uc0 < incSumarMeses_(hoy, -INC.MESES_ALARMA) ? 'atrasado' : 'aldia';
+    return { carga: 'nc', prueba: 'nc', control: ctl, baja: /baja/i.test(e.ESTADO), conObs: /fuera/i.test(e.ESTADO), equipo: incEq_(e) };
+  }
   const vto = incISO_(e.VTO_CARGA), ph = incISO_(e.PRUEBA_HIDRAULICA_VENCE), uc = incISO_(e.ULTIMO_CONTROL);
   const carga = !vto ? 'sd' : vto < hoy ? 'vencida' : vto <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
   const prueba = !ph ? 'sd' : ph < hoy ? 'vencida' : ph <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
   const control = !uc ? 'sin' : uc < incSumarMeses_(hoy, -INC.MESES_ALARMA) ? 'atrasado' : 'aldia';
   const fuera = /baja/i.test(e.ESTADO), obs = /sobrecarg|recarg|fuera/i.test(e.ESTADO);
-  return { carga: carga, prueba: prueba, control: control, baja: fuera, conObs: obs };
+  return { carga: carga, prueba: prueba, control: control, baja: fuera, conObs: obs, equipo: 'Extintor' };
 }
 function incDatos_() {
   const dep = incDependencias_();
   const sit = incLeer_('SITIOS_INC', INC.H_SIT).filter(s => s.ACTIVO !== 'No').map(s => Object.assign(s, { ESTABLECIMIENTO: limpio_(s.ESTABLECIMIENTO), SITIO: limpio_(s.SITIO) }))
     .map(s => Object.assign(s, { DEPENDENCIAS: dep[s.ESTABLECIMIENTO + '|' + sinTildes_(s.SITIO)] || [] }));
-  const ext = incLeer_('EXTINTORES', INC.H_EXT).map(e => Object.assign(e, { ESTABLECIMIENTO: limpio_(e.ESTABLECIMIENTO), SITIO: limpio_(e.SITIO) }));
+  const ext = incLeer_('EXTINTORES', INC.H_EXT).map(e => Object.assign(e, { ESTABLECIMIENTO: limpio_(e.ESTABLECIMIENTO), SITIO: limpio_(e.SITIO), EQUIPO: incEq_(e) }));
   return { sit: sit, ext: ext };
 }
 // SITIOS_INC › DEPENDENCIAS (se busca por el nombre de la columna; separadas por «·»): «HZT|sede ex ados» → ['Adolescencia', …]
@@ -306,6 +370,7 @@ const incSinNro_ = v => sinTildes_(v).replace(/[\s.\-]/g, '');
 // Devuelve null si está bien, o { ok: false, codigo, mensaje } con lo que hay que corregir, en lenguaje claro.
 function incValidar_(o, e, L, sitDep) {
   const cambia = k => !e || limpio_(o[k]) !== limpio_(e[k]), cod = limpio_(o.ESTABLECIMIENTO);
+  const eq = incEq_(o), esExt = eq === 'Extintor';   // hidrantes y pulsadores numeran aparte (24/11/2026)
   const otros = L.filter(z => z.ID !== (e && e.ID) && limpio_(z.ESTABLECIMIENTO) === cod && !/baja/i.test(z.ESTADO));
   const donde = z => z.ID + ' (' + [z.SITIO, z.PLANTA, z.SECTOR, z.UBICACION].filter(Boolean).join(' · ') + ')';
   const nro = limpio_(o.NRO_EXTINTOR);
@@ -313,11 +378,11 @@ function incValidar_(o, e, L, sitDep) {
     if (!nro) return { ok: false, codigo: 'puesto', mensaje: 'Falta el N.º de puesto: es el número del cartel donde está colgado el extintor.' };
     if (!/^\d{1,3}$/.test(nro)) return { ok: false, codigo: 'puesto', mensaje: 'El N.º de puesto lleva solo números (hasta 3 cifras): es el del cartel, no el de la chapita de inventario.' };
     // único en el mismo edificio (SITIO), no en todo el establecimiento: cada edificio numera sus carteles desde 1 (05/11/2026)
-    const r = otros.find(z => sinTildes_(z.SITIO) === sinTildes_(o.SITIO) && String(Number(limpio_(z.NRO_EXTINTOR))) === String(Number(nro)));
-    if (r) return { ok: false, codigo: 'puesto', mensaje: 'El puesto ' + nro + ' ya lo tiene ' + donde(r) + '. Revisá el cartel; si cambiaron el extintor de lugar, avisale a Higiene y Seguridad.' };
+    const r = otros.find(z => incEq_(z) === eq && sinTildes_(z.SITIO) === sinTildes_(o.SITIO) && String(Number(limpio_(z.NRO_EXTINTOR))) === String(Number(nro)));
+    if (r) return { ok: false, codigo: 'puesto', mensaje: (esExt ? 'El puesto ' + nro : 'El ' + INC_EQ[eq].nombre.toLowerCase() + ' ' + INC_EQ[eq].letra + '-' + nro) + ' ya lo tiene ' + donde(r) + '. Revisá el cartel; si cambiaron el equipo de lugar, avisale a Higiene y Seguridad.' };
   }
   const inv = incSinNro_(o.NRO_INVENTARIO);
-  if (cambia('NRO_INVENTARIO') && inv && !/^s\/?d/.test(inv)) {
+  if (esExt && cambia('NRO_INVENTARIO') && inv && !/^s\/?d/.test(inv)) {
     if (nro && inv === incSinNro_(nro)) return { ok: false, codigo: 'inventario', mensaje: 'El N.º de inventario quedó igual al de puesto. El de inventario es el de la chapita patrimonial; el de puesto, el del cartel. Si no tiene chapita, poné s/d.' };
     const r = otros.find(z => incSinNro_(z.NRO_INVENTARIO) === inv);
     if (r) return { ok: false, codigo: 'inventario', mensaje: 'Ese N.º de inventario ya está cargado en ' + donde(r) + '. Si es el mismo extintor, buscalo en la lista; si se mudó, avisale a Higiene y Seguridad.' };
@@ -326,7 +391,7 @@ function incValidar_(o, e, L, sitDep) {
   if (cambia('PLANTA') && limpio_(o.PLANTA) && pl.indexOf(limpio_(o.PLANTA)) < 0) return { ok: false, codigo: 'datos', mensaje: 'La planta tiene que ser una de estas: ' + pl.join(', ') + '.' };
   if (sitDep && sitDep.length && (cambia('SECTOR') || cambia('SITIO')) && !sitDep.some(d => sinTildes_(d) === sinTildes_(o.SECTOR)))
     return { ok: false, codigo: 'lugar', mensaje: 'En ' + o.SITIO + ' el sector es una de estas dependencias: ' + sitDep.join(', ') + '.' };
-  for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
+  if (esExt) for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
     const v = o[k]; if (!v || /^s\/d/i.test(String(v)) || !cambia(k)) continue;
     const iso = incISO_(v); if (!incFechaOk_(iso)) return { ok: false, codigo: 'fecha', mensaje: nom + ' tiene que ser una fecha entre 2020 y 2040. Revisá el año en la tarjeta.' };
   }
@@ -335,9 +400,11 @@ function incValidar_(o, e, L, sitDep) {
 // Marca de un envío de MIPyV ([id_origen]) en CAMBIOS u OBSERVACIONES: si la aplicación reintenta, no se duplica
 const incMarca_ = x => x && x.id_origen ? '[' + String(x.id_origen).replace(/[\[\]]/g, '') + ']' : '';
 function incResumen_(l, hoy) {
-  const u = l.filter(e => !/baja/i.test(e.ESTADO)), v = u.map(e => incEstadoExt_(e, hoy)), c = k => v.filter(x => x[k[0]] === k[1]).length;
+  const todos = l.filter(e => !/baja/i.test(e.ESTADO)), u = todos.filter(e => incEq_(e) === 'Extintor'), v = u.map(e => incEstadoExt_(e, hoy)), c = k => v.filter(x => x[k[0]] === k[1]).length;
   const fechas = (campo, k, est) => u.filter((e, i) => v[i][k] === est).map(e => incISO_(e[campo])).filter(Boolean).sort();
-  return { total: v.length, paraVerificar: u.filter(e => /^pendiente/i.test(e.VERIFICACION)).length, cargaVencida: c(['carga', 'vencida']), porVencer: c(['carga', 'porvencer']), cargaSd: c(['carga', 'sd']), pruebaVencida: c(['prueba', 'vencida']), pruebaPorVencer: c(['prueba', 'porvencer']), pruebaSd: c(['prueba', 'sd']),
+  const eqs = {}; ['Hidrante', 'Pulsador'].forEach(q => { const z = todos.filter(e => incEq_(e) === q), s = z.map(e => incEstadoExt_(e, hoy));
+    eqs[q] = { total: z.length, controlAlDia: s.filter(x => x.control === 'aldia').length, sinControl: s.filter(x => x.control === 'sin').length, controlAtrasado: s.filter(x => x.control === 'atrasado').length, conObs: s.filter(x => x.conObs).length }; });
+  return { total: v.length, equipos: eqs, paraVerificar: todos.filter(e => /^pendiente/i.test(e.VERIFICACION)).length, cargaVencida: c(['carga', 'vencida']), porVencer: c(['carga', 'porvencer']), cargaSd: c(['carga', 'sd']), pruebaVencida: c(['prueba', 'vencida']), pruebaPorVencer: c(['prueba', 'porvencer']), pruebaSd: c(['prueba', 'sd']),
     vencidaDesde: fechas('VTO_CARGA', 'carga', 'vencida')[0] || '', proximoVto: fechas('VTO_CARGA', 'carga', 'porvencer')[0] || '', proximaPrueba: fechas('PRUEBA_HIDRAULICA_VENCE', 'prueba', 'porvencer')[0] || '',
     sinControl: c(['control', 'sin']), controlAtrasado: c(['control', 'atrasado']), controlAlDia: c(['control', 'aldia']), conObs: v.filter(x => x.conObs).length };
 }
@@ -375,6 +442,7 @@ function incDetalle_(cod, sitio) {
   const con = incLeer_('CONTROLES', INC.H_CON).filter(c => ids[c.ID_EXTINTOR] && c.ESTADO !== 'Anulado').slice(-300).reverse();
   return { ok: true, cod: cod, hoy: hoy, sitios: D.sit.filter(s => s.ESTABLECIMIENTO === cod), extintores: ext, controles: con,
     listas: { problemas: INC.PROBLEMAS, requeridos: INC_REQ_ALTA, tipos: INC.TIPOS, agentes: INC.AGENTES, estados: INC.ESTADOS, plantas: incPlantas_(cod), chequeos: INC.CHEQUEOS, fotos: INC.FOTOS,
+      equipos: incEqListas_(cod),
       puesto: 'N.º de puesto: el número del cartel donde va colgado el extintor (solo números, único en cada edificio; cada edificio numera desde 1).', inventario: 'N.º de inventario: el de la chapita patrimonial pegada en el extintor. Si no tiene, s/d.' } };
 }
 // Alta o corrección de un extintor. Alta: desde el portal (HyS), desde «Mi establecimiento» (i_ext_alta: Melani, SOMI, MAREM…) y desde
@@ -402,38 +470,47 @@ function incAnotarCambio_(o, antes, quien, extra) {
 function incExtGuardar_(x, quien, codPermitido) {
   const cod = limpio_(x.ESTABLECIMIENTO), L = incLeer_('EXTINTORES', INC.H_EXT), marca = incMarca_(x); let e = x.ID ? L.find(o => o.ID === x.ID) : null;
   if (marca) { const ya = L.find(z => String(z.CAMBIOS || '').indexOf(marca) >= 0); if (ya) return { ok: true, duplicado: true, id: ya.ID }; }   // MIPyV reintentó un envío que ya había llegado
-  if (x.ID && !e) return { ok: false, codigo: 'no_existe', mensaje: 'Ese extintor (' + x.ID + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista y buscalo de nuevo.' };
-  if (codPermitido && e) {   // corrección desde la aplicación: solo N.º de puesto y ubicación, de este establecimiento
-    if (limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese extintor no es de este establecimiento.' };
-    const y = { ID: e.ID, ESTABLECIMIENTO: codPermitido, fotos: x.fotos || {}, id_origen: x.id_origen }; INC_EDIT_APP.forEach(c => { if (c[0] in x) y[c[0]] = x[c[0]]; });
-    const vac = INC_EDIT_NO_VACIO.filter(k => k in y && !limpio_(y[k])).map(k => INC_NOMBRES[k].toLowerCase()); if (vac.length) return { ok: false, codigo: 'datos', mensaje: 'No pueden quedar vacíos: ' + vac.join(', ') + ' (si no se sabe, poné s/d).' };
-    if ('VTO_CARGA' in y && !/^s\/d/i.test(y.VTO_CARGA) && !incISO_(y.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
+  if (x.ID && !e) return { ok: false, codigo: 'no_existe', mensaje: 'Ese equipo (' + x.ID + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista y buscalo de nuevo.' };
+  // Equipo (24/11/2026): Extintor, Hidrante o Pulsador. El de una fila que ya existe no cambia; en el alta viene en x.EQUIPO.
+  const eq = e ? incEq_(e) : incEq_({ EQUIPO: x.EQUIPO }), esExt = eq === 'Extintor', C = INC_EQ[eq], FOT = esExt ? INC.FOTOS : INC_EQ.FOTO;
+  if (!e && !esExt && incEquiposEst_(cod).indexOf(eq) < 0) return { ok: false, codigo: 'datos', mensaje: 'En este establecimiento todavía no se cargan ' + C.plural + '. Avisale a Higiene y Seguridad.' };
+  if (codPermitido && e) {   // corrección desde la aplicación, de este establecimiento
+    if (limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese equipo no es de este establecimiento.' };
+    const y = { ID: e.ID, ESTABLECIMIENTO: codPermitido, fotos: x.fotos || {}, id_origen: x.id_origen }; INC_EDIT_APP.forEach(c => { if (c[0] in x && (esExt || /^(NRO_EXTINTOR|SITIO|PLANTA|SECTOR|UBICACION|TIPO)$/.test(c[0]))) y[c[0]] = x[c[0]]; });
+    const vac = (esExt ? INC_EDIT_NO_VACIO : ['TIPO']).filter(k => k in y && !limpio_(y[k])).map(k => INC_NOMBRES[k].toLowerCase()); if (vac.length) return { ok: false, codigo: 'datos', mensaje: 'No pueden quedar vacíos: ' + vac.join(', ') + (esExt ? ' (si no se sabe, poné s/d).' : '.') };
+    if (esExt && 'VTO_CARGA' in y && !/^s\/d/i.test(y.VTO_CARGA) && !incISO_(y.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
     if (!limpio_(y.SITIO || e.SITIO) || ('SECTOR' in y && !limpio_(y.SECTOR)) || ('UBICACION' in y && !limpio_(y.UBICACION))) return { ok: false, codigo: 'datos', mensaje: 'El lugar, el sector y la ubicación no pueden quedar vacíos.' };
     if (y.SITIO && !incDatos_().sit.some(s => s.ESTABLECIMIENTO === codPermitido && sinTildes_(s.SITIO) === sinTildes_(y.SITIO))) return { ok: false, codigo: 'lugar', mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
     x = y;
   }
   const sitio = limpio_(x.SITIO || (e && e.SITIO)); if (!cod || !sitio) return { ok: false, codigo: 'lugar', mensaje: 'Faltan el establecimiento y el lugar.' };
-  if (codPermitido && cod !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Desde la aplicación solo se pueden agregar extintores de este establecimiento.' };
+  if (codPermitido && cod !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Desde la aplicación solo se pueden agregar equipos de este establecimiento.' };
   const D = incDatos_(), sit = D.sit.find(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(sitio));
   const fotos = x.fotos || {};
   if (!e) {   // alta: todo obligatorio
     if (!sit) return { ok: false, codigo: 'lugar', mensaje: 'Ese lugar no está en la lista del establecimiento. Avisale a Higiene y Seguridad.' };
-    const faltan = INC_REQ_ALTA.filter(r => !limpio_(x[r[0]])).map(r => r[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta completar: ' + faltan.join(', ') + '.' };
-    if (!/^s\/d/i.test(x.VTO_CARGA) && !incISO_(x.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
-    const sinFoto = INC.FOTOS.filter(f => !/^data:image\//.test(String(fotos[f[0]] || ''))).map(f => f[1]); if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
+    const req = esExt ? INC_REQ_ALTA : INC_REQ_EQ.concat(C.equipamiento.map(q => [q[0], '«' + q[1].toLowerCase() + '»']));
+    const faltan = req.filter(r => !limpio_(x[r[0]])).map(r => r[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta completar: ' + faltan.join(', ') + '.' };
+    if (esExt && !/^s\/d/i.test(x.VTO_CARGA) && !incISO_(x.VTO_CARGA)) return { ok: false, codigo: 'fecha', mensaje: 'El vencimiento de la carga tiene que ser una fecha.' };
+    const sinFoto = FOT.filter(f => !/^data:image\//.test(String(fotos[f[0]] || ''))).map(f => f[1]);
+    if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: esExt ? 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' : 'Falta la foto del ' + C.nombre.toLowerCase() + ' (al menos una, hasta 5).' };
   }
-  const o = e ? Object.assign({}, e) : { ID: 'EXT-' + cod + '-' + ('00' + (L.filter(z => limpio_(z.ESTABLECIMIENTO) === cod).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3), ESTADO: 'Operativo' };
+  const pref = esExt ? 'EXT' : C.pref, ini = pref + '-' + cod + '-';   // cada equipo con su serie de ID: EXT-HMH-…, HID-HMH-…, PUL-HMH-…
+  const o = e ? Object.assign({}, e) : { ID: ini + ('00' + (L.filter(z => String(z.ID).indexOf(ini) === 0).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3), ESTADO: 'Operativo' };
   ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x && (e || x[k] !== '')) o[k] = limpio_(x[k]); });
-  ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
-  if (!e && !o.PRUEBA_HIDRAULICA_VENCE) o.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
+  if (esExt) {
+    ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
+    if (!e && !o.PRUEBA_HIDRAULICA_VENCE) o.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
+  } else ['AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => o[k] = INC_EQ.NC);   // hidrantes y pulsadores
+  o.EQUIPO = eq; if (!esExt) incEqColumna_();
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ULTIMO_CONTROL'].forEach(k => { if (o[k] && !(o[k] instanceof Date) && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
   // Mismas reglas para todos (29/10/2026): puesto, inventario, planta, sector de la dependencia y fechas
   const sitFinal = D.sit.find(s => s.ESTABLECIMIENTO === cod && sinTildes_(s.SITIO) === sinTildes_(o.SITIO));
   const mal = incValidar_(o, e, L, sitFinal ? sitFinal.DEPENDENCIAS : []); if (mal) return mal;
-  const et = o.ID + (o.NRO_EXTINTOR ? ' puesto ' + o.NRO_EXTINTOR : '') + ' · ' + o.SITIO, sub = ['Altas', incHoy_().slice(0, 7)];
-  INC.FOTOS.forEach(f => { if (/^data:image\//.test(String(fotos[f[0]] || ''))) o[f[0]] = incFoto_(cod, fotos[f[0]], sub, et + ' · ' + f[1]); });
-  if (!e) o.OBSERVACIONES = 'Alta ' + incHoy_() + ' · ' + quien + '.' + (o.OBSERVACIONES ? ' ' + o.OBSERVACIONES : '');
-  const cambio = e ? incAnotarCambio_(o, e, quien, [INC.FOTOS.some(f => fotos[f[0]]) ? 'fotos nuevas' : '', marca].filter(Boolean).join(' ')) : incAnotarCambio_(o, null, quien, 'Alta' + (marca ? ' ' + marca : ''));
+  const et = o.ID + (o.NRO_EXTINTOR ? (esExt ? ' puesto ' + o.NRO_EXTINTOR : ' ' + incEqNro_(o)) : '') + ' · ' + o.SITIO, sub = ['Altas', incHoy_().slice(0, 7)];
+  FOT.forEach(f => { if (/^data:image\//.test(String(fotos[f[0]] || ''))) o[f[0]] = incFoto_(cod, fotos[f[0]], sub, et + ' · ' + f[1]); });
+  if (!e) o.OBSERVACIONES = 'Alta ' + incHoy_() + ' · ' + quien + '.' + (esExt ? '' : ' Equipamiento: ' + C.equipamiento.map(q => q[1] + ': ' + limpio_(x[q[0]])).join(' · ') + '.') + (o.OBSERVACIONES ? ' ' + o.OBSERVACIONES : '');
+  const cambio = e ? incAnotarCambio_(o, e, quien, [FOT.some(f => fotos[f[0]]) ? 'fotos nuevas' : '', marca].filter(Boolean).join(' ')) : incAnotarCambio_(o, null, quien, 'Alta' + (esExt ? '' : ' de ' + C.nombre.toLowerCase()) + (marca ? ' ' + marca : ''));
   if (e && codPermitido && !cambio) return { ok: false, codigo: 'datos', mensaje: 'No cambiaste nada.' };
   o.VERIFICACION = codPermitido ? 'Pendiente' : 'Verificado ' + incTxt_(incHoy_()) + ' · ' + quien;   // lo que carga HyS desde el portal ya está verificado
   o.ACTUALIZADO = new Date(); delete o.fila; delete o.est;
@@ -441,7 +518,7 @@ function incExtGuardar_(x, quien, codPermitido) {
   CacheService.getScriptCache().remove('inc_tablero');
   let aviso = '';   // si el estado pasó a uno que impide o dificulta el uso, se avisa por correo
   if (e && INC_ESTADO_FALLA.test(o.ESTADO) && !INC_ESTADO_FALLA.test(e.ESTADO || '')) aviso = incRegistrarFalla_(o, ['Estado: ' + o.ESTADO], { quien: quien, fecha: incHoy_(), obs: limpio_(x.OBSERVACIONES), fotos: {}, id: o.ID });
-  return { ok: true, id: o.ID, aviso: aviso };
+  return { ok: true, id: o.ID, nro: incEqNro_(o), equipo: eq, aviso: aviso };
 }
 // ------------------------------------------------------------------ AVISO POR CORREO DE EXTINTORES CON PROBLEMAS (regla de Belén, 14/10/2026)
 // Para los lugares con CORREOS_FALLA en SITIOS_INC (por ahora HMH: Ing. Erick Velázquez, SOMI, e Ing. Ezequiel Nieto, Mantenimiento).
@@ -450,8 +527,8 @@ function incExtGuardar_(x, quien, codPermitido) {
 // si está en Gmail › «Enviar correo como» de la cuenta dueña del sistema; si no, sale desde esa cuenta con respuesta a esa dirección.
 const INC_ESTADO_FALLA = /sobrecarg|recarg|fuera de servicio/i;
 const INC_NO_FALLA = { EN_LUGAR: 'No está en su lugar o no se ve', ACCESO_LIBRE: 'Acceso obstruido', MANOMETRO: 'Presión fuera de rango (manómetro fuera del verde)', PRECINTO: 'Sin precinto o seguro', SENALIZACION: 'Sin señalización' };
-function incFallas_(x, probs, estado) {
-  const l = probs.slice(); Object.keys(INC_NO_FALLA).forEach(k => { if (x[k] === 'No') l.push(INC_NO_FALLA[k]); });
+function incFallas_(x, probs, estado, CH) {   // CH: verificaciones de hidrantes y pulsadores (24/11/2026)
+  const l = probs.slice(); if (CH) CH.forEach(c => { if (x[c[0]] === 'No') l.push('No cumple: ' + c[1]); }); else Object.keys(INC_NO_FALLA).forEach(k => { if (x[k] === 'No') l.push(INC_NO_FALLA[k]); });
   if (estado && INC_ESTADO_FALLA.test(estado)) l.push('Estado: ' + estado);
   return l.filter((v, i) => l.indexOf(v) === i);
 }
@@ -624,35 +701,39 @@ function incControlGuardar_(x, quien, codPermitido) {
   const idOrigen = String(x.id_origen || '').replace(/[^\w\-]/g, '');
   if (idOrigen && incLeer_('CONTROLES', INC.H_CON).some(c => c.ID === 'CTL-' + idOrigen)) return { ok: true, duplicado: true, id: 'CTL-' + idOrigen };
   const L = incLeer_('EXTINTORES', INC.H_EXT), e = L.find(o => o.ID === x.ID_EXTINTOR);
-  if (!e) return { ok: false, codigo: 'no_existe', mensaje: x.ID_EXTINTOR ? 'Ese extintor (' + x.ID_EXTINTOR + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista.' : 'Elegí un extintor de la lista.' };
-  if (/baja/i.test(e.ESTADO || '')) return { ok: false, codigo: 'no_existe', mensaje: 'Ese extintor (' + e.ID + ') está dado de baja: no se controla.' };
-  if (codPermitido && limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese extintor no es de este establecimiento.' };
+  if (!e) return { ok: false, codigo: 'no_existe', mensaje: x.ID_EXTINTOR ? 'Ese equipo (' + x.ID_EXTINTOR + ') ya no está en la lista: lo dieron de baja o lo borraron. Actualizá la lista.' : 'Elegí un equipo de la lista.' };
+  if (/baja/i.test(e.ESTADO || '')) return { ok: false, codigo: 'no_existe', mensaje: 'Ese equipo (' + e.ID + ') está dado de baja: no se controla.' };
+  if (codPermitido && limpio_(e.ESTABLECIMIENTO) !== codPermitido) return { ok: false, codigo: 'lugar', mensaje: 'Ese equipo no es de este establecimiento.' };
+  // Hidrantes y pulsadores (24/11/2026): sus 5 verificaciones y problemas; sin vencimientos; si algo está mal, al menos una foto (hasta 5)
+  const eq = incEq_(e), esExt = eq === 'Extintor', CH = esExt ? INC.CHEQUEOS : INC_EQ[eq].chequeos, FOT = esExt ? INC.FOTOS : INC_EQ.FOTO, PROBS = esExt ? INC.PROBLEMAS : INC_EQ[eq].problemas;
   // «Todo OK» (19/10/2026): control rápido de un solo toque, sin fotos. Las 5 verificaciones son «Sí», sin problemas, y se conservan los vencimientos cargados.
   // No se acepta si la carga está vencida: ese caso va por el control completo (vencimiento, problemas y fotos).
   const todoOk = x.todoOk === true || x.todoOk === 'true';
-  if (todoOk) { INC.CHEQUEOS.forEach(c => x[c[0]] = 'Sí'); x.PROBLEMAS = []; x.VTO_CARGA = incISO_(e.VTO_CARGA) || ''; x.PRUEBA_HIDRAULICA_VENCE = incISO_(e.PRUEBA_HIDRAULICA_VENCE) || 's/d (revisar)';
-    const f0 = incISO_(x.FECHA) || incHoy_(); if (!x.VTO_CARGA || x.VTO_CARGA < f0) return { ok: false, codigo: 'datos', mensaje: 'La carga está vencida o sin fecha: hacé el control completo (con vencimiento, problemas y fotos).' }; }
-  const faltan = INC.CHEQUEOS.filter(c => !/^(Sí|No)$/.test(x[c[0]] || '')).map(c => c[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta responder: ' + faltan.join(', ') + '.' };
-  const sinFoto = todoOk ? [] : INC.FOTOS.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]); if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' };
-  const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? ' puesto ' + e.NRO_EXTINTOR : '') + ' · ' + e.SITIO;
+  if (todoOk) { CH.forEach(c => x[c[0]] = 'Sí'); x.PROBLEMAS = [];
+    if (esExt) { x.VTO_CARGA = incISO_(e.VTO_CARGA) || ''; x.PRUEBA_HIDRAULICA_VENCE = incISO_(e.PRUEBA_HIDRAULICA_VENCE) || 's/d (revisar)';
+      const f0 = incISO_(x.FECHA) || incHoy_(); if (!x.VTO_CARGA || x.VTO_CARGA < f0) return { ok: false, codigo: 'datos', mensaje: 'La carga está vencida o sin fecha: hacé el control completo (con vencimiento, problemas y fotos).' }; } }
+  const faltan = CH.filter(c => !/^(Sí|No)$/.test(x[c[0]] || '')).map(c => c[1]); if (faltan.length) return { ok: false, codigo: 'datos', mensaje: 'Falta responder: ' + faltan.join(', ') + '.' };
+  const sinFoto = todoOk ? [] : FOT.filter(f => !(x.fotos && x.fotos[f[0]])).map(f => f[1]);
+  if (sinFoto.length) return { ok: false, codigo: 'datos', mensaje: esExt ? 'Faltan las fotos: ' + sinFoto.join(', ') + '. Son obligatorias las 3.' : 'Falta la foto (al menos una, hasta 5).' };
+  const cod = limpio_(e.ESTABLECIMIENTO), fecha = incISO_(x.FECHA) || incHoy_(), sub = ['Controles', fecha.slice(0, 7)], et = e.ID + (e.NRO_EXTINTOR ? (esExt ? ' puesto ' + e.NRO_EXTINTOR : ' ' + incEqNro_(e)) : '') + ' · ' + e.SITIO;
   // Vencimientos: fechas entre 2020 y 2040 (antes de guardar las fotos, para no dejar fotos sueltas si hay que corregir)
-  if (!todoOk) for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
+  if (esExt && !todoOk) for (const [k, nom] of [['VTO_CARGA', 'El vencimiento de la carga'], ['PRUEBA_HIDRAULICA_VENCE', 'El vencimiento de la prueba hidráulica']]) {
     const v = x[k]; if (!v || /^s\/d/i.test(String(v))) continue; if (!incFechaOk_(incISO_(v))) return { ok: false, codigo: 'fecha', mensaje: nom + ' tiene que ser una fecha entre 2020 y 2040. Revisá el año en la tarjeta.' };
   }
-  const fotos = {}; if (!todoOk) INC.FOTOS.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));   // «Todo OK»: sin fotos, quedan las del último control
+  const fotos = {}; if (!todoOk) FOT.forEach(f => fotos[f[0]] = incFoto_(cod, x.fotos[f[0]], sub, et + ' · ' + f[1]));   // «Todo OK»: sin fotos, quedan las del último control
   // Vencimientos leídos en el control (pedido de Belén 14/10/2026): carga obligatoria (de la tarjeta), prueba hidráulica si figura
-  const vto = /^s\/d/i.test(x.VTO_CARGA || '') ? '' : incISO_(x.VTO_CARGA) || '', ph = /^s\/d/i.test(x.PRUEBA_HIDRAULICA_VENCE || '') ? 's/d (revisar)' : incISO_(x.PRUEBA_HIDRAULICA_VENCE) || '';
-  if (!vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, codigo: 'fecha', mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
-  const probs = (Array.isArray(x.PROBLEMAS) ? x.PROBLEMAS : String(x.PROBLEMAS || '').split(' · ')).map(limpio_).filter(p => INC.PROBLEMAS.indexOf(p) >= 0);
-  if (vto && vto < fecha && probs.indexOf('Carga vencida') < 0) probs.push('Carga vencida');
-  if (!vto && probs.indexOf('Sin tarjeta (marbete) o ilegible') < 0) probs.push('Sin tarjeta (marbete) o ilegible');
-  const res = INC.CHEQUEOS.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
+  const vto = !esExt ? '' : /^s\/d/i.test(x.VTO_CARGA || '') ? '' : incISO_(x.VTO_CARGA) || '', ph = !esExt ? '' : /^s\/d/i.test(x.PRUEBA_HIDRAULICA_VENCE || '') ? 's/d (revisar)' : incISO_(x.PRUEBA_HIDRAULICA_VENCE) || '';
+  if (esExt && !vto && !/^s\/d/i.test(x.VTO_CARGA || '')) return { ok: false, codigo: 'fecha', mensaje: 'Falta el vencimiento de la carga (está en la tarjeta del extintor). Si no se lee, marcá «No se lee».' };
+  const probs = (Array.isArray(x.PROBLEMAS) ? x.PROBLEMAS : String(x.PROBLEMAS || '').split(' · ')).map(limpio_).filter(p => PROBS.indexOf(p) >= 0);
+  if (esExt && vto && vto < fecha && probs.indexOf('Carga vencida') < 0) probs.push('Carga vencida');
+  if (esExt && !vto && probs.indexOf('Sin tarjeta (marbete) o ilegible') < 0) probs.push('Sin tarjeta (marbete) o ilegible');
+  const res = CH.every(c => x[c[0]] === 'Sí') && !probs.length ? 'Conforme' : 'Con observaciones';
   const c = { ID: idOrigen ? 'CTL-' + idOrigen : 'CTL-' + cod + '-' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.random().toString(36).slice(2, 4).toUpperCase(), FECHA: incFecha_(fecha), ESTABLECIMIENTO: cod, SITIO: e.SITIO,
     ID_EXTINTOR: e.ID, RESULTADO: res, OBSERVACIONES: limpio_(x.OBSERVACIONES) || (todoOk ? 'Todo OK (control rápido, sin fotos)' : ''), QUIEN: quien, CARGADO: new Date(), ESTADO: 'Vigente', PROBLEMAS: probs.join(' · '),
-    VTO_CARGA: vto ? incFecha_(vto) : 's/d (no se lee)', PRUEBA_HIDRAULICA_VENCE: ph && ph !== 's/d (revisar)' ? incFecha_(ph) : ph };
-  INC.CHEQUEOS.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
-  // Aviso por correo si el extintor quedó con algo que dificulta o impide su uso (por ahora, HMH: SOMI y Mantenimiento)
-  const fallas = incFallas_(x, probs, x.ESTADO && INC.ESTADOS.indexOf(x.ESTADO) >= 0 ? x.ESTADO : '');
+    VTO_CARGA: !esExt ? INC_EQ.NC : vto ? incFecha_(vto) : 's/d (no se lee)', PRUEBA_HIDRAULICA_VENCE: !esExt ? INC_EQ.NC : ph && ph !== 's/d (revisar)' ? incFecha_(ph) : ph };
+  CH.forEach(k => c[k[0]] = x[k[0]]); Object.assign(c, fotos);
+  // Aviso por correo si el equipo quedó con algo que dificulta o impide su uso (por ahora, HMH: SOMI y Mantenimiento)
+  const fallas = incFallas_(x, probs, x.ESTADO && INC.ESTADOS.indexOf(x.ESTADO) >= 0 ? x.ESTADO : '', esExt ? null : CH);
   if (fallas.length) c.AVISO_CORREO = incRegistrarFalla_(Object.assign({}, e, x.ESTADO ? { ESTADO: x.ESTADO } : {}), fallas, { quien: quien, fecha: fecha, obs: c.OBSERVACIONES, fotos: fotos, id: c.ID });
   incEscribir_('CONTROLES', INC.H_CON, null, c);
   const o = Object.assign({}, e); delete o.fila;
@@ -717,7 +798,8 @@ function incRed_(d, acc) {
     case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
       return conLock_(() => incResolverFalla_(x, quien, cod));
     case 'i_ext_editar': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ESTABLECIMIENTO: cod }), quien, cod));
-    case 'i_ext_alta': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
+    case 'i_ext_alta': if (incEq_({ EQUIPO: x.EQUIPO }) !== 'Extintor' && acc && acc.servicio) return { ok: false, codigo: 'permiso', mensaje: 'Los hidrantes y los pulsadores los agrega Higiene y Seguridad (Melani o Macarena). Vos podés hacer el control.' };   // 24/11/2026
+      return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }
   const r = typeof incSrvRed_ === 'function' ? incSrvRed_(d, acc, cod, x, quien) : null; if (r) return r;
   return { ok: false, error: 'Acción desconocida.' };
