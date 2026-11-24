@@ -7,6 +7,9 @@
  *     Después se recalcula lo que dependía de ella (última limpieza del tanque, último análisis de la canilla, estado del caso de plagas).
  * Corregir = guardar la versión nueva y anular la anterior con el motivo «Corregido». Si la versión nueva no se puede guardar, la anterior no se toca.
  * Plazo: el establecimiento puede corregir o anular hasta REG_DIAS días después de la carga. Con la clave de Higiene y Seguridad, sin límite.
+ *   24/11/2026 (Belén): en los manifiestos el plazo se cuenta desde el día en que se CARGÓ (sale del identificador «app:…»), no desde la
+ *   fecha del manifiesto: así quien cargó una fecha equivocada la puede arreglar. El listado muestra también lo cargado en el período
+ *   aunque la fecha del manifiesto sea anterior. Al corregir, se cierra sola la tarea de HyS que pedía revisar ese registro (TAREAS_HYS › REGISTRO).
  * Cada anulación queda en BASE COMÚN › HISTORIAL. Nunca se borra información.
  */
 const REG_DIAS = 30;
@@ -26,13 +29,20 @@ const regFecha_ = v => v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-
 // Clave de un manifiesto: el identificador de la app («app:…») o, si es histórico, sitio|número|fecha
 function regClaveMan_(sitio, nro, fecha, obs) { const m = /app:([\w-]+)/.exec(String(obs || '')); return m ? 'app:' + m[1] : 'k:' + sitio + '|' + String(nro).trim() + '|' + fecha; }
 const regObs_ = (obs, etiqueta) => { const m = new RegExp(etiqueta + ':\\s*([^·]+)').exec(String(obs || '')); return m ? m[1].trim() : ''; };
+// Día en que se cargó un manifiesto desde la app: el identificador «app:…» empieza con la hora de carga en base 36 (24/11/2026).
+// Si no hay identificador (histórico o carga manual) o no da una fecha razonable, se usa la fecha del manifiesto.
+function regCargadoMan_(obs, fecha) {
+  const m = /app:([0-9a-z]{8})/.exec(String(obs || '')); if (!m) return fecha;
+  const t = parseInt(m[1], 36); if (!(t > Date.UTC(2025, 0, 1)) || t > Date.now() + 864e5) return fecha;
+  return Utilities.formatDate(new Date(t), TZ, 'yyyy-MM-dd');
+}
 function regManifiestos_(ss, desde) {
   const sh = ss.getSheetByName('MANIFIESTOS'), n = sh.getLastRow() - 5; if (n < 1) return [];
   const g = {}, orden = [];
   sh.getRange(6, 1, n, 13).getValues().forEach((r, i) => {
-    if (!r[2]) return; const fecha = regFecha_(r[2]); if (fecha < desde) return;
+    if (!r[2]) return; const fecha = regFecha_(r[2]), cargado = regCargadoMan_(r[12], fecha); if (fecha < desde && cargado < desde) return;
     const k = regClaveMan_(r[1], r[5], fecha, r[12]);
-    if (!g[k]) { g[k] = { id: k, filas: [], sitio: r[1], nro: String(r[5]).trim(), fecha: fecha, origen: r[11], obs: String(r[12] || ''), res: [] }; orden.push(k); }
+    if (!g[k]) { g[k] = { id: k, filas: [], sitio: r[1], nro: String(r[5]).trim(), fecha: fecha, cargado: cargado, origen: r[11], obs: String(r[12] || ''), res: [] }; orden.push(k); }
     g[k].filas.push(6 + i); g[k].res.push({ corriente: r[6], cant: r[7], tam: r[8], vol: r[9], uni: r[10] || 'dm³' });
   });
   return orden.map(k => g[k]);
@@ -166,6 +176,7 @@ function regCorregir_(cod, tipo, id, maestra, quien, guardar, idNuevo) {
   if (!r.editable) return { ok: false, mensaje: 'Pasaron más de ' + REG_DIAS + ' días desde la carga: pedile a Higiene y Seguridad que lo corrija.' };
   const res = guardar(); if (!res || !res.ok || res.repetido) return res;
   regAnularSin_(cod, tipo, id, quien || 's/d', 'Corregido: reemplazado por una carga nueva', idNuevo || '');
+  try { if (typeof thCerrarPorRegistro_ === 'function') thCerrarPorRegistro_(cod, r, quien, 'Lo corrigió'); } catch (e) {}   // tarea de HyS que pedía revisarlo (Establecimiento.gs)
   if (tipo === 'limpieza' && r.datos.CODIGO_TANQUE) regRecalcTanque_(r.datos.CODIGO_TANQUE);
   if (tipo === 'analisis' && r.datos.CODIGO_PUNTO) regRecalcPunto_(r.datos.CODIGO_PUNTO);
   return Object.assign({}, res, { corregido: true });
@@ -193,9 +204,9 @@ function regListar_(cod, maestra, meses) {
   // Residuos
   try {
     const L = regLibro_(cod);
-    regManifiestos_(L.ss, desde).forEach(m => pon({ tema: 'Residuos', tipo: 'manifiesto', id: m.id, fecha: m.fecha, lugar: m.sitio, sinFoto: !/(Foto|Escaneo): *https?:/.test(m.obs), historico: m.origen !== 'App' && m.origen !== 'Carga manual', titulo: 'Manifiesto ' + m.nro + ' · ' + m.sitio,
+    regManifiestos_(L.ss, desde).forEach(m => pon({ tema: 'Residuos', tipo: 'manifiesto', id: m.id, fecha: m.fecha, cargado: m.cargado, nro: m.nro, lugar: m.sitio, sinFoto: !/(Foto|Escaneo): *https?:/.test(m.obs), historico: m.origen !== 'App' && m.origen !== 'Carga manual', titulo: 'Manifiesto ' + m.nro + ' · ' + m.sitio,
       detalle: m.res.map(r => r.corriente + ' ' + (r.vol || r.cant) + ' ' + r.uni).join(' · '), cargo: regObs_(m.obs, 'Cargó') || m.origen, url: regObs_(m.obs, 'Foto') || regObs_(m.obs, 'Escaneo'),
-      editable: regPuede_(maestra, m.fecha), datos: { sitio: m.sitio, nro: m.nro, fecha: m.fecha, firma: regObs_(m.obs, 'Firmó transportista'), original: regObs_(m.obs, 'Original en el establecimiento'), obs: regObs_(m.obs, 'Obs\\.'), res: m.res } }));
+      editable: regPuede_(maestra, m.cargado || m.fecha), datos: { sitio: m.sitio, nro: m.nro, fecha: m.fecha, firma: regObs_(m.obs, 'Firmó transportista'), original: regObs_(m.obs, 'Original en el establecimiento'), obs: regObs_(m.obs, 'Obs\\.'), res: m.res } }));
     regCertificados_(L.ss, desde).forEach(c => pon({ tema: 'Residuos', tipo: 'certificado', id: c.id, fecha: c.fecha, titulo: 'Certificado ' + c.ncert + ' · ' + c.mes, detalle: c.empresa + (c.res.length ? ' · ' + c.res.map(r => r.corriente + ' ' + r.vol + ' ' + r.uni).join(' · ') : ''),
       cargo: regObs_(c.ref, 'Cargó'), url: /^https?:/.test(c.ref) ? c.ref.split(' · ')[0] : '', editable: regPuede_(maestra, c.fecha), datos: { empresa: c.empresa, mes: c.mes, ncert: c.ncert, ftrat: c.ftrat, res: c.res } }));
   } catch (e) {}

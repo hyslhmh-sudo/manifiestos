@@ -891,7 +891,7 @@ function inicio() {
   const pend = miCola().filter(c => c.estado === 'pendiente').length, err = miCola().filter(c => c.estado === 'error').length;
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
   // Tareas asignadas por HyS (BASE COMÚN › TAREAS_HYS, 03/11/2026): solo para la persona de PARA; Higiene y Seguridad (clave maestra) las ve todas
-  const sinT = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(), esPara = p => !p.para || maudHys() || sinT(SES.persona && SES.persona.nombre).indexOf(sinT(p.para)) >= 0;
+  const esPara = thEsPara;   // 24/11/2026: PARA puede tener varias personas separadas por coma (thEsPara, m\u00e1s abajo)
   TEMA_MOD.incendio = 'Incendio';
   const P = MI ? MI.pendientes.filter(p => (!TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) && (p.ir !== 'auditoria' || puede('Auditoría')) && esPara(p)) : [], ir = { incendio: 'incLista', agua_alta: 'aguaRelDep', agua_insp: 'aguaRelDep', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
@@ -1850,6 +1850,39 @@ async function sinAnularOk() {
   } catch (e) { if (b) { b.disabled = false; b.textContent = 'Anular'; } miErr(e.message === 'tiempo' ? 'El sistema tardó en responder. Revisá la lista antes de volver a intentar.' : e.message); }
 }
 
+// ------------------------------------------------------------------ Tareas de HyS para revisar un registro (BASE COMÚN › TAREAS_HYS, 24/11/2026)
+// PARA vacío = todos los que tienen el módulo; varias personas separadas por coma. Higiene y Seguridad (clave maestra) ve todas.
+const thSinT = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+function thEsPara(p) {
+  if (!p.para || maudHys()) return true;
+  const yo = thSinT(SES.persona && SES.persona.nombre);
+  return String(p.para).split(/[,;]/).map(thSinT).filter(Boolean).some(n => yo.indexOf(n) >= 0);
+}
+// ¿La tarea (REGISTRO = «Manifiesto 133074», «Certificado 5521» o el ID) apunta a este registro? Igual que thApunta_ en Establecimiento.gs
+function thApunta(ref, r) {
+  const s = thSinT(ref); if (!s || !r) return false;
+  if (r.tipo && s.indexOf(String(r.tipo).toLowerCase()) !== 0 && s.indexOf(String(r.id || '').toLowerCase()) < 0) return false;
+  const num = String(r.nro || (r.datos && (r.datos.nro || r.datos.ncert)) || '').trim();
+  return (num && new RegExp('(^|\\D)' + num + '(\\D|$)').test(s)) || (!!r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
+}
+const thParaRevisar = () => ((MI && MI.pendientes) || []).filter(p => p.hys && p.registro && thEsPara(p));
+function thOk(i) {
+  const r = REG.registros[i]; if (!r || !r.th) return;
+  $('ov').innerHTML = '<div class="sheet"><h3>Está correcto como se cargó</h3><p class="mu">' + esc(r.titulo) + '</p>' +
+    '<p>Revisaste la foto o el papel y los datos están bien. Higiene y Seguridad va a ver que lo revisaste vos, hoy, y la tarea se cierra.</p>' +
+    '<div class="field"><label for="thCom">Comentario (opcional)</label><textarea id="thCom" rows="2" placeholder="Ej.: la fecha del papel es la que figura"></textarea></div>' +
+    '<div class="notice" id="thErr" hidden style="background:var(--erbg);color:var(--er)"></div>' +
+    '<div class="grid2"><button class="btn sec" data-act="cerrarAyuda">Cancelar</button><button class="btn pri" data-act="thOkSi" data-arg="' + i + '">Sí, está correcto</button></div></div>';
+  $('ov').hidden = false;
+}
+async function thOkSi(i) {
+  const r = REG.registros[i], e = $('thErr'); if (!r || !r.th) return;
+  try { const x = await api('m_th_hecha', { id: r.th.id, resultado: 'Está correcto como se cargó', comentario: $('thCom').value.trim(), quien: SES.persona.nombre });
+    if (!x.ok) { e.textContent = x.mensaje || 'No se pudo guardar.'; e.hidden = false; return; }
+    cerrarAyuda(); REG = null; await miCargar(true); registros(true);
+  } catch (err) { e.textContent = 'Sin conexión: probá de nuevo cuando tengas señal.'; e.hidden = false; }
+}
+
 // ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
 let REG = null, REGF = 'Todos', REGM = 1, REGL = '';
 const regPeriodo = () => REGM === 1 ? 'el último mes' : 'los últimos ' + REGM + ' meses';
@@ -1859,7 +1892,12 @@ async function registros(fresco) {
   if (!navigator.onLine) { $('app').innerHTML = tit + '<p class="mu">Necesitás señal para ver lo registrado en el sistema.</p>'; return miVolver(); }
   if (fresco || !REG || REG._est !== SES.est || REG._m !== REGM) { $('app').innerHTML = tit + '<p class="mu">Leyendo…</p>'; bar(null);
     try { const r = await api('m_registros', { meses: REGM }); if (!r.ok) throw new Error(); REG = r; REG._est = SES.est; REG._m = REGM; } catch (e) { $('app').innerHTML = tit + '<p class="mu">No se pudo leer. Probá de nuevo en un rato.</p>'; return miVolver(); } }
-  const porTema = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF);
+  // Registros que Higiene y Seguridad pidió revisar (TAREAS_HYS › REGISTRO): van primero y marcados
+  const TH = thParaRevisar(); let thVistas = 0;
+  REG.registros.forEach(r => { r.th = r.anulado ? null : (TH.find(t => (!t.est || t.est === SES.est) && thApunta(t.registro, r)) || null); });
+  const porTema = REG.registros.map((r, i) => Object.assign({ i: i }, r)).filter(r => REGF === 'Todos' || r.tema === REGF).sort((a, b) => (b.th ? 1 : 0) - (a.th ? 1 : 0));
+  thVistas = REG.registros.filter(r => r.th).length;
+  const thFaltan = TH.filter(t => !REG.registros.some(r => r.th === t)).length;
   const lugares = {}; porTema.forEach(r => { if (r.lugar) lugares[r.lugar] = (lugares[r.lugar] || 0) + 1; });
   if (REGL && !lugares[REGL]) REGL = '';
   const L = porTema.filter(r => !REGL || r.lugar === REGL), sinFoto = L.filter(r => r.sinFoto && !r.anulado && !r.historico).length;
@@ -1869,12 +1907,16 @@ async function registros(fresco) {
   $('app').innerHTML = miTit('Mis registros', 'Lo cargado en ' + regPeriodo() + '. ' + (REG.maestra ? 'Con la clave de Higiene y Seguridad se puede corregir o anular cualquier registro.' : 'Se puede corregir o anular hasta ' + REG.dias + ' días después de la carga; después lo corrige Higiene y Seguridad.') + ' Anular no borra: el registro queda guardado como anulado, con el motivo.') +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px">' + ['Todos', 'Residuos', 'Agua', 'Plagas', 'Documentos'].map(chip).join('') + '</div>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px">' + selPer + selLug + '</div>' +
+    (thVistas ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>⚠️ Higiene y Seguridad te pidió revisar ' + (thVistas === 1 ? 'un registro' : thVistas + ' registros') + '.</b> Está' + (thVistas === 1 ? '' : 'n') + ' arriba de todo: mirá la foto y tocá «Corregir» si algo está mal, o «Está correcto como se cargó» si está bien.</div>' : '') +
+    (thFaltan ? '<div class="notice">Hay ' + thFaltan + ' registro(s) para revisar que no están en este período. Elegí un período más largo.</div>' : '') +
     (sinFoto ? '<div class="notice"><b>' + sinFoto + ' manifiesto(s) sin foto.</b> Tocá «Subir fotos» en cada uno, o enviá el lote .zip del mes. Hay tiempo hasta el día ' + ((CFG && CFG.diaLimite) || 10) + ' del mes siguiente.</div>' : '') +
-    (L.length ? '<div class="lista">' + L.map(r => '<div class="item" style="flex-direction:column;align-items:stretch;gap:8px' + (r.anulado ? ';opacity:.6' : '') + '"><div><b>' + esc(r.titulo) + '</b><small>' + esc([fechaTxt(r.fecha), r.detalle, r.cargo ? 'cargó ' + r.cargo : ''].filter(Boolean).join(' · ')) + '</small>' +
+    (L.length ? '<div class="lista">' + L.map(r => '<div class="item" style="flex-direction:column;align-items:stretch;gap:8px' + (r.anulado ? ';opacity:.6' : '') + (r.th ? ';border:2px solid var(--er)' : '') + '"><div><b>' + esc(r.titulo) + '</b><small>' + esc([fechaTxt(r.fecha), r.detalle, r.cargo ? 'cargó ' + r.cargo : '', r.cargado && r.cargado !== r.fecha ? 'cargado el ' + fechaTxt(r.cargado) : ''].filter(Boolean).join(' · ')) + '</small>' +
+      (r.th ? '<div class="notice" style="margin:8px 0 0;background:var(--erbg);color:var(--er)"><b>⚠️ Para revisar: ' + esc(r.th.tarea) + '</b>' + (r.th.info ? '<br>' + esc(r.th.info) : '') + '</div>' : '') +
       (r.anulado ? '<small style="color:var(--er)">' + esc(r.motivo || 'Anulado') + '</small>' : !r.editable ? '<small>Ya no se puede corregir desde acá (más de ' + REG.dias + ' días).</small>' : '') + '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.url ? '<a class="btn sec" style="padding:8px 12px;text-decoration:none" href="' + esc(r.url) + '" target="_blank" rel="noopener">Ver</a>' : '') +
       (r.sinFoto && !r.anulado ? '<label class="btn ' + (r.historico ? 'sec' : 'pri') + '" style="padding:8px 12px;cursor:pointer;flex:0 0 auto">Subir fotos<input type="file" accept="image/*,application/pdf" multiple hidden data-chg="regFoto" data-i="' + r.i + '"></label>' : '') +
-      (r.editable && !r.anulado ? '<button class="btn sec" style="padding:8px 12px" data-act="regCorregir" data-arg="' + r.i + '">Corregir</button><button class="btn sec" style="padding:8px 12px" data-act="regAnular" data-arg="' + r.i + '">Anular</button>' : '') + '</div></div>').join('') + '</div>'
+      (r.editable && !r.anulado ? '<button class="btn ' + (r.th ? 'pri' : 'sec') + '" style="padding:8px 12px" data-act="regCorregir" data-arg="' + r.i + '">Corregir</button><button class="btn sec" style="padding:8px 12px" data-act="regAnular" data-arg="' + r.i + '">Anular</button>' : '') +
+      (r.th ? '<button class="btn sec" style="padding:8px 12px" data-act="thOk" data-arg="' + r.i + '">✅ Está correcto como se cargó</button>' : '') + '</div></div>').join('') + '</div>'
       : '<p class="mu">No hay registros' + (REGF === 'Todos' ? '' : ' de ' + REGF.toLowerCase()) + ' en ' + regPeriodo() + (REGL ? ' en ' + esc(REGL) : '') + '.</p>') +
     ((REGF === 'Todos' || REGF === 'Residuos') && (REG.anuladosResiduos || []).length ? '<h2>Manifiestos y certificados anulados</h2><div class="lista">' + REG.anuladosResiduos.map(a => '<div class="item"><div><b>' + esc(a.texto) + '</b><small>' + esc('Anulado el ' + fechaTxt(a.fecha) + ' · ' + a.quien + ' · ' + a.motivo) + '</small></div></div>').join('') + '</div>' : '');
   miVolver(); window.scrollTo(0, 0);
@@ -2957,7 +2999,7 @@ Object.assign(ACT, { irCocina: () => irCocina(), cocPers: () => { F = null; cocP
   kEditar: b => kEditar(b.dataset.arg), kGuardar: () => kGuardar(),
   kSug: b => { const s = KP.sugeridas[Number(b.dataset.arg)]; kEditar('', { DNI: s.dni, APELLIDO_Y_NOMBRE: s.nombre, ORIGEN: s.empresa ? 'Empresa' : 'Planta', EMPRESA: s.empresa, OBSERVACIONES: [s.funcion, s.servicio].filter(Boolean).join(' · ') }); } });
 
-Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosRes: () => { F = null; REGF = 'Residuos'; registros(true); }, otroMismoLugar: () => nuevoManifiesto(null, ultimoMan().sitio), regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)) });
+Object.assign(ACT, { registros: () => { F = null; registros(true); }, registrosRes: () => { F = null; REGF = 'Residuos'; registros(true); }, otroMismoLugar: () => nuevoManifiesto(null, ultimoMan().sitio), regF: b => { REGF = b.dataset.arg; registros(); }, regAnular: b => regAnular(Number(b.dataset.arg)), regAnularOk: b => regAnularOk(Number(b.dataset.arg)), regCorregir: b => regCorregir(Number(b.dataset.arg)), thOk: b => thOk(Number(b.dataset.arg)), thOkSi: b => thOkSi(Number(b.dataset.arg)) });
 
 // ------------------------------------------------------------------ 9 · Capacitaciones · carga de la secretaría (CapCarga.gs, 14.72)
 // Reemplaza al panel de carga viejo. Solo con DNI y clave personal y el módulo «Capacitaciones» marcado en Accesos.

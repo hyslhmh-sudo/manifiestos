@@ -114,6 +114,7 @@ function miRed_(d) {
     case 'm_registros': return regListar_(cod, maestra, Math.min(12, Math.max(1, Number(x.meses) || 1)));
     case 'm_foto_man': return conLock_(() => regFotoMan_(cod, String(x.id || ''), x.archivo, quien));
     case 'm_anular': return conLock_(() => regAnular_(cod, x, maestra));
+    case 'm_th_hecha': return conLock_(() => thCerrar_(cod, x, quien));   // tarea de HyS: «Está correcto como se cargó» o «Ya lo corregí» (24/11/2026)
   }
   return { ok: false, error: 'Acción desconocida.' };
 }
@@ -416,13 +417,16 @@ function miTablero_(cod, op) { // op.portal: la ficha del portal no necesita for
 // «Lo que tenés pendiente» en «Mi establecimiento» del ESTABLECIMIENTO, solo para quien se llama como PARA (vacío = todos los que tienen
 // el MODULO; Higiene y Seguridad la ve siempre). PLAZO y PLAZO_2 (segundo plazo, opcional). ESTADO = Hecha la saca de la lista.
 // Si MODULO = Incendio, muestra cuántos extintores hay cargados en el lugar (SITIO vacío = todo el establecimiento) y cuántos se cargaron desde la fecha CREADO.
-const TH_H = ['ID', 'ESTABLECIMIENTO', 'SITIO', 'PARA', 'MODULO', 'TAREA', 'DETALLE', 'PLAZO', 'PLAZO_2', 'ESTADO', 'CREADO', 'OBSERVACIONES'];
+// 24/11/2026 (Belén): PARA admite varias personas separadas por coma (ej.: «Melani, Macarena»). REGISTRO (opcional) apunta a un registro
+// cargado para que lo revisen (ej.: «Manifiesto 133074»): en «Mis registros» ese registro aparece primero, marcado, con «Corregir» y
+// «Está correcto como se cargó». Cualquiera de las dos cierra la tarea (ESTADO = Hecha) y deja en OBSERVACIONES quién, cuándo y qué hizo.
+const TH_H = ['ID', 'ESTABLECIMIENTO', 'SITIO', 'PARA', 'MODULO', 'TAREA', 'DETALLE', 'PLAZO', 'PLAZO_2', 'ESTADO', 'CREADO', 'OBSERVACIONES', 'REGISTRO'];
 const TH_IR = { incendio: 'incendio', residuos: 'fotos', agua: 'agua_alta', plagas: 'plagas_intervencion', documentos: 'documentos' };
 function thHoja_() {
   const ss = pBC_(); let sh = ss.getSheetByName('TAREAS_HYS'); if (sh) return sh;
   sh = ss.insertSheet('TAREAS_HYS');
   encabezar_(sh, 'Tareas que asigna Higiene y Seguridad', 'Una fila por tarea. Aparece como «Urgente» en «Lo que tenés pendiente» de Mi establecimiento del ESTABLECIMIENTO, para la persona de PARA (vacío = todos los que tienen el MODULO). PLAZO_2: segundo plazo (opcional). Para sacarla: ESTADO = Hecha (no borrar la fila).', TH_H,
-    ['Lo pone el sistema o a mano (TH-001…).', 'Código (HMH, HZT…).', 'Lugar (opcional): como en SITIOS.', 'Nombre de la persona (opcional).', 'Incendio · Residuos · Agua · Plagas · Documentos', 'Qué hay que hacer (corto).', 'Más detalle (opcional).', 'dd/mm/aaaa', 'dd/mm/aaaa (opcional)', 'Abierta · Hecha', 'dd/mm/aaaa', '']);
+    ['Lo pone el sistema o a mano (TH-001…).', 'Código (HMH, HZT…).', 'Lugar (opcional): como en SITIOS.', 'Nombre de la persona (opcional; varias, separadas por coma).', 'Incendio · Residuos · Agua · Plagas · Documentos', 'Qué hay que hacer (corto).', 'Más detalle (opcional).', 'dd/mm/aaaa', 'dd/mm/aaaa (opcional)', 'Abierta · Hecha', 'dd/mm/aaaa', 'Al cerrarla, el sistema anota quién, cuándo y qué hizo.', 'Registro a revisar (opcional). Ej.: Manifiesto 133074']);
   lista_(sh, 4, 500, ['Incendio', 'Residuos', 'Agua', 'Plagas', 'Documentos']); lista_(sh, 9, 500, ['Abierta', 'Hecha']);
   sh.getRange(6, 8, 500, 2).setNumberFormat('dd/mm/yyyy'); sh.getRange(6, 11, 500, 1).setNumberFormat('dd/mm/yyyy');
   return sh;
@@ -444,8 +448,38 @@ function thPendientes_(G, P) {
       const nuevos = desde ? L.filter(e => /alta/i.test(String(e.CAMBIOS || '')) && String(e.CAMBIOS || '').split('\n').some(l => /: Alta/.test(l) && thISO_(l.slice(0, 10)) >= desde)).length : 0;
       avance = 'Cargados: ' + L.length + (desde ? ' (' + nuevos + ' desde el ' + thTxt_(desde) + ')' : ''); } catch (e) {} }
     P.push({ nivel: 'er', tema: tema, texto: '⚠️ ' + limpio_(o.TAREA) + (limpio_(o.SITIO) ? ' · ' + limpio_(o.SITIO) : ''), detalle: [plazo, avance, limpio_(o.DETALLE)].filter(Boolean).join(' · '),
-      ir: TH_IR[tema] || '', para: limpio_(o.PARA), hys: true });
+      ir: TH_IR[tema] || '', para: limpio_(o.PARA), hys: true, id: limpio_(o.ID), est: cod, tarea: limpio_(o.TAREA), info: limpio_(o.DETALLE), registro: limpio_(o.REGISTRO) });
   });
+}
+// ¿El texto de REGISTRO («Manifiesto 133074», «Certificado 5521», o el ID de la carga) apunta a este registro de «Mis registros»?
+function thApunta_(ref, r) {
+  const s = sinTildes_(ref).toLowerCase(); if (!s || !r) return false;
+  if (r.tipo && s.indexOf(String(r.tipo).toLowerCase()) !== 0 && s.indexOf(String(r.id || '').toLowerCase()) < 0) return false;
+  const num = String(r.nro || (r.datos && (r.datos.nro || r.datos.ncert)) || '').trim();
+  return (num && new RegExp('(^|\\D)' + num + '(\\D|$)').test(s)) || (r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
+}
+// Cerrar una tarea desde «Mi establecimiento»: x = { id, resultado ('Está correcto como se cargó' | 'Lo corrigió'), comentario }
+function thCerrar_(cod, x, quien) {
+  const sh = pBC_().getSheetByName('TAREAS_HYS'); if (!sh) return { ok: false, mensaje: 'No encontré la hoja de tareas.' };
+  const G = miGrupo_(cod), id = limpio_(x.id), fila = pTabla_(sh, TH_H.length).find(r => limpio_(r.v[0]) === id && G.cods.indexOf(limpio_(r.v[1])) >= 0);
+  if (!fila) return { ok: false, mensaje: 'No encontré esa tarea.' };
+  if (/^hecha/i.test(limpio_(fila.v[9]))) return { ok: true, aviso: 'La tarea ya estaba cerrada.' };
+  thMarcar_(sh, fila, quien, limpio_(x.resultado) || 'Hecha', limpio_(x.comentario));
+  return { ok: true };
+}
+// Al corregir un registro desde «Mis registros» (Registros.gs › regCorregir_), se cierran las tareas abiertas que apuntaban a él
+function thCerrarPorRegistro_(cod, r, quien, resultado) {
+  const sh = pBC_().getSheetByName('TAREAS_HYS'); if (!sh) return 0;
+  const G = miGrupo_(cod); let n = 0;
+  pTabla_(sh, TH_H.length).forEach(f => { if (/^hecha/i.test(limpio_(f.v[9])) || G.cods.indexOf(limpio_(f.v[1])) < 0 || !thApunta_(f.v[12], r)) return; thMarcar_(sh, f, quien, resultado, ''); n++; });
+  return n;
+}
+function thMarcar_(sh, fila, quien, resultado, comentario) {
+  const hoy = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy'), previa = limpio_(fila.v[11]);
+  const nota = hoy + ' · ' + (quien || 's/d') + ': ' + resultado + (comentario ? ' («' + comentario + '»)' : '');
+  sh.getRange(fila.fila, 10).setValue('Hecha'); sh.getRange(fila.fila, 12).setValue(previa ? previa + ' · ' + nota : nota);
+  pHistorial_(pBC_(), [[new Date(), 'TAREAS_HYS', limpio_(fila.v[1]), 'ESTADO · ' + limpio_(fila.v[0]), 'Abierta', 'Hecha · ' + resultado, quien || 's/d']]);
+  if (typeof pcBump_ === 'function') pcBump_();
 }
 // Ejecutar una vez desde el editor: crea la hoja y carga las dos tareas de Melani del 03/11/2026 (no duplica)
 function cargarTareasMelani3nov() {
