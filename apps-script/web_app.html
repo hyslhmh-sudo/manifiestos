@@ -892,7 +892,7 @@ function inicio() {
   const puede = m => !SES.modulos || SES.modulos.indexOf(m) >= 0, TEMA_MOD = { agua: 'Agua', plagas: 'Plagas', residuos: 'Residuos', documentos: 'Documentos' };   // módulos asignados (Accesos.gs)
   // Tareas asignadas por HyS (BASE COMÚN › TAREAS_HYS, 03/11/2026): solo para la persona de PARA; Higiene y Seguridad (clave maestra) las ve todas
   const esPara = thEsPara;   // 24/11/2026: PARA puede tener varias personas separadas por coma (thEsPara, m\u00e1s abajo)
-  TEMA_MOD.incendio = 'Incendio';
+  TEMA_MOD.incendio = 'Incendio'; TEMA_MOD.siniestros = 'Accidentes';
   const P = MI ? MI.pendientes.filter(p => (!TEMA_MOD[p.tema] || puede(TEMA_MOD[p.tema])) && (p.ir !== 'auditoria' || puede('Auditoría')) && esPara(p)) : [], ir = { incendio: 'incLista', agua_alta: 'aguaRelDep', agua_insp: 'aguaRelDep', agua_limpieza: 'aguaLimpieza', agua_analisis: 'aguaAnalisis', plagas_intervencion: 'plagaInter', plagas_seguimiento: 'plagaSeg', auditoria: 'irDiag', fotos: 'registrosRes', documentos: 'docs' };
   const tile = (act, t, s, main) => '<button class="big' + (main ? ' main' : '') + '" data-act="' + act + '"><b>' + t + '</b><span>' + s + '</span></button>';
   $('app').innerHTML = '<h1>' + esc(SES.nombre) + '</h1>' +
@@ -901,7 +901,7 @@ function inicio() {
     (puede('Residuos') ? remCartel() : '') +
     (SES.servicio ? '<div class="notice">Entraste con la clave de <b>' + esc(SES.servicio) + '</b>. Cada vez que registres algo, el sistema te va a pedir tu DNI, nombre y correo.</div>' : '<h2>Lo que tenés pendiente</h2>') +
     (SES.servicio ? '' : !MI ? '<p class="mu">' + (navigator.onLine ? 'Cargando…' : 'Sin señal: los pendientes se ven cuando vuelva la conexión.') + '</p>'
-      : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
+      : P.length ? '<div class="lista">' + P.slice(0, 12).map(p => p.hys && p.id ? thItem(p) : '<button class="item pend" data-act="' + (ir[p.ir] || 'inicio') + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></button>').join('') + '</div>' +
         (P.length > 12 ? '<p class="mu" style="font-size:13px">Y ' + (P.length - 12) + ' más.</p>' : '')
       : '<div class="notice ok"><b>No hay pendientes.</b> Todo al día.</div>') +
     (maudVe() || (impVe() && !SES.servicio) ? '<h2>Auditorías y diagnósticos</h2><div class="menu">' + (maudVe() ? tile('miAud', 'Auditorías y diagnósticos por tema', 'Todas las evaluaciones de HyS del establecimiento (Res. SRT 905/2015), por tema: fecha, estado y resultado', true) : '') +   // MiAuditorias.gs (23/10/2026)
@@ -1787,7 +1787,7 @@ let SIN_VER = '';
 function sinVer(id) {
   const s = sinDe(id); if (!s) return siniestros(true);
   SIN_VER = id; VISTA = 'mi'; MIV = { f: () => sinVer(id) }; vista('form'); F = null;
-  $('app').innerHTML = miTit(s.nombre, esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.est) + ' · ' + esc(s.sitio || '')) +
+  $('app').innerHTML = miTit(s.nombre, esc(s.nro) + ' · ' + esc(s.tipo) + ' · ' + sinFecha(s.fecha) + ' · ' + esc(s.est) + ' · ' + esc(s.sitio || '')) + thBloque(thDeSin(s)) +
     '<div class="notice' + (s.abierto ? '' : ' ok') + '"><b>' + esc(s.estado) + '</b>' + (s.dias ? ' · ' + s.dias + ' días de baja' : '') + '</div>' +
     s.avisos.map(a => '<div class="notice" style="' + (a[0] === 'er' ? 'background:var(--erbg);color:var(--er)' : '') + '">' + esc(a[1]) + '</div>').join('') +
     '<h2>Novedades</h2>' + (s.novedades.length ? '<div class="lista">' + s.novedades.map(n => '<div class="item"><div><b>' + esc(n.novedad) + '</b><small>' + sinFecha(n.fecha) + (n.obs ? ' · ' + esc(n.obs) : '') + '</small>' +
@@ -1863,7 +1863,8 @@ function thApunta(ref, r) {
   const s = thSinT(ref); if (!s || !r) return false;
   if (r.tipo && s.indexOf(String(r.tipo).toLowerCase()) !== 0 && s.indexOf(String(r.id || '').toLowerCase()) < 0) return false;
   const num = String(r.nro || (r.datos && (r.datos.nro || r.datos.ncert)) || '').trim();
-  return (num && new RegExp('(^|\\D)' + num + '(\\D|$)').test(s)) || (!!r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
+  const numRe = num.toLowerCase().replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+  return (num && new RegExp('(^|\\D)' + numRe + '(\\D|$)').test(s)) || (!!r.id && s.indexOf(String(r.id).toLowerCase()) >= 0);
 }
 const thParaRevisar = () => ((MI && MI.pendientes) || []).filter(p => p.hys && p.registro && thEsPara(p));
 function thOk(i) {
@@ -1882,6 +1883,64 @@ async function thOkSi(i) {
     cerrarAyuda(); REG = null; await miCargar(true); registros(true);
   } catch (err) { e.textContent = 'Sin conexión: probá de nuevo cuando tengas señal.'; e.hidden = false; }
 }
+
+// Tareas de HyS desde «Lo que tenés pendiente» (24/11/2026): «Ir» abre el registro (extintor, siniestro o «Mis registros») y «Listo» la cierra.
+// REGISTRO: «Extintor EXT-HMH-055» o «Extintor 57» (puesto), «Hidrante …», «Pulsador …», «Siniestro <N.º CH o ID>», «Manifiesto 133074», «Certificado …».
+const TH_IRMAP = { incendio: 'incLista', agua_alta: 'aguaRelDep', plagas_intervencion: 'plagaInter', fotos: 'registrosRes', documentos: 'docs', siniestros: 'siniestros' };
+const thTipo = ref => { const s = thSinT(ref); return !s ? '' : /^(extintor|hidrante|pulsador|ext-|hid-|pul-)/.test(s) ? 'equipo' : /^siniestro/.test(s) ? 'siniestro' : 'registro'; };
+const thBuscar = id => ((MI && MI.pendientes) || []).find(p => p.hys && p.id === id);
+const thDeExt = e => e ? thParaRevisar().find(t => (!t.est || t.est === SES.est) && thTipo(t.registro) === 'equipo' && thApunta(t.registro, { tipo: thSinT(incEqDe(e)), id: e.ID, nro: e.NRO_EXTINTOR })) : null;
+const thDeSin = s => s ? thParaRevisar().find(t => (!t.est || t.est === SES.est) && thTipo(t.registro) === 'siniestro' && thApunta(t.registro, { tipo: 'siniestro', id: s.id, nro: s.nro })) : null;
+function thBloque(t) {
+  if (!t) return '';
+  return '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>⚠️ Higiene y Seguridad pidió revisar esto: ' + esc(t.tarea) + '</b>' + (t.info ? '<br>' + esc(t.info) : '') +
+    '<br>Si algo está mal, corregilo acá y después tocá «Listo». Si está bien, tocá «Listo» y elegí «Está correcto como se cargó».' +
+    '<div style="margin-top:8px"><button class="btn sec" style="padding:8px 12px" data-act="thListo" data-arg="' + esc(t.id) + '">✅ Listo</button></div></div>';
+}
+function thItem(p) {
+  return '<div class="item pend" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>' + esc(p.texto) + '</b><small>' + esc(p.detalle) + '</small></div><span class="tag ' + miNivel(p.nivel) + '">' + (p.nivel === 'er' ? 'Urgente' : p.nivel === 'wa' ? 'Pronto' : 'Aviso') + '</span></div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn pri" style="padding:8px 12px" data-act="thIr" data-arg="' + esc(p.id) + '">' + (p.registro ? 'Ver y revisar' : 'Ir') + '</button>' +
+    '<button class="btn sec" style="padding:8px 12px" data-act="thListo" data-arg="' + esc(p.id) + '">✅ Listo</button></div></div>';
+}
+async function thIr(id) {
+  const t = thBuscar(id); if (!t) return inicio(); const tipo = thTipo(t.registro);
+  if (tipo === 'equipo') {
+    VISTA = 'mi'; MIV = null; vista('form'); bar(null); $('app').innerHTML = miTit('Revisar') + '<p class="mu">Buscando el equipo…</p>';
+    try { if (!INCX) { const r = await api('i_datos', {}); if (!r.ok) throw new Error(r.mensaje || 'No se pudo leer.'); INCX = r; } }
+    catch (e) { $('app').innerHTML = miTit('Revisar') + '<p class="mu">No se pudo leer el inventario. Probá de nuevo con señal.</p>'; return miVolver(); }
+    const e = INCX.extintores.find(x => thApunta(t.registro, { tipo: thSinT(incEqDe(x)), id: x.ID, nro: x.NRO_EXTINTOR }));
+    if (!e) { $('app').innerHTML = miTit('Revisar') + '<div class="notice">No encontré «' + esc(t.registro) + '» en el inventario de este establecimiento. Buscalo en la lista; si no está, avisale a Higiene y Seguridad.</div>'; return miVolver('incLista', 'Ver la lista'); }
+    INCSIT = e.SITIO; return incCtl(e.ID);
+  }
+  if (tipo === 'siniestro') {
+    VISTA = 'mi'; MIV = null; vista('form'); bar(null); $('app').innerHTML = miTit('Revisar') + '<p class="mu">Buscando el siniestro…</p>';
+    try { if (!SIN || SIN._est !== SES.est) { const r = await api('m_accidente', { op: 'lista' }); if (!r.ok) throw new Error(r.mensaje || ''); SIN = r; SIN._est = SES.est; } }
+    catch (e) { $('app').innerHTML = miTit('Revisar') + '<p class="mu">No se pudo leer. Probá de nuevo con señal.</p>'; return miVolver(); }
+    const s = SIN.lista.find(x => thApunta(t.registro, { tipo: 'siniestro', id: x.id, nro: x.nro }));
+    if (!s) { $('app').innerHTML = miTit('Revisar') + '<div class="notice">No encontré «' + esc(t.registro) + '». Buscalo en la lista de siniestros; si no está, avisale a Higiene y Seguridad.</div>'; return miVolver('siniestros', 'Ver los siniestros'); }
+    return sinVer(s.id);
+  }
+  if (tipo === 'registro') { F = null; REGF = t.tema === 'residuos' ? 'Residuos' : 'Todos'; return registros(true); }
+  const a = ACT[TH_IRMAP[t.ir]]; return a ? a({ dataset: {} }) : inicio();
+}
+function thListo(id) {
+  const t = thBuscar(id); if (!t) return;
+  const ops = t.registro ? [['Lo corregí', 'Encontré algo mal y lo corregí'], ['Está correcto como se cargó', 'Lo revisé y los datos están bien']] : [['Ya lo hice', 'La tarea está hecha']];
+  $('ov').innerHTML = '<div class="sheet"><h3>Listo: ' + esc(t.tarea) + '</h3><p class="mu">La tarea se cierra y Higiene y Seguridad ve quién la cerró, cuándo y qué hizo.</p>' +
+    ops.map((o, i) => '<label class="item" style="cursor:pointer;gap:10px;justify-content:flex-start"><input type="radio" name="thRes" value="' + esc(o[0]) + '"' + (i ? '' : ' checked') + '><div><b>' + esc(o[0]) + '</b><small>' + esc(o[1]) + '</small></div></label>').join('') +
+    '<div class="field" style="margin-top:10px"><label for="thCom">Comentario (opcional)</label><textarea id="thCom" rows="2" placeholder="Ej.: corregí la fecha según el papel"></textarea></div>' +
+    '<div class="notice" id="thErr" hidden style="background:var(--erbg);color:var(--er)"></div>' +
+    '<div class="grid2"><button class="btn sec" data-act="cerrarAyuda">Cancelar</button><button class="btn pri" data-act="thListoOk" data-arg="' + esc(id) + '">Cerrar la tarea</button></div></div>';
+  $('ov').hidden = false;
+}
+async function thListoOk(id) {
+  const e = $('thErr'), sel = document.querySelector('input[name="thRes"]:checked');
+  try { const x = await api('m_th_hecha', { id: id, resultado: sel ? sel.value : 'Hecha', comentario: $('thCom').value.trim(), quien: SES.persona.nombre });
+    if (!x.ok) { e.textContent = x.mensaje || 'No se pudo guardar.'; e.hidden = false; return; }
+    cerrarAyuda(); REG = null; await miCargar(true); inicio();
+  } catch (err) { e.textContent = 'Sin conexión: probá de nuevo cuando tengas señal.'; e.hidden = false; }
+}
+Object.assign(ACT, { thIr: b => thIr(b.dataset.arg), thListo: b => thListo(b.dataset.arg), thListoOk: b => thListoOk(b.dataset.arg) });
 
 // ------------------------------------------------------------------ Mis registros: ver, corregir y anular lo cargado (Registros.gs)
 let REG = null, REGF = 'Todos', REGM = 1, REGL = '';
@@ -2424,7 +2483,7 @@ function incCtl(id) {
 function formInc() {
   VISTA = 'mi'; vista('form'); const e = F._e;
   if (incEqDe(e) !== 'Extintor') return formIncEq();
-  $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'puesto ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr +
+  $('app').innerHTML = miTit('Control · ' + (e.NRO_EXTINTOR ? 'puesto ' + e.NRO_EXTINTOR : e.ID), esc([e.SITIO, e.SECTOR, e.UBICACION].filter(Boolean).join(' · '))) + fErr + thBloque(thDeExt(e)) +
     '<p style="margin:0 0 12px"><button class="link" data-act="incEdit">✏️ Corregir los datos de este extintor (puesto, lugar, tipo, kg, chapa baliza, inventario, vencimientos, fotos)</button></p>' +
     (e.falla ? '<div class="notice" style="background:var(--erbg);color:var(--er)"><b>Tiene un problema abierto desde el ' + fechaTxt(e.falla.FECHA) + ':</b> ' + esc(e.falla.PROBLEMAS || '') + '. Va en el correo a SOMI y Mantenimiento (uno solo con todos los extintores) cada 3 días hasta que se marque resuelto.<br>' + (INCX && INCX.puedeResolver === false ? '' : '<button class="btn sec" data-act="incResolver" style="margin-top:8px">El problema ya está resuelto</button>') + '</div>' : '') +
     incTodoOkBloque(e) +
