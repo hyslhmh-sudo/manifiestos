@@ -51,6 +51,9 @@ const INC = {
   SIS: '16AIJZcmxG9EBM3-D-J4vRtvruHK9DVrA',   // SISTEMA HyS
   CARPETA: 'MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS',
   P_LIBRO: 'INC_ID', P_CARPETA: 'INC_CARPETA',
+  // Vencimiento de la prueba hidráulica que toma un extintor NUEVO cuando no se carga (24/11/2026, pedido de Belén: en el HMH todos vencen en 2030).
+  // Si el alta trae la fecha del marbete, queda esa. Para cambiarla o sumar otro establecimiento, editar acá (formato aaaa-mm-dd).
+  PH_POR_DEFECTO: { HMH: '2030-01-01' },
   FUENTE: '1AD5M0mA3JrugyLwBkJj52127BGhKBDcIcO3NTK5EAaU',   // «Inventario de Extintores» (Belén, carga inicial)
   H_SIT: ['ESTABLECIMIENTO', 'SITIO', 'TIPO_SITIO', 'RESPONSABLES_CONTROL', 'ACTIVO', 'OBSERVACIONES', 'ACTUALIZADO', 'CORREOS_FALLA'],   // CORREOS_FALLA: a quién avisar por correo si un extintor queda con problemas
   H_EXT: ['ID', 'ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO',
@@ -500,7 +503,7 @@ function incExtGuardar_(x, quien, codPermitido) {
   ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x && (e || x[k] !== '')) o[k] = limpio_(x[k]); });
   if (esExt) {
     ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
-    if (!e && !o.PRUEBA_HIDRAULICA_VENCE) o.PRUEBA_HIDRAULICA_VENCE = 's/d (revisar)';
+    if (!e && (!o.PRUEBA_HIDRAULICA_VENCE || /^s\/d/i.test(o.PRUEBA_HIDRAULICA_VENCE))) o.PRUEBA_HIDRAULICA_VENCE = INC.PH_POR_DEFECTO[cod] ? incFecha_(INC.PH_POR_DEFECTO[cod]) : 's/d (revisar)';   // HMH: 01/01/2030 (24/11/2026)
   } else ['AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => o[k] = INC_EQ.NC);   // hidrantes y pulsadores
   o.EQUIPO = eq; if (!esExt) incEqColumna_();
   ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE', 'ULTIMO_CONTROL'].forEach(k => { if (o[k] && !(o[k] instanceof Date) && /^\d{4}-/.test(o[k])) o[k] = incFecha_(o[k]); });
