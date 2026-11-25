@@ -449,9 +449,10 @@ function thPendientes_(G, P) {
       : 'Plazo vencido el ' + thTxt_(p2 || p1);
     let avance = '';
     if (tema === 'incendio' && typeof incLeer_ === 'function') { try { const desde = thISO_(o.CREADO), sit = limpio_(o.SITIO);
-      const L = incLeer_('EXTINTORES', INC.H_EXT).filter(e => limpio_(e.ESTABLECIMIENTO) === cod && (!sit || sinTildes_(e.SITIO) === sinTildes_(sit)) && !/baja/i.test(e.ESTADO));
+      // Solo extintores (25/11/2026, pedido de Belén): los hidrantes y los pulsadores no cuentan en «Cargados»; solo los del establecimiento (y del lugar, si la tarea lo dice).
+      const L = incLeer_('EXTINTORES', INC.H_EXT).filter(e => limpio_(e.ESTABLECIMIENTO) === cod && (!sit || sinTildes_(e.SITIO) === sinTildes_(sit)) && !/baja/i.test(e.ESTADO) && (typeof incEq_ !== 'function' || incEq_(e) === 'Extintor'));
       const nuevos = desde ? L.filter(e => /alta/i.test(String(e.CAMBIOS || '')) && String(e.CAMBIOS || '').split('\n').some(l => /: Alta/.test(l) && thISO_(l.slice(0, 10)) >= desde)).length : 0;
-      avance = 'Cargados: ' + L.length + (desde ? ' (' + nuevos + ' desde el ' + thTxt_(desde) + ')' : ''); } catch (e) {} }
+      avance = 'Extintores cargados: ' + L.length + (desde ? ' (' + nuevos + ' desde el ' + thTxt_(desde) + ')' : ''); } catch (e) {} }
     P.push({ nivel: 'er', tema: tema, texto: '⚠️ ' + limpio_(o.TAREA) + (limpio_(o.SITIO) ? ' · ' + limpio_(o.SITIO) : ''), detalle: [plazo, avance, limpio_(o.DETALLE)].filter(Boolean).join(' · '),
       ir: TH_IR[tema] || '', para: limpio_(o.PARA), hys: true, id: limpio_(o.ID), est: cod, tarea: limpio_(o.TAREA), info: limpio_(o.DETALLE), registro: limpio_(o.REGISTRO) });
   });

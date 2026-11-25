@@ -787,7 +787,7 @@ function incRed_(d, acc) {
   // Solo puede ver la lista, cargar controles y agregar o corregir extintores (no marca resueltos ni carga novedades).
   const esMipyv = !!(acc && acc.servicio && sinTildes_(acc.servicio) === sinTildes_(INC.SERVICIO_MIPYV));
   if (esMipyv) {
-    if (!/^i_(datos|control|ext_alta|ext_editar)$/.test(d.accion)) return { ok: false, codigo: 'permiso', mensaje: 'Desde MIPyV solo se cargan controles y extintores.' };
+    if (!/^i_(datos|fotos|control|ext_alta|ext_editar)$/.test(d.accion)) return { ok: false, codigo: 'permiso', mensaje: 'Desde MIPyV solo se cargan controles y extintores.' };
     x.quien = limpio_(x.operario || 'Operario MIPyV') + (limpio_(x.operario_acompanante) ? ' (con ' + limpio_(x.operario_acompanante) + ')' : '') + ' · MIPyV';
   }
   // Empresas de servicio (SOMI, MAREM): cada registro lleva quién lo hizo (DNI cruzado con la base de personal) · IncendioServicios.gs
@@ -797,6 +797,7 @@ function incRed_(d, acc) {
   const quien = x.quien || 'Mi establecimiento';
   switch (d.accion) {
     case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); return r; }
+    case 'i_fotos': return typeof incFotos_ === 'function' ? incFotos_(x, cod) : { ok: false, mensaje: 'No se pudieron leer las fotos.' };   // fotos guardadas del equipo, para verlas al controlar (25/11/2026)
     case 'i_control': return conLock_(() => incControlGuardar_(x, quien, cod));
     case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
       return conLock_(() => incResolverFalla_(x, quien, cod));
@@ -806,4 +807,41 @@ function incRed_(d, acc) {
   }
   const r = typeof incSrvRed_ === 'function' ? incSrvRed_(d, acc, cod, x, quien) : null; if (r) return r;
   return { ok: false, error: 'Acción desconocida.' };
+}
+
+// ====================================================================================================
+// Fotos guardadas de un equipo de incendio (extintor, hidrante, pulsador)
+// 25/11/2026 · Pedido de Belén: «la foto se carga una vez (a menos que se cambie de ubicación), pero debería verse siempre para asegurarse».
+// Al abrir el control de un equipo en «Mi establecimiento», la aplicación pide sus fotos con la acción i_fotos (incRed_, más arriba).
+// Las fotos están en Drive y son privadas: el sistema las manda como imagen reducida (dataURL, 800 px), guardada 6 horas en la caché.
+// Solo devuelve fotos de equipos del establecimiento con el que se ingresó. No cambia nada en la planilla.
+// ====================================================================================================
+
+const INC_FOTOS_CAMPOS = [['FOTO_PANORAMICA', 'Panorámica'], ['FOTO_MARBETE', 'Marbete'], ['FOTO_INVENTARIO', 'N.º de inventario']];
+const INC_FOTOS_MAX = 5;   // por campo (hidrantes y pulsadores: hasta 5 fotos en FOTO_PANORAMICA)
+
+function incFotos_(x, cod) {
+  const id = limpio_(x && x.id); if (!id) return { ok: false, mensaje: 'Falta indicar el equipo.' };
+  const e = incLeer_('EXTINTORES', INC.H_EXT).find(z => limpio_(z.ID) === id && limpio_(z.ESTABLECIMIENTO) === limpio_(cod));
+  if (!e) return { ok: false, mensaje: 'No se encontró el equipo en este establecimiento.' };
+  const esExt = incEq_(e) === 'Extintor', fotos = [];
+  INC_FOTOS_CAMPOS.forEach(([k, nom]) => {
+    const ids = (String(e[k] || '').match(/[-\w]{25,}/g) || []).filter((v, i, a) => a.indexOf(v) === i).slice(0, INC_FOTOS_MAX);
+    ids.forEach((fid, i) => fotos.push({ campo: k, nombre: (esExt ? nom : 'Foto') + (ids.length > 1 ? ' ' + (i + 1) : ''), img: incFotoChica_(fid) }));
+  });
+  return { ok: true, id: id, fotos: fotos };
+}
+
+// Imagen reducida de Drive como dataURL. Primero la miniatura de Drive (800 px); si no se puede, la miniatura chica de DriveApp.
+function incFotoChica_(fid) {
+  const k = 'inc_foto_' + fid, c = typeof cacheGet_ === 'function' ? cacheGet_(k) : null; if (c) return c;
+  let u = '';
+  try {
+    const r = UrlFetchApp.fetch('https://drive.google.com/thumbnail?id=' + fid + '&sz=w800', { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true, followRedirects: true });
+    const b = r.getBlob(), t = b.getContentType() || '';
+    if (r.getResponseCode() === 200 && /^image\//.test(t)) u = 'data:' + t + ';base64,' + Utilities.base64Encode(b.getBytes());
+  } catch (e) {}
+  if (!u) { try { const b = DriveApp.getFileById(fid).getThumbnail(); if (b) u = 'data:' + (b.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(b.getBytes()); } catch (e) {} }
+  if (u && typeof cachePut_ === 'function') cachePut_(k, u, 21600);
+  return u;
 }
