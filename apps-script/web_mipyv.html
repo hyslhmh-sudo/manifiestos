@@ -766,7 +766,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.26d";
+const APP_VERSION = "2026.11.26e";
 </script>
 <script>
 // ============================================================
@@ -890,29 +890,29 @@ const PRODUCTOS = [
 // Catálogo técnico dosis/frecuencia por combinación plaga+producto (editable solo por HyS)
 // Corregido con los datos reales del POE 2023 (ver Correccion_Catalogos.gs)
 const DOSIS_FRECUENCIA = {
-  "PLA-01|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
+  "PLA-01|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
   "PLA-01|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
   "PLA-01|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Rincones, grietas, detrás de mobiliario" },
-  "PLA-02|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
+  "PLA-02|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
   "PLA-02|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
   "PLA-02|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Depósitos, exteriores, cañerías, rincones oscuros y secos" },
   "PLA-03|PRD-08": { dosis: "Aplicación puntual en grietas, zócalos, bajo mesadas y sitios estratégicos", frecuencia: "Según necesidad", puntos: "Cocinas, zócalos, desagües, bajo mesadas, motores, grietas" },
   "PLA-04|PRD-01": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
   "PLA-04|PRD-11": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
   "PLA-04|PRD-12": { dosis: "Colocación en cebaderas y trampas rodenticidas", frecuencia: "Cada 10 días", puntos: "Depósitos, residuos, cañerías, perímetro, accesos" },
-  "PLA-05|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
+  "PLA-05|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
   "PLA-05|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
   "PLA-05|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Residuos, patios, cocina, aberturas, lavaderos" },
-  "PLA-06|PRD-02": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
+  "PLA-06|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
   "PLA-06|PRD-06": { dosis: "75-100 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
   "PLA-06|PRD-07": { dosis: "10 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, desagües, recipientes, áreas húmedas" },
   "PLA-07|PRD-13": { dosis: "Sellado de ingresos, barreras físicas y saneamiento", frecuencia: "Según necesidad", puntos: "Aleros, techos, cornisas, patios de aire" },
-  "PLA-08|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
+  "PLA-08|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
   "PLA-08|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
   "PLA-08|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Nidos, techos, cornisas, áreas próximas a palomares" },
   "PLA-09|PRD-10": { dosis: "Aplicación en ambiente cerrado según fabricante y procedimiento", frecuencia: "Según necesidad", puntos: "Camas, colchones, grietas, textiles, áreas de descanso" },
   "PLA-10|PRD-13": { dosis: "Sellado de ingresos y derivación a autoridad competente", frecuencia: "Según necesidad", puntos: "Entretechos, aleros, cámaras técnicas, cielorrasos" },
-  "PLA-11|PRD-02": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
+  "PLA-11|PRD-02": { dosis: "Dosis de la etiqueta del envase: Sipertrin no figura en el procedimiento del DPSB. Preguntale a Belén antes de usarlo", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
   "PLA-11|PRD-06": { dosis: "100-150 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
   "PLA-11|PRD-07": { dosis: "20 ml cada 5 L de agua", frecuencia: "Según necesidad", puntos: "Patios, bordes, grietas, sectores húmedos" },
   "PLA-12|PRD-05": { dosis: "Aplicación puntual en trayectorias, grietas y puntos de ingreso", frecuencia: "Cada 10 días", puntos: "Cocinas, grietas, zócalos, marcos de puertas y puntos de ingreso" },
@@ -928,7 +928,7 @@ const RECOMENDACIONES_SEGURIDAD = {
   piretroide: {
     titulo: "Piretroides (voladores/rastreros)",
     items: [
-      "Ventilar el ambiente 30-60 min antes de que vuelva a entrar alguien",
+      "En interiores: ventilar y no usar el lugar por 6 a 8 horas (procedimiento del DPSB, 2023)",
       "No aplicar con pacientes, personal o alimentos expuestos en el sector",
       "Usar guantes, barbijo y anteojos durante toda la aplicación",
       "No aplicar cerca de desagües hacia el exterior",
