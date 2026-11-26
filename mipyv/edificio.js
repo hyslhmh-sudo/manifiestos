@@ -11,7 +11,7 @@
 const ED_LOCAL_KEY = "mipyv_edificio_local_v1", ED_BORR_KEY = "mipyv_edificio_borrador_v1", ED_CAT_KEY = "mipyv_edificio_cat_v1";
 const ED_FUERA = ["AMB", "HMH", "HSST"];   // fuera de este relevamiento (03/11/2026: el HZT central SÍ entra, pedido de Belén)
 const ED_TEMAS = [
-  { id: "agua", emo: "💧", t: "Agua", ayuda: "Canillas, caños e inodoros. Los tanques se cargan aparte, en «Tanques y cisternas».", pregs: [
+  { id: "agua", emo: "💧", t: "Agua", ayuda: "Canillas, caños e inodoros. Los tanques se cargan aparte, en «Tanques y cisternas (relevamiento y limpieza)».", pregs: [
     ["a1", "¿Sale agua en todas las canillas?", "Sí"],
     ["a2", "¿Hay pérdidas de agua (canillas, caños, inodoros, depósitos)?", "No"],
     ["a3", "¿Hay manchas de humedad en paredes por caños que pierden?", "No"],

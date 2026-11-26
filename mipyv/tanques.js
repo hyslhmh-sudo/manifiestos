@@ -121,7 +121,7 @@ async function tqAplicarCatalogo(c) {
 function tqPintarHome() {
   const sub = document.getElementById("tqHomeSub"); if (!sub) return;
   const T = tqTanques(), n = T.length;
-  if (!n) { sub.textContent = (TANQUES_CAT.lugares || []).length ? "Limpieza y revisión de tanques · red Trelew" : "Tocá Sincronizar con señal para ver los tanques"; if (typeof avisosPintar === "function") avisosPintar(); return; }
+  if (!n) { sub.textContent = (TANQUES_CAT.lugares || []).length ? "Red Trelew" : "Tocá Sincronizar con señal para ver los tanques"; if (typeof avisosPintar === "function") avisosPintar(); return; }
   const L = TANQUES_CAT.lugares || [], lugL = L.filter(l => tqDe(l.id).some(tqFaltaLimp)).length, lugR = L.filter(l => tqDe(l.id).some(tqFaltaRev)).length;
   sub.textContent = (lugL || lugR) ? [lugL ? "❗ " + lugL + (lugL === 1 ? " lugar para limpiar" : " lugares para limpiar") : "", lugR ? "📋 " + lugR + (lugR === 1 ? " lugar para relevar" : " lugares para relevar") : ""].filter(Boolean).join(" · ") : "✅ Todo al día";
   if (typeof avisosPintar === "function") avisosPintar();

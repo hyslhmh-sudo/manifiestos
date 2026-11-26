@@ -102,7 +102,7 @@ function enterModule(mod) {
     if (typeof edEntrar === "function") edEntrar();
   } else if (mod === "tanques") {   // tanques y cisternas de la red Trelew (tanques.js, 28/10/2026)
     document.body.classList.add("mode-tanques");
-    brandLabel.textContent = "Tanques y cisternas";
+    brandLabel.innerHTML = 'Tanques y cisternas <small style="font-weight:600;font-size:.78em">(relevamiento y limpieza)</small>';   // 26/11/2026: nombre completo, la aclaración más chica para que entre en el celular
     stepList = ["quien", "acompanante", "t-main"];
     if (typeof tqEntrar === "function") tqEntrar();
     const av = document.getElementById("tqBorradorAviso"); if (av) av.style.display = "none";

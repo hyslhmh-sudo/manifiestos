@@ -7,6 +7,9 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
+## Nombre del módulo (26/11/2026, versión 2026.11.26b)
+- Pedido de Belén: el módulo se llama «Tanques y cisternas (relevamiento y limpieza)» en la tarjeta del inicio, el título de la pantalla, la barra de arriba, la Ayuda y los avisos de Saneamiento y Relevamiento de edificios. Debajo de la tarjeta, «Red Trelew» o lo que falta hacer.
+
 ## Tanques: limpieza desde el lugar (26/11/2026, versión 2026.11.26a)
 - Pedido de Belén: «Javier y Paulo no saben cargar la limpieza en tanques, por eso agregan uno» (en CAPS Tiro Federal dieron de alta un HZT-T45 que no existía para cargar la limpieza del 21 y 23/11 de los HZT-T22 y HZT-T23).
 - `tanques.js`: en cada lugar, botón azul arriba de todo «🧽 Registrar una limpieza» → «¿Qué tanques limpiaste?» con todos los tanques del lugar tildados; un solo formulario (día que terminó y, opcional, día que empezó; horas cerrado; tapa; muestra; foto del F-AGU-01-T) y se manda una limpieza por cada tanque tildado (id `TQ…-1`, `-2`…; mismas fotos). La cuenta de agua y lavandina se muestra por tanque; con «Usé el agua y la lavandina que dice arriba» (tildado de entrada) se anotan los litros y mL del método (20 % del tanque, 2 mL/L, 110 ppm) de cada tanque; si se destilda, se cargan a mano. En OBSERVACIONES va «Limpieza hecha del … al …», «Limpieza conjunta de …» y «Dosis según el método de HyS». Desde el tanque sigue «🧽 Lo limpié» (viene tildado solo ese).
