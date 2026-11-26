@@ -796,13 +796,14 @@ function incRed_(d, acc) {
   }
   const quien = x.quien || 'Mi establecimiento';
   switch (d.accion) {
-    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); return r; }
+    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); r.puedeAgregar = !(acc && acc.sinAltasInc); return r; }
     case 'i_fotos': return typeof incFotos_ === 'function' ? incFotos_(x, cod) : { ok: false, mensaje: 'No se pudieron leer las fotos.' };   // fotos guardadas del equipo, para verlas al controlar (25/11/2026)
     case 'i_control': return conLock_(() => incControlGuardar_(x, quien, cod));
     case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
       return conLock_(() => incResolverFalla_(x, quien, cod));
     case 'i_ext_editar': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ESTABLECIMIENTO: cod }), quien, cod));
-    case 'i_ext_alta': if (incEq_({ EQUIPO: x.EQUIPO }) !== 'Extintor' && acc && acc.servicio) return { ok: false, codigo: 'permiso', mensaje: 'Los hidrantes y los pulsadores los agrega Higiene y Seguridad (Melani o Macarena). Vos podés hacer el control.' };   // 24/11/2026
+    case 'i_ext_alta': if (acc && acc.sinAltasInc) return { ok: false, codigo: 'permiso', mensaje: 'Los equipos nuevos (extintores, hidrantes y pulsadores) los agrega Higiene y Seguridad. Vos podés hacer el control y corregir los datos de los que ya están.' };   // ACCESOS › INCENDIO = «Sin altas» (26/11/2026)
+      if (incEq_({ EQUIPO: x.EQUIPO }) !== 'Extintor' && acc && acc.servicio) return { ok: false, codigo: 'permiso', mensaje: 'Los hidrantes y los pulsadores los agrega Higiene y Seguridad (Melani o Macarena). Vos podés hacer el control.' };   // 24/11/2026
       return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }
   const r = typeof incSrvRed_ === 'function' ? incSrvRed_(d, acc, cod, x, quien) : null; if (r) return r;
