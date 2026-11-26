@@ -170,7 +170,7 @@ function aguaLabAviso_(x) {
     const desde = Utilities.formatDate(new Date(Date.now() - dias * 864e5), TZ, 'yyyy-MM-dd');
     if (sitio && typeof miLeer_ === 'function') {
       const tq = aguaLabTanques_(aguaLabRes_(), cod, sitio).map(t => t.CODIGO_TANQUE);
-      const L = miLeer_('AGUA_LIMPIEZAS').filter(l => tq.indexOf(l.CODIGO_TANQUE) >= 0 && String(l.FECHA).slice(0, 10) >= desde);
+      const L = miLeer_('AGUA_LIMPIEZAS').filter(l => tq.indexOf(l.CODIGO_TANQUE) >= 0 && String(l.FECHA).slice(0, 10) >= desde && !/clorac/i.test(String(l.PROCEDIMIENTO || '')));   // 26/11/2026: la cloración no es limpieza
       if (L.length) {
         const fechas = Array.from(new Set(L.map(l => String(l.FECHA).slice(0, 10)))).sort().map(v => v.split('-').reverse().join('/'));
         const nom = c => String(c || '').replace(/\s*·.*$/, '').replace(/\s*\(con ([^)]+)\)/, ' y $1').replace(/\s*\([^)]*\)/g, '').trim();

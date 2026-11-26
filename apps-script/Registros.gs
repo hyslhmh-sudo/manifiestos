@@ -118,9 +118,11 @@ function regMarcar_(hoja, campo, id, cod, quien, motivo) {
   const o = { OBSERVACIONES: regMarca_(quien, motivo, f.OBSERVACIONES) }; if (MI_H[hoja].indexOf('ESTADO') >= 0) o.ESTADO = 'Anulado';
   miCambiar_(hoja, f.fila, o); regLog_(cod, hoja, id, motivo, quien); return f;
 }
+// 26/11/2026 (Belén): las filas de CLORACIÓN (PROCEDIMIENTO «CLORACIÓN (no es limpieza)…») no cuentan como limpieza del tanque.
+const regEsCloracion_ = l => /clorac/i.test(String(l.PROCEDIMIENTO || ''));
 function regRecalcTanque_(codTanque) {
   const T = miLeer_('RESERVORIOS').find(t => t.CODIGO_TANQUE === codTanque); if (!T) return;
-  const u = miLeer_('AGUA_LIMPIEZAS').filter(l => l.CODIGO_TANQUE === codTanque && regVivo_(l)).map(l => l.FECHA).sort().pop() || '';
+  const u = miLeer_('AGUA_LIMPIEZAS').filter(l => l.CODIGO_TANQUE === codTanque && regVivo_(l) && !regEsCloracion_(l)).map(l => l.FECHA).sort().pop() || '';
   miCambiar_('RESERVORIOS', T.fila, { ULTIMA_LIMPIEZA: u, PROXIMA_LIMPIEZA: u ? miSumarMeses_(u, Number(T.FRECUENCIA_LIMPIEZA_MESES) || 12) : '', ACTUALIZADO: regHoy_() });
 }
 function regRecalcPunto_(codPunto) {
@@ -212,7 +214,7 @@ function regListar_(cod, maestra, meses) {
   } catch (e) {}
   const mios = hoja => miLeer_(hoja).filter(r => r.ESTABLECIMIENTO === cod);
   const base = (r, carga) => ({ cargo: r.CARGO || r.AVISO_DE || '', url: r.ARCHIVO || '', anulado: !regVivo_(r), motivo: regVivo_(r) ? '' : String(r.OBSERVACIONES).split(' · ').slice(0, 3).join(' · '), editable: regVivo_(r) && regPuede_(maestra, carga) });
-  mios('AGUA_LIMPIEZAS').filter(r => r.FECHA >= desde).forEach(r => pon(Object.assign({ tema: 'Agua', tipo: 'limpieza', id: r.ID, fecha: r.FECHA, titulo: 'Limpieza de ' + r.CODIGO_TANQUE, detalle: [r.PROCEDIMIENTO, r.CLORO_PPM ? 'cloro ' + r.CLORO_PPM + ' ppm' : ''].filter(Boolean).join(' · '), datos: r }, base(r, r.CARGADO || r.FECHA))));
+  mios('AGUA_LIMPIEZAS').filter(r => r.FECHA >= desde).forEach(r => pon(Object.assign({ tema: 'Agua', tipo: 'limpieza', id: r.ID, fecha: r.FECHA, titulo: (regEsCloracion_(r) ? 'Cloración de ' : 'Limpieza de ') + r.CODIGO_TANQUE, detalle: [r.PROCEDIMIENTO, r.CLORO_PPM ? 'cloro ' + r.CLORO_PPM + ' ppm' : ''].filter(Boolean).join(' · '), datos: r }, base(r, r.CARGADO || r.FECHA))));
   mios('AGUA_ANALISIS').filter(r => r.FECHA_TOMA >= desde).forEach(r => pon(Object.assign({ tema: 'Agua', tipo: 'analisis', id: r.ID, fecha: r.FECHA_TOMA, titulo: 'Análisis ' + r.TIPO.toLowerCase() + ' · ' + r.CODIGO_PUNTO, detalle: r.RESULTADO + (r.LABORATORIO ? ' · ' + r.LABORATORIO : ''), datos: r }, base(r, r.CARGADO || r.FECHA_TOMA))));
   mios('PLAGAS_CASOS').filter(r => r.FECHA >= desde).forEach(r => pon(Object.assign({ tema: 'Plagas', tipo: 'caso', id: r.CASO, fecha: r.FECHA, titulo: 'Aviso · ' + r.PLAGA + ' (' + r.CASO + ')', detalle: [r.SITIO, r.SECTOR, r.ESTADO].filter(Boolean).join(' · '), datos: r }, base(r, r.FECHA))));
   mios('PLAGAS_REGISTROS').filter(r => r.FECHA >= desde).forEach(r => pon(Object.assign({ tema: 'Plagas', tipo: 'plaga', id: r.ID, fecha: r.FECHA, titulo: r.TIPO + (r.CASO ? ' · ' + r.CASO : ' · ' + r.SECTOR), detalle: [r.RESULTADO, r.DECISION, r.QUIMICO === 'Sí' ? 'químico: ' + r.PRODUCTO : ''].filter(Boolean).join(' · '), datos: r }, base(r, r.CARGADO || r.FECHA))));
