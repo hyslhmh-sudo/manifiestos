@@ -586,7 +586,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
       <div class="step-title">¿Qué hiciste hoy?</div>
       <div class="step-sub">Tocá todas las que correspondan</div>
       <div class="grid" id="tareasGrid"></div>
-      <div class="step-sub" style="margin-top:14px">💧 ¿Limpiaste un tanque o una cisterna de agua? Eso no va acá: se carga en el inicio › <b>Tanques y cisternas</b> › el tanque › «Registrar una limpieza».</div>
+      <div class="step-sub" style="margin-top:14px">💧 ¿Limpiaste un tanque o una cisterna de agua? Eso no va acá: se carga en el inicio › <b>Tanques y cisternas</b> › el lugar › el botón azul «🧽 Registrar una limpieza» (no agregues un tanque nuevo).</div>
     </section>
 
     <section class="screen" data-step="s-producto">
@@ -758,7 +758,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.08c";
+const APP_VERSION = "2026.11.26a";
 </script>
 <script>
 // ============================================================
@@ -1081,7 +1081,7 @@ const EMOJI_TAREA_HYS = [
 const AYUDA_TEXTOS = {
   home: "TU HORARIO (una vez por día): al terminar, tocá «🕐 Terminar el día» y cargá a qué hora entraste y saliste; si saliste y volviste (por un trámite), tildá «Tuve una pausa» y cargá el segundo tramo: la pausa no suma. Si van juntos, la app pregunta si tu compañero trabajó el mismo horario, otro o no trabajó. Si te olvidás, al día siguiente la app te lo pide al abrir y no deja seguir hasta cargarlo. Ya no se pide horario en cada lugar. ARRIBA, EN ROJO: «❗ Para hacer ahora» muestra solo lo urgente que falta hacer (plagas con la 2.ª visita vencida o por vencer, tanques para limpiar —en un solo renglón con los lugares— y lugares donde falta cargar los extintores); tocá cada renglón para ir directo. Si no hay nada urgente dice «✅ No hay nada urgente sin hacer». En cada cuadro, abajo del título, dice cómo está ese tema: ✅ hecho, ⏳ en curso o ❗ falta hacer. Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos); Tanques y cisternas para registrar cada limpieza (🧽, cada 12 meses) y cada relevamiento del tanque (📋, cada 6 meses, sin limpiar) (red Trelew); Extintores cargados para mirar la lista de extintores de la red Trelew. Si aparece un cuadro rojo «No se pudo enviar», tocalo: dice qué rechazó la planilla y deja corregirlo o descartarlo. Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
   "e-main": "RELEVAMIENTO DE EDIFICIOS (pedido de la Dirección): es SOLO mirar y contar cómo está cada lugar, no se arregla nada en el momento. 1) Elegí el lugar (la Sede ex ADOS es uno solo; el Hospital Zonal Trelew se puede relevar por partes: escribí qué parte relevaste y cargá un relevamiento por cada parte). 2) Contestá las preguntas de 💧 agua, 🚽 desagües, 🌧️ canaletas y 🏠 techos: Sí, No o «No se pudo ver». 3) Escribí todo para que se entienda sin haber estado ahí. Si algo está mal: decí DÓNDE (qué ambiente o sector) y QUÉ se ve, si es urgente y por qué, qué hace falta arreglar, y sacá al menos 1 foto (hasta 5 por tema). Si marcás «No se pudo ver»: elegí por qué y escribí qué parte no se pudo ver. «s/n», «no» o «-» no se aceptan. 4) Contestá siempre «⚠️ Otros riesgos» (olor a gas, cables o tableros a la vista o mojados, algo que se pueda caer, otro riesgo): si hay alguno, decí dónde exactamente y qué se ve o se huele, y sacale foto; queda URGENTE. Si hay olor a gas: no prender ni apagar luces ni aparatos, abrir puertas y ventanas y avisar ya al responsable del lugar y a Belén. 5) Fotos: si el teléfono cierra la app al abrir la cámara, al volver a abrirla vuelve sola al formulario con todo lo cargado (falta solo la última foto). Si pasa seguido, sacá las fotos con la cámara común del teléfono y cargalas con «🖼️ Elegir del teléfono» (se pueden elegir varias juntas). 6) Si el botón está gris, abajo en rojo dice exactamente qué falta. Tocá «Listo, guardar el relevamiento». Se envía solo cuando haya señal. ⚠️ A los techos no se sube sin escalera segura y sin otra persona: si no se puede, mirar desde abajo y desde adentro y marcar «No se pudo ver». Si salís a mitad, lo cargado queda guardado en el celular: al volver a entrar se ve la lista de lugares y arriba un aviso «Quedó un relevamiento sin terminar» con «Seguir con ese» o «Descartarlo».",
-  "t-main": "TANQUES Y CISTERNAS (red Trelew, sin el HMH). Cada tanque tiene DOS tareas distintas: 🧽 LIMPIARLO (cada 12 meses) y 📋 RELEVAMIENTO: revisar cómo está (cada 6 meses, sin limpiar). En cada lugar y en cada tanque dice cuál está hecha (✅), cuál toca pronto (⏰) y cuál hay que hacer (❗). Los lugares con algo para hacer aparecen arriba. 1) Elegí el lugar. 2) Si el tanque no está en la lista, tocá «➕ Agregar un tanque o cisterna»: dónde está, tipo, para qué se usa, capacidad, cómo se llega, cómo está y al menos una foto. Queda con un código (por ejemplo HZT-T01 o HZT-C01) cuando se envía. 3) Cada 6 meses tocá el tanque › «📋 Relevamiento: lo revisé (sin limpiar)»: tapa, 8 preguntas de Sí o No y una foto; si al tanque le faltan datos (litros, tipo, acceso), completalos ahí mismo. ¿No sabés cuántos litros tiene? Tocá el tamaño más parecido (500, 750, 1.000, 1.100, 2.500, 5.000 o 10.000 L) y queda anotado como ESTIMADO. Si hay barro, olor, agua turbia o bichos, hay que limpiarlo aunque no toque. 4) Cada vez que limpiás un tanque: descargá el «F-AGU-01-T» (PDF) e imprimilo, seguí los pasos, completalo y firmalo; después tocá el tanque › «🧽 Lo limpié», completá los datos y sacale una foto al formulario firmado (las 2 hojas). Para desinfectar se carga solo el 20 % del tanque (1.000 L → 200 L de agua) y en esa agua va lavandina al 5,5 %: 2 mL por litro (200 L → 400 mL). El cloro no se mide: lo mide Saneamiento (DPSB). 5) «📘 Cómo se limpia un tanque» tiene el resumen de nuestro protocolo y anda sin señal. Avisos: ⚠️ vencido o hay que limpiar, ⏰ toca pronto, ✅ al día. Lo que cargás se guarda en el celular y se manda solo con señal; si la app se cierra al sacar una foto, en el inicio aparece «Seguir con el formulario». El papel firmado se entrega a Belén.",
+  "t-main": "TANQUES Y CISTERNAS (red Trelew, sin el HMH). Cada tanque tiene DOS tareas distintas: 🧽 LIMPIARLO (cada 12 meses) y 📋 RELEVAMIENTO: revisar cómo está (cada 6 meses, sin limpiar). En cada lugar y en cada tanque dice cuál está hecha (✅), cuál toca pronto (⏰) y cuál hay que hacer (❗). Los lugares con algo para hacer aparecen arriba. 1) Elegí el lugar. 2) ¿LIMPIASTE? Tocá el botón azul de arriba «🧽 Registrar una limpieza». Aparecen todos los tanques del lugar tildados: destildá el que no limpiaste. Poné el día que terminaste y, si empezaste otro día (por ejemplo sábado y lunes), también el día que empezaste. Completá las horas que quedó cerrado, la tapa y sacale una foto al F-AGU-01-T firmado (las 2 hojas). Arriba te dice cuánta agua y cuánta lavandina va en cada tanque: si usaste eso, dejá tildado «Usé el agua y la lavandina que dice arriba». Se guarda una limpieza para cada tanque. NO agregues un tanque nuevo para cargar una limpieza: los tanques del lugar ya están en la lista. 3) Cada 6 meses tocá el tanque › «📋 Relevamiento: lo revisé (sin limpiar)»: tapa, 8 preguntas de Sí o No y una foto; si al tanque le faltan datos (litros, tipo, acceso), completalos ahí mismo. ¿No sabés cuántos litros tiene? Tocá el tamaño más parecido (500, 750, 1.000, 1.100, 2.500, 5.000 o 10.000 L) y queda anotado como ESTIMADO. Si hay barro, olor, agua turbia o bichos, hay que limpiarlo aunque no toque. 4) Si un tanque dice «📝 Falta decir dónde está», tocalo › «✏️ Corregir los datos» y escribí dónde está (por ejemplo «torre del fondo, el de la izquierda»), así se reconoce. 5) Solo si hay un tanque que NO está en la lista, tocá «➕ Agregar un tanque que NO está en la lista» (la app te pregunta antes si de verdad es nuevo). Queda con un código (por ejemplo HZT-T01 o HZT-C01) cuando se envía. 6) Para desinfectar se carga solo el 20 % del tanque (1.000 L → 200 L de agua) y en esa agua va lavandina al 5,5 %: 2 mL por litro (200 L → 400 mL). El cloro no se mide: lo mide Saneamiento (DPSB). «📘 Cómo se limpia un tanque» tiene el resumen de nuestro protocolo y anda sin señal. Lo que cargás se guarda en el celular y se manda solo con señal; si la app se cierra al sacar una foto, en el inicio aparece «Seguir con el formulario». El papel firmado se entrega a Belén.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
   horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
@@ -4348,6 +4348,7 @@ function tqRender() {
   const box = tqBox(); if (!box) return;
   if (tq.form) return tqRenderForm();
   if (tq.vista === "poe") return tqRenderPoe();
+  if (tq.vista === "altaPregunta" && tq.lugar) return tqRenderAltaPregunta();
   if (tq.vista === "lugar" && tq.lugar) return tqRenderLugar();
   tqRenderLugares();
 }
@@ -4373,23 +4374,30 @@ function tqRenderLugares() {
   box.querySelectorAll("[data-lugar]").forEach(b => b.onclick = () => { tq.vista = "lugar"; tq.lugar = L.find(x => x.id === b.dataset.lugar); tqRender(); screensEl.scrollTop = 0; });
   tqBind(box);
 }
+// 26/11/2026 (Belén: «Javier y Paulo no saben cargar la limpieza en tanques, por eso agregan uno»): la limpieza se carga
+// desde el lugar, con un botón grande arriba, y se eligen todos los tanques que se limpiaron juntos.
+// Antes de agregar un tanque, si el lugar ya tiene, se pregunta si de verdad es uno nuevo.
+const tqReales = (idLugar) => tqDe(idLugar).filter(t => !t.pendiente && t.codigo);
+const tqUbicGenerica = (u) => !String(u || "").trim() || /^s\/d/i.test(String(u).trim()) || /^(tanque|cisterna)\s*(n\.?\s*º?\s*)?\d*\s*$/i.test(String(u).trim());
 function tqRenderLugar() {
-  const box = tqBox(), l = tq.lugar, T = tqDe(l.id);
+  const box = tqBox(), l = tq.lugar, T = tqDe(l.id), R = tqReales(l.id);
   let h = `<button type="button" class="ext-quitar tq-volver" data-tq="volver">← Volver a los lugares</button>` + tqAvisoHtml() +
-    `<div class="step-title" style="font-size:1.25rem">${escX(l.nombre)}</div><div class="step-sub">Cada tanque tiene dos tareas distintas: <b>🧽 limpiarlo</b> (cada 12 meses) y <b>📋 relevamiento</b>: revisar cómo está (cada 6 meses, sin limpiar). Tocá el tanque para cargar lo que hiciste.</div>`;
+    `<div class="step-title" style="font-size:1.25rem">${escX(l.nombre)}</div>`;
+  if (R.length) h += `<button type="button" class="ext-listo tq-azul" data-tq="limpLugar" style="margin:6px 0 4px">🧽 Registrar una limpieza<br><small style="font-weight:600">Tocá acá si limpiaste ${R.length === 1 ? "el tanque" : "uno o varios tanques"} de este lugar</small></button>
+    <div class="step-sub" style="margin:4px 0 10px">Estos son ${R.length === 1 ? "el tanque" : "los " + R.length + " tanques"} de ${escX(l.nombre)}. Para el <b>📋 relevamiento</b> (revisar cómo está, cada 6 meses, sin limpiar) o para corregir sus datos, tocá el tanque.</div>`;
   if (!T.length) h += `<div class="ext-card"><div class="ext-preg">No hay tanques ni cisternas cargados en este lugar.</div><div class="step-sub">Agregá cada uno con el botón de abajo: datos, cómo está y una foto.</div></div>`;
   T.forEach(t => {
     const D = tqDos(t), avs = tqEstado(t), peor = tqPeor(avs), abierto = !t.pendiente && tq.codigo === t.codigo;
     h += `<button type="button" class="ext-fila${peor === "ok" ? " ok" : ""}${abierto ? " abierta" : ""}${t.pendiente ? " nuevo" : ""}" data-cod="${escX(t.codigo)}"${t.pendiente ? " disabled" : ""}>
       <span class="ext-ico">${/cisterna/i.test(t.tipo) ? "🛢️" : "💧"}</span><span class="ext-txt"><b>${escX(t.codigo || "Nuevo")}${t.tipo && !/^s\/d/i.test(t.tipo) ? " · " + escX(t.tipo) : ""}${Number(t.capacidad) ? " · " + escX(Number(t.capacidad).toLocaleString("es-AR") + " L") : ""}</b>
-      <small>${escX(t.ubicacion || "s/d")}</small><small class="ext-vto ${D.limp.nivel === "ok" ? "" : D.limp.nivel}"><b>🧽 Limpieza:</b> ${escX(D.limp.txt)}</small><small class="ext-vto ${D.rev.nivel === "ok" ? "" : D.rev.nivel}"><b>📋 Relevamiento:</b> ${escX(D.rev.txt)}</small>${D.extra.map(a => `<small class="ext-vto ${a.nivel}">${escX(a.txt)}</small>`).join("")}</span></button>`;
+      <small>${escX(t.ubicacion || "s/d")}</small>${!t.pendiente && tqUbicGenerica(t.ubicacion) ? `<small class="ext-vto wa">📝 Falta decir dónde está (por ejemplo «torre del fondo, el de la izquierda»): tocá el tanque › ✏️ Corregir los datos</small>` : ""}<small class="ext-vto ${D.limp.nivel === "ok" ? "" : D.limp.nivel}"><b>🧽 Limpieza:</b> ${escX(D.limp.txt)}</small><small class="ext-vto ${D.rev.nivel === "ok" ? "" : D.rev.nivel}"><b>📋 Relevamiento:</b> ${escX(D.rev.txt)}</small>${D.extra.map(a => `<small class="ext-vto ${a.nivel}">${escX(a.txt)}</small>`).join("")}</span></button>`;
     if (abierto) h += `<div class="ext-panel"><div class="step-sub" style="margin:0 0 8px">¿Qué hiciste hoy con este tanque?</div>
       <button type="button" class="ext-listo tq-azul" data-accion="limp">🧽 Lo limpié<br><small style="font-weight:600">Vaciar, cepillar y desinfectar · con el F-AGU-01-T firmado</small></button>
       <button type="button" class="ext-listo" data-accion="insp">📋 Relevamiento: lo revisé (sin limpiar)<br><small style="font-weight:600">Tapa, fisuras, barro, olor, bichos y los datos que falten (litros)</small></button>
-      <button type="button" class="ext-editar" data-accion="edit">✏️ Corregir los datos de este tanque</button>
+      <button type="button" class="ext-editar" data-accion="edit">✏️ Corregir los datos de este tanque (dónde está, litros…)</button>
       <div class="step-sub" style="margin-top:8px">Tapa: ${escX(t.tapa || "s/d")} · acceso: ${escX(t.acceso || "s/d")}</div></div>`;
   });
-  h += `<button type="button" class="ext-agregar" data-tq="alta">➕ Agregar un tanque o cisterna</button>` + tqBotonesDoc();
+  h += `<button type="button" class="ext-agregar" data-tq="alta">➕ ${T.length ? "Agregar un tanque que NO está en la lista" : "Agregar un tanque o cisterna"}</button>` + tqBotonesDoc();
   box.innerHTML = h;
   box.querySelectorAll("[data-cod]").forEach(b => b.onclick = () => { if (!b.dataset.cod) return; tq.codigo = tq.codigo === b.dataset.cod ? null : b.dataset.cod; tqRender(); });
   box.querySelectorAll("[data-accion]").forEach(b => b.onclick = () => tqAbrirForm(b.dataset.accion, tqTanques().find(t => t.codigo === tq.codigo)));
@@ -4400,8 +4408,23 @@ function tqBind(box) {
     const a = b.dataset.tq;
     if (a === "poe") { tq.vistaAntes = tq.vista; tq.vista = "poe"; tqRender(); screensEl.scrollTop = 0; }
     else if (a === "volver") { tq.vista = tq.vista === "poe" ? (tq.vistaAntes || "lugares") : "lugares"; if (tq.vista === "lugares") tq.codigo = null; tqRender(); screensEl.scrollTop = 0; }
-    else if (a === "alta") tqAbrirForm("alta", null);
+    else if (a === "alta") { if (tq.lugar && tqReales(tq.lugar.id).length && tq.vista !== "altaPregunta") { tq.vista = "altaPregunta"; tqRender(); screensEl.scrollTop = 0; } else { if (tq.vista === "altaPregunta") tq.vista = "lugar"; tqAbrirForm("alta", null); } }
+    else if (a === "limpLugar") { tq.vista = "lugar"; tqAbrirForm("limp", null); }
+    else if (a === "volverLugar") { tq.vista = "lugar"; tqRender(); screensEl.scrollTop = 0; }
   });
+}
+// 26/11/2026: antes de agregar un tanque en un lugar que ya tiene, se pregunta (así no se repiten tanques para cargar una limpieza)
+function tqRenderAltaPregunta() {
+  const l = tq.lugar, R = tqReales(l.id);
+  tqBox().innerHTML = `<button type="button" class="ext-quitar tq-volver" data-tq="volverLugar">← Volver</button>
+    <div class="step-title" style="font-size:1.25rem">¿Es un tanque nuevo?</div>
+    <div class="ext-card"><div class="ext-preg">${escX(l.nombre)} ya tiene ${R.length === 1 ? "este tanque cargado" : "estos " + R.length + " tanques cargados"}:</div>
+    <ul class="tq-ol">${R.map(t => `<li><b>${escX(t.codigo)}</b>${t.tipo && !/^s\/d/i.test(t.tipo) ? " · " + escX(t.tipo) : ""}${Number(t.capacidad) ? " · " + escX(Number(t.capacidad).toLocaleString("es-AR") + " L") : ""} · ${escX(t.ubicacion || "s/d")}</li>`).join("")}</ul>
+    <div class="step-sub">Si limpiaste o revisaste ${R.length === 1 ? "ese tanque" : "alguno de estos"}, NO lo agregues de nuevo: cargá la limpieza. Agregá un tanque solo si es otro que no está en la lista.</div></div>
+    <button type="button" class="ext-listo tq-azul" data-tq="limpLugar">🧽 No es nuevo: quiero cargar una limpieza</button>
+    <button type="button" class="ext-listo" data-tq="volverLugar">📋 No es nuevo: quiero hacer el relevamiento o corregir datos</button>
+    <button type="button" class="ext-agregar" data-tq="alta">➕ Sí, es otro tanque que no está en la lista</button>`;
+  tqBind(tqBox());
 }
 
 // ---------- protocolo resumido (anda sin señal)
@@ -4426,12 +4449,21 @@ function tqFormVacio(accion, t) {
   const f = { accion: accion, codigo: t ? t.codigo : "", lugar: tq.lugar, uid: "TQ" + Date.now() + Math.floor(Math.random() * 1000), FECHA: tqHoy(), datos: {}, fotos: [], obs: "" };
   if (accion === "alta" || accion === "insp") { TQ_PREGS.forEach(([k]) => f.datos[k] = null); f.datos.TAPA = accion === "insp" && t ? (TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null) : null; f.datos.CLORO_MG_L = ""; }
   if (accion === "alta") Object.assign(f.datos, { UBICACION: "", TIPO: null, USO: "Consumo humano", CAPACIDAD_L: "", MATERIAL: null, ACCESO: null, ULTIMA_LIMPIEZA: "" });
-  if (accion === "limp") Object.assign(f.datos, { HORA_CORTE: "", HORA_REHABILITACION: "", HORAS_CERRADO: "", VOLUMEN_L: "", LAVANDINA_ML: "", TAPA: t && TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null, MUESTRA_TOMADA: null, capacidad: t ? t.capacidad : "" });
+  if (accion === "limp") {
+    Object.assign(f.datos, { HORA_CORTE: "", HORA_REHABILITACION: "", HORAS_CERRADO: "", VOLUMEN_L: "", LAVANDINA_ML: "", TAPA: t && TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null, MUESTRA_TOMADA: null, capacidad: t ? t.capacidad : "", DOSIS_OK: true });
+    // 26/11/2026: se pueden cargar juntos todos los tanques que se limpiaron (desde el botón del lugar vienen todos tildados)
+    f.codigos = t ? [t.codigo] : (tq.lugar ? tqReales(tq.lugar.id).map(x => x.codigo) : []);
+    f.FECHA_INICIO = "";
+  }
   if (accion === "edit") Object.assign(f.datos, { UBICACION: t.ubicacion || "", TIPO: t.tipo || null, USO: t.uso || null, CAPACIDAD_L: t.capacidad || "", MATERIAL: t.material || null, ACCESO: t.acceso || null, FUERA: false });
   return f;
 }
+// tanques elegidos en la limpieza (formularios guardados antes del 26/11/2026 no tienen la lista: se usa el código)
+const tqSel = (f) => Array.isArray(f.codigos) ? f.codigos : (f.codigo ? [f.codigo] : []);
+// dosis de nuestro método: agua al 20 % de la capacidad y 2 mL de lavandina 5,5 % por litro (110 ppm)
+const tqDosis = (cap) => cap ? { agua: Math.round(cap * 0.2), lav: Math.round(cap * 0.2) * 2 } : null;
 function tqAbrirForm(accion, t) { tq.form = tqFormVacio(accion, t); tqBorradorGuardar(); tqRender(); screensEl.scrollTop = 0; }
-const TQ_TITULO = { alta: "Agregar un tanque o cisterna", insp: "Relevamiento del tanque (revisión sin limpiar)", limp: "Limpieza del tanque", edit: "Corregir los datos" };
+const TQ_TITULO = { alta: "Agregar un tanque o cisterna", insp: "Relevamiento del tanque (revisión sin limpiar)", limp: "Registrar una limpieza", edit: "Corregir los datos" };
 
 function tqFaltan(f) {
   const d = f.datos, x = [];
@@ -4446,6 +4478,8 @@ function tqFaltan(f) {
     if (!f.fotos.length) x.push("una foto");
   }
   if (f.accion === "limp") {
+    if (!tqSel(f).length) x.push("qué tanques limpiaste");
+    if (f.FECHA_INICIO && f.FECHA && f.FECHA_INICIO > f.FECHA) x.push("el día que empezaste tiene que ser antes del que terminaste");
     if (!d.HORAS_CERRADO) x.push("horas cerrado");
     if (!d.TAPA) x.push("tapa");   // 02/11/2026: la foto del F-AGU-01-T es opcional por ahora (pedido de Belén)
   }
@@ -4467,7 +4501,15 @@ function tqRenderForm() {
   let h = `<button type="button" class="ext-quitar tq-volver" data-f="cancelar">← Cancelar</button>
     <div class="step-title" style="font-size:1.25rem">${TQ_TITULO[f.accion]}</div>
     <div class="step-sub">${escX(f.lugar ? f.lugar.nombre : "")}${t ? " · " + escX(t.codigo) + " · " + escX(t.ubicacion || "") : ""}</div><div class="ext-card tq">`;
-  h += `<div class="ext-preg">Fecha</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">`;
+  if (f.accion === "limp") {
+    // 26/11/2026: ¿qué tanques limpiaste? (todos los del lugar; se destilda el que no se limpió)
+    const R = f.lugar ? tqReales(f.lugar.id) : [], sel = tqSel(f);
+    if (R.length > 1 || (R.length === 1 && !sel.length)) h += `<div class="ext-preg">¿Qué tanques limpiaste?</div><div class="step-sub">Tildá todos los que limpiaste en esta tarea. Si alguno no se limpió, destildalo.</div>` +
+      R.map(x => `<label class="ext-chk"><input type="checkbox" data-tqsel="${escX(x.codigo)}"${sel.indexOf(x.codigo) >= 0 ? " checked" : ""}> <b>${escX(x.codigo)}</b>${x.tipo && !/^s\/d/i.test(x.tipo) ? " · " + escX(x.tipo) : ""}${Number(x.capacidad) ? " · " + escX(Number(x.capacidad).toLocaleString("es-AR") + " L") : ""} · ${escX(x.ubicacion || "s/d")}</label>`).join("") +
+      `<div class="step-sub" style="margin:6px 0 12px">¿Limpiaste un tanque que no está en esta lista? Cancelá y agregalo primero con «➕ Agregar un tanque que NO está en la lista».</div>`;
+    h += `<div class="ext-preg">¿Qué día terminaste la limpieza?</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">
+      <div class="ext-preg">Si empezaste otro día, ¿cuándo empezaste? (si fue el mismo día, dejalo vacío)</div><input class="ext-inp" type="date" data-dato="FECHA_INICIO" value="${escX(f.FECHA_INICIO || "")}" max="${escX(f.FECHA || tqHoy())}">`;
+  } else h += `<div class="ext-preg">Fecha</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">`;
   if (f.accion === "alta" || f.accion === "edit") {
     h += `<div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-dato="UBICACION" value="${escX(d.UBICACION)}" placeholder="Ej.: techo del edificio principal, patio del fondo"><div class="step-sub">Solo dónde está este tanque. Si hay más tanques o una cisterna, agregá cada uno aparte con «Agregar un tanque o cisterna».</div>
       <div class="ext-preg">Tipo</div>${tqOpc("TIPO", TQ_OPC.TIPO, d.TIPO)}
@@ -4492,14 +4534,20 @@ function tqRenderForm() {
     });
   }
   if (f.accion === "limp") {
-    if (!tqNum(d.capacidad)) h += `<div class="tq-info">Este tanque no tiene cargados los litros: completalos para calcular la lavandina.</div>` + tqCapBloque(d, "¿De cuántos litros es el tanque?");
-    const cap = tqNum(d.capacidad) || tqNum(d.CAPACIDAD_L), agua = cap ? Math.round(cap * 0.2) : null, lav = agua ? agua * 2 : null;   // 20 % del tanque; 110 ppm = 2 mL de lavandina 5,5 % por litro
-    h += `<div class="tq-info">Usá el F-AGU-01-T impreso y seguí los pasos. Para desinfectar se carga <b>solo el 20 % del tanque</b> y en esa agua va la lavandina al 5,5 %: <b>2 mL por cada litro de agua</b>${lav ? ` → este tanque de ${cap.toLocaleString("es-AR")} L: <b>${agua.toLocaleString("es-AR")} L de agua y ${lav.toLocaleString("es-AR")} mL de lavandina</b>` : ""}.</div>
+    const sel = tqSel(f), uno = sel.length === 1 ? tqTanques().find(x => x.codigo === sel[0]) : null;
+    if (uno && !tqNum(uno.capacidad)) h += `<div class="tq-info">Este tanque no tiene cargados los litros: completalos para calcular la lavandina.</div>` + tqCapBloque(d, "¿De cuántos litros es el tanque?");
+    h += `<div class="tq-info">Usá el F-AGU-01-T impreso y seguí los pasos. Para desinfectar se carga <b>solo el 20 % del tanque</b> y en esa agua va la lavandina al 5,5 %: <b>2 mL por cada litro de agua</b> (110 ppm).` +
+      (sel.length ? `<br>` + sel.map(c => { const x = tqTanques().find(y => y.codigo === c), cap = tqNum(x && x.capacidad) || (uno ? tqNum(d.CAPACIDAD_L) : null), dz = tqDosis(cap); return `· <b>${escX(c)}</b>: ` + (dz ? `${cap.toLocaleString("es-AR")} L → <b>${dz.agua.toLocaleString("es-AR")} L de agua y ${dz.lav.toLocaleString("es-AR")} mL de lavandina</b>` : `no tiene cargados los litros`); }).join("<br>") : "") + `</div>
       <div class="tq-dos"><div><div class="ext-preg">Hora de corte</div><input class="ext-inp" type="time" data-dato="HORA_CORTE" value="${escX(d.HORA_CORTE)}"></div>
       <div><div class="ext-preg">Hora en que volvió el agua</div><input class="ext-inp" type="time" data-dato="HORA_REHABILITACION" value="${escX(d.HORA_REHABILITACION)}"></div></div>
       <div class="ext-preg">¿Cuántas horas quedó cerrado con la lavandina?</div>${tqOpc("HORAS_CERRADO", ["3", "4", "5", "6", "Más de 6"], d.HORAS_CERRADO)}
-      <div class="tq-dos"><div><div class="ext-preg">Litros de agua que cargaste</div><input class="ext-inp" inputmode="decimal" data-dato="VOLUMEN_L" value="${escX(d.VOLUMEN_L)}" placeholder="${agua ? "Ej.: " + agua : "Ej.: 200"}"></div>
-      <div><div class="ext-preg">mL de lavandina que usaste</div><input class="ext-inp" inputmode="decimal" data-dato="LAVANDINA_ML" value="${escX(d.LAVANDINA_ML)}" placeholder="${lav ? "Ej.: " + lav : "Ej.: 400"}"></div></div>`;
+      <label class="ext-chk"><input type="checkbox" data-dato="DOSIS_OK"${d.DOSIS_OK ? " checked" : ""}> Usé el agua y la lavandina que dice arriba${sel.length > 1 ? " en cada tanque" : ""}</label>`;
+    if (!d.DOSIS_OK) {
+      const dz = uno ? tqDosis(tqNum(uno.capacidad) || tqNum(d.CAPACIDAD_L)) : null;
+      h += `<div class="step-sub">Anotá lo que usaste${sel.length > 1 ? " (en total o por tanque, contalo en Observaciones)" : ""}:</div>
+      <div class="tq-dos"><div><div class="ext-preg">Litros de agua que cargaste</div><input class="ext-inp" inputmode="decimal" data-dato="VOLUMEN_L" value="${escX(d.VOLUMEN_L)}" placeholder="${dz ? "Ej.: " + dz.agua : "Ej.: 200"}"></div>
+      <div><div class="ext-preg">mL de lavandina que usaste</div><input class="ext-inp" inputmode="decimal" data-dato="LAVANDINA_ML" value="${escX(d.LAVANDINA_ML)}" placeholder="${dz ? "Ej.: " + dz.lav : "Ej.: 400"}"></div></div>`;
+    }
     h += `<div class="ext-preg">¿Cómo quedó la tapa?</div>${tqOpc("TAPA", TQ_OPC.TAPA, d.TAPA)}
       <div class="ext-preg">Análisis de laboratorio (lo pide Higiene y Seguridad)</div>${tqOpc("MUESTRA_TOMADA", TQ_OPC.MUESTRA_TOMADA, d.MUESTRA_TOMADA)}`;
   }
@@ -4514,9 +4562,15 @@ function tqRenderForm() {
   if (f.accion !== "edit") tqPintarFotos();
   // eventos
   box.querySelectorAll("[data-dato]").forEach(i => {
-    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "obs") f.obs = v; else d[k] = v; };
+    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "FECHA_INICIO") f.FECHA_INICIO = v; else if (k === "obs") f.obs = v; else d[k] = v; };
     i.oninput = () => { poner(); tqBorradorProgramar(); tqActualizarBoton(); };
-    i.onchange = () => { poner(); tqBorradorGuardar(); tqActualizarBoton(); if (/CLORO/.test(k)) { const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; } };   // aviso de cloro fuera de rango
+    i.onchange = () => { poner(); tqBorradorGuardar(); tqActualizarBoton(); if (/CLORO|DOSIS_OK|FECHA/.test(k)) { const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; } };   // aviso de cloro fuera de rango; dosis; fechas
+  });
+  box.querySelectorAll("[data-tqsel]").forEach(i => i.onchange = () => {
+    const c = i.dataset.tqsel, s = tqSel(f).filter(x => x !== c); if (i.checked) s.push(c);
+    const orden = (f.lugar ? tqReales(f.lugar.id) : []).map(x => x.codigo); f.codigos = orden.filter(x => s.indexOf(x) >= 0);
+    f.codigo = f.codigos.length === 1 ? f.codigos[0] : "";
+    tqBorradorGuardar(); const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y;
   });
   box.querySelectorAll("[data-capest]").forEach(b => b.onclick = () => { d.CAPACIDAD_L = b.dataset.capest; d.CAP_EST = true; tqBorradorGuardar(); const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; });
   box.querySelectorAll(".ext-opc[data-campo] button, .sino[data-campo] button").forEach(b => b.onclick = () => {
@@ -4553,11 +4607,25 @@ async function tqGuardar() {
   let item;
   if (f.accion === "alta") item = { tipo: "alta_tanque", data: Object.assign(base, preg, { id_alta: f.uid, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), CAPACIDAD_ESTIMADA: d.CAP_EST ? "Sí" : "", MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, TAPA: d.TAPA, CLORO_MG_L: d.CLORO_MG_L, ULTIMA_LIMPIEZA: d.ULTIMA_LIMPIEZA, fotos_base64: f.fotos.slice() }) };
   if (f.accion === "insp") item = { tipo: "inspeccion_tanque", data: Object.assign(base, preg, { id_insp: f.uid, CODIGO_TANQUE: f.codigo, TAPA: d.TAPA, CLORO_MG_L: d.CLORO_MG_L, fotos_base64: f.fotos.slice() }) };
-  if (f.accion === "limp") item = { tipo: "limpieza_tanque", data: Object.assign(base, { id_limpieza: f.uid, CODIGO_TANQUE: f.codigo, HORA_CORTE: d.HORA_CORTE, HORA_REHABILITACION: d.HORA_REHABILITACION, HORAS_CERRADO: d.HORAS_CERRADO, VOLUMEN_L: d.VOLUMEN_L, LAVANDINA_ML: d.LAVANDINA_ML, TAPA: d.TAPA, MUESTRA_TOMADA: d.MUESTRA_TOMADA || "", fotos_base64: f.fotos.slice() }) };
+  // 26/11/2026: una limpieza por cada tanque tildado (mismos datos y fotos del F-AGU-01-T); con «usé la dosis indicada»
+  // se anotan el agua y la lavandina de nuestro método para cada tanque, según sus litros.
+  let itemsLimp = [];
+  if (f.accion === "limp") {
+    const sel = tqSel(f), varios = sel.length > 1;
+    const nota = [f.FECHA_INICIO && f.FECHA_INICIO !== f.FECHA ? "Limpieza hecha del " + tqFecha(f.FECHA_INICIO) + " al " + tqFecha(f.FECHA) : "",
+      varios ? "Limpieza conjunta de " + sel.join(", ") : "", d.DOSIS_OK ? "Dosis según el método de HyS (agua al 20 % del tanque, 110 ppm)" : ""].filter(Boolean).join(" · ");
+    itemsLimp = sel.map((c, i) => {
+      const x = tqTanques().find(y => y.codigo === c), cap = tqNum(x && x.capacidad) || (!varios ? tqNum(d.CAPACIDAD_L) : null), dz = d.DOSIS_OK ? tqDosis(cap) : null;
+      return { tipo: "limpieza_tanque", data: Object.assign({}, base, { id_limpieza: varios ? f.uid + "-" + (i + 1) : f.uid, CODIGO_TANQUE: c, HORA_CORTE: d.HORA_CORTE, HORA_REHABILITACION: d.HORA_REHABILITACION, HORAS_CERRADO: d.HORAS_CERRADO,
+        VOLUMEN_L: d.DOSIS_OK ? (dz ? String(dz.agua) : "") : d.VOLUMEN_L, LAVANDINA_ML: d.DOSIS_OK ? (dz ? String(dz.lav) : "") : d.LAVANDINA_ML, TAPA: d.TAPA, MUESTRA_TOMADA: d.MUESTRA_TOMADA || "",
+        OBSERVACIONES: [nota, base.OBSERVACIONES].filter(Boolean).join(" · "), fotos_base64: f.fotos.slice() }) };
+    });
+    item = itemsLimp[0];
+  }
   if (f.accion === "edit") item = { tipo: "editar_tanque", data: Object.assign(base, { id_edit: f.uid, CODIGO_TANQUE: f.codigo, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), CAPACIDAD_ESTIMADA: d.CAP_EST ? "Sí" : "", MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, ESTADO: d.FUERA ? "Fuera de uso" : "" }) };
   // 03/11/2026: en el relevamiento o la limpieza se pueden completar los datos que le faltan al tanque (litros, tipo, acceso)
-  const items = [item], extra = {};
-  if ((f.accion === "insp" || f.accion === "limp") && f.codigo) {
+  const items = f.accion === "limp" ? itemsLimp.slice() : [item], extra = {};
+  if ((f.accion === "insp" || (f.accion === "limp" && tqSel(f).length === 1)) && f.codigo) {
     if (tqNum(d.CAPACIDAD_L)) { extra.CAPACIDAD_L = String(tqNum(d.CAPACIDAD_L)); extra.CAPACIDAD_ESTIMADA = d.CAP_EST ? "Sí" : ""; }
     if (f.accion === "insp" && d.TIPO) extra.TIPO = d.TIPO; if (f.accion === "insp" && d.ACCESO) extra.ACCESO = d.ACCESO;
     if (Object.keys(extra).length) items.push({ tipo: "editar_tanque", data: Object.assign({}, base, extra, { id_edit: f.uid + "D", CODIGO_TANQUE: f.codigo }) });
@@ -4567,6 +4635,7 @@ async function tqGuardar() {
   // lo cargado se ve enseguida en la lista, aunque no haya señal
   const L = tqLocal(), resultado = f.accion === "alta" || f.accion === "insp" ? tqResultado(d) : "";
   if (f.accion === "alta") L.altas.push({ uid: f.uid, lugar_id: base.lugar_id, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), TAPA: d.TAPA, ACCESO: d.ACCESO, FECHA: f.FECHA, resultado: resultado, ULTIMA_LIMPIEZA: d.ULTIMA_LIMPIEZA });
+  else if (f.accion === "limp") tqSel(f).forEach(c => { const x = L.tanques[c] = L.tanques[c] || {}; x.ultima_limpieza = f.FECHA; x.proxima_limpieza = tqMas(f.FECHA, 12); x.tapa = d.TAPA; if (c === f.codigo && extra.CAPACIDAD_L) x.capacidad = extra.CAPACIDAD_L; });
   else {
     const x = L.tanques[f.codigo] = L.tanques[f.codigo] || {};
     if (f.accion === "insp") { x.ultima_insp = f.FECHA; x.resultado_insp = resultado; x.tapa = d.TAPA; }
@@ -4576,7 +4645,7 @@ async function tqGuardar() {
   }
   tqLocalGuardar(L);
   await tqBorradorBorrar();
-  tq.aviso = (f.accion === "alta" ? "Tanque agregado" : f.accion === "insp" ? "Revisión guardada" + (resultado !== "Conforme" ? ": " + resultado.toLowerCase() : ": conforme") : f.accion === "limp" ? "Limpieza guardada" : "Corrección guardada") +
+  tq.aviso = (f.accion === "alta" ? "Tanque agregado" : f.accion === "insp" ? "Revisión guardada" + (resultado !== "Conforme" ? ": " + resultado.toLowerCase() : ": conforme") : f.accion === "limp" ? (tqSel(f).length > 1 ? "Limpieza guardada en " + tqSel(f).length + " tanques (" + tqSel(f).join(", ") + ")" : "Limpieza guardada") : "Corrección guardada") +
     (navigator.onLine ? " · se está enviando." : " · se envía sola cuando haya señal.");
   tq.form = null; tq.vista = "lugar"; tq.codigo = null; tqRender(); screensEl.scrollTop = 0; tqPintarHome();
   trySync();
