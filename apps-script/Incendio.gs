@@ -82,6 +82,7 @@ const INC = {
   PLANTAS_OTROS: ['Subsuelo', 'Planta baja', 'Planta alta', '1er piso', '2do piso', '3er piso', 'Terraza', 'Única', 'Vehículo'],
   FECHA_MIN: '2020-01-01', FECHA_MAX: '2040-12-31',   // rango aceptado para los vencimientos (evita años mal tipeados, como 0027)
   SERVICIO_MIPYV: 'MIPyV',   // nombre del acceso de servicio de MIPyV en BASE COMÚN › ACCESOS
+  CONTROL_DIA: 5, CONTROL_PRIMER_VTO: '2027-01-05',   // control mensual: vence el día 5 de cada mes; arranque: todos al día hasta el 05/01/2027 (Belén, 26/11/2026)
   MESES_ALARMA: 3, DIAS_POR_VENCER: 30, INICIO: '2026-10-14',   // los extintores nunca controlados avisan recién a los 3 meses de empezar el módulo
   RESP_TRELEW: 'Belén Pellegrini · Melani · Javier Tramaleo',
   RESP_HMH: 'Belén Pellegrini · Melani · SOMI · MAREM',
@@ -337,18 +338,29 @@ const incTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + is
 function incSumarDias_(f, d) { const x = new Date(f + 'T12:00:00'); x.setDate(x.getDate() + d); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); }
 function incSumarMeses_(f, m) { const x = new Date(f + 'T12:00:00'); x.setMonth(x.getMonth() + m); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); }
 
-// Estado de un extintor: carga y prueba hidráulica (vencida · porvencer: 30 días antes · aldia · sd) y control (sin · atrasado · aldia)
+// Control mensual con vencimiento fijo (26/11/2026, pedido de Belén): el control vence siempre el día INC.CONTROL_DIA (5) de cada mes.
+// Un control hecho entre el 6 de un mes y el 5 del siguiente cubre ese período, y el próximo vence el 5 del mes siguiente.
+// Arranque: todos los equipos quedan al día hasta INC.CONTROL_PRIMER_VTO (05/01/2027). Se cambian arriba, en INC.
+// control: 'aldia' o 'atrasado' (pasó el vencimiento sin control); toca: ya está en el período en que hay que controlarlo; vtoControl: hasta cuándo.
+function incVtoControl_(uc) {
+  let v = INC.CONTROL_PRIMER_VTO;
+  if (uc) { const dia = ('0' + INC.CONTROL_DIA).slice(-2); let per = uc.slice(0, 8) + dia; if (Number(uc.slice(8, 10)) > INC.CONTROL_DIA) per = incSumarMeses_(per, 1);
+    const sig = incSumarMeses_(per, 1); if (sig > v) v = sig; }
+  return v;
+}
+function incControlEstado_(uc, hoy) { const vto = incVtoControl_(uc), desde = incSumarMeses_(vto, -1); return { control: hoy > vto ? 'atrasado' : 'aldia', vtoControl: vto, toca: hoy > desde && hoy <= vto }; }
+// Estado de un extintor: carga y prueba hidráulica (vencida · porvencer: 30 días antes · aldia · sd) y control (aldia · atrasado, con vtoControl y toca)
 function incEstadoExt_(e, hoy) {
   if (incEq_(e) !== 'Extintor') {   // hidrantes y pulsadores: sin carga ni prueba hidráulica (24/11/2026)
-    const uc0 = incISO_(e.ULTIMO_CONTROL), ctl = !uc0 ? 'sin' : uc0 < incSumarMeses_(hoy, -INC.MESES_ALARMA) ? 'atrasado' : 'aldia';
-    return { carga: 'nc', prueba: 'nc', control: ctl, baja: /baja/i.test(e.ESTADO), conObs: /fuera/i.test(e.ESTADO), equipo: incEq_(e) };
+    const C0 = incControlEstado_(incISO_(e.ULTIMO_CONTROL), hoy);
+    return { carga: 'nc', prueba: 'nc', control: C0.control, vtoControl: C0.vtoControl, toca: C0.toca, baja: /baja/i.test(e.ESTADO), conObs: /fuera/i.test(e.ESTADO), equipo: incEq_(e) };
   }
   const vto = incISO_(e.VTO_CARGA), ph = incISO_(e.PRUEBA_HIDRAULICA_VENCE), uc = incISO_(e.ULTIMO_CONTROL);
   const carga = !vto ? 'sd' : vto < hoy ? 'vencida' : vto <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
   const prueba = !ph ? 'sd' : ph < hoy ? 'vencida' : ph <= incSumarDias_(hoy, INC.DIAS_POR_VENCER) ? 'porvencer' : 'aldia';
-  const control = !uc ? 'sin' : uc < incSumarMeses_(hoy, -INC.MESES_ALARMA) ? 'atrasado' : 'aldia';
+  const C = incControlEstado_(uc, hoy), control = C.control;
   const fuera = /baja/i.test(e.ESTADO), obs = /sobrecarg|recarg|fuera/i.test(e.ESTADO);
-  return { carga: carga, prueba: prueba, control: control, baja: fuera, conObs: obs, equipo: 'Extintor' };
+  return { carga: carga, prueba: prueba, control: control, vtoControl: C.vtoControl, toca: C.toca, baja: fuera, conObs: obs, equipo: 'Extintor' };
 }
 function incDatos_() {
   const dep = incDependencias_();
@@ -424,7 +436,8 @@ function incTablero_(fresco) {
     if (fl.length) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: fl.length + (fl.length > 1 ? ' extintores con problemas sin resolver' : ' extintor con un problema sin resolver') + ' (desde el ' + incTxt_(fl.map(f => incISO_(f.FECHA)).sort()[0]) + '; van en el correo a SOMI y Mantenimiento: el día que aparecen y cada ' + INC.DIAS_RECORDATORIO + ' días)' });
     if (r.cargaVencida) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: r.cargaVencida + (r.cargaVencida > 1 ? ' extintores con la carga vencida' : ' extintor con la carga vencida') + (r.vencidaDesde ? ' (desde el ' + incTxt_(r.vencidaDesde) + ')' : '') });
     if (r.pruebaVencida) avisos.push({ nivel: 'er', cod: L.cod, sitio: L.sitio, texto: r.pruebaVencida + ' con la prueba hidráulica vencida' });
-    const sinC = r.controlAtrasado + (hoy >= incSumarMeses_(INC.INICIO, INC.MESES_ALARMA) ? r.sinControl : 0); if (sinC && (!L.ultimoControl || L.ultimoControl < incSumarMeses_(hoy, -INC.MESES_ALARMA))) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: 'Más de 3 meses sin control de extintores' + (L.ultimoControl ? ' (último: ' + L.ultimoControl + ')' : ' (nunca controlado)') });
+    const sinC = r.controlAtrasado + Object.keys(r.equipos || {}).reduce((a, q) => a + (r.equipos[q].controlAtrasado || 0), 0);   // control mensual vencido (vence el día 5 · 26/11/2026)
+    if (sinC) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: sinC + (sinC > 1 ? ' equipos' : ' equipo') + ' con el control mensual vencido (vence el ' + INC.CONTROL_DIA + ' de cada mes)' + (L.ultimoControl ? ' · último control: ' + incTxt_(L.ultimoControl) : '') });
     if (r.paraVerificar) avisos.push({ nivel: 'av', cod: L.cod, sitio: L.sitio, texto: r.paraVerificar + (r.paraVerificar > 1 ? ' extintores agregados o cambiados' : ' extintor agregado o cambiado') + ' desde la aplicación: falta verificar' });
     // 30 días antes del vencimiento (pedido de Belén 14/10/2026): carga y prueba hidráulica
     if (r.porVencer) avisos.push({ nivel: 'wa', cod: L.cod, sitio: L.sitio, texto: r.porVencer + (r.porVencer > 1 ? ' extintores con la carga por vencer' : ' extintor con la carga por vencer') + ': vence el ' + incTxt_(r.proximoVto) + ' (aviso 30 días antes)' });
@@ -795,14 +808,19 @@ function incRed_(d, acc) {
     const idn = incSrvIdentidad_(x.identidad, acc, cod); if (!idn.ok) return idn; x.quien = idn.quien;
   }
   const quien = x.quien || 'Mi establecimiento';
+  // Permisos de «7 · Incendio» (26/11/2026): cargar equipos, control mensual y novedades (Accesos.gs › accIncPermisos_). MIPyV conserva lo suyo.
+  const P = esMipyv || !acc || !acc.inc ? { alta: true, control: true, novedades: true } : acc.inc;
+  const NO = q => ({ ok: false, codigo: 'permiso', mensaje: q });
+  if (/^i_(control|ext_editar|resolver)$/.test(d.accion) && !P.control) return NO('Tu acceso no incluye el control mensual de los equipos. Consultá con Higiene y Seguridad.');
+  if (/^i_(recorrida|novedad|nov_resolver)$/.test(d.accion) && !P.novedades) return NO('Tu acceso no incluye cargar novedades. Consultá con Higiene y Seguridad.');
   switch (d.accion) {
-    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); r.puedeAgregar = !(acc && acc.sinAltasInc); return r; }
+    case 'i_datos': { const r = incDetalle_(cod); r.controles = r.controles.slice(0, 40); r.puedeResolver = incSrvPuedeResolver_(acc); r.permisos = P; r.puedeAgregar = !!P.alta; return r; }
     case 'i_fotos': return typeof incFotos_ === 'function' ? incFotos_(x, cod) : { ok: false, mensaje: 'No se pudieron leer las fotos.' };   // fotos guardadas del equipo, para verlas al controlar (25/11/2026)
     case 'i_control': return conLock_(() => incControlGuardar_(x, quien, cod));
     case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
       return conLock_(() => incResolverFalla_(x, quien, cod));
     case 'i_ext_editar': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ESTABLECIMIENTO: cod }), quien, cod));
-    case 'i_ext_alta': if (acc && acc.sinAltasInc) return { ok: false, codigo: 'permiso', mensaje: 'Los equipos nuevos (extintores, hidrantes y pulsadores) los agrega Higiene y Seguridad. Vos podés hacer el control y corregir los datos de los que ya están.' };   // ACCESOS › INCENDIO = «Sin altas» (26/11/2026)
+    case 'i_ext_alta': if (!P.alta) return NO('Los equipos nuevos (extintores, hidrantes y pulsadores) los cargan Higiene y Seguridad y los referentes. Si falta uno, avisale a Higiene y Seguridad.');   // ACCESOS › INCENDIO (26/11/2026)
       if (incEq_({ EQUIPO: x.EQUIPO }) !== 'Extintor' && acc && acc.servicio) return { ok: false, codigo: 'permiso', mensaje: 'Los hidrantes y los pulsadores los agrega Higiene y Seguridad (Melani o Macarena). Vos podés hacer el control.' };   // 24/11/2026
       return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }

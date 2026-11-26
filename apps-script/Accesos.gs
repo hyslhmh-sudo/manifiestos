@@ -51,8 +51,8 @@ function accesosLeer_() {
     .filter(o => o.APELLIDO_Y_NOMBRE || o.DNI).map(o => {
       const ests = /toda|todos/i.test(o.ESTABLECIMIENTOS) ? ['*'] : o.ESTABLECIMIENTOS.split(/[,;·]+/).map(accTxt_).filter(Boolean);   // separados por coma (lista desplegable con varias selecciones); hay códigos con espacios: «Gan Gan»
       const mods = /(^|[,;·])\s*todos\s*($|[,;·])/i.test(o.MODULOS) ? ACC_MODULOS.slice() : accModulosDe_(o.MODULOS);
-      // Columna opcional INCENDIO (26/11/2026, pedido de Belén): «Sin altas» = hace controles y corrige datos, pero no agrega extintores, hidrantes ni pulsadores
-      return { fila: o.fila, dni: accDni_(o.DNI), nombre: o.APELLIDO_Y_NOMBRE, rol: o.ROL, ests: ests, modulos: mods, clave: o.CLAVE, activo: /^activ/i.test(o.ESTADO), sinAltasInc: /sin\s*altas/i.test(o.INCENDIO || '') };
+      // Columna opcional INCENDIO (26/11/2026, pedido de Belén): qué puede hacer en «7 · Incendio» (accIncPermisos_)
+      return { fila: o.fila, dni: accDni_(o.DNI), nombre: o.APELLIDO_Y_NOMBRE, rol: o.ROL, ests: ests, modulos: mods, clave: o.CLAVE, activo: /^activ/i.test(o.ESTADO), incTxt: o.INCENDIO || '' };
     });
   try { c.put('accesos', JSON.stringify(L), 300); } catch (e) {}
   return L;
@@ -124,7 +124,7 @@ function probarHabilitacionEst() { CacheService.getScriptCache().remove('acc_hab
 // Verifica el ingreso. Devuelve { ok, modulos, nombre, rol, dni, maestra, comun } o { ok:false, error, mensaje }
 function acceso_(est, clave, dni) {
   clave = accTxt_(clave); dni = accDni_(dni);
-  if (esMaestra_(clave)) return { ok: true, maestra: true, modulos: ACC_MODULOS.slice(), nombre: '' };
+  if (esMaestra_(clave)) return { ok: true, maestra: true, modulos: ACC_MODULOS.slice(), nombre: '', inc: { alta: true, control: true, novedades: true } };
   if (dni) {
     const p = accesosLeer_().find(x => x.dni === dni);
     if (!p) return { ok: false, error: 'clave', mensaje: 'Tu DNI no tiene acceso. Pedíselo a Higiene y Seguridad.' };
@@ -134,16 +134,27 @@ function acceso_(est, clave, dni) {
     if (!p.modulos.length) return { ok: false, error: 'clave', mensaje: 'Todavía no tenés módulos asignados. Consultá con Higiene y Seguridad.' };
     const mp = accFiltrarEst_(est, p.modulos);
     if (!mp.length) return { ok: false, error: 'clave', mensaje: 'Todavía no están habilitados para este establecimiento los módulos de tu acceso. Consultá con Higiene y Seguridad.' };
-    return { ok: true, modulos: mp, nombre: p.nombre, rol: p.rol, dni: p.dni, sinAltasInc: !!p.sinAltasInc };
+    return { ok: true, modulos: mp, nombre: p.nombre, rol: p.rol, dni: p.dni, inc: accIncPermisos_(p.rol, false, p.incTxt) };
   }
   // Clave por SERVICIO (empresas: SOMI, MAREM): fila de ACCESOS con ROL = Servicio, sin DNI. Se entra sin DNI y cada registro pide
   // quién lo hace (DNI, nombre y correo, cruzados con la base de personal: IncendioServicios.gs). 14/10/2026.
   const sv = accesosLeer_().find(p => /servicio/i.test(p.rol) && p.activo && accClaveReal_(p.clave) && p.clave.toLowerCase() === clave.toLowerCase() && accEstOk_(p, est));
-  if (sv) { const ms = accFiltrarEst_(est, sv.modulos); return ms.length ? { ok: true, servicio: sv.nombre, modulos: ms, nombre: '', rol: 'Servicio · ' + sv.nombre } : { ok: false, error: 'clave', mensaje: sv.modulos.length ? 'Todavía no están habilitados para este establecimiento los módulos de esta clave. Consultá con Higiene y Seguridad.' : 'Esta clave todavía no tiene módulos asignados.' }; }
+  if (sv) { const ms = accFiltrarEst_(est, sv.modulos); return ms.length ? { ok: true, servicio: sv.nombre, modulos: ms, nombre: '', rol: 'Servicio · ' + sv.nombre, inc: accIncPermisos_('', true, sv.incTxt) } : { ok: false, error: 'clave', mensaje: sv.modulos.length ? 'Todavía no están habilitados para este establecimiento los módulos de esta clave. Consultá con Higiene y Seguridad.' : 'Esta clave todavía no tiene módulos asignados.' }; }
   if (!claveOk_(est, clave)) return { ok: false, error: 'clave', mensaje: 'La clave no es correcta.' };
   const pers = accModulosPersonales_(est), hab = accHabilitados_(), mods = accFiltrarEst_(est, ACC_MODULOS.filter(m => !pers[m] && ACC_SOLO_PERSONAL.indexOf(m) < 0 && hab[m]));
   if (!mods.length) return { ok: false, error: 'clave', mensaje: ACC_MODULOS.some(m => !pers[m] && ACC_SOLO_PERSONAL.indexOf(m) < 0 && !hab[m]) ? 'Todavía no hay módulos habilitados para esta clave. Consultá con Higiene y Seguridad.' : 'Este establecimiento ya usa claves personales: ingresá con tu DNI y tu clave.' };
-  return { ok: true, comun: true, modulos: mods, nombre: '' };
+  return { ok: true, comun: true, modulos: mods, nombre: '', inc: accIncPermisos_('', false, '') };
+}
+// Permisos de «7 · Incendio» (26/11/2026, pedido de Belén). alta = cargar equipos nuevos (extintores, hidrantes, pulsadores);
+// control = control mensual y corregir datos; novedades = cargar novedades y recorridas. El informe de novedades lo ven todos los que tienen Incendio.
+// Por defecto: profesional o técnico HyS y referentes de otros hospitales, todo; empresas de servicio y el resto, control y novedades.
+// BASE COMÚN › ACCESOS › INCENDIO lo cambia: «Sin altas» (o «Sin control», «Sin novedades») saca eso; una lista («Control, Novedades» o «Novedades») deja solo eso.
+function accIncPermisos_(rol, servicio, txt) {
+  const n = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), t = n(txt).trim();
+  const P = { alta: !servicio && /profesional|tecnic|referente|administr/.test(n(rol)), control: true, novedades: true };
+  if (!t) return P;
+  if (/\bsin\b/.test(t)) { if (/sin\s*altas?/.test(t)) P.alta = false; if (/sin\s*control/.test(t)) P.control = false; if (/sin\s*novedad/.test(t)) P.novedades = false; return P; }
+  return { alta: /alta/.test(t), control: /control/.test(t), novedades: /novedad/.test(t) };
 }
 // ¿Puede hacer esta acción? (las de consulta, como config, tablero o registros, no piden módulo)
 function accPermite_(accion, acc) {

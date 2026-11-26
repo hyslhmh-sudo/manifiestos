@@ -102,7 +102,7 @@ function doPost(e) {
     if (d.accion === 'm_imprimir') return json_(typeof impRed_ === 'function' ? impRed_(d, acc) : { ok: false, mensaje: 'Falta instalar Imprimir.gs.' });   // hojas para imprimir: en blanco y completadas, y la hoja firmada (Imprimir.gs, 23/10/2026)
     if (/^m_caps_/.test(String(d.accion))) return json_(typeof capsRelRed_ === 'function' ? capsRelRed_(d, acc) : { ok: false, mensaje: 'Falta instalar RelevCaps.gs.' });   // 6 · Servicios e infraestructura › relevamiento de CAPS (RelevCaps.gs, 06/11/2026)
     if (String(d.accion).indexOf('m_') === 0) return json_(miRed_(d));    // «Mi establecimiento»: agua, plagas, documentos y pendientes
-    if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun, servicio: acc.servicio || '' } }));
+    if (d.accion === 'config') return json_(Object.assign(config_(d.est), { acceso: { modulos: acc.modulos, nombre: acc.nombre || '', rol: acc.rol || '', dni: acc.dni || '', maestra: !!acc.maestra, comun: !!acc.comun, servicio: acc.servicio || '', incendio: acc.inc || null } }));
     // «No se recibieron manifiestos esta semana» (remisión semanal, PROT-RES-003 · ResiduosRemision.gs)
     if (d.accion === 'remision_obs') { if (!acc.maestra && (acc.modulos || []).indexOf('Residuos') < 0) return json_({ ok: false, error: 'permiso', mensaje: 'No tenés asignado el módulo de residuos.' });
       return json_(conLock_(() => remObsGuardar_(d.est, d.datos, acc.nombre || quien_((d.datos || {}).persona)))); }

@@ -7038,7 +7038,7 @@ const incEqDe = e => (e && e.EQUIPO) || 'Extintor';
 const incEqCfg = (D, q) => ((D && D.listas && D.listas.equipos) || {})[q] || null;
 const incEqNroP = (D, e) => { const C = incEqCfg(D, incEqDe(e)); return C && e.NRO_EXTINTOR ? C.letra + '-' + e.NRO_EXTINTOR : e.NRO_EXTINTOR; };
 const incEqTxt = (D, e) => incEqDe(e) === 'Extintor' ? (e.NRO_EXTINTOR ? 'N.º ' + e.NRO_EXTINTOR : e.ID) : (incEqDe(e) === 'Hidrante' ? '🚒 Hidrante ' : '🔔 Pulsador ') + (incEqNroP(D, e) || e.ID);
-const INC_CTRL = { aldia: ['Al día', 'ok'], atrasado: ['Más de 3 meses', 'er'], sin: ['Sin control', 'gr'] };
+const INC_CTRL = { aldia: ['Al día', 'ok'], atrasado: ['Control vencido', 'er'], sin: ['Sin control', 'gr'] };
 const incChip = (m, k, extra) => { const x = m[k] || ['s/d', 'gr']; return '<span class="chip ' + x[1] + '">' + x[0] + '</span>' + (extra ? '<div class="mu peq">' + extra + '</div>' : ''); };
 const incChipEst = e => '<span class="chip ' + (/^Operativo/.test(e) ? 'ok' : /Baja/.test(e) ? 'gr' : /^s\/d/.test(e || 's/d') ? 'gr' : 'er') + '">' + esc(e || 's/d (revisar)') + '</span>';
 const incLink = (u, t) => u ? '<a class="link" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + ' ↗</a>' : '';
