@@ -32,6 +32,11 @@ const TQ_OPC = {
   ACCESO: ["Escalera fija", "Escalera móvil", "A nivel", "Espacio confinado", "Otro"],
   MUESTRA_TOMADA: ["Ya se pidió", "Pendiente", "No corresponde esta vez"],
 };
+// 26/11/2026 (Belén): «¿Pudiste hacer todo?» al terminar una limpieza o cloración. Si no, 3 pasos simples:
+// qué no se pudo, por qué, y foto + «¿Qué pasó?» escrito. Va a Belén como «Aviso en un establecimiento» (Solicitudes a Belén)
+// y la limpieza queda anotada como PARCIAL. Palabras simples: nada de «protocolo» ni «institución».
+const TQ_NO_QUE = [["🚰", "Limpiar una canilla"], ["🔧", "Cambiar o tocar un flexible"], ["💧", "Algo del tanque"], ["❓", "Otra cosa"]];
+const TQ_NO_POR = [["💥", "Está roto"], ["⚠️", "Se puede romper"], ["🧰", "Falta algo"], ["🚫", "No llego o no es seguro"]];
 let tq = { vista: "lugares", lugar: null, codigo: null, form: null, aviso: "" };
 
 const tqHoy = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
@@ -268,6 +273,8 @@ function tqFaltan(f) {
     if (f.CLORACION_OTRO_DIA && f.FECHA_CLORACION && f.FECHA && f.FECHA_CLORACION < f.FECHA) x.push("la cloración tiene que ser el mismo día de la limpieza o después");
     if (!d.HORAS_CERRADO) x.push("horas cerrado");
     if (!d.TAPA) x.push("tapa");   // 02/11/2026: la foto del F-AGU-01-T es opcional por ahora (pedido de Belén)
+    if (!f.todo) x.push("si pudiste hacer todo");
+    if (f.todo === "no") { if (!f.noQue) x.push("qué no pudiste hacer"); else if (!f.noPor) x.push("por qué"); else if (String(f.noTxt || "").trim().length < 4) x.push("escribí qué pasó"); }
   }
   if (!f.FECHA) x.push("fecha");
   return x;
@@ -339,18 +346,33 @@ function tqRenderForm() {
     h += `<div class="ext-preg">¿Cómo quedó la tapa?</div>${tqOpc("TAPA", TQ_OPC.TAPA, d.TAPA)}
       <div class="ext-preg">Análisis de laboratorio (lo pide Higiene y Seguridad)</div>${tqOpc("MUESTRA_TOMADA", TQ_OPC.MUESTRA_TOMADA, d.MUESTRA_TOMADA)}`;
   }
+  if (f.accion === "limp") {
+    const bt = (campo, op) => `<div class="tq-nobtn">${op.map(([e, t]) => `<button type="button" class="${f[campo] === t ? "on" : ""}" data-no="${campo}" data-valor="${escX(t)}"><span>${e}</span>${escX(t)}</button>`).join("")}</div>`;
+    h += `<div class="tq-todo"><div class="ext-preg" style="font-size:1.15rem">¿Pudiste hacer todo?</div>
+      <div class="tq-sino2"><button type="button" class="${f.todo === "si" ? "on si" : ""}" data-todo="si">✅ Sí</button><button type="button" class="${f.todo === "no" ? "on no" : ""}" data-todo="no">❌ No</button></div>`;
+    if (f.todo === "no") {
+      h += `<div class="ext-preg">1 · ¿Qué no pudiste hacer?</div>` + bt("noQue", TQ_NO_QUE);
+      if (f.noQue) h += `<div class="ext-preg">2 · ¿Por qué?</div>` + bt("noPor", TQ_NO_POR);
+      if (f.noQue && f.noPor) h += `<div class="ext-preg">3 · 📷 Sacale una foto · hasta 5</div><div class="foto-grid" id="tqNoFotoGrid"></div>
+        <div class="ext-preg">¿Qué pasó?</div><textarea class="ext-com" rows="3" data-dato="noTxt" placeholder="Ej.: el flexible de la canilla de enfermería está roto">${escX(f.noTxt || "")}</textarea>`;
+    }
+    h += `</div>`;
+  }
   if (f.accion !== "edit") {
     const tit = f.accion === "limp" ? "Foto del F-AGU-01-T firmado (opcional por ahora)" : "Fotos del tanque (de afuera y, si se puede, de adentro)";
     h += `<div class="ext-preg" style="margin-top:16px">${tit} · hasta 5</div><div class="foto-grid" id="tqFotoGrid"></div>`;
   }
-  h += `<div class="ext-preg" style="margin-top:16px">Observaciones${f.accion === "edit" ? "" : " (opcional)"}</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="${f.accion === "limp" ? "Lo que no se pudo hacer, arreglos que hacen falta…" : "Lo que quieras contar"}">${escX(f.obs)}</textarea>`;
+  h += `<div class="ext-preg" style="margin-top:16px">Observaciones${f.accion === "edit" ? "" : " (opcional)"}</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar">${escX(f.obs)}</textarea>`;
   const faltan = tqFaltan(f);
   h += `<button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta: " + escX(faltan.join(", ")) : "Listo, guardar"}</button></div>`;
   box.innerHTML = h;
   if (f.accion !== "edit") tqPintarFotos();
+  if (f.accion === "limp" && f.todo === "no" && f.noQue && f.noPor) tqPintarFotosNo();
+  box.querySelectorAll("[data-todo]").forEach(b => b.onclick = () => { f.todo = b.dataset.todo; if (f.todo === "si") { f.noQue = ""; f.noPor = ""; } tqBorradorGuardar(); const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; });
+  box.querySelectorAll("[data-no]").forEach(b => b.onclick = () => { f[b.dataset.no] = b.dataset.valor; tqBorradorGuardar(); const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; });
   // eventos
   box.querySelectorAll("[data-dato]").forEach(i => {
-    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "FECHA_CLORACION") f.FECHA_CLORACION = v; else if (k === "CLORACION_OTRO_DIA") { f.CLORACION_OTRO_DIA = v; if (!v) f.FECHA_CLORACION = ""; } else if (k === "obs") f.obs = v; else d[k] = v; };
+    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "FECHA_CLORACION") f.FECHA_CLORACION = v; else if (k === "noTxt") f.noTxt = v; else if (k === "CLORACION_OTRO_DIA") { f.CLORACION_OTRO_DIA = v; if (!v) f.FECHA_CLORACION = ""; } else if (k === "obs") f.obs = v; else d[k] = v; };
     i.oninput = () => { poner(); tqBorradorProgramar(); tqActualizarBoton(); };
     i.onchange = () => { poner(); tqBorradorGuardar(); tqActualizarBoton(); if (/CLORO|DOSIS_OK|FECHA|CLORACION/.test(k)) { const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; } };   // aviso de cloro fuera de rango; dosis; fechas
   });
@@ -386,6 +408,21 @@ function tqPintarFotos() {
   if (add) add.onclick = () => { tqBorradorGuardar(); elegirOrigenFoto(tqFotoInput, true, fs => agregarFotos(F, fs, () => { tqPintarFotos(); tqActualizarBoton(); tqBorradorGuardar(); })); };
 }
 
+// fotos del problema (paso 3 de «¿Pudiste hacer todo?»), aparte de las del F-AGU-01-T
+const tqNoFotoInput = document.createElement("input");
+tqNoFotoInput.type = "file"; tqNoFotoInput.accept = "image/*"; tqNoFotoInput.setAttribute("capture", "environment"); tqNoFotoInput.style.display = "none";
+document.body.appendChild(tqNoFotoInput);
+tqNoFotoInput.addEventListener("change", (e) => { const fs = Array.from(e.target.files || []); tqNoFotoInput.value = ""; if (fs.length && tq.form) { tq.form.fotosNo = tq.form.fotosNo || []; agregarFotos(tq.form.fotosNo, fs, () => { tqPintarFotosNo(); tqActualizarBoton(); tqBorradorGuardar(); }); } });
+function tqPintarFotosNo() {
+  const g = document.getElementById("tqNoFotoGrid"); if (!g || !tq.form) return;
+  const F = tq.form.fotosNo = tq.form.fotosNo || [];
+  g.innerHTML = F.map((u, i) => `<div class="foto-slot filled"><img src="${u}" alt="foto ${i + 1}"><button type="button" class="foto-remove" data-i="${i}">×</button></div>`).join("") +
+    (F.length < 5 ? `<button type="button" class="foto-slot add"><span>+</span><small>${F.length}/5</small></button>` : "");
+  g.querySelectorAll(".foto-remove").forEach(b => b.onclick = (e) => { e.stopPropagation(); F.splice(Number(b.dataset.i), 1); tqPintarFotosNo(); tqBorradorGuardar(); });
+  const add = g.querySelector(".foto-slot.add");
+  if (add) add.onclick = () => { tqBorradorGuardar(); elegirOrigenFoto(tqNoFotoInput, true, fs => agregarFotos(F, fs, () => { tqPintarFotosNo(); tqBorradorGuardar(); })); };
+}
+
 // ---------- guardar: a la cola (se manda solo con señal)
 async function tqGuardar() {
   const f = tq.form, d = f.datos; if (tqFaltan(f).length) return;
@@ -401,7 +438,8 @@ async function tqGuardar() {
   if (f.accion === "limp") {
     const sel = tqSel(f), varios = sel.length > 1;
     const nota = [f.CLORACION_OTRO_DIA && f.FECHA_CLORACION ? "Limpieza el " + tqFecha(f.FECHA) + "; cloración el " + tqFecha(f.FECHA_CLORACION) : "",
-      varios ? "Limpieza conjunta de " + sel.join(", ") : "", d.DOSIS_OK ? "Dosis según el método de HyS (agua al 20 % del tanque, 110 ppm)" : ""].filter(Boolean).join(" · ");
+      varios ? "Limpieza conjunta de " + sel.join(", ") : "",
+      f.todo === "no" ? "PARCIAL: no se pudo «" + f.noQue + "» (" + f.noPor + "): " + String(f.noTxt || "").trim() : "", d.DOSIS_OK ? "Dosis según el método de HyS (agua al 20 % del tanque, 110 ppm)" : ""].filter(Boolean).join(" · ");
     itemsLimp = sel.map((c, i) => {
       const x = tqTanques().find(y => y.codigo === c), cap = tqNum(x && x.capacidad) || (!varios ? tqNum(d.CAPACIDAD_L) : null), dz = d.DOSIS_OK ? tqDosis(cap) : null;
       return { tipo: "limpieza_tanque", data: Object.assign({}, base, { id_limpieza: varios ? f.uid + "-" + (i + 1) : f.uid, CODIGO_TANQUE: c, HORA_CORTE: d.HORA_CORTE, HORA_REHABILITACION: d.HORA_REHABILITACION, HORAS_CERRADO: d.HORAS_CERRADO,
@@ -409,6 +447,11 @@ async function tqGuardar() {
         OBSERVACIONES: [nota, base.OBSERVACIONES].filter(Boolean).join(" · "), fotos_base64: f.fotos.slice() }) };
     });
     item = itemsLimp[0];
+    // lo que no se pudo hacer va a Belén como aviso (Solicitudes a Belén › Aviso en un establecimiento), con sus fotos
+    if (f.todo === "no") itemsLimp.push({ tipo: "solicitud", data: { id_solicitud: "S-" + f.uid, fecha: new Date().toISOString(), operario: base.operario, tipo: "Aviso en un establecimiento",
+      id_establecimiento: base.lugar_id, establecimiento: base.lugar_nombre, que: "No se pudo: " + f.noQue + " · " + f.noPor, cantidad: "",
+      detalle: String(f.noTxt || "").trim() + " · Tanques: " + sel.join(", ") + " · " + (f.FECHA_CLORACION ? "limpieza del " + tqFecha(f.FECHA) + " y cloración del " + tqFecha(f.FECHA_CLORACION) : "limpieza del " + tqFecha(f.FECHA)) + " · Aviso cargado desde Tanques y cisternas.",
+      justificacion: "", fotos_base64: (f.fotosNo || []).slice(0, 5) } });
   }
   if (f.accion === "edit") item = { tipo: "editar_tanque", data: Object.assign(base, { id_edit: f.uid, CODIGO_TANQUE: f.codigo, UBICACION: d.UBICACION.trim(), TIPO: d.TIPO, USO: d.USO, CAPACIDAD_L: String(tqNum(d.CAPACIDAD_L)), CAPACIDAD_ESTIMADA: d.CAP_EST ? "Sí" : "", MATERIAL: d.MATERIAL && d.MATERIAL !== "No sé" ? d.MATERIAL : "", ACCESO: d.ACCESO, ESTADO: d.FUERA ? "Fuera de uso" : "" }) };
   // 03/11/2026: en el relevamiento o la limpieza se pueden completar los datos que le faltan al tanque (litros, tipo, acceso)
@@ -433,7 +476,7 @@ async function tqGuardar() {
   }
   tqLocalGuardar(L);
   await tqBorradorBorrar();
-  tq.aviso = (f.accion === "alta" ? "Tanque agregado" : f.accion === "insp" ? "Revisión guardada" + (resultado !== "Conforme" ? ": " + resultado.toLowerCase() : ": conforme") : f.accion === "limp" ? (tqSel(f).length > 1 ? "Limpieza guardada en " + tqSel(f).length + " tanques (" + tqSel(f).join(", ") + ")" : "Limpieza guardada") : "Corrección guardada") +
+  tq.aviso = (f.accion === "alta" ? "Tanque agregado" : f.accion === "insp" ? "Revisión guardada" + (resultado !== "Conforme" ? ": " + resultado.toLowerCase() : ": conforme") : f.accion === "limp" ? (f.todo === "no" ? "Limpieza guardada como PARCIAL y aviso enviado a Belén" : tqSel(f).length > 1 ? "Limpieza guardada en " + tqSel(f).length + " tanques (" + tqSel(f).join(", ") + ")" : "Limpieza guardada") : "Corrección guardada") +
     (navigator.onLine ? " · se está enviando." : " · se envía sola cuando haya señal.");
   tq.form = null; tq.vista = "lugar"; tq.codigo = null; tqRender(); screensEl.scrollTop = 0; tqPintarHome();
   trySync();

@@ -7,6 +7,10 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
+## «¿Pudiste hacer todo?» (26/11/2026, versión 2026.11.26d)
+- Pedido de Belén: registrar cuando un paso no se puede hacer (por ejemplo, no limpiar una grifería porque el flexible se puede romper), de forma muy simple para Javier y Paulo. En «Registrar una limpieza», antes de guardar: «¿Pudiste hacer todo?» ✅ Sí / ❌ No. Con No aparecen, uno debajo del otro: 1 · ¿Qué no pudiste hacer? (🚰 Limpiar una canilla · 🔧 Cambiar o tocar un flexible · 💧 Algo del tanque · ❓ Otra cosa), 2 · ¿Por qué? (💥 Está roto · ⚠️ Se puede romper · 🧰 Falta algo · 🚫 No llego o no es seguro), 3 · foto (hasta 5, opcional) y «¿Qué pasó?» escrito (obligatorio, sin micrófono).
+- Cada limpieza queda con «PARCIAL: no se pudo «…» (…): …» en OBSERVACIONES de AGUA_LIMPIEZAS, y se manda además una solicitud tipo «Aviso en un establecimiento» (hoja `solicitudes` de la planilla MIP, con las fotos), que Belén ve en el Portal › 3 · Plagas › Solicitudes. Sin cambios en el servidor. Pendiente: hoja propia en la BASE COMÚN y paso automático al Plan de acción.
+
 ## Fecha de la limpieza y cloración (26/11/2026, versión 2026.11.26c)
 - Pedido de Belén: «se tiene que terminar el mismo día la limpieza, salvo que hablemos de cloración». El formulario pide un solo día («¿Qué día hiciste la limpieza?», se aclara que se empieza y termina el mismo día) y la casilla opcional «Se hizo una cloración otro día» con su fecha (igual o posterior a la limpieza). En OBSERVACIONES: «Limpieza el …; cloración el …». Se sacó el campo «¿cuándo empezaste?» de la versión 2026.11.26a. Ayuda al día.
 
