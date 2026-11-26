@@ -238,7 +238,7 @@ function tqFormVacio(accion, t) {
     Object.assign(f.datos, { HORA_CORTE: "", HORA_REHABILITACION: "", HORAS_CERRADO: "", VOLUMEN_L: "", LAVANDINA_ML: "", TAPA: t && TQ_OPC.TAPA.indexOf(t.tapa) >= 0 ? t.tapa : null, MUESTRA_TOMADA: null, capacidad: t ? t.capacidad : "", DOSIS_OK: true });
     // 26/11/2026: se pueden cargar juntos todos los tanques que se limpiaron (desde el botón del lugar vienen todos tildados)
     f.codigos = t ? [t.codigo] : (tq.lugar ? tqReales(tq.lugar.id).map(x => x.codigo) : []);
-    f.FECHA_INICIO = "";
+    f.CLORACION_OTRO_DIA = false; f.FECHA_CLORACION = "";   // 26/11/2026 (Belén): la limpieza se termina en el día; solo una cloración puede ser otro día
   }
   if (accion === "edit") Object.assign(f.datos, { UBICACION: t.ubicacion || "", TIPO: t.tipo || null, USO: t.uso || null, CAPACIDAD_L: t.capacidad || "", MATERIAL: t.material || null, ACCESO: t.acceso || null, FUERA: false });
   return f;
@@ -264,7 +264,8 @@ function tqFaltan(f) {
   }
   if (f.accion === "limp") {
     if (!tqSel(f).length) x.push("qué tanques limpiaste");
-    if (f.FECHA_INICIO && f.FECHA && f.FECHA_INICIO > f.FECHA) x.push("el día que empezaste tiene que ser antes del que terminaste");
+    if (f.CLORACION_OTRO_DIA && !f.FECHA_CLORACION) x.push("día de la cloración");
+    if (f.CLORACION_OTRO_DIA && f.FECHA_CLORACION && f.FECHA && f.FECHA_CLORACION < f.FECHA) x.push("la cloración tiene que ser el mismo día de la limpieza o después");
     if (!d.HORAS_CERRADO) x.push("horas cerrado");
     if (!d.TAPA) x.push("tapa");   // 02/11/2026: la foto del F-AGU-01-T es opcional por ahora (pedido de Belén)
   }
@@ -292,8 +293,10 @@ function tqRenderForm() {
     if (R.length > 1 || (R.length === 1 && !sel.length)) h += `<div class="ext-preg">¿Qué tanques limpiaste?</div><div class="step-sub">Tildá todos los que limpiaste en esta tarea. Si alguno no se limpió, destildalo.</div>` +
       R.map(x => `<label class="ext-chk"><input type="checkbox" data-tqsel="${escX(x.codigo)}"${sel.indexOf(x.codigo) >= 0 ? " checked" : ""}> <b>${escX(x.codigo)}</b>${x.tipo && !/^s\/d/i.test(x.tipo) ? " · " + escX(x.tipo) : ""}${Number(x.capacidad) ? " · " + escX(Number(x.capacidad).toLocaleString("es-AR") + " L") : ""} · ${escX(x.ubicacion || "s/d")}</label>`).join("") +
       `<div class="step-sub" style="margin:6px 0 12px">¿Limpiaste un tanque que no está en esta lista? Cancelá y agregalo primero con «➕ Agregar un tanque que NO está en la lista».</div>`;
-    h += `<div class="ext-preg">¿Qué día terminaste la limpieza?</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">
-      <div class="ext-preg">Si empezaste otro día, ¿cuándo empezaste? (si fue el mismo día, dejalo vacío)</div><input class="ext-inp" type="date" data-dato="FECHA_INICIO" value="${escX(f.FECHA_INICIO || "")}" max="${escX(f.FECHA || tqHoy())}">`;
+    h += `<div class="ext-preg">¿Qué día hiciste la limpieza?</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">
+      <div class="step-sub">La limpieza se empieza y se termina el mismo día.</div>
+      <label class="ext-chk"><input type="checkbox" data-dato="CLORACION_OTRO_DIA"${f.CLORACION_OTRO_DIA ? " checked" : ""}> Se hizo una cloración otro día (después de la limpieza)</label>` +
+      (f.CLORACION_OTRO_DIA ? `<div class="ext-preg">¿Qué día se hizo la cloración?</div><input class="ext-inp" type="date" data-dato="FECHA_CLORACION" value="${escX(f.FECHA_CLORACION || "")}" min="${escX(f.FECHA || "")}" max="${tqHoy()}">` : "");
   } else h += `<div class="ext-preg">Fecha</div><input class="ext-inp" type="date" data-dato="FECHA" value="${escX(f.FECHA)}" max="${tqHoy()}">`;
   if (f.accion === "alta" || f.accion === "edit") {
     h += `<div class="ext-preg">¿Dónde está exactamente?</div><input class="ext-inp" data-dato="UBICACION" value="${escX(d.UBICACION)}" placeholder="Ej.: techo del edificio principal, patio del fondo"><div class="step-sub">Solo dónde está este tanque. Si hay más tanques o una cisterna, agregá cada uno aparte con «Agregar un tanque o cisterna».</div>
@@ -347,9 +350,9 @@ function tqRenderForm() {
   if (f.accion !== "edit") tqPintarFotos();
   // eventos
   box.querySelectorAll("[data-dato]").forEach(i => {
-    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "FECHA_INICIO") f.FECHA_INICIO = v; else if (k === "obs") f.obs = v; else d[k] = v; };
+    const k = i.dataset.dato, poner = () => { const v = i.type === "checkbox" ? i.checked : i.value; if (k === "FECHA") f.FECHA = v; else if (k === "FECHA_CLORACION") f.FECHA_CLORACION = v; else if (k === "CLORACION_OTRO_DIA") { f.CLORACION_OTRO_DIA = v; if (!v) f.FECHA_CLORACION = ""; } else if (k === "obs") f.obs = v; else d[k] = v; };
     i.oninput = () => { poner(); tqBorradorProgramar(); tqActualizarBoton(); };
-    i.onchange = () => { poner(); tqBorradorGuardar(); tqActualizarBoton(); if (/CLORO|DOSIS_OK|FECHA/.test(k)) { const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; } };   // aviso de cloro fuera de rango; dosis; fechas
+    i.onchange = () => { poner(); tqBorradorGuardar(); tqActualizarBoton(); if (/CLORO|DOSIS_OK|FECHA|CLORACION/.test(k)) { const y = screensEl.scrollTop; tqRenderForm(); screensEl.scrollTop = y; } };   // aviso de cloro fuera de rango; dosis; fechas
   });
   box.querySelectorAll("[data-tqsel]").forEach(i => i.onchange = () => {
     const c = i.dataset.tqsel, s = tqSel(f).filter(x => x !== c); if (i.checked) s.push(c);
@@ -397,7 +400,7 @@ async function tqGuardar() {
   let itemsLimp = [];
   if (f.accion === "limp") {
     const sel = tqSel(f), varios = sel.length > 1;
-    const nota = [f.FECHA_INICIO && f.FECHA_INICIO !== f.FECHA ? "Limpieza hecha del " + tqFecha(f.FECHA_INICIO) + " al " + tqFecha(f.FECHA) : "",
+    const nota = [f.CLORACION_OTRO_DIA && f.FECHA_CLORACION ? "Limpieza el " + tqFecha(f.FECHA) + "; cloración el " + tqFecha(f.FECHA_CLORACION) : "",
       varios ? "Limpieza conjunta de " + sel.join(", ") : "", d.DOSIS_OK ? "Dosis según el método de HyS (agua al 20 % del tanque, 110 ppm)" : ""].filter(Boolean).join(" · ");
     itemsLimp = sel.map((c, i) => {
       const x = tqTanques().find(y => y.codigo === c), cap = tqNum(x && x.capacidad) || (!varios ? tqNum(d.CAPACIDAD_L) : null), dz = d.DOSIS_OK ? tqDosis(cap) : null;
