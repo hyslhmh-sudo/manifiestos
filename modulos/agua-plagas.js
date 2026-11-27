@@ -35,7 +35,7 @@ const DPSB_F = {
 function aglUrl(x) {
   const r = x.rem || {}, f = x.form || {}, p = new URLSearchParams(), v = t => (t && !/^s\/d/i.test(t) ? t : ''), hoy = new Date();
   const fecha = hoy.getFullYear() + '-' + ('0' + (hoy.getMonth() + 1)).slice(-2) + '-' + ('0' + hoy.getDate()).slice(-2);
-  const comp = /COMPLETO/.test(x.que);   // 27/11/2026: con agua no apta y físico-químico vigente se pide solo el bacteriológico
+  const comp = /COMPLETO|URGENTE/.test(x.que);
   let can = String(x.canillas || '').split(' · ').map(c => v(c.trim())).filter(Boolean);
   if (comp) ['Salida del tanque', 'Canilla más alejada'].forEach(c => { if (!can.some(k => k.toLowerCase().indexOf(c.toLowerCase()) >= 0)) can.push(c); });
   if (!can.length) can = [''];
@@ -116,32 +116,29 @@ function aglPintar() {
   // muestreo y análisis), DÓNDE (canillas), POR QUÉ, el PLAZO y los PASOS en orden (primero limpiar, después pedir).
   const hoyI = new Date().toISOString().slice(0, 10);
   const noApL = x => (x.res || []).filter(m => /no apta/i.test(m.resultado));
-  // 27/11/2026 (Belén: «no en todos se necesita muestreo completo»): con agua NO APTA y físico-químico vigente y apto, se repite
-  // solo el bacteriológico. La fórmula de «Qué solicitar» (columna P del Tablero) dice COMPLETO o solo BACTERIOLÓGICO.
-  const tipoTxt = (comp, urg) => comp ? 'muestreo COMPLETO: bacteriológico + físico-químico' : urg ? 'nuevo muestreo solo BACTERIOLÓGICO (el físico-químico está vigente y dio apto)' : 'muestreo PARCIAL: solo bacteriológico';
-  const nomPedido = (comp, urg) => comp ? 'muestreo COMPLETO' : urg ? 'muestreo bacteriológico' : 'muestreo PARCIAL';
+  const tipoTxt = comp => comp ? 'muestreo COMPLETO: bacteriológico + físico-químico' : 'muestreo PARCIAL: solo bacteriológico';
   const qTxt = x => {
-    const e = est(x), urg = /URGENTE/.test(x.que), comp = /COMPLETO/.test(x.que), na = noApL(x);
-    if (e === 'sol') return 'Pedido el ' + fT(x.solicitado) + ': ' + tipoTxt(comp, urg) + ' · falta que el DPSB tome las muestras';
-    if (/URGENTE/.test(x.que)) return '❗ Agua NO APTA' + (na.length ? ' en ' + na.map(m => m.donde).join(', ') : '') + ' (' + fT(x.ultimo) + ') · 1.º repetir la limpieza de tanques' + (tqOk(x) ? ' ✅' : '') + ' y de las griferías afectadas · 2.º pedir ' + (comp ? 'muestreo COMPLETO' : 'solo el bacteriológico');
+    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), na = noApL(x);
+    if (e === 'sol') return 'Pedido el ' + fT(x.solicitado) + ': ' + tipoTxt(comp) + ' · falta que el DPSB tome las muestras';
+    if (/URGENTE/.test(x.que)) return '❗ Agua NO APTA' + (na.length ? ' en ' + na.map(m => m.donde).join(', ') : '') + ' (' + fT(x.ultimo) + ') · 1.º repetir la limpieza de tanques' + (tqOk(x) ? ' ✅' : '') + ' y de las griferías afectadas · 2.º pedir muestreo COMPLETO';
     if (comp) return (tqOk(x) ? '✅ Tanques limpios · pedir ' : '1.º limpiar tanques · 2.º pedir ') + tipoTxt(true);
     if (/PARCIAL/.test(x.que)) return 'Pedir ' + tipoTxt(false);
     return 'Al día · próximo: ' + (x.completo && x.parcial && x.completo <= x.parcial ? 'completo' : 'parcial') + ' desde el ' + fT(x.desde);
   };
   const limite = x => est(x) === 'ok' ? '' : /^\d{4}-/.test(x.limite) ? (x.limite >= hoyI ? 'hasta el ' + fT(x.limite) : 'venció el ' + fT(x.limite)) : '';
   const fila = x => {
-    const e = est(x), comp = /COMPLETO/.test(x.que), urg = /URGENTE/.test(x.que), lav = comp || urg, i = AGL.lab.indexOf(x), na = noApL(x);
+    const e = est(x), comp = /COMPLETO|URGENTE/.test(x.que), urg = /URGENTE/.test(x.que), i = AGL.lab.indexOf(x), na = noApL(x);
     const cans = (x.canillas && x.canillas !== 's/d' ? x.canillas.split(' · ').map(c => c.trim()).filter(Boolean) : []);
     const donde = (comp ? ['salida del tanque', 'canilla más alejada'] : []).concat(cans.map(c => c + (na.some(m => m.donde === c) ? ' (repetir: dio no apta)' : '')));
     const lim = limite(x), rojo = urg || /limpiar tanques/i.test(qTxt(x));
     const tq = x.tanques && x.tanques.n ? x.tanques : null, limpio = tqOk(x);
     const paso = (ok, t) => '<li style="margin:3px 0">' + (ok === true ? '✅ ' : ok === 'esp' ? '⏳ ' : '⬜ ') + t + '</li>';
-    const btnPedir = '<button class="btn ' + (lav && !limpio ? 'sec' : 'pri') + '" style="margin:4px 0" onclick="aglPedir(' + i + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir el ' + nomPedido(comp, urg) + ' al DPSB') + ' ↗</button>';
+    const btnPedir = '<button class="btn ' + (comp && !limpio ? 'sec' : 'pri') + '" style="margin:4px 0" onclick="aglPedir(' + i + ')">📝 ' + (e === 'sol' ? 'Volver a abrir el formulario del DPSB' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB') + ' ↗</button>';
     const btnAviso = '<button class="btn sec" style="margin:4px 0" id="aglAv' + i + '" onclick="aglAviso(' + i + ')">✉ Avisar al establecimiento (borrador)</button>';
     // 1) Qué se solicita
     const pide = e === 'ok' ? '' : '<div style="border:2px solid ' + (rojo && e !== 'sol' ? 'var(--er)' : 'var(--az)') + ';border-radius:12px;padding:10px 12px;margin:2px 0 10px;background:#fff;color:#0D313F">' +
       '<b style="font-size:14px">' + (e === 'sol' ? 'Qué se le pidió al DPSB (' + fT(x.solicitado) + ')' : 'Qué hay que pedirle al DPSB') + '</b>' +
-      '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp, urg) + '.</div>' +
+      '<div style="margin-top:4px"><b>Qué:</b> ' + tipoTxt(comp) + '.</div>' +
       '<div><b>Dónde:</b> ' + (donde.length ? esc(donde.join(' · ')) : 's/d (completar las canillas en la columna T del Tablero)') + '.</div>' +
       '<div><b>Por qué:</b> ' + (urg ? 'el muestreo del ' + fT(x.ultimo) + ' dio NO APTA' + (na.length && na[0].recibido ? ' (resultado cargado el ' + fT(na[0].recibido) + ')' : '') + (na.length ? ' en ' + esc(na.map(m => m.donde + ' (' + (m.detalle && m.detalle !== 's/d' ? m.detalle : m.analisis) + ')').join(', ')) : '') + '. El laboratorio indica limpiar y desinfectar tanques, cisternas y cañerías y volver a muestrear. Regla de HyS para toda la red: se repite la limpieza de tanques y se limpian y desinfectan las griferías afectadas.'
         : comp ? (/^\d{4}-/.test(x.fq || '') ? 'toca el control anual completo (último físico-químico: ' + fT(x.fq) + ').' : 'nunca se hizo un físico-químico' + (/^\d{4}-/.test(x.bact || '') ? ' y el último bacteriológico es del ' + fT(x.bact) + (x.bact < hoyI.slice(0, 4) - 1 + hoyI.slice(4) ? ' (hace más de un año)' : '') : '') + ': corresponde el muestreo completo.')
@@ -149,10 +146,10 @@ function aglPintar() {
       (lim ? '<div><b>Plazo:</b> <span style="color:' + (/venció/.test(lim) ? 'var(--er)' : 'var(--wa)') + ';font-weight:700">' + lim + (urg ? ' (15 días hábiles desde que se cargó el resultado)' : '') + '</span>' + (/venció/.test(lim) && e !== 'sol' ? ': está atrasado, hacerlo cuanto antes.' : '') + '</div>' : '') +
       // 2) Pasos en orden
       '<div style="margin-top:6px"><b>Pasos:</b><ol style="margin:4px 0 0;padding-left:18px">' +
-      (lav ? paso(limpio, (urg ? 'Repetir la limpieza y desinfección de ' : 'Limpiar y desinfectar ') + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + (aguaTanques(x) === 'mant' ? ' (la hace el mantenimiento del lugar, no HyS: pedir el comprobante). ' : x.cod === 'HZT' ? ' (Javier y Paulo, con el F-AGU-01-T). ' : ' (la hace el establecimiento y la registra con el formulario de limpieza de tanques). ') +
+      (comp ? paso(limpio, (urg ? 'Repetir la limpieza y desinfección de ' : 'Limpiar y desinfectar ') + (tq ? (tq.n === 1 ? 'el tanque' : 'los ' + tq.n + ' tanques') : 'tanques y cisternas') + (aguaTanques(x) === 'mant' ? ' (la hace el mantenimiento del lugar, no HyS: pedir el comprobante). ' : x.cod === 'HZT' ? ' (Javier y Paulo, con el F-AGU-01-T). ' : ' (la hace el establecimiento y la registra con el formulario de limpieza de tanques). ') +
         (limpio ? 'Hecho: última limpieza ' + fT(tq.ultima) + '.' : tq && tq.antesNoApta ? '<b style="color:var(--er)">Falta: la última limpieza (' + fT(tq.ultima) + ') es anterior al muestreo no apto.</b>' : tq ? '<b style="color:var(--er)">Falta: ' + tq.limpios + ' de ' + tq.n + ' limpios' + (tq.ultima ? ' (última ' + fT(tq.ultima) + ')' : '') + '.</b>' : '<b style="color:var(--er)">Falta: no hay tanques cargados para este lugar.</b>') + ' Sin la limpieza el DPSB no toma la muestra.') : '') +
       (urg ? paso(false, 'Limpiar y desinfectar las griferías afectadas' + (na.length ? ': <b>' + esc(na.map(m => m.donde).join(', ')) + '</b>' : '') + ' (además de los tanques).') : '') +
-      paso(e === 'sol' ? true : false, (e === 'sol' ? 'Pedido al DPSB el ' + fT(x.solicitado) + '.' : 'Pedir el ' + nomPedido(comp, urg) + ' al DPSB' + (lav && !limpio ? ' <b>después</b> de limpiar' : '') + '.')) +
+      paso(e === 'sol' ? true : false, (e === 'sol' ? 'Pedido al DPSB el ' + fT(x.solicitado) + '.' : 'Pedir el ' + (comp ? 'muestreo COMPLETO' : 'muestreo PARCIAL') + ' al DPSB' + (comp && !limpio ? ' <b>después</b> de limpiar' : '') + '.')) +
       paso(e === 'sol' ? 'esp' : false, 'El DPSB toma las muestras (lunes a viernes, 9 a 13 h; puede tardar hasta 10 días). Avisar al establecimiento.') +
       paso(false, 'Cuando llegue el informe, subirlo (⬆ Subir informes nuevos).') + '</ol></div>' +
       '<div style="margin-top:6px">' + btnPedir + ' ' + btnAviso + '</div>' +
@@ -186,12 +183,11 @@ function aguaLabCard(lab, labError) {
   const accesos = '<div style="display:flex;flex-wrap:wrap;margin-top:10px">' + b(AGUA_INF.dpsb, '📝 Pedir muestreo al DPSB (formulario) ↗', 1) + b(AGUA_INF.subir, '⬆ Subir informes nuevos', 1) + b(AGUA_INF.trelew, 'Informes red Trelew ↗') + b(AGUA_INF.rawson, 'Informes red Rawson ↗') +
     b('https://hyslhmh-sudo.github.io/manifiestos/mipyv/F-AGU-01-T.pdf', 'Formulario de limpieza de tanques ↗') + b(AGUA_INF.normativa, 'Normativa y POE del DPSB ↗') + b(AGUA_INF.tablero, 'Planilla (respaldo) ↗') + '</div>';
   const como = '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Cómo pedir cada muestreo</summary><div class="mu peq" style="margin-top:6px;line-height:1.5">' +
-    '<b>Muestreo completo</b> (una vez por año, o después de una muestra NO APTA si el físico-químico dio no apto o ya toca el anual): ' +
+    '<b>Muestreo completo</b> (una vez por año; también después de una muestra NO APTA): ' +
     '1) Higiene y Seguridad hace limpiar y desinfectar tanques y cisternas (red Trelew: POE-AGU-001 propio; Javier y Paulo lo registran en la app MIP con la foto del F-AGU-01 firmado). Sin limpieza previa el DPSB no toma la muestra (Nota DPSB 34/26). ' +
     '2) Higiene y Seguridad completa la «Solicitud de Muestreo de Agua para Análisis» (botón «Pedir muestreo al DPSB») pidiendo «Ambos» (microbiológico y fisicoquímico). Una muestra por canilla: al terminar cada una, «¿Desea agregar otra muestra?» Sí. ' +
     '3) Puntos: salida del tanque y canilla más alejada, más las canillas de siempre. 4) La muestra llega al laboratorio refrigerada y dentro de las 24 h.<br>' +
     '<b>Muestreo parcial de 6 meses</b>: solo bacteriológico («Análisis Microbiológico» en el formulario), en las mismas canillas del último muestreo.<br>' +
-    '<b>Después de una muestra NO APTA</b> (27/11/2026): siempre se repite la limpieza de tanques y cisternas y se limpian las griferías afectadas. Si el físico-químico está vigente y dio apto, se pide <b>solo el bacteriológico</b> («Análisis Microbiológico»); el completo solo si el físico-químico dio no apto, nunca se hizo o ya toca el anual. Plazo: 15 días hábiles.<br>' +
     '<b>Más rápido</b>: tocá el establecimiento y «Pedir este muestreo al DPSB»: se abre el formulario del DPSB ya completo (remitente, dirección, una muestra por canilla, tipo de análisis y «Secretaría de Salud»). Revisalo, completá lo que falte y tocá «Enviar». El portal anota solo la fecha en «Solicitado el» y el lugar queda «Solicitado, esperando el resultado». Los datos se corrigen en la planilla: pestaña «Formulario DPSB» (CUIT, responsable, contacto, correo) y columnas V a Y del Tablero de cada red (institución, dirección, localidad, tipo de agua).<br>' +
     '<b>Aviso al establecimiento</b>: «✉ Generar aviso por correo (borrador)» deja en Gmail un borrador (no se envía solo) para el correo del establecimiento (columna Z del Tablero) con copia al Área Externa si es un CAPS de la red Trelew, avisando que se pidió el muestreo parcial o completo, los puntos y el pedido de que avisen el día de la toma de muestras. El texto se cambia en la pestaña «Formulario DPSB».<br>' +
     '<b>Si lo pedís con el botón general</b> (formulario en blanco): después anotá la fecha en la planilla, pestaña del Tablero de la red, columna «Solicitado el».<br>' +

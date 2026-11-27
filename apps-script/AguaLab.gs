@@ -11,10 +11,7 @@
  *   · Completo (cada 12 meses, celda D3): bacteriológico + físico-químico, PREVIA limpieza y desinfección de tanques y cisternas,
  *     en la salida del tanque y la canilla más alejada además de las canillas de siempre.
  *   · Si en el último muestreo hubo una muestra NO APTA (toda la red, 03/11/2026): repetir la limpieza de tanques y cisternas,
- *     limpiar y desinfectar las griferías afectadas y nuevo muestreo en 15 días hábiles. 27/11/2026 (Belén: «no en todos se
- *     necesita muestreo completo»): si el físico-químico está vigente y dio apto, se repite SOLO el bacteriológico; es completo
- *     solo si el físico-químico dio no apta, nunca se hizo o ya toca el anual. La fórmula de «Qué solicitar» lo dice
- *     («… nuevo muestreo COMPLETO …» o «… nuevo muestreo solo BACTERIOLÓGICO …») y el código lee esa palabra.
+ *     limpiar y desinfectar las griferías afectadas y nuevo muestreo completo en 15 días hábiles.
  *   · Avisa 30 días antes del parcial (F3) y 45 antes del completo (H3), para dar tiempo a la limpieza.
  * Normativa: Dto. 351/79 art. 57 (bacteriológico semestral y físico-químico anual); POE DPSB «Toma de muestra y gestión de
  *   resultados» 10.1 (demanda programada cada 6 meses) y 10.7 (15 días hábiles); POE DPSB «Limpieza y desinfección de tanques»
@@ -117,7 +114,7 @@ function aguaLabAcciones_(lab) {
   return (lab || []).filter(x => x.grupo !== 'Otros' && /urgente|vencido|pedir/i.test(x.aviso)).map(x => ({
     cod: x.cod, origen: 'Agua', vencida: /urgente|vencido/i.test(x.aviso), estado: x.aviso,
     // 03/11/2026 (Belén): con agua NO APTA, en toda la red: repetir la limpieza de tanques y limpiar las griferías afectadas
-    que: (/^URGENTE/.test(x.que) ? 'Agua NO APTA: repetir la limpieza y desinfección de tanques y cisternas, limpiar y desinfectar las griferías afectadas' + ((x.res || []).filter(m => /no apta/i.test(m.resultado)).length ? ' (' + x.res.filter(m => /no apta/i.test(m.resultado)).map(m => m.donde).join(', ') + ')' : '') + ' y pedir ' + (/COMPLETO/.test(x.que) ? 'muestreo COMPLETO' : 'nuevo muestreo solo bacteriológico (el físico-químico está vigente)')
+    que: (/^URGENTE/.test(x.que) ? 'Agua NO APTA: repetir la limpieza y desinfección de tanques y cisternas, limpiar y desinfectar las griferías afectadas' + ((x.res || []).filter(m => /no apta/i.test(m.resultado)).length ? ' (' + x.res.filter(m => /no apta/i.test(m.resultado)).map(m => m.donde).join(', ') + ')' : '') + ' y pedir muestreo COMPLETO'
       : /COMPLETO/.test(x.que) ? 'Pedir muestreo COMPLETO (bacteriológico + físico-químico), antes limpiar tanques y cisternas'
       : /PARCIAL/.test(x.que) ? 'Pedir muestreo PARCIAL de 6 meses (solo bacteriológico)' : x.que),
     donde: x.lugar + ' · red ' + x.red, prioridad: /urgente/i.test(x.aviso) ? 'Alta' : '',
@@ -162,8 +159,7 @@ function aguaLabAviso_(x) {
   const T = {}, fd = ss.getSheetByName('Formulario DPSB');
   if (fd && fd.getLastRow()) fd.getRange(1, 1, fd.getLastRow(), 2).getDisplayValues().forEach(z => { T[String(z[0]).trim()] = String(z[1]); });
   const g = (k, d) => (T[k] != null && String(T[k]).trim() !== '' ? T[k] : d);
-  // 27/11/2026: con agua no apta y físico-químico vigente se repite solo el bacteriológico (lo dice la fórmula de la columna P)
-  const urg = /URGENTE/i.test(r[15]), comp = /COMPLETO/.test(r[15]), tipo = comp ? 'completo' : urg ? 'bacteriológico (repetición)' : 'parcial';
+  const comp = /COMPLETO|URGENTE/i.test(r[15]), tipo = comp ? 'completo' : 'parcial';
   const sol = aguaLabIso_(r[20]), fecha = (sol || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd')).split('-').reverse().join('/');
   let can = String(r[19] || '').split(' · ').map(c => c.trim()).filter(c => c && !/^s\/d/i.test(c));
   if (comp) ['salida del tanque', 'canilla más alejada'].forEach(c => { if (!can.some(k => k.toLowerCase().indexOf(c) >= 0)) can.push(c); });
@@ -188,7 +184,7 @@ function aguaLabAviso_(x) {
     }
   } catch (e) {}
   const rep = t => String(t).replace(/\{limpieza\}/g, limpieza).replace(/\{fecha\}/g, fecha).replace(/\{tipo\}/g, tipo).replace(/\{lugar\}/g, lugar).replace(/\{canillas\}/g, can.length ? can.join(', ') : 's/d')
-    .replace(/\{analisis\}/g, comp ? g('Texto {analisis} · completo', '') : urg ? g('Texto {analisis} · repetición (no apta)', 'Es un nuevo análisis microbiológico (bacteriológico), porque el muestreo anterior dio no apto. El físico-químico está vigente y dio apto, por eso no se repite.') : g('Texto {analisis} · parcial', ''))
+    .replace(/\{analisis\}/g, g(comp ? 'Texto {analisis} · completo' : 'Texto {analisis} · parcial', ''))
     .replace(/\{antes\}/g, comp ? g('Texto {antes} · completo', '') : '');
   const asunto = rep(g('Asunto del aviso', 'Muestreo de agua {tipo} · {lugar} · solicitado el {fecha}'));
   const texto = rep(g('Texto del aviso', 'Les informo que el {fecha} solicité al DPSB el muestreo {tipo} de agua de {lugar}.')).replace(/\n{3,}/g, '\n\n').trim();
