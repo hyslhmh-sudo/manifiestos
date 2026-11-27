@@ -94,10 +94,17 @@ function bibPara_(cod) {
 }
 
 // ------------------------------------------------------------------ Tablero de control
+// 27/11/2026 (Belén: «¿no se debería actualizar solo?»): antes, si la memoria (6 h) estaba vacía —por ejemplo, porque se acababa de
+// anotar «Solicitado el» al pedir un muestreo, subir un informe o cargar un registro—, se devolvía la copia guardada de la madrugada
+// y el cambio recién se veía al día siguiente. Ahora, sin memoria, se recalcula en el momento; la copia de la madrugada queda solo
+// como respaldo si el cálculo falla.
 function tbTablero_(fresco) {
   const cache = CacheService.getScriptCache();
-  if (!fresco) { const c = cache.get('p_tablero'); if (c) return JSON.parse(c);
-    const g = sysLeer_('tablero'); if (g) { try { cache.put('p_tablero', JSON.stringify(g), 21600); } catch (e) {} return g; } }
+  if (!fresco) { const c = cache.get('p_tablero'); if (c) return JSON.parse(c); }
+  try { return tbCalcular_(cache); }
+  catch (e) { const g = sysLeer_('tablero'); if (g) return g; throw e; }
+}
+function tbCalcular_(cache) {
   const hoy = tbHoy_(), E = pEstablecimientos_().filas, areaDe = {}, porNombre = {};
   E.forEach(f => { areaDe[limpio_(f.v[0])] = limpio_(f.v[4]); porNombre[limpio_(f.v[1])] = limpio_(f.v[0]); });
   // Retiros por mes (manifiestos del libro general: una fila por corriente), últimos 12 meses, por área
