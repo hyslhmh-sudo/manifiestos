@@ -9,6 +9,18 @@
 // Todo pasa por la misma cola que las visitas: si no hay señal, se guarda y se envía después.
 // El servidor (Casos_Solicitudes_MIPyV.gs) manda la lista de casos y de solicitudes junto con los catálogos.
 // ============================================================
+// ---------- Nota de HyS que se lee una vez (27/11/2026, pedido de Belén) ----------
+// En rojo arriba del inicio hasta que se toca «Entendido»; después no vuelve a aparecer en ese celular.
+var AV_NOTA_UNA_VEZ = { id: "ext-2026-11-27", titulo: "📢 Novedad de Higiene y Seguridad: extintores",
+  texto: "Desde hoy ya no cargan extintores nuevos. Solo hacen el control de los extintores del HZT y sus dependencias (CAPS, Sede ex ADOS y demás lugares de la red). Los extintores que falten los carga Macarena Schischke desde «Mi establecimiento»: si ven uno que no está en la lista, avísenle cuál es y dónde está." };
+var AV_NOTA_KEY = "mipyv_nota_una_vez_v1";
+function avNotaUnaVez() {
+  if (typeof AV_NOTA_UNA_VEZ === "undefined") return "";
+  const vistas = avLeer(AV_NOTA_KEY, {}); if (vistas[AV_NOTA_UNA_VEZ.id]) return "";
+  setTimeout(() => { const b = document.getElementById("avNotaOk"); if (b) b.onclick = () => { const v = avLeer(AV_NOTA_KEY, {}); v[AV_NOTA_UNA_VEZ.id] = new Date().toISOString(); avGuardar(AV_NOTA_KEY, v); avisosPintar(); }; }, 0);
+  return `<div style="background:#FDECEC;color:#B3261E;border:2px solid #B3261E;border-radius:12px;padding:12px 14px;margin:0 0 12px"><b>${avEsc(AV_NOTA_UNA_VEZ.titulo)}</b><div style="margin-top:6px">${avEsc(AV_NOTA_UNA_VEZ.texto)}</div><button type="button" id="avNotaOk" style="margin-top:10px;background:#B3261E;color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600">Entendido</button></div>`;
+}
+
 const AVISOS_KEY = "mipyv_avisos_v1";            // copia de casos y solicitudes que mandó la planilla
 const AVISOS_CERRADOS_KEY = "mipyv_casos_cerrados_v1";   // cierres enviados desde este celular (se ocultan al toque)
 const AVISOS_YO_KEY = "mipyv_operario_v1";
@@ -302,14 +314,3 @@ function avSolForm(yo, tipo) {
   }
   avisosPintar();
 })();
-
-// ---------- Nota de HyS que se lee una vez (27/11/2026, pedido de Belén) ----------
-// En rojo arriba del inicio hasta que se toca «Entendido»; después no vuelve a aparecer en ese celular.
-const AV_NOTA_UNA_VEZ = { id: "ext-2026-11-27", titulo: "📢 Novedad de Higiene y Seguridad: extintores",
-  texto: "Desde hoy ya no cargan extintores nuevos. Solo hacen el control de los extintores del HZT y sus dependencias (CAPS, Sede ex ADOS y demás lugares de la red). Los extintores que falten los carga Macarena Schischke desde «Mi establecimiento»: si ven uno que no está en la lista, avísenle cuál es y dónde está." };
-const AV_NOTA_KEY = "mipyv_nota_una_vez_v1";
-function avNotaUnaVez() {
-  const vistas = avLeer(AV_NOTA_KEY, {}); if (vistas[AV_NOTA_UNA_VEZ.id]) return "";
-  setTimeout(() => { const b = document.getElementById("avNotaOk"); if (b) b.onclick = () => { const v = avLeer(AV_NOTA_KEY, {}); v[AV_NOTA_UNA_VEZ.id] = new Date().toISOString(); avGuardar(AV_NOTA_KEY, v); avisosPintar(); }; }, 0);
-  return `<div style="background:#FDECEC;color:#B3261E;border:2px solid #B3261E;border-radius:12px;padding:12px 14px;margin:0 0 12px"><b>${avEsc(AV_NOTA_UNA_VEZ.titulo)}</b><div style="margin-top:6px">${avEsc(AV_NOTA_UNA_VEZ.texto)}</div><button type="button" id="avNotaOk" style="margin-top:10px;background:#B3261E;color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600">Entendido</button></div>`;
-}
