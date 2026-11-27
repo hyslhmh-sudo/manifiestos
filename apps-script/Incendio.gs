@@ -47,6 +47,10 @@
  * Alta: Melani y Macarena («Mi establecimiento») y HyS (portal), con hasta 5 fotos; SOMI hace el control mensual (5 verificaciones propias de
  * cada tipo, «Todo OK» sin fotos; si algo está mal, problemas y al menos una foto). Etiqueta QR propia (IncendioEtiquetas.gs). Versión 0.
  */
+// 27/11/2026 (Belén): «detener todos los mails hasta nuevo aviso». Mientras PAUSA_CORREOS sea true no sale ningún correo
+// de este proyecto (queda anotado como «pausado»). Para volver a enviar: poner false, guardar e implementar nueva versión.
+var PAUSA_CORREOS = true;
+
 const INC = {
   SIS: '16AIJZcmxG9EBM3-D-J4vRtvruHK9DVrA',   // SISTEMA HyS
   CARPETA: 'MÓDULO 10 · PROTECCIÓN CONTRA INCENDIOS',
@@ -660,6 +664,7 @@ function incMailResumen_(cod, para, nuevos, siguen, resueltos, E, porVencer) {
     try { op.inlineImages = { logo: DriveApp.getFileById(DGM_LOGO_PIE).getBlob() }; } catch (x) { op.htmlBody = html.replace(/<p><img[^>]*><\/p>/, ''); }
     const propia = String(Session.getEffectiveUser().getEmail()).toLowerCase();
     if (INC.REMITENTE.toLowerCase() !== propia) { if (GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(INC.REMITENTE.toLowerCase()) >= 0) op.from = INC.REMITENTE; else op.replyTo = INC.REMITENTE; }
+    if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) return 'Correos pausados (no se envió)';
     GmailApp.sendEmail(para.join(','), asunto, texto, op);
     return 'Enviado ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ');
   } catch (err) { return 'No se pudo enviar: ' + (err.message || err); }

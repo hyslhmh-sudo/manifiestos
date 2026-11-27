@@ -1,3 +1,7 @@
+
+// 27/11/2026 (Belén): «detener todos los mails hasta nuevo aviso». Mientras PAUSA_CORREOS sea true no sale ningún correo
+// de este proyecto (queda anotado como «pausado»). Para volver a enviar: poner false, guardar e implementar nueva versión.
+var PAUSA_CORREOS = true;
 // =====================================================================
 // CAPACITACIONES · Sistema HyS
 // Código del libro «CAPACITACIONES · Sistema HyS» (Extensiones › Apps Script).
@@ -2693,6 +2697,7 @@ function enviarCertificadosPorCorreo_(filtro) {
     const m = textoCertMail_(c, nombres[c.CODIGO] || c.CODIGO), correo = String(c.CORREO || '').trim();
     const reg = (estado, det) => agregar_(M, [{ ID_MENSAJE: uid_('MSG', c.DNI), FECHA: ahoraTxt_(), TIPO: 'Certificado', CANAL: 'Correo', DESTINATARIOS: correo || 's/d', ID_DICTADO: c.ID_DICTADO, CODIGO: c.CODIGO, ASUNTO: m.asunto, ESTADO: estado, QUIEN: Session.getActiveUser().getEmail() || 'Sheets', ID_TURNO: '', DETALLE: c.ID_CERTIFICADO + (det ? ' · ' + det : '') }]);
     if (!correoOk_(correo)) { sinCorreo++; reg('Sin correo'); return; }
+    if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) { quedan++; return; }   // correos pausados: quedan para cuando se reanuden
     try {
       const pdf = DriveApp.getFileById(c.ARCHIVO_ID).getBlob();
       GmailApp.sendEmail(correo, m.asunto, m.texto, { from: CORREO_HYS, name: 'Belén Pellegrini · Higiene y Seguridad Laboral', htmlBody: m.html, replyTo: CORREO_HYS, attachments: [pdf] });
@@ -2960,6 +2965,7 @@ function invitarEnviar_(d) {
   let link = '', estado = '';
   if (borrador) { const b = GmailApp.createDraft(CORREO_HYS, asunto, plano, opc); link = 'https://mail.google.com/mail/u/0/#drafts?compose=' + b.getMessage().getId(); estado = 'Borrador'; }
   else {
+    if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) return { ok: false, error: 'Los correos están pausados hasta nuevo aviso. Usá «Dejar como borrador en Gmail».' };
     try { GmailApp.sendEmail(CORREO_HYS, asunto, plano, opc); estado = 'Enviado'; }
     catch (e) { return { ok: false, error: 'Google no dejó enviarlo (' + e.message + '). Usá «Dejar como borrador en Gmail» y envialo desde tu Gmail.' }; }
   }

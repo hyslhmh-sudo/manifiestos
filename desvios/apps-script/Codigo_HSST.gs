@@ -17,6 +17,10 @@
  * Todo lo que se puede cambiar está en la hoja CONFIG
  * (correo de aviso, horarios de turnos, carpeta de fotos, clave).
  */
+// 27/11/2026 (Belén): «detener todos los mails hasta nuevo aviso». Mientras PAUSA_CORREOS sea true no sale ningún correo
+// de este proyecto (queda anotado como «pausado»). Para volver a enviar: poner false, guardar e implementar nueva versión.
+var PAUSA_CORREOS = true;
+
 
 // ---------------------------------------------------------------
 // 1. Datos básicos
@@ -352,6 +356,7 @@ function enviarAviso_(f, urgente, cfg, empresa) {
   var texto = filas.map(function (r) { return r[0] + ': ' + r[1]; }).join('\n');
   var opciones = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HSST' };
   if (cfg.REMITENTE && cfg.REMITENTE !== 's/d') opciones.from = cfg.REMITENTE;
+  if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) return 'No · correos pausados';
   try {
     GmailApp.sendEmail(para, asunto, texto, opciones);
     return 'Sí · ' + Utilities.formatDate(new Date(), ZONA, 'dd/MM HH:mm');

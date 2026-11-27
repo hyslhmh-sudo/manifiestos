@@ -444,6 +444,7 @@ function dacEnviarReporte_(manual) {
   const R = dacSupervision_().reporte, f = t => t.split('-').reverse().join('/');
   const op = { htmlBody: dacReporteHtml_(R), name: 'Higiene y Seguridad Laboral HZT/HMH' }, propia = Session.getEffectiveUser().getEmail().toLowerCase();
   if (C.remitente && C.remitente.toLowerCase() !== propia) { if (GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(C.remitente.toLowerCase()) >= 0) op.from = C.remitente; else op.replyTo = C.remitente; }
+  if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) return { ok: false, mensaje: 'Los correos están pausados (PAUSA_CORREOS).' };
   GmailApp.sendEmail(para.join(','), 'Desvíos en residuos HMH · reporte semanal del ' + f(R.desde) + ' al ' + f(R.hasta), 'Reporte semanal de desvíos en el recorrido de residuos del HMH. Abrilo en un programa de correo que muestre HTML.', op);
   return { ok: true, enviado: para.join(', ') };
 }

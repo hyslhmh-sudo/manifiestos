@@ -29,6 +29,10 @@
  * Desde la planilla: menú "MIPyV" > Preparar planilla / Actualizar
  * seguimientos vencidos / Ayuda.
  */
+// 27/11/2026 (Belén): «detener todos los mails hasta nuevo aviso». Mientras PAUSA_CORREOS sea true no sale ningún correo
+// de este proyecto (queda anotado como «pausado»). Para volver a enviar: poner false, guardar e implementar nueva versión.
+var PAUSA_CORREOS = true;
+
 
 const SHEET_VISITAS = "visitas";
 const SHEET_HALLAZGOS = "hallazgos";
@@ -701,6 +705,7 @@ function remitenteConfigurado() {
 // Si la dirección remitente está habilitada en Gmail («Enviar como»), sale desde ella.
 // Si no, sale desde la cuenta dueña de la planilla y las respuestas van a la remitente.
 function enviarCorreo(o) {
+  if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) { console.log('Correos pausados: no se envió «' + o.subject + '»'); return; }
   const remitente = remitenteConfigurado();
   const propia = Session.getEffectiveUser().getEmail();
   const opciones = { htmlBody: o.htmlBody, name: o.name || "MIPyV Red HZT" };
