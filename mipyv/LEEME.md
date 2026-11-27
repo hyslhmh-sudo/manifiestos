@@ -7,6 +7,12 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
+## Mis horas por mes y por día (27/11/2026, versión 2026.11.27a)
+- Pedido de Belén: «quiero que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app de MIP».
+- `jornada.js`: en el inicio, abajo de «🕐 Terminar el día», botón «⏱️ Mis horas · este mes: N h». Al tocarlo: un cuadro por mes con el total del mes y los días trabajados, y la lista de días (fecha, entrada y salida, pausa, horas). Cada uno ve las suyas; Belén (HyS) ve «⏱️ Horas de los operarios» con las de los dos. «No trabajó» cuenta 0.
+- Sale de las jornadas que manda el servidor (hoja JORNADAS, últimos 40 días: `Jornadas_MIPyV.gs` › jornadasParaApp_, sin cambios) más las cargadas en ese celular que todavía no llegaron (⏳). Si el primer mes de la lista no empieza el día 1, lo aclara.
+- Ayuda del inicio (`data.js` › home) al día. Respaldo web_mipyv.html rearmado.
+
 ## Insecticidas según el procedimiento del DPSB (26/11/2026, versión 2026.11.26e)
 - Pedido de Belén: «como dice DPSB». En los cuidados de los piretroides (`data.js` › RECOMENDACIONES_SEGURIDAD) el reingreso pasa de «30-60 min» a «En interiores: ventilar y no usar el lugar por 6 a 8 horas (procedimiento del DPSB, 2023)».
 - Sipertrin (β-cipermetrina 5 %) tenía la dosis de la deltametrina 0,75 %. No figura en el procedimiento del DPSB (que da dosis solo para deltametrina 0,75 % y cipermetrina 25 %): ahora dice «Dosis de la etiqueta del envase… Preguntale a Belén antes de usarlo», en la planilla (hojas `dosis_frecuencia` y `productos`, también Keeptrin) y en la copia de respaldo de `data.js`. Coincide con el PTS-MIP-006 (versión 0).

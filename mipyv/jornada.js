@@ -41,8 +41,13 @@ function jorRevisar() {
 function jorPintarHome() {
   const home = document.querySelector('.screen[data-step="home"]'); if (!home) return;
   let box = document.getElementById("jorHome");
-  const yo = jorYo(); if (!yo) { if (box) box.remove(); return; }
+  const yo = jorYo(), esHys = typeof accesoEsHys === "function" && accesoEsHys();
+  if (!yo && !esHys) { if (box) box.remove(); return; }
   if (!box) { box = document.createElement("div"); box.id = "jorHome"; box.style.cssText = "margin:14px 0 6px"; home.appendChild(box); }
+  if (!yo) {   // Belén (HyS): solo ve las horas de los dos
+    box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">⏱️ Horas de los operarios (por mes y por día)</button>`;
+    box.querySelector("button").onclick = () => jorMisHoras(null); return;
+  }
   const hoy = jorHoyISO(), hecha = jorEsHecha(hoy, yo);
   box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">🕐 ${hecha ? "Corregir mi horario de hoy" : "Terminar el día: cargar mi horario"}</button>` +
     `<div class="step-sub" style="margin-top:4px">${hecha ? "Ya cargaste tu horario de hoy. Si cambió, cargalo de nuevo (queda el último)." : "Una vez por día: a qué hora entraste y saliste (y la pausa, si tuviste). Si te olvidás, mañana la app te lo pide al abrir."}</div>`;
@@ -50,6 +55,11 @@ function jorPintarHome() {
     const otros = (typeof OPERARIOS !== "undefined" ? OPERARIOS : []).map(o => o.nombre).filter(n => jorNorm(n) !== jorNorm(yo) && !jorEsHecha(hoy, n));
     jorAbrir({ fecha: hoy, persona: yo, lugares: [], con: otros, obligatorio: false, hoy: true });
   };
+  // 27/11/2026 (Belén): que cada uno vea cuántas horas hizo por mes y por día
+  const t = jorTotalesDe(yo), mes = jorMesISO(jorHoyISO());
+  const bm = document.createElement("button"); bm.type = "button"; bm.className = "ext-agregar"; bm.style.cssText = "border-style:solid;margin-top:10px";
+  bm.innerHTML = `⏱️ Mis horas · este mes: ${jorHs((t[mes] || {}).min || 0)}`; bm.onclick = () => jorMisHoras(yo);
+  box.appendChild(bm);
 }
 
 function jorTramosHtml(pref, d) {
@@ -120,13 +130,62 @@ function jorAbrir(o) {
         else { const t = jorLeerTramos(ov, "o" + i); if (!t.ok) return err(p.split(" ")[0] + ": " + t.error); items.push(base(p, t, false)); } }
       const b = ov.querySelector("#jorOk"); b.disabled = true; b.textContent = "Guardando…";
       if (!(await guardarEnCola(items))) { b.disabled = false; b.textContent = "Guardar mi horario"; return; }
-      items.forEach(it => jorMarcar(it.data.fecha, it.data.persona));
+      items.forEach(it => { jorMarcar(it.data.fecha, it.data.persona); jorGuardarPropia(it.data); });
       ov.remove(); jorPintarHome();
       try { await updateQueueBadge(); } catch (e) { } if (typeof trySync === "function") trySync();
       setTimeout(jorRevisar, 300);   // el próximo día pendiente, si hay
     };
   };
   pintar(); document.body.appendChild(ov); ov.scrollTop = 0;
+}
+
+// ============================================================
+// MIS HORAS (27/11/2026, pedido de Belén: «que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app»)
+// Sale de las jornadas cargadas (planilla › JORNADAS, últimos 40 días, que manda el servidor) más las que se cargaron en este
+// celular y todavía no llegaron. Cada uno ve las suyas; Belén (HyS) ve las de los dos. La pausa no suma.
+// ============================================================
+const JOR_PROPIAS_KEY = "mipyv_jornadas_propias";
+const jorMesISO = (f) => String(f || "").slice(0, 7);
+const JOR_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const jorMesTxt = (m) => JOR_MESES[+m.slice(5, 7) - 1] + " " + m.slice(0, 4);
+function jorGuardarPropia(d) {
+  const L = jorLeer(JOR_PROPIAS_KEY, {}); L[d.fecha + "|" + jorNorm(d.persona)] = { fecha: d.fecha, persona: d.persona, entrada1: d.entrada1, salida1: d.salida1, entrada2: d.entrada2, salida2: d.salida2, no_trabajo: d.no_trabajo === "Sí", guardado: Date.now() };
+  Object.keys(L).forEach(k => { if (Date.now() - (L[k].guardado || 0) > 45 * 864e5) delete L[k]; }); jorGuardarLS(JOR_PROPIAS_KEY, L);
+}
+const jorMinDe = (c) => { if (c.no_trabajo) return 0; const a = jorMin(c.entrada1), b = jorMin(c.salida1), e = jorMin(c.entrada2), f = jorMin(c.salida2);
+  return (a != null && b != null && b > a ? b - a : 0) + (e != null && f != null && f > e ? f - e : 0); };
+function jorDiasDe(p) {   // { fecha → jornada } de una persona: lo del servidor y, encima, lo cargado en este celular
+  const out = {}; ((jorLeer(JOR_SRV_KEY, {}).cargadas) || []).filter(c => jorNorm(c.persona) === jorNorm(p)).forEach(c => { out[c.fecha] = c; });
+  const L = jorLeer(JOR_PROPIAS_KEY, {}); Object.keys(L).forEach(k => { const c = L[k]; if (jorNorm(c.persona) === jorNorm(p)) out[c.fecha] = Object.assign({ local: true }, c); });
+  return out;
+}
+function jorTotalesDe(p) {   // { "2026-11" → { min, dias } }
+  const t = {}, D = jorDiasDe(p); Object.keys(D).forEach(f => { const m = jorMesISO(f), x = t[m] = t[m] || { min: 0, dias: 0 }, mi = jorMinDe(D[f]); x.min += mi; if (mi > 0) x.dias++; }); return t;
+}
+function jorMisHoras(yo) {
+  const viejo = document.getElementById("jorOverlay"); if (viejo) viejo.remove();
+  const ov = document.createElement("div"); ov.id = "jorOverlay";
+  ov.style.cssText = "position:fixed;inset:0;z-index:9998;background:#fff;overflow:auto;-webkit-overflow-scrolling:touch;font-family:inherit";
+  const personas = yo ? [yo] : (typeof OPERARIOS !== "undefined" ? OPERARIOS : []).map(o => o.nombre);
+  const desde = (jorLeer(JOR_SRV_KEY, {}).cargadas || []).reduce((m, c) => (!m || c.fecha < m ? c.fecha : m), "");
+  let h = `<div style="background:var(--mod-primary,#0D313F);color:#fff;padding:14px 16px;font-weight:800">⏱️ ${yo ? "Mis horas" : "Horas de los operarios"}</div><div style="padding:14px 16px 110px;max-width:560px;margin:0 auto">`;
+  personas.forEach(p => {
+    const D = jorDiasDe(p), meses = Object.keys(jorTotalesDe(p)).sort().reverse(), T = jorTotalesDe(p);
+    if (!yo) h += `<div class="step-title" style="font-size:1.2rem;margin-top:8px">${escX(p)}</div>`;
+    if (!meses.length) { h += `<div class="ext-card">Todavía no hay horarios cargados.</div>`; return; }
+    meses.forEach(m => {
+      const fs = Object.keys(D).filter(f => jorMesISO(f) === m).sort().reverse(), parcial = desde && jorMesISO(desde) === m && desde.slice(8, 10) !== "01";
+      h += `<div class="ext-card tq" style="margin:8px 0"><h4 style="margin:0 0 4px;text-transform:capitalize">${jorMesTxt(m)}</h4>` +
+        `<div style="background:#EAF1F2;border-radius:12px;padding:10px;text-align:center;margin-bottom:8px">Total del mes <b style="font-size:1.4rem;display:block">${jorHs(T[m].min)}</b>` +
+        `<span class="step-sub">${T[m].dias} día(s) trabajado(s)${parcial ? " · desde el " + desde.slice(8, 10) + "/" + desde.slice(5, 7) + " (la app guarda los últimos 40 días)" : ""}</span></div>` +
+        fs.map(f => { const c = D[f], mi = jorMinDe(c), tramo = c.no_trabajo ? "No trabajó" : (c.entrada1 || "?") + " a " + (c.salida1 || "?") + (c.entrada2 ? " y " + c.entrada2 + " a " + (c.salida2 || "?") : "");
+          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-top:1px solid #E3EAED"><span><b style="text-transform:capitalize">${jorFechaTxt(f)}</b><small style="display:block;color:#555">${escX(tramo)}${c.local ? " · ⏳ guardado en el celular" : ""}</small></span><b style="white-space:nowrap">${jorHs(mi)}</b></div>`; }).join("") + `</div>`;
+    });
+  });
+  h += `<div class="step-sub" style="margin-top:6px">Sale de los horarios cargados con «🕐 Terminar el día». La pausa no suma. Si un día falta o está mal, cargalo de nuevo: queda el último.</div>` +
+    `<button type="button" class="ext-quitar" id="jorCerrar" style="margin-top:12px">Volver</button></div>`;
+  ov.innerHTML = h; ov.querySelector("#jorCerrar").onclick = () => ov.remove();
+  document.body.appendChild(ov); ov.scrollTop = 0;
 }
 
 // Al abrir la app: con los datos guardados del último envío (también sin señal)
