@@ -8,6 +8,9 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
+## Correos de MIP pausados (27/11/2026)
+- Pedido de Belén: «detener todos los mails hasta nuevo aviso» y luego «no, los mail de MIP. El resto sigue igual». En `Codigo_AppsScript.gs` › enviarCorreo: si `PAUSA_CORREOS` es true no se envía nada (resumen diario, recordatorios, avisos). Implementado como versión 51 de la app web. Para reanudar: poner `var PAUSA_CORREOS = false;`, guardar e implementar nueva versión. Los demás proyectos (Sistema HyS, capacitaciones, desvíos) no se tocan.
+
 ## Horario en cada tarea (27/11/2026, versiones 2026.11.27c y d)
 - 27d: en «Mis horas», el mes en que cae el corte de 40 días dice «desde el …» (antes solo si era posterior a las jornadas). Apps Script MIPyV implementado como versión 50 (misma URL).
 - Pedido de Belén: «revisar que en cada tarea tengan que cargar las hs y vayan al control de horas y a la app». Eligió «horario en cada tarea».

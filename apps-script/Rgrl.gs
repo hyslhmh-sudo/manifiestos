@@ -372,7 +372,6 @@ function recordarMediciones(enviar) {
     const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#33434C;max-width:720px"><p>' + esc_(saludo) + '</p><p>' + esc_(motivo) + '</p><ul>' + L.map(m => '<li style="margin:4px 0"><b>' + esc_(m.tipo) + '</b> · ' + esc_(nom[m.cod] || m.cod) + (m.lugar && m.lugar !== m.cod ? ' (' + esc_(m.lugar) + ')' : '') + ': ' +
       (m.estado === 'vencida' ? '<b style="color:#B4361F">venció el ' + rgrlTxt_(m.vence) + '</b>' : m.estado === 'porvencer' ? '<b style="color:#B7791F">vence el ' + rgrlTxt_(m.vence) + '</b>' : 'sin fecha de vencimiento') + (m.archivo ? ' · <a href="' + esc_(m.archivo) + '">última medición</a>' : '') + '</li>').join('') + '</ul><p>' + esc_(pedido) + '</p><p>' + esc_(cierre) + '</p><p>Saludos cordiales,<br>Servicio de Higiene y Seguridad Laboral · HZT / HMH</p>' +
       '<p style="color:#4F616B;font-size:12px">' + esc_(norma) + '</p><p><img src="cid:logo" alt="HySL · Hospitales más seguros para las personas" style="width:220px"></p></div>';
-    if (enviar && (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS)) { out.push('Correos pausados: no se envió a ' + para + ': ' + asunto); return; }
     if (!enviar) { out.push('Para: ' + para + '\nAsunto: ' + asunto + '\n\n' + texto); return; }
     try {
       const op = { htmlBody: html, name: 'Higiene y Seguridad Laboral · HZT / HMH' };

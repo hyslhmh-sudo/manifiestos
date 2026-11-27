@@ -565,7 +565,6 @@ function enviar_(para, asunto, html, tipo, idTurno, idDictado, codigo) {
   const lista = String(para || '').split(/[,;]\s*/).map(x => x.trim()).filter(correoOk_);
   const M = tabla_('_MENSAJES'), reg = estado => agregar_(M, [{ ID_MENSAJE: uid_('MSG', ''), FECHA: ahoraTxt_(), TIPO: tipo, CANAL: 'Correo', DESTINATARIOS: lista.join(', ') || 's/d', ID_DICTADO: idDictado || '', CODIGO: codigo || '', ASUNTO: asunto, ESTADO: estado, QUIEN: 'Agenda (automático)', ID_TURNO: idTurno || '', DETALLE: '' }]);
   if (!lista.length) { reg('Sin correo'); return false; }
-  if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) { reg('No enviado: correos pausados'); return false; }
   if (!puedeEnviar_()) { reg('No enviado: falta «Enviar como» ' + CORREO_HYS); aviso_('Correo de la agenda sin enviar', '_MENSAJES', idTurno || '', 'Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de la cuenta del libro.'); return false; }
   try {
     GmailApp.sendEmail(lista.join(','), asunto, html.replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n'), { from: CORREO_HYS, name: REMITENTE, htmlBody: html, replyTo: CORREO_HYS });
@@ -709,7 +708,6 @@ function enviarCco_(lista, asunto, html, tipo, idTurno, idDictado, codigo) {
   const reg = (estado, det) => agregar_(tabla_('_MENSAJES'), [{ ID_MENSAJE: uid_('MSG', ''), FECHA: ahoraTxt_(), TIPO: tipo, CANAL: 'Correo', DESTINATARIOS: lista.length + ' en copia oculta',
     ID_DICTADO: idDictado || '', CODIGO: codigo || '', ASUNTO: asunto, ESTADO: estado, QUIEN: 'Agenda (automático)', ID_TURNO: idTurno || '', DETALLE: (det ? det + ' · ' : '') + lista.join(', ').slice(0, 45000) }]);
   if (!lista.length) return true;
-  if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) { reg('No enviado: correos pausados'); return false; }
   if (!puedeEnviar_()) { reg('No enviado: falta «Enviar como» ' + CORREO_HYS); aviso_('Correo de la agenda sin enviar', '_MENSAJES', idTurno || '', 'Falta configurar ' + CORREO_HYS + ' como «Enviar como» en el Gmail de la cuenta del libro.'); return false; }
   const cuota = cuotaHoy_();   // sin MailApp (pediría otro permiso): cuenta lo enviado hoy en _MENSAJES (Código.gs)
   if (cuota < lista.length + 1) { reg('No enviado: no alcanza la cuota diaria de Google', 'Quedaban ' + cuota + ' envíos; se reintenta a la hora siguiente'); return false; }

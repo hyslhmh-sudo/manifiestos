@@ -128,7 +128,6 @@ function incSrvMail_(cod, titulo, filas, novs) {
     try { op.inlineImages = { logo: DriveApp.getFileById(DGM_LOGO_PIE).getBlob() }; } catch (x) { op.htmlBody = html.replace(/<p><img[^>]*><\/p>/, ''); }
     const propia = String(Session.getEffectiveUser().getEmail()).toLowerCase();
     if (INC.REMITENTE.toLowerCase() !== propia && GmailApp.getAliases().map(a => a.toLowerCase()).indexOf(INC.REMITENTE.toLowerCase()) >= 0) op.from = INC.REMITENTE;
-    if (typeof PAUSA_CORREOS !== 'undefined' && PAUSA_CORREOS) return 'Correos pausados (no se envió)';
     GmailApp.sendEmail(para.join(','), cod + ' · ' + titulo + ': ' + novs.map(n => n.TIPO).join(', ').slice(0, 120), texto, op);
     return 'Enviado ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + ' a ' + para.join(', ');
   } catch (err) { return 'No se pudo enviar: ' + (err.message || err); }
