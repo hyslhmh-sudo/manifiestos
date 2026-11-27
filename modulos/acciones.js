@@ -5,7 +5,8 @@
 let ACCF = { cod: '', origen: '', estado: 'abiertas', q: '' };
 async function acciones(fresco) {
   if (!TB || TB.vacio || fresco) { cargando('#acciones', 'Juntando las acciones de todos los módulos…');
-    try { const r = await api('p_tablero', { fresco: !!fresco }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) { return; } }
+    try { tbDetras.t = Date.now(); const r = await api('p_tablero', { fresco: !!fresco }, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) { return; } }
+  else tbDetras(() => { if (location.hash.split('/')[0] === '#acciones' && $('ov').hidden) acciones(); });   // 27/11/2026: se actualiza solo
   if (!RES) { try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) {} }
   let m8 = [];
   if (m8url()) { try { if (!M8 || fresco) { const d = await m8api('m8_datos'); if (d.ok) M8 = d; }

@@ -59,14 +59,16 @@ function tcEstilos() {
 function tcPedirExtras() {
   if (!REST) REST = LS.get('resTab', null);
   const otra = () => { if (/^#?(inicio)?$/.test(location.hash) && $('ov').hidden) inicio(); };
-  if (!TC.rad) { TC.rad = true; api('p_rad_tablero', {}, 180000).then(r => { if (r && r.ok) { RADT = r; otra(); } }).catch(() => {}); }
-  if (!TC.inc) { TC.inc = true; api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
-  if (!TC.sinPidio) { TC.sinPidio = true; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
+  // 27/11/2026: se vuelven a pedir si pasaron más de 5 minutos (antes, una sola vez por sesión)
+  const vence = k => !TC[k] || (typeof TC[k] === 'number' && Date.now() - TC[k] > 300000);
+  if (vence('rad')) { TC.rad = Date.now(); api('p_rad_tablero', {}, 180000).then(r => { if (r && r.ok) { RADT = r; otra(); } }).catch(() => {}); }
+  if (vence('inc')) { TC.inc = Date.now(); api('p_inc_tablero', {}, 180000).then(r => { if (r && r.ok !== false && r.lugares) { INCT = r; otra(); } }).catch(() => {}); }
+  if (vence('sinPidio')) { TC.sinPidio = Date.now(); const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5);
     api('p_sin_est', { desde: d.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10), est: '' }, 180000).then(r => { if (r && r.ok) { TC.sin = r; otra(); } }).catch(() => {}); }
   if (!TC.ges && typeof GESD !== 'undefined' && (!GESD || typeof GES_T === 'undefined' || Date.now() - GES_T > 300000)) { TC.ges = true;   // 11 · Plan de acción (09/11/2026)
     api('p_ges_datos', {}, 180000).then(r => { if (r && r.ok) { GESD = r; if (typeof GES_T !== 'undefined') GES_T = Date.now(); otra(); } }).catch(() => {}); }
   if (!TC.ergo && typeof ergCargar === 'function') { TC.ergo = true; ergCargar().then(() => otra()).catch(() => {}); }   // 12 · Ergonomía (09/11/2026)
-  if (!TC.histPidio) { TC.histPidio = true; api('p_tc_hist', {}, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; else { TC.hist = []; TC.histFalta = true; } otra(); }).catch(() => { TC.hist = []; TC.histFalta = true; }); }
+  if (vence('histPidio')) { TC.histPidio = Date.now(); api('p_tc_hist', {}, 60000).then(r => { if (r && r.ok) TC.hist = r.filas || []; else { TC.hist = []; TC.histFalta = true; } otra(); }).catch(() => { TC.hist = []; TC.histFalta = true; }); }
   if (!TC.cap && typeof capApi === 'function') { TC.cap = true; if (!CAPT) CAPT = LS.get('capt', null);
     if (!CAPT || !CAPT.calculado || Date.now() - Date.parse(CAPT.calculado) > 3600000) capApi('c_tablero', {}, 180000).then(r => { if (r) { CAPT = r; LS.set('capt', r); otra(); } }).catch(() => {}); }
 }

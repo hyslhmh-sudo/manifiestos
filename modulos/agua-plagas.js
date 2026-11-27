@@ -310,7 +310,8 @@ async function agua(modo) {
   modo = 'agua'; const R = '#' + modo;
   if (!RES) { const g = LS.get('res', null); if (g) { RES = g; refrescarRes(); } else { cargando(R, 'Leyendo establecimientos…'); try { RES = await api('p_resumen', {}, 240000); LS.set('res', RES); } catch (e) { return; } } }
   if (!TB) TB = LS.get('tab', null);
-  if (!TB || TB.vacio) { cargando(R, 'Leyendo…'); try { TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
+  if (!TB || TB.vacio) { cargando(R, 'Leyendo…'); try { tbDetras.t = Date.now(); TB = await api('p_tablero', {}, 240000); LS.set('tab', TB); } catch (e) { return; } }
+  else tbDetras(() => { if (location.hash.split('/')[0] === R && $('ov').hidden) agua(); });   // 27/11/2026: lo guardado en el equipo se actualiza solo
   const nom = c => ((RES && RES.filas.find(f => f.cod === c)) || {}).nombre || c, hoy = new Date().toISOString().slice(0, 10);
   const porEst = {}; TB.tanques.forEach(t => { const x = porEst[t.cod] = porEst[t.cod] || { t: 0, ok: 0 }; x.t++; if (t.aldia) x.ok++; });
   const A = FILTRO.area, todos = RES ? RES.filas.filter(f => /^activ/i.test(f.estado) && (!A || f.area === A)) : [], areas = RES ? Array.from(new Set(RES.filas.map(f => f.area))).filter(Boolean).sort() : [];

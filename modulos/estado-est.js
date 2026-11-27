@@ -114,9 +114,9 @@ async function estadoEst(cod) {
   if (!TB) TB = LS.get('tab', null);
   if (!TB || TB.vacio) {
     box.innerHTML = '<h2>Estado del establecimiento</h2><div class="mu">Leyendo los datos del tablero…</div>';
-    try { const r = await api('p_tablero', {}, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {}
+    try { tbDetras.t = Date.now(); const r = await api('p_tablero', {}, 240000); if (r && r.ok) { TB = r; LS.set('tab', r); } } catch (e) {}
     if (!$('fEstado')) return;   // se cambió de pantalla mientras leía
-  }
+  } else tbDetras(() => { if ($('fEstado') && EE.cod === cod) eeDibujar(cod); });   // 27/11/2026: lo guardado en el equipo se actualiza solo
   EE.cod = cod; eeDibujar(cod);
   eeExtras(cod, false);
 }

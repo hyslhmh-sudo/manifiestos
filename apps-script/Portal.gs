@@ -18,8 +18,24 @@ function cacheGet_(k) {
     const g = c.getAll(ks), z = ks.map(x => g[x]); if (z.some(x => !x)) return null;
     return JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(z.join('')), 'application/x-gzip')).getDataAsString()); } catch (e) { return null; }
 }
-function pcGen_() { const c = CacheService.getScriptCache(); let g = c.get('pc_gen'); if (!g) { g = String(Date.now()); c.put('pc_gen', g, 21600); } return g; }
-function pcBump_() { try { CacheService.getScriptCache().put('pc_gen', String(Date.now()), 21600); } catch (e) {} }
+// 27/11/2026 (Belén: «que lo que se tenga que actualizar solo lo haga, en todos los módulos»):
+//  · pcBump_ (cualquier carga o cambio) ahora también borra la memoria interna de cada tablero (antes, por ejemplo, el tablero de
+//    control seguía guardado hasta 6 h aunque se hubiera cargado algo).
+//  · Cambios que NO pasan por este Apps Script —la app MIP (planilla «MIP RED HZT - Base de Datos v2», que también anota cada
+//    envío de tanques) y lo que se escribe a mano en el libro de análisis de agua— se detectan por la fecha de modificación del
+//    archivo en Drive, revisada como mucho una vez por minuto: si cambió, se hace lo mismo que pcBump_.
+const PC_INTERNAS = ['p_tablero', 'p_resumen', 'inc_tablero', 'rad_tablero', 'coc_tablero', 'diag_tablero', 'mipyv', 'rem_red', 'dac_avisos', 'rnov_avisos', 'caps_res', 'res_tablero', 'res_tablero3'];
+const PC_FUENTES = ['1JFNEftNebLDw0hWRRw1H_Dy7IcJ8RuC8Dpuv9HWeebk', '1Bd4K-7mfSEiZTRIHrH02GXqr_WdzuEXr7Yh2BZQddIM'];   // planilla MIP · libro de análisis de agua
+function pcLimpiarInternas_(c) { try { (c || CacheService.getScriptCache()).removeAll(PC_INTERNAS); } catch (e) {} }
+function pcGen_() {
+  const c = CacheService.getScriptCache(); let g = c.get('pc_gen');
+  if (!g) { g = String(Date.now()); c.put('pc_gen', g, 21600); }
+  try { if (!c.get('pc_fuentes_ok')) { c.put('pc_fuentes_ok', '1', 60);
+    const f = PC_FUENTES.map(id => { try { return DriveApp.getFileById(id).getLastUpdated().getTime(); } catch (e) { return 0; } }).join('.'), ant = c.get('pc_fuentes');
+    if (ant !== f) { c.put('pc_fuentes', f, 21600); if (ant) { pcLimpiarInternas_(c); g = String(Date.now()); c.put('pc_gen', g, 21600); } } } } catch (e) {}
+  return g;
+}
+function pcBump_() { try { const c = CacheService.getScriptCache(); c.put('pc_gen', String(Date.now()), 21600); pcLimpiarInternas_(c); } catch (e) {} }
 // Clave de la caché: misma acción y mismos datos (sin «fresco», en orden) = misma respuesta.
 function pcClave_(accion, x) { const o = {}; Object.keys(x || {}).filter(k => k !== 'fresco').sort().forEach(k => o[k] = x[k]); return 'pc|' + pcGen_() + '|' + accion + '|' + JSON.stringify(o); }
 const PC_LEER = ['p_ficha', 'p_mi', 'p_res_tablero', 'p_rad_detalle', 'p_inc_detalle', 'p_tablero', 'p_res_frecuencias', 'p_res_costos', 'p_res_inf_opciones', 'p_rgrl_datos', 'p_sin_est', 'p_coc_tablero', 'p_dgm_tablero'];
