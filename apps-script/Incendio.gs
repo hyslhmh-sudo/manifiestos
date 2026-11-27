@@ -333,6 +333,8 @@ function incFoto_(cod, a, sub, etiqueta) {
   const nombre = (etiqueta + ' - ' + Utilities.formatDate(new Date(), TZ, 'yyyyMMdd-HHmmss')).replace(/[^\w\-.áéíóúñÁÉÍÓÚÑ ,·]/g, '_');
   return guardarFotos_(incCarpetaEst_(cod, sub), nombre, L.map(f => 'data:' + f.mime + ';base64,' + f.b64));
 }
+// Kilos del extintor como número (con coma o punto, con o sin «kg»); null si no es un número. Así la planilla guarda 2,5 y no el texto «2.5».
+const incKg_ = v => { const m = String(v == null ? '' : v).replace(/kg/i, '').trim().replace(/\s*[,.]\s*/, '.').match(/^\d+(\.\d+)?$/); return m ? Number(m[0]) : null; };
 const incHoy_ = () => Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 const incTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
 function incSumarDias_(f, d) { const x = new Date(f + 'T12:00:00'); x.setDate(x.getDate() + d); return Utilities.formatDate(x, TZ, 'yyyy-MM-dd'); }
@@ -515,6 +517,9 @@ function incExtGuardar_(x, quien, codPermitido) {
   const o = e ? Object.assign({}, e) : { ID: ini + ('00' + (L.filter(z => String(z.ID).indexOf(ini) === 0).reduce((m, z) => Math.max(m, Number(String(z.ID).split('-').pop()) || 0), 0) + 1)).slice(-3), ESTADO: 'Operativo' };
   ['ESTABLECIMIENTO', 'SITIO', 'NRO_EXTINTOR', 'NRO_CHAPA', 'PLANTA', 'SECTOR', 'UBICACION', 'TIPO', 'AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'ESTADO', 'OBSERVACIONES'].forEach(k => { if (k in x && (e || x[k] !== '')) o[k] = limpio_(x[k]); });
   if (esExt) {
+    if ('CAPACIDAD_KG' in x && limpio_(x.CAPACIDAD_KG) && !/^s\/d/i.test(limpio_(x.CAPACIDAD_KG))) {   // kilos como número: «2,5», «2.5» o «2,5 kg» → 2.5 (27/11/2026: no hay extintores de 2 kg, son de 2,5)
+      const kg = incKg_(x.CAPACIDAD_KG); if (kg === null) return { ok: false, codigo: 'datos', mensaje: 'La capacidad tiene que ser un número de kilos (ej.: 5 o 2,5).' }; o.CAPACIDAD_KG = kg;
+    }
     ['VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => { if (k in x) o[k] = /^s\/d/i.test(x[k]) ? x[k] : incFecha_(x[k]); });
     if (!e && (!o.PRUEBA_HIDRAULICA_VENCE || /^s\/d/i.test(o.PRUEBA_HIDRAULICA_VENCE))) o.PRUEBA_HIDRAULICA_VENCE = INC.PH_POR_DEFECTO[cod] ? incFecha_(INC.PH_POR_DEFECTO[cod]) : 's/d (revisar)';   // HMH: 01/01/2030 (24/11/2026)
   } else ['AGENTE', 'CAPACIDAD_KG', 'NRO_INVENTARIO', 'VTO_CARGA', 'PRUEBA_HIDRAULICA_VENCE'].forEach(k => o[k] = INC_EQ.NC);   // hidrantes y pulsadores

@@ -165,7 +165,7 @@ async function incEst(a, fresco) {
   const fila = e => { const c = ult(e.ID), i = D.extintores.indexOf(e);
     return '<tr><td><b>' + esc(incEqTxt(D, e)) + '</b><div class="mu peq">' + esc(e.ID) + (INCF.sitio ? '' : ' · ' + esc(e.SITIO)) + '</div></td>' +
       '<td>' + esc([e.PLANTA ? 'Planta ' + e.PLANTA.toLowerCase() : '', e.SECTOR].filter(Boolean).join(' · ')) + '<div class="mu peq">' + esc(e.UBICACION || '') + '</div></td>' +
-      '<td>' + esc([e.TIPO, e.AGENTE].filter(x => x && x !== 'No corresponde').join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG && e.CAPACIDAD_KG !== 'No corresponde' ? e.CAPACIDAD_KG + ' kg' : '') + '</div></td>' +
+      '<td>' + esc([e.TIPO, e.AGENTE].filter(x => x && x !== 'No corresponde').join(' · ') || 's/d') + '<div class="mu peq">' + esc(e.CAPACIDAD_KG && e.CAPACIDAD_KG !== 'No corresponde' ? String(e.CAPACIDAD_KG).replace('.', ',') + ' kg' : '') + '</div></td>' +
       '<td class="peq">' + esc(e.NRO_INVENTARIO || 's/d') + '</td>' +
       '<td>' + incChip(INC_CARGA, e.est.carga, e.VTO_CARGA ? fechaTxt(e.VTO_CARGA) : '') + '</td>' +
       '<td>' + incChip(INC_CARGA, INC_CARGA[e.est.prueba] ? e.est.prueba : 'sd', /^\d{4}-/.test(e.PRUEBA_HIDRAULICA_VENCE || '') ? fechaTxt(e.PRUEBA_HIDRAULICA_VENCE) : '') + '</td>' +

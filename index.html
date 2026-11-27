@@ -2373,7 +2373,7 @@ async function incLista(fresco) {
   const tag = e => '<span style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">' + (incACorregir(e).length ? '<span class="tag wa">Corregir datos</span>' : '') + (e.falla ? '<span class="tag er">Con problema</span>' : '') + (e.est.carga === 'vencida' ? '<span class="tag er">Carga vencida</span>' : e.est.carga === 'porvencer' ? '<span class="tag wa">Vence ' + fechaTxt(e.VTO_CARGA) + '</span>' : '') +
     incCtlTag(e) + '</span>';
   $('app').innerHTML = miTit(INCSIT, 'Control mensual: vence el 5 de cada mes. Tocá un equipo para cargar su control. ' + incCuenta(L) + '.') + incCartelCorregir(L) +
-    (L.length ? '<div class="lista">' + L.map(e => { const ext = incEqDe(e) === 'Extintor'; return '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + (ext ? '' : (incEqDe(e) === 'Hidrante' ? '🚒 ' : '🔔 ')) + esc(incPuestoTxt(e)) + ' · ' + esc((ext ? [e.TIPO, e.CAPACIDAD_KG ? e.CAPACIDAD_KG + ' kg' : ''] : [e.TIPO]).filter(Boolean).join(' ')) + '</b><small>' +
+    (L.length ? '<div class="lista">' + L.map(e => { const ext = incEqDe(e) === 'Extintor'; return '<button class="item" data-act="incCtl" data-arg="' + esc(e.ID) + '" style="text-align:left;cursor:pointer;font:inherit;width:100%"><div><b>' + (ext ? '' : (incEqDe(e) === 'Hidrante' ? '🚒 ' : '🔔 ')) + esc(incPuestoTxt(e)) + ' · ' + esc((ext ? [e.TIPO, e.CAPACIDAD_KG ? String(e.CAPACIDAD_KG).replace('.', ',') + ' kg' : ''] : [e.TIPO]).filter(Boolean).join(' ')) + '</b><small>' +
       esc([/^(baja|alta)$/i.test(e.PLANTA || '') ? 'Planta ' + String(e.PLANTA).toLowerCase() : e.PLANTA, e.SECTOR, e.UBICACION].filter(Boolean).join(' · ')) + (ext ? '<br>Carga ' + (e.VTO_CARGA ? 'hasta ' + fechaTxt(e.VTO_CARGA) : 'sin dato') + (e.NRO_INVENTARIO ? ' · inventario ' + esc(e.NRO_INVENTARIO) : '') : '') + '</small></div>' + tag(e) + '</button>'; }).join('') + '</div>' : '<p class="mu">No hay equipos cargados en este lugar.</p>') +
     (INCX.puedeAgregar === false ? '<p class="mu" style="font-size:13px;margin-top:12px">Si falta un extintor, hidrante o pulsador en la lista, avisale a Higiene y Seguridad: los equipos nuevos los cargan HyS y los referentes.</p>' : '<p class="mu" style="font-size:13px;margin-top:12px">¿Falta un equipo en la lista? Cargalo con <button class="link" data-act="incCargar">Cargar equipos</button>.</p>') +
     '<p class="mu" style="font-size:13px">' + (S.length > 1 ? '<button class="link" data-act="incSit" data-arg="">Cambiar de lugar</button> · ' : '') + '<button class="link" data-act="incAct">Actualizar la lista</button></p>';
@@ -2516,7 +2516,7 @@ function formIncAlta() {
     fSeg('PLANTA', 'Planta', L.plantas) + incCampoSector('Ej.: Guardia, Farmacia, Pasillo central') +
     fInp('UBICACION', '¿Dónde está exactamente?', 'text', 'Ej.: en la pared, al lado de la puerta del office') +
     fSeg('TIPO', 'Tipo (está escrito en el extintor)', L.tipos) + fSel('AGENTE', 'Agente extintor', [['', 'Elegí…']].concat(L.agentes.filter(a => a !== 's/d'))) +
-    fInp('CAPACIDAD_KG', 'Capacidad (kg)', 'number', 'Ej.: 5') +
+    fInp('CAPACIDAD_KG', 'Capacidad (kg)', 'text', 'Ej.: 5 o 2,5') +
     incCampoInv() +
     fInp('VTO_CARGA', 'Vencimiento de la carga', 'date', '', 'Está en la tarjeta (marbete)') +
     fInp('PRUEBA_HIDRAULICA_VENCE', 'Vencimiento de la prueba hidráulica (opcional)', 'date') +
