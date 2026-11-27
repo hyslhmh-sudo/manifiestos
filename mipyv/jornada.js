@@ -167,7 +167,9 @@ function jorMisHoras(yo) {
   const ov = document.createElement("div"); ov.id = "jorOverlay";
   ov.style.cssText = "position:fixed;inset:0;z-index:9998;background:#fff;overflow:auto;-webkit-overflow-scrolling:touch;font-family:inherit";
   const personas = yo ? [yo] : (typeof OPERARIOS !== "undefined" ? OPERARIOS : []).map(o => o.nombre);
-  const desde = (jorLeer(JOR_SRV_KEY, {}).cargadas || []).reduce((m, c) => (!m || c.fecha < m ? c.fecha : m), "");
+  // Corte de los 40 días que manda el servidor: si cae dentro de un mes (y después del inicio de las jornadas), ese mes se ve incompleto
+  const srv = jorLeer(JOR_SRV_KEY, {}), hoyS = srv.hoy || jorHoyISO(), dc = new Date(hoyS + "T12:00:00"); dc.setDate(dc.getDate() - 40);
+  const corte = dc.getFullYear() + "-" + String(dc.getMonth() + 1).padStart(2, "0") + "-" + String(dc.getDate()).padStart(2, "0"), desde = srv.desde && corte <= srv.desde ? "" : corte;
   let h = `<div style="background:var(--mod-primary,#0D313F);color:#fff;padding:14px 16px;font-weight:800">⏱️ ${yo ? "Mis horas" : "Horas de los operarios"}</div><div style="padding:14px 16px 110px;max-width:560px;margin:0 auto">`;
   personas.forEach(p => {
     const D = jorDiasDe(p), meses = Object.keys(jorTotalesDe(p)).sort().reverse(), T = jorTotalesDe(p);

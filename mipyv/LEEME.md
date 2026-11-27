@@ -7,10 +7,10 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
-## Mis horas por mes y por día (27/11/2026, versión 2026.11.27a)
+## Mis horas por mes y por día (27/11/2026, versiones 2026.11.27a y b)
 - Pedido de Belén: «quiero que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app de MIP».
 - `jornada.js`: en el inicio, abajo de «🕐 Terminar el día», botón «⏱️ Mis horas · este mes: N h». Al tocarlo: un cuadro por mes con el total del mes y los días trabajados, y la lista de días (fecha, entrada y salida, pausa, horas). Cada uno ve las suyas; Belén (HyS) ve «⏱️ Horas de los operarios» con las de los dos. «No trabajó» cuenta 0.
-- Sale de las jornadas que manda el servidor (hoja JORNADAS, últimos 40 días: `Jornadas_MIPyV.gs` › jornadasParaApp_, sin cambios) más las cargadas en ese celular que todavía no llegaron (⏳). Si el primer mes de la lista no empieza el día 1, lo aclara.
+- Sale de las jornadas que manda el servidor (hoja JORNADAS, últimos 40 días: `Jornadas_MIPyV.gs` › jornadasParaApp_, sin cambios) más las cargadas en ese celular que todavía no llegaron (⏳). Si el corte de los 40 días cae dentro de un mes (y después del inicio de las jornadas, JOR_DESDE = 01/11/2026), ese mes dice «desde el …» (27b: antes lo decía también cuando el mes empezaba con la primera jornada cargada).
 - Ayuda del inicio (`data.js` › home) al día. Respaldo web_mipyv.html rearmado.
 
 ## Insecticidas según el procedimiento del DPSB (26/11/2026, versión 2026.11.26e)
