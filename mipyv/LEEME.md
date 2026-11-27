@@ -2,6 +2,7 @@
 
 Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos/mipyv/
 
+- 27/11/2026 · versión 2026.11.27e (`app.js`, `avisos.js`, `extintores.js`, `data.js`): pedido de Belén: Javier y Paulo ya no cargan extintores nuevos, solo hacen el control de los del HZT y sus dependencias; los carga Macarena Schischke desde «Mi establecimiento». Se sacó «➕ Agregar un extintor que no está en la lista» (queda una nota: avisarle a Macarena), «Para hacer ahora» ya no pide «falta cargarlos» (solo avisa la carga vencida) y la tarjeta de extintores dice cuántos hay en la lista. Nota en rojo de una sola vez en el inicio (avisos.js › AV_NOTA_UNA_VEZ, se guarda en el celular al tocar «Entendido»). El servidor del Sistema HyS también rechaza las altas que lleguen desde MIPyV (Incendio.gs). Ayuda (data.js › h-extintores) al día. Respaldo web_mipyv.html rearmado.
 - Antes estaba en `belunchyy444-blip.github.io/mipyv-app` (cuenta personal). Esa dirección quedó con `redireccion.js`: si el celular no tiene cargas sin enviar, pasa sola a la dirección nueva; si tiene, sigue funcionando allá hasta enviarlas.
 - La planilla («MIP RED HZT - Base de Datos v2») y su Apps Script no cambiaron: la app manda todo a la misma dirección (`data.js` › APPS_SCRIPT_URL).
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).

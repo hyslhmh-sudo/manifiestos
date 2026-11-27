@@ -442,7 +442,11 @@ const thTxt_ = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '';
 function thPendientes_(G, P) {
   const sh = pBC_().getSheetByName('TAREAS_HYS'); if (!sh) return;
   pTabla_(sh, TH_H.length).forEach(r => { const o = {}; TH_H.forEach((h, i) => o[h] = r.v[i]);
-    const cod = limpio_(o.ESTABLECIMIENTO); if (!/^abierta/i.test(limpio_(o.ESTADO) || 'Abierta') || G.cods.indexOf(cod) < 0 || !limpio_(o.TAREA)) return;
+    const cod = limpio_(o.ESTABLECIMIENTO), esAviso = /^aviso/i.test(limpio_(o.MODULO));
+    // MODULO = «Aviso» (27/11/2026, pedido de Belén): nota en rojo para la persona de PARA que se lee una vez y desaparece (botón «Entendido» → ESTADO = Hecha).
+    // Con ESTABLECIMIENTO vacío o «Todos» aparece en cualquier establecimiento en que entre esa persona.
+    if (!/^abierta/i.test(limpio_(o.ESTADO) || 'Abierta') || !limpio_(o.TAREA) || (!(esAviso && (!cod || /^todos/i.test(cod))) && G.cods.indexOf(cod) < 0)) return;
+    if (esAviso) { P.push({ aviso: true, nivel: 'er', tema: 'aviso', texto: limpio_(o.TAREA), detalle: limpio_(o.DETALLE), para: limpio_(o.PARA), hys: true, id: limpio_(o.ID), est: cod, tarea: limpio_(o.TAREA), info: limpio_(o.DETALLE) }); return; }
     const p1 = thISO_(o.PLAZO), p2 = thISO_(o.PLAZO_2), d1 = miDias_(p1), d2 = miDias_(p2), tema = limpio_(o.MODULO).toLowerCase();
     const plazo = !p1 ? '' : d1 >= 0 ? 'Plazo: ' + thTxt_(p1) + (d1 === 0 ? ' (hoy)' : d1 === 1 ? ' (mañana)' : ' (faltan ' + d1 + ' días)') + (p2 ? ' · segundo plazo: ' + thTxt_(p2) : '')
       : p2 && d2 >= 0 ? 'Venció el primer plazo (' + thTxt_(p1) + '). Último plazo: ' + thTxt_(p2) + (d2 === 0 ? ' (hoy)' : ' (faltan ' + d2 + ' días)')
@@ -467,7 +471,7 @@ function thApunta_(ref, r) {
 // Cerrar una tarea desde «Mi establecimiento»: x = { id, resultado ('Está correcto como se cargó' | 'Lo corrigió'), comentario }
 function thCerrar_(cod, x, quien) {
   const sh = pBC_().getSheetByName('TAREAS_HYS'); if (!sh) return { ok: false, mensaje: 'No encontré la hoja de tareas.' };
-  const G = miGrupo_(cod), id = limpio_(x.id), fila = pTabla_(sh, TH_H.length).find(r => limpio_(r.v[0]) === id && G.cods.indexOf(limpio_(r.v[1])) >= 0);
+  const G = miGrupo_(cod), id = limpio_(x.id), fila = pTabla_(sh, TH_H.length).find(r => limpio_(r.v[0]) === id && (G.cods.indexOf(limpio_(r.v[1])) >= 0 || (/^aviso/i.test(limpio_(r.v[4])) && (!limpio_(r.v[1]) || /^todos/i.test(limpio_(r.v[1]))))));
   if (!fila) return { ok: false, mensaje: 'No encontré esa tarea.' };
   if (/^hecha/i.test(limpio_(fila.v[9]))) return { ok: true, aviso: 'La tarea ya estaba cerrada.' };
   thMarcar_(sh, fila, quien, limpio_(x.resultado) || 'Hecha', limpio_(x.comentario));

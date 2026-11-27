@@ -1584,7 +1584,7 @@ function renderExtintores() {
     card.className = "ext-card";
     const hechos = lista.filter(e => controlCompleto(tareaHys.controles[e.id])).length;
     let html = `<h4>🧯 ${l.nombre}</h4>`;
-    if (!lista.length) html += `<div class="ext-preg">No hay extintores cargados para este lugar. Si hay alguno, agregalo con el botón de abajo.</div>`;
+    if (!lista.length) html += `<div class="ext-preg">No hay extintores cargados para este lugar. Si hay alguno, avisale a Macarena Schischke (Higiene y Seguridad): ella los carga desde «Mi establecimiento».</div>`;
     else html += `<div class="step-sub" style="margin:0 0 8px">Controlaste ${hechos} de ${lista.length}. Tocá cada extintor.</div>`;
     card.innerHTML = html;
     lista.forEach(e => {
@@ -1607,11 +1607,11 @@ function renderExtintores() {
       card.appendChild(fila);
       if (altaAbierta === a.uid) card.appendChild(panelAlta(a));
     });
-    const mas = document.createElement("button");
-    mas.type = "button"; mas.className = "ext-agregar";
-    mas.innerHTML = "➕ Agregar un extintor que no está en la lista";
-    mas.onclick = () => { const a = altaVacia(l); tareaHys.altas.push(a); altaAbierta = a.uid; extAbierto = null; renderExtintores(); };
-    card.appendChild(mas);
+    // 27/11/2026 (Belén): Javier y Paulo ya no cargan extintores nuevos; solo controlan los de HZT y sus dependencias. Los carga Macarena desde «Mi establecimiento».
+    const nota = document.createElement("div");
+    nota.className = "step-sub"; nota.style.margin = "8px 0 0";
+    nota.textContent = "¿Falta un extintor en la lista? No lo cargues: avisale a Macarena (Higiene y Seguridad), ella lo carga.";
+    card.appendChild(nota);
     extintoresList.appendChild(card);
   });
   nextBtn.disabled = !canAdvance("h-extintores");

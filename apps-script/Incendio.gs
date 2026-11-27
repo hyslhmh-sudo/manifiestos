@@ -819,7 +819,8 @@ function incRed_(d, acc) {
   }
   const quien = x.quien || 'Mi establecimiento';
   // Permisos de «7 · Incendio» (26/11/2026): cargar equipos, control mensual y novedades (Accesos.gs › accIncPermisos_). MIPyV conserva lo suyo.
-  const P = esMipyv || !acc || !acc.inc ? { alta: true, control: true, novedades: true } : acc.inc;
+  // MIPyV (Javier y Paulo) ya no da de alta equipos: solo controla los extintores de HZT y sus dependencias; los carga Macarena desde «Mi establecimiento» (27/11/2026, pedido de Belén)
+  const P = esMipyv ? { alta: false, control: true, novedades: true } : !acc || !acc.inc ? { alta: true, control: true, novedades: true } : acc.inc;
   const NO = q => ({ ok: false, codigo: 'permiso', mensaje: q });
   if (/^i_(control|ext_editar|resolver)$/.test(d.accion) && !P.control) return NO('Tu acceso no incluye el control mensual de los equipos. Consultá con Higiene y Seguridad.');
   if (/^i_(recorrida|novedad|nov_resolver)$/.test(d.accion) && !P.novedades) return NO('Tu acceso no incluye cargar novedades. Consultá con Higiene y Seguridad.');
@@ -830,7 +831,7 @@ function incRed_(d, acc) {
     case 'i_resolver': if (!incSrvPuedeResolver_(acc)) return { ok: false, mensaje: 'Marcar como resuelto lo hacen SOMI, Melani o Higiene y Seguridad.' };
       return conLock_(() => incResolverFalla_(x, quien, cod));
     case 'i_ext_editar': return conLock_(() => incExtGuardar_(Object.assign({}, x, { ESTABLECIMIENTO: cod }), quien, cod));
-    case 'i_ext_alta': if (!P.alta) return NO('Los equipos nuevos (extintores, hidrantes y pulsadores) los cargan Higiene y Seguridad y los referentes. Si falta uno, avisale a Higiene y Seguridad.');   // ACCESOS › INCENDIO (26/11/2026)
+    case 'i_ext_alta': if (!P.alta) return NO(esMipyv ? 'Desde la app MIP ya no se cargan extintores nuevos: los carga Macarena Schischke (Higiene y Seguridad) desde «Mi establecimiento». Avisale cuál falta.' : 'Los equipos nuevos (extintores, hidrantes y pulsadores) los cargan Higiene y Seguridad y los referentes. Si falta uno, avisale a Higiene y Seguridad.');   // ACCESOS › INCENDIO (26/11/2026)
       if (incEq_({ EQUIPO: x.EQUIPO }) !== 'Extintor' && acc && acc.servicio) return { ok: false, codigo: 'permiso', mensaje: 'Los hidrantes y los pulsadores los agrega Higiene y Seguridad (Melani o Macarena). Vos podés hacer el control.' };   // 24/11/2026
       return conLock_(() => incExtGuardar_(Object.assign({}, x, { ID: '', ESTABLECIMIENTO: cod }), quien, cod));
   }

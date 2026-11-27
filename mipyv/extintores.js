@@ -77,7 +77,7 @@ async function extRender() {
         return `<tr class="${cl}"><td><b>${escE(e.nro || "s/d")}</b></td><td>${escE(e.sitio)}${e.sector ? "<br><small>" + escE(e.sector) + "</small>" : ""}</td><td>${escE(e.planta || "s/d")}</td><td>${escE(e.ubicacion || "s/d")}</td>
           <td>${escE([e.tipo, e.agente, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" · ") || "s/d")}</td><td>${escE(e.inv || "s/d")}</td><td>${extF(e.vto)}${cl === "venc" ? " ⚠️" : cl === "porv" ? " ⏰" : ""}</td>
           <td>${extF(e.ultimo)}${e.resultado ? "<br><small>" + escE(String(e.resultado).replace(/\s*\(MIPyV\)/, "").slice(0, 60)) + "</small>" : ""}</td><td><small>${escE(e.cargo || "s/d")}${e.alta ? "<br>" + escE(e.alta) : ""}${/^pendiente/i.test(e.verificacion) ? "<br>falta verificar (HyS)" : ""}</small></td></tr>`; }).join("")}
-    </tbody></table></div>` : `<div class="xp-item">Todavía no hay extintores cargados${extVista.lugar || q ? " con ese filtro" : ""}. Se cargan en «Otra tarea de Higiene y Seguridad» › «Control de extintores» › «Agregar un extintor que no está en la lista».</div>`}
+    </tbody></table></div>` : `<div class="xp-item">Todavía no hay extintores cargados${extVista.lugar || q ? " con ese filtro" : ""}. Los carga Macarena Schischke (Higiene y Seguridad) desde «Mi establecimiento».</div>`}
     <div class="xp-ley">Rojo: carga vencida. Amarillo: vence en 30 días. Lo recién cargado aparece cuando se envía y la lista se actualiza con señal.</div>
     <div class="xp-btns"><button type="button" class="pri" id="xpAct">🔄 Actualizar la lista</button></div></div>`;
   extPanel.querySelector("#xpCerrar").onclick = extTablaCerrar;

@@ -766,7 +766,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.27d";
+const APP_VERSION = "2026.11.27e";
 </script>
 <script>
 // ============================================================
@@ -1120,7 +1120,7 @@ const AYUDA_TEXTOS = {
   "s-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
   "h-tipo": "Tocá la tarea que hiciste. Si no está en la lista, tocá «Otra» y después escribí qué hiciste.",
   "h-lugares": "Tocá todos los lugares donde hiciste esta tarea. Podés tocar varios: se marcan con un tilde ✓. Para sacar uno, tocalo de nuevo. Arriba podés filtrar por Hospital, Dependencia o CAPS.",
-  "h-extintores": "MÁS RÁPIDO: tocá «📷 Escanear el QR del extintor» y apuntá la cámara a la etiqueta del extintor o de la chapa baliza: se abre ese extintor solo (si es de otro lugar, se agrega). Si la cámara no anda, «📸 Sacar una foto del QR». Tocá cada extintor de la lista. Si está todo bien (en su lugar, se puede agarrar, aguja en verde, precinto y cartel) y la carga está vigente, tocá «✅ Todo OK»: un toque y sin fotos. Si algo está mal, o la carga está vencida o sin fecha, contestá las 5 preguntas con Sí o No, poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, la prueba hidráulica, y sacá las 3 fotos: 1) de lejos, que se vea el extintor, el cartel y todo alrededor; 2) la tarjeta con la fecha; 3) la chapita con el número de inventario. Cada extintor tiene DOS números distintos: el N.º de puesto es el del cartel donde va colgado (solo números, no se repite dentro del mismo edificio: cada edificio numera desde 1) y el N.º de inventario es el de la chapita pegada en el extintor (si no tiene, s/d). No los cruces. Si el extintor no tiene cartel con número, tocá «🏷️ No tiene cartel: ponerle el próximo número de este edificio»: la app le pone el número que sigue al último de ese edificio (el primero es el 1) y queda anotado para colocar el cartel. Si hay un extintor que no está en la lista, tocá «Agregar un extintor que no está en la lista»: N.º de puesto, planta (subsuelo, planta baja, 1er, 2do o 3er piso; Única en los CAPS de una planta; Vehículo en ambulancias), sector, dónde está, tipo, qué tiene adentro, kilos, N.º de inventario, vencimiento de la carga y 3 fotos; todo es obligatorio. En la Sede ex ADOS el sector es la dependencia (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes): si entraste por una de ellas, ya viene puesta. Si el puesto o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el N.º de puesto o dónde está»; Belén lo verifica. «📋 Ver todos los extintores cargados» muestra la lista completa (rojo: carga vencida; amarillo: vence en 30 días). Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. Si al mandar la planilla no acepta algo (por ejemplo, un puesto repetido), en el inicio aparece un cuadro rojo «No se pudo enviar»: tocalo, leé el motivo y corregilo o descartalo. Si el servidor está ocupado o tarda, no hace falta hacer nada: la app lo vuelve a mandar sola cada un minuto y no aparece como error. Si la app se cierra al sacar una foto, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común y después elegí «🖼️ Elegir del teléfono».",
+  "h-extintores": "MÁS RÁPIDO: tocá «📷 Escanear el QR del extintor» y apuntá la cámara a la etiqueta del extintor o de la chapa baliza: se abre ese extintor solo (si es de otro lugar, se agrega). Si la cámara no anda, «📸 Sacar una foto del QR». Tocá cada extintor de la lista. Si está todo bien (en su lugar, se puede agarrar, aguja en verde, precinto y cartel) y la carga está vigente, tocá «✅ Todo OK»: un toque y sin fotos. Si algo está mal, o la carga está vencida o sin fecha, contestá las 5 preguntas con Sí o No, poné hasta cuándo dura la carga (si no se lee, marcá «La tarjeta no se lee o no tiene») y, si figura, la prueba hidráulica, y sacá las 3 fotos: 1) de lejos, que se vea el extintor, el cartel y todo alrededor; 2) la tarjeta con la fecha; 3) la chapita con el número de inventario. Cada extintor tiene DOS números distintos: el N.º de puesto es el del cartel donde va colgado (solo números, no se repite dentro del mismo edificio: cada edificio numera desde 1) y el N.º de inventario es el de la chapita pegada en el extintor (si no tiene, s/d). No los cruces. Si el extintor no tiene cartel con número, tocá «🏷️ No tiene cartel: ponerle el próximo número de este edificio»: la app le pone el número que sigue al último de ese edificio (el primero es el 1) y queda anotado para colocar el cartel. Si hay un extintor que no está en la lista, no lo cargues: desde el 27/11/2026 los extintores nuevos los carga Macarena Schischke (Higiene y Seguridad) desde «Mi establecimiento». Avisale cuál es y dónde está. En la Sede ex ADOS el sector es la dependencia (Adolescencia, Vacunatorio, PROSATE, Consultorios Externos, Internación de Salud Mental o Áreas comunes): si entraste por una de ellas, ya viene puesta. Si el puesto o el lugar de un extintor está mal, abrilo y tocá «✏️ Corregir el N.º de puesto o dónde está»; Belén lo verifica. «📋 Ver todos los extintores cargados» muestra la lista completa (rojo: carga vencida; amarillo: vence en 30 días). Lo que da No pasa solo a hallazgos. Si el botón de abajo está gris, dice «Falta: …» con lo que todavía hay que completar. Si al mandar la planilla no acepta algo (por ejemplo, un puesto repetido), en el inicio aparece un cuadro rojo «No se pudo enviar»: tocalo, leé el motivo y corregilo o descartalo. Si el servidor está ocupado o tarda, no hace falta hacer nada: la app lo vuelve a mandar sola cada un minuto y no aparece como error. Si la app se cierra al sacar una foto, tocá «Seguir con la tarea que estabas haciendo». Si la foto no se carga, sacala con la cámara común y después elegí «🖼️ Elegir del teléfono».",
   "h-detalle": "Escribí con tus palabras qué hiciste. Podés sacar hasta 5 fotos con el recuadro +.",
   "h-hallazgos": "Si viste algo mal, escribilo. Si está todo bien, dejalo vacío y tocá \"Siguiente\". Lo que salió mal en los extintores ya está anotado solo.",
   "h-confirm": "Revisá los datos. Si algo está mal, volvé con la flecha ←. Si está todo bien, tocá \"Enviar\".",
@@ -3016,7 +3016,7 @@ function renderExtintores() {
     card.className = "ext-card";
     const hechos = lista.filter(e => controlCompleto(tareaHys.controles[e.id])).length;
     let html = `<h4>🧯 ${l.nombre}</h4>`;
-    if (!lista.length) html += `<div class="ext-preg">No hay extintores cargados para este lugar. Si hay alguno, agregalo con el botón de abajo.</div>`;
+    if (!lista.length) html += `<div class="ext-preg">No hay extintores cargados para este lugar. Si hay alguno, avisale a Macarena Schischke (Higiene y Seguridad): ella los carga desde «Mi establecimiento».</div>`;
     else html += `<div class="step-sub" style="margin:0 0 8px">Controlaste ${hechos} de ${lista.length}. Tocá cada extintor.</div>`;
     card.innerHTML = html;
     lista.forEach(e => {
@@ -3039,11 +3039,11 @@ function renderExtintores() {
       card.appendChild(fila);
       if (altaAbierta === a.uid) card.appendChild(panelAlta(a));
     });
-    const mas = document.createElement("button");
-    mas.type = "button"; mas.className = "ext-agregar";
-    mas.innerHTML = "➕ Agregar un extintor que no está en la lista";
-    mas.onclick = () => { const a = altaVacia(l); tareaHys.altas.push(a); altaAbierta = a.uid; extAbierto = null; renderExtintores(); };
-    card.appendChild(mas);
+    // 27/11/2026 (Belén): Javier y Paulo ya no cargan extintores nuevos; solo controlan los de HZT y sus dependencias. Los carga Macarena desde «Mi establecimiento».
+    const nota = document.createElement("div");
+    nota.className = "step-sub"; nota.style.margin = "8px 0 0";
+    nota.textContent = "¿Falta un extintor en la lista? No lo cargues: avisale a Macarena (Higiene y Seguridad), ella lo carga.";
+    card.appendChild(nota);
     extintoresList.appendChild(card);
   });
   nextBtn.disabled = !canAdvance("h-extintores");
@@ -3995,8 +3995,9 @@ function avisosPintar() {
     .concat(tq.length ? [`<button type="button" class="av-item" data-av="tq"><span class="av-emo">💧</span><span><b>Tanques · limpiar en ${tq.length === 1 ? "1 lugar" : tq.length + " lugares"}</b><small>${tq.map((x) => avEsc(x.lugar.nombre) + " (" + x.n + ")").join(" · ")} · tocá para ver cuáles</small></span></button>`] : [])
     .concat(edp.length ? [`<button type="button" class="av-item" data-av="ed"><span class="av-emo">🏚️</span><span><b>Relevamiento de edificios · faltan ${edp.length === 1 ? "1 lugar" : edp.length + " lugares"}</b><small>Agua, desagües, canaletas y techos (lo pide la Dirección): ${edp.map((x) => avEsc(x.nombre)).join(" · ")}</small></span></button>`] : [])
     // 03/11/2026 (Belén: «poner lo de extintores carga en caps/hzt/etc»): lugares de la red sin ningún extintor cargado
-    .concat(ext && (ext.faltan.length || ext.venc) ? [`<button type="button" class="av-item" data-av="ext"><span class="av-emo">🧯</span><span><b>Extintores · ${ext.faltan.length ? "falta cargarlos en " + (ext.faltan.length === 1 ? "1 lugar" : ext.faltan.length + " lugares") : ext.venc + (ext.venc === 1 ? " con la carga vencida" : " con la carga vencida")}</b><small>${ext.faltan.length ? "Sin ningún extintor cargado: " + ext.faltan.map((x) => avEsc(x.nombre)).join(" · ") : ""}${ext.hechos.length ? (ext.faltan.length ? "<br>" : "") + "Ya empezado: " + ext.hechos.map((x) => avEsc(x.nombre) + " (" + x.n + ")").join(" · ") : ""}${ext.venc && ext.faltan.length ? "<br>⚠️ " + ext.venc + (ext.venc === 1 ? " extintor con la carga vencida" : " extintores con la carga vencida") : ""}<br>Tocá › elegí el lugar › «Control de extintores»</small></span></button>`] : []);
-  box.innerHTML = `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
+    // 27/11/2026 (Belén): ya no se pide «falta cargarlos» (los carga Macarena desde «Mi establecimiento»); queda solo el aviso de la carga vencida para el control
+    .concat(ext && ext.venc ? [`<button type="button" class="av-item" data-av="ext"><span class="av-emo">🧯</span><span><b>Extintores · ${ext.venc + (ext.venc === 1 ? " con la carga vencida" : " con la carga vencida")}</b><small>Tocá › elegí el lugar › «Control de extintores»</small></span></button>`] : []);
+  box.innerHTML = avNotaUnaVez() + `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
   box.querySelectorAll("[data-av=caso]").forEach((b) => (b.onclick = () => avCasosLista()));
   box.querySelectorAll("[data-av=tq]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goTanques"); if (go) go.click(); }));   // la lista ya muestra arriba los lugares para limpiar
   box.querySelectorAll("[data-av=ed]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goEdificio"); if (go) go.click(); }));
@@ -4007,7 +4008,7 @@ function avisosPintar() {
   sub("goMipyv", casos.length ? (venc ? "❗ " + venc + " con la 2.ª visita vencida · " : "") + "⏳ " + casos.length + (casos.length === 1 ? " plaga activa (caso abierto)" : " plagas activas (casos abiertos)") : "✅ Sin plagas activas · tocá para cargar una visita");
   try { const tr = JSON.parse(localStorage.getItem("mipyv_trabajos_planilla_v1") || "null"), n = tr && Array.isArray(tr.lista) ? tr.lista.length : null;
     if (n != null) sub("goSaneamiento", n ? "⏳ " + n + (n === 1 ? " trabajo sin terminar" : " trabajos sin terminar") + " · tocá para seguir" : "✅ Ningún trabajo sin terminar"); } catch (e) {}
-  if (ext) sub("goExtTabla", ext.faltan.length ? "❗ Falta cargar en " + ext.faltan.length + " de " + ext.lugares + " lugares · " + ext.total + (ext.total === 1 ? " cargado" : " cargados") : ext.venc ? "❗ " + ext.venc + " con la carga vencida · " + ext.total + " cargados" : "✅ " + ext.total + " cargados · ver la lista");
+  if (ext) sub("goExtTabla", ext.venc ? "❗ " + ext.venc + " con la carga vencida · " + ext.total + " en la lista" : "✅ " + ext.total + " en la lista · ver");
   const sol = document.getElementById("goSolicitudes");
   if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
 }
@@ -4232,6 +4233,17 @@ function avSolForm(yo, tipo) {
   }
   avisosPintar();
 })();
+
+// ---------- Nota de HyS que se lee una vez (27/11/2026, pedido de Belén) ----------
+// En rojo arriba del inicio hasta que se toca «Entendido»; después no vuelve a aparecer en ese celular.
+const AV_NOTA_UNA_VEZ = { id: "ext-2026-11-27", titulo: "📢 Novedad de Higiene y Seguridad: extintores",
+  texto: "Desde hoy ya no cargan extintores nuevos. Solo hacen el control de los extintores del HZT y sus dependencias (CAPS, Sede ex ADOS y demás lugares de la red). Los extintores que falten los carga Macarena Schischke desde «Mi establecimiento»: si ven uno que no está en la lista, avísenle cuál es y dónde está." };
+const AV_NOTA_KEY = "mipyv_nota_una_vez_v1";
+function avNotaUnaVez() {
+  const vistas = avLeer(AV_NOTA_KEY, {}); if (vistas[AV_NOTA_UNA_VEZ.id]) return "";
+  setTimeout(() => { const b = document.getElementById("avNotaOk"); if (b) b.onclick = () => { const v = avLeer(AV_NOTA_KEY, {}); v[AV_NOTA_UNA_VEZ.id] = new Date().toISOString(); avGuardar(AV_NOTA_KEY, v); avisosPintar(); }; }, 0);
+  return `<div style="background:#FDECEC;color:#B3261E;border:2px solid #B3261E;border-radius:12px;padding:12px 14px;margin:0 0 12px"><b>${avEsc(AV_NOTA_UNA_VEZ.titulo)}</b><div style="margin-top:6px">${avEsc(AV_NOTA_UNA_VEZ.texto)}</div><button type="button" id="avNotaOk" style="margin-top:10px;background:#B3261E;color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600">Entendido</button></div>`;
+}
 </script>
 <script>
 // ============================================================
@@ -4844,7 +4856,7 @@ async function extRender() {
         return `<tr class="${cl}"><td><b>${escE(e.nro || "s/d")}</b></td><td>${escE(e.sitio)}${e.sector ? "<br><small>" + escE(e.sector) + "</small>" : ""}</td><td>${escE(e.planta || "s/d")}</td><td>${escE(e.ubicacion || "s/d")}</td>
           <td>${escE([e.tipo, e.agente, e.kg ? e.kg + " kg" : ""].filter(Boolean).join(" · ") || "s/d")}</td><td>${escE(e.inv || "s/d")}</td><td>${extF(e.vto)}${cl === "venc" ? " ⚠️" : cl === "porv" ? " ⏰" : ""}</td>
           <td>${extF(e.ultimo)}${e.resultado ? "<br><small>" + escE(String(e.resultado).replace(/\s*\(MIPyV\)/, "").slice(0, 60)) + "</small>" : ""}</td><td><small>${escE(e.cargo || "s/d")}${e.alta ? "<br>" + escE(e.alta) : ""}${/^pendiente/i.test(e.verificacion) ? "<br>falta verificar (HyS)" : ""}</small></td></tr>`; }).join("")}
-    </tbody></table></div>` : `<div class="xp-item">Todavía no hay extintores cargados${extVista.lugar || q ? " con ese filtro" : ""}. Se cargan en «Otra tarea de Higiene y Seguridad» › «Control de extintores» › «Agregar un extintor que no está en la lista».</div>`}
+    </tbody></table></div>` : `<div class="xp-item">Todavía no hay extintores cargados${extVista.lugar || q ? " con ese filtro" : ""}. Los carga Macarena Schischke (Higiene y Seguridad) desde «Mi establecimiento».</div>`}
     <div class="xp-ley">Rojo: carga vencida. Amarillo: vence en 30 días. Lo recién cargado aparece cuando se envía y la lista se actualiza con señal.</div>
     <div class="xp-btns"><button type="button" class="pri" id="xpAct">🔄 Actualizar la lista</button></div></div>`;
   extPanel.querySelector("#xpCerrar").onclick = extTablaCerrar;

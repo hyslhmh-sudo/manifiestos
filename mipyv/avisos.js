@@ -64,8 +64,9 @@ function avisosPintar() {
     .concat(tq.length ? [`<button type="button" class="av-item" data-av="tq"><span class="av-emo">💧</span><span><b>Tanques · limpiar en ${tq.length === 1 ? "1 lugar" : tq.length + " lugares"}</b><small>${tq.map((x) => avEsc(x.lugar.nombre) + " (" + x.n + ")").join(" · ")} · tocá para ver cuáles</small></span></button>`] : [])
     .concat(edp.length ? [`<button type="button" class="av-item" data-av="ed"><span class="av-emo">🏚️</span><span><b>Relevamiento de edificios · faltan ${edp.length === 1 ? "1 lugar" : edp.length + " lugares"}</b><small>Agua, desagües, canaletas y techos (lo pide la Dirección): ${edp.map((x) => avEsc(x.nombre)).join(" · ")}</small></span></button>`] : [])
     // 03/11/2026 (Belén: «poner lo de extintores carga en caps/hzt/etc»): lugares de la red sin ningún extintor cargado
-    .concat(ext && (ext.faltan.length || ext.venc) ? [`<button type="button" class="av-item" data-av="ext"><span class="av-emo">🧯</span><span><b>Extintores · ${ext.faltan.length ? "falta cargarlos en " + (ext.faltan.length === 1 ? "1 lugar" : ext.faltan.length + " lugares") : ext.venc + (ext.venc === 1 ? " con la carga vencida" : " con la carga vencida")}</b><small>${ext.faltan.length ? "Sin ningún extintor cargado: " + ext.faltan.map((x) => avEsc(x.nombre)).join(" · ") : ""}${ext.hechos.length ? (ext.faltan.length ? "<br>" : "") + "Ya empezado: " + ext.hechos.map((x) => avEsc(x.nombre) + " (" + x.n + ")").join(" · ") : ""}${ext.venc && ext.faltan.length ? "<br>⚠️ " + ext.venc + (ext.venc === 1 ? " extintor con la carga vencida" : " extintores con la carga vencida") : ""}<br>Tocá › elegí el lugar › «Control de extintores»</small></span></button>`] : []);
-  box.innerHTML = `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
+    // 27/11/2026 (Belén): ya no se pide «falta cargarlos» (los carga Macarena desde «Mi establecimiento»); queda solo el aviso de la carga vencida para el control
+    .concat(ext && ext.venc ? [`<button type="button" class="av-item" data-av="ext"><span class="av-emo">🧯</span><span><b>Extintores · ${ext.venc + (ext.venc === 1 ? " con la carga vencida" : " con la carga vencida")}</b><small>Tocá › elegí el lugar › «Control de extintores»</small></span></button>`] : []);
+  box.innerHTML = avNotaUnaVez() + `<div class="av-ahora"><div class="av-ahora-t">${items.length ? "❗ Para hacer ahora" : "✅ No hay nada urgente sin hacer"}</div>${items.join("")}${items.length ? "" : '<div class="av-gris">Igual mirá cada tarjeta: ahí dice qué está hecho y qué falta.</div>'}</div>` + avMensajeHtml();
   box.querySelectorAll("[data-av=caso]").forEach((b) => (b.onclick = () => avCasosLista()));
   box.querySelectorAll("[data-av=tq]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goTanques"); if (go) go.click(); }));   // la lista ya muestra arriba los lugares para limpiar
   box.querySelectorAll("[data-av=ed]").forEach((b) => (b.onclick = () => { const go = document.getElementById("goEdificio"); if (go) go.click(); }));
@@ -76,7 +77,7 @@ function avisosPintar() {
   sub("goMipyv", casos.length ? (venc ? "❗ " + venc + " con la 2.ª visita vencida · " : "") + "⏳ " + casos.length + (casos.length === 1 ? " plaga activa (caso abierto)" : " plagas activas (casos abiertos)") : "✅ Sin plagas activas · tocá para cargar una visita");
   try { const tr = JSON.parse(localStorage.getItem("mipyv_trabajos_planilla_v1") || "null"), n = tr && Array.isArray(tr.lista) ? tr.lista.length : null;
     if (n != null) sub("goSaneamiento", n ? "⏳ " + n + (n === 1 ? " trabajo sin terminar" : " trabajos sin terminar") + " · tocá para seguir" : "✅ Ningún trabajo sin terminar"); } catch (e) {}
-  if (ext) sub("goExtTabla", ext.faltan.length ? "❗ Falta cargar en " + ext.faltan.length + " de " + ext.lugares + " lugares · " + ext.total + (ext.total === 1 ? " cargado" : " cargados") : ext.venc ? "❗ " + ext.venc + " con la carga vencida · " + ext.total + " cargados" : "✅ " + ext.total + " cargados · ver la lista");
+  if (ext) sub("goExtTabla", ext.venc ? "❗ " + ext.venc + " con la carga vencida · " + ext.total + " en la lista" : "✅ " + ext.total + " en la lista · ver");
   const sol = document.getElementById("goSolicitudes");
   if (sol) sol.querySelector(".mc-sub").textContent = "Biocidas, EPP, herramientas, avisos, novedades";
 }
@@ -301,3 +302,14 @@ function avSolForm(yo, tipo) {
   }
   avisosPintar();
 })();
+
+// ---------- Nota de HyS que se lee una vez (27/11/2026, pedido de Belén) ----------
+// En rojo arriba del inicio hasta que se toca «Entendido»; después no vuelve a aparecer en ese celular.
+const AV_NOTA_UNA_VEZ = { id: "ext-2026-11-27", titulo: "📢 Novedad de Higiene y Seguridad: extintores",
+  texto: "Desde hoy ya no cargan extintores nuevos. Solo hacen el control de los extintores del HZT y sus dependencias (CAPS, Sede ex ADOS y demás lugares de la red). Los extintores que falten los carga Macarena Schischke desde «Mi establecimiento»: si ven uno que no está en la lista, avísenle cuál es y dónde está." };
+const AV_NOTA_KEY = "mipyv_nota_una_vez_v1";
+function avNotaUnaVez() {
+  const vistas = avLeer(AV_NOTA_KEY, {}); if (vistas[AV_NOTA_UNA_VEZ.id]) return "";
+  setTimeout(() => { const b = document.getElementById("avNotaOk"); if (b) b.onclick = () => { const v = avLeer(AV_NOTA_KEY, {}); v[AV_NOTA_UNA_VEZ.id] = new Date().toISOString(); avGuardar(AV_NOTA_KEY, v); avisosPintar(); }; }, 0);
+  return `<div style="background:#FDECEC;color:#B3261E;border:2px solid #B3261E;border-radius:12px;padding:12px 14px;margin:0 0 12px"><b>${avEsc(AV_NOTA_UNA_VEZ.titulo)}</b><div style="margin-top:6px">${avEsc(AV_NOTA_UNA_VEZ.texto)}</div><button type="button" id="avNotaOk" style="margin-top:10px;background:#B3261E;color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600">Entendido</button></div>`;
+}
