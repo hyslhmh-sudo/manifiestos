@@ -421,8 +421,8 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 
     <!-- HORARIO (compartido) -->
     <section class="screen" data-step="horario">
-      <div class="step-title">Horario de trabajo</div>
-      <div class="step-sub">Tocá para elegir la hora</div>
+      <div class="step-title">Horario de esta tarea</div>
+      <div class="step-sub">A qué hora empezaste y terminaste esta tarea. Se suma solo en «⏱️ Mis horas» y en el control de horas de HyS.</div>
       <div class="lbl" style="margin-bottom:6px;">Tu hora de inicio</div>
       <input type="time" id="horaInicio" style="width:100%; border:2px solid var(--gris-borde); border-radius:14px; padding:14px; font-family:inherit; font-size:1.1rem; margin-bottom:16px;">
       <div class="lbl" style="margin-bottom:6px;">Tu hora de finalización</div>
@@ -766,7 +766,7 @@ html,body{margin:0; padding:0; height:100%; overflow:hidden; background:var(--mo
 // Se muestra en la pantalla de inicio y hace que los celulares
 // descarguen la versión nueva solos.
 // ============================================================
-const APP_VERSION = "2026.11.27b";
+const APP_VERSION = "2026.11.27c";
 </script>
 <script>
 // ============================================================
@@ -1087,12 +1087,12 @@ const EMOJI_TAREA_HYS = [
 // AYUDA — texto simple por pantalla, para el botón "?"
 // ============================================================
 const AYUDA_TEXTOS = {
-  home: "TU HORARIO (una vez por día): al terminar, tocá «🕐 Terminar el día» y cargá a qué hora entraste y saliste; si saliste y volviste (por un trámite), tildá «Tuve una pausa» y cargá el segundo tramo: la pausa no suma. Si van juntos, la app pregunta si tu compañero trabajó el mismo horario, otro o no trabajó. Si te olvidás, al día siguiente la app te lo pide al abrir y no deja seguir hasta cargarlo. Ya no se pide horario en cada lugar. MIS HORAS: abajo de «🕐 Terminar el día», el botón «⏱️ Mis horas» dice cuántas horas llevás este mes; tocalo para ver el total de cada mes y las horas de cada día (la pausa no suma). Si un día falta o está mal, cargalo de nuevo con «🕐 Terminar el día»: queda el último. ARRIBA, EN ROJO: «❗ Para hacer ahora» muestra solo lo urgente que falta hacer (plagas con la 2.ª visita vencida o por vencer, tanques para limpiar —en un solo renglón con los lugares— y lugares donde falta cargar los extintores); tocá cada renglón para ir directo. Si no hay nada urgente dice «✅ No hay nada urgente sin hacer». En cada cuadro, abajo del título, dice cómo está ese tema: ✅ hecho, ⏳ en curso o ❗ falta hacer. Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos); Tanques y cisternas (relevamiento y limpieza) para registrar cada relevamiento del tanque (📋, cada 6 meses, sin limpiar) y cada limpieza (🧽, cada 12 meses) (red Trelew); Extintores cargados para mirar la lista de extintores de la red Trelew. Si aparece un cuadro rojo «No se pudo enviar», tocalo: dice qué rechazó la planilla y deja corregirlo o descartarlo. Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
+  home: "TU HORARIO (en cada tarea): antes de confirmar cada tarea (plagas, saneamiento, otra tarea de HyS, tanques y relevamiento de edificios) la app pide a qué hora empezaste y terminaste. Si trabajaste con el otro operario, también su horario (en tanques, edificios y otras tareas de HyS vale el mismo para los dos). Ya no hay «Terminar el día». Si un día anterior quedó sin horario, al abrir la app te lo pide y no deja seguir hasta cargarlo. MIS HORAS: en el inicio, el botón «⏱️ Mis horas» dice cuántas horas llevás hoy y este mes; tocalo para ver el total de cada mes y las horas de cada día. Se suman solas con el horario de cada tarea: si dos tareas se pisan, ese rato se cuenta una sola vez. Si un horario está mal, avisale a Belén. ARRIBA, EN ROJO: «❗ Para hacer ahora» muestra solo lo urgente que falta hacer (plagas con la 2.ª visita vencida o por vencer, tanques para limpiar —en un solo renglón con los lugares— y lugares donde falta cargar los extintores); tocá cada renglón para ir directo. Si no hay nada urgente dice «✅ No hay nada urgente sin hacer». En cada cuadro, abajo del título, dice cómo está ese tema: ✅ hecho, ⏳ en curso o ❗ falta hacer. Tocá el cuadro de lo que vas a cargar: MIPyV si es por plagas (bichos, roedores, palomas); Limpieza y Saneamiento si es trabajo en los CAPS (predios, cañerías, tanques); u Otra tarea de Higiene y Seguridad para todo lo demás (extintores, carteles, recorridas, llevar residuos); Tanques y cisternas (relevamiento y limpieza) para registrar cada relevamiento del tanque (📋, cada 6 meses, sin limpiar) y cada limpieza (🧽, cada 12 meses) (red Trelew); Extintores cargados para mirar la lista de extintores de la red Trelew. Si aparece un cuadro rojo «No se pudo enviar», tocalo: dice qué rechazó la planilla y deja corregirlo o descartarlo. Si no hay señal, cargá igual: queda guardado en el celular y se manda solo cuando vuelve la señal. Si aparece el cuadro amarillo «⏸️ Tenés una tarea sin terminar», es una tarea que quedó a medias (por ejemplo, si la app se cerró al sacar una foto): tocá «Seguir con la tarea que estabas haciendo» y aparece todo como estaba, fotos incluidas. Si ya no la necesitás, tocá «Descartarla».",
   "e-main": "RELEVAMIENTO DE EDIFICIOS (pedido de la Dirección): es SOLO mirar y contar cómo está cada lugar, no se arregla nada en el momento. 1) Elegí el lugar (la Sede ex ADOS es uno solo; el Hospital Zonal Trelew se puede relevar por partes: escribí qué parte relevaste y cargá un relevamiento por cada parte). 2) Contestá las preguntas de 💧 agua, 🚽 desagües, 🌧️ canaletas y 🏠 techos: Sí, No o «No se pudo ver». 3) Escribí todo para que se entienda sin haber estado ahí. Si algo está mal: decí DÓNDE (qué ambiente o sector) y QUÉ se ve, si es urgente y por qué, qué hace falta arreglar, y sacá al menos 1 foto (hasta 5 por tema). Si marcás «No se pudo ver»: elegí por qué y escribí qué parte no se pudo ver. «s/n», «no» o «-» no se aceptan. 4) Contestá siempre «⚠️ Otros riesgos» (olor a gas, cables o tableros a la vista o mojados, algo que se pueda caer, otro riesgo): si hay alguno, decí dónde exactamente y qué se ve o se huele, y sacale foto; queda URGENTE. Si hay olor a gas: no prender ni apagar luces ni aparatos, abrir puertas y ventanas y avisar ya al responsable del lugar y a Belén. 5) Fotos: si el teléfono cierra la app al abrir la cámara, al volver a abrirla vuelve sola al formulario con todo lo cargado (falta solo la última foto). Si pasa seguido, sacá las fotos con la cámara común del teléfono y cargalas con «🖼️ Elegir del teléfono» (se pueden elegir varias juntas). 6) Si el botón está gris, abajo en rojo dice exactamente qué falta. Tocá «Listo, guardar el relevamiento». Se envía solo cuando haya señal. ⚠️ A los techos no se sube sin escalera segura y sin otra persona: si no se puede, mirar desde abajo y desde adentro y marcar «No se pudo ver». Si salís a mitad, lo cargado queda guardado en el celular: al volver a entrar se ve la lista de lugares y arriba un aviso «Quedó un relevamiento sin terminar» con «Seguir con ese» o «Descartarlo».",
   "t-main": "TANQUES Y CISTERNAS (RELEVAMIENTO Y LIMPIEZA) · red Trelew, sin el HMH. Cada tanque tiene DOS tareas distintas: 🧽 LIMPIARLO (cada 12 meses) y 📋 RELEVAMIENTO: revisar cómo está (cada 6 meses, sin limpiar). En cada lugar y en cada tanque dice cuál está hecha (✅), cuál toca pronto (⏰) y cuál hay que hacer (❗). Los lugares con algo para hacer aparecen arriba. 1) Elegí el lugar. 2) ¿LIMPIASTE? Tocá el botón azul de arriba «🧽 Registrar una limpieza». Aparecen todos los tanques del lugar tildados: destildá el que no limpiaste. Poné el día de la limpieza (se empieza y se termina el mismo día). Si después se hizo una cloración otro día, tildá «Se hizo una cloración otro día» y poné ese día. Completá las horas que quedó cerrado, la tapa y sacale una foto al F-AGU-01-T firmado (las 2 hojas). Arriba te dice cuánta agua y cuánta lavandina va en cada tanque: si usaste eso, dejá tildado «Usé el agua y la lavandina que dice arriba». Al final contestá «¿Pudiste hacer todo?»: ✅ Sí o ❌ No. Si tocás No: 1) qué no pudiste hacer (limpiar una canilla, cambiar o tocar un flexible, algo del tanque u otra cosa), 2) por qué (está roto, se puede romper, falta algo, no llego o no es seguro) y 3) sacale una foto y escribí qué pasó. La limpieza queda como PARCIAL y a Belén le llega el aviso. Se guarda una limpieza para cada tanque. NO agregues un tanque nuevo para cargar una limpieza: los tanques del lugar ya están en la lista. 3) Cada 6 meses tocá el tanque › «📋 Relevamiento: lo revisé (sin limpiar)»: tapa, 8 preguntas de Sí o No y una foto; si al tanque le faltan datos (litros, tipo, acceso), completalos ahí mismo. ¿No sabés cuántos litros tiene? Tocá el tamaño más parecido (500, 750, 1.000, 1.100, 2.500, 5.000 o 10.000 L) y queda anotado como ESTIMADO. Si hay barro, olor, agua turbia o bichos, hay que limpiarlo aunque no toque. 4) Si un tanque dice «📝 Falta decir dónde está», tocalo › «✏️ Corregir los datos» y escribí dónde está (por ejemplo «torre del fondo, el de la izquierda»), así se reconoce. 5) Solo si hay un tanque que NO está en la lista, tocá «➕ Agregar un tanque que NO está en la lista» (la app te pregunta antes si de verdad es nuevo). Queda con un código (por ejemplo HZT-T01 o HZT-C01) cuando se envía. 6) Para desinfectar se carga solo el 20 % del tanque (1.000 L → 200 L de agua) y en esa agua va lavandina al 5,5 %: 2 mL por litro (200 L → 400 mL). El cloro no se mide: lo mide Saneamiento (DPSB). «📘 Cómo se limpia un tanque» tiene el resumen de nuestro protocolo y anda sin señal. Lo que cargás se guarda en el celular y se manda solo con señal; si la app se cierra al sacar una foto, en el inicio aparece «Seguir con el formulario». El papel firmado se entrega a Belén.",
   quien: "Tocá tu nombre en la lista.",
   acompanante: "Si hoy trabajaste solo/a, tocá esa opción. Si estuviste con el otro operario, tocá la otra — así queda registrado que fueron los dos.",
-  horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste. Si trabajaste con el otro operario, también sus horarios.",
+  horario: "Tocá para elegir la hora en que empezaste y la hora en que terminaste ESTA tarea. Si trabajaste con el otro operario, también sus horarios. Se suma solo en «⏱️ Mis horas» y en el control de horas de HyS.",
   "m-tipo": "¿Es un problema nuevo? Tocá \"Intervención nueva\". ¿Ya viniste antes por esta misma plaga? Tocá \"Continuar una abierta\".",
   "m-continuar-lista": "Tocá la intervención que corresponde a lo que estás por hacer ahora.",
   "m-establecimiento": "Tocá el lugar donde estás ahora.",
@@ -1743,6 +1743,18 @@ function actualizarPantallaHorario() {
   }
 }
 
+// 27/11/2026 (Belén): cada tarea pide entrada y salida. Para tanques y relevamiento de edificios (un solo horario; si trabajaron
+// juntos, vale para los dos). Los campos usan data-dato="hora_inicio" / "hora_fin".
+function horarioTareaHtml(ini, fin) {
+  return `<div class="ext-preg" style="margin-top:16px">🕐 Horario de esta tarea</div><div class="step-sub">A qué hora empezaste y terminaste${operarioAcompanante ? " (vale para los dos)" : ""}. Suma en «Mis horas».</div>
+    <div style="display:flex;gap:8px;align-items:center"><input class="ext-inp" type="time" data-dato="hora_inicio" value="${ini || ""}" style="flex:1" aria-label="Hora de inicio"><span>a</span><input class="ext-inp" type="time" data-dato="hora_fin" value="${fin || ""}" style="flex:1" aria-label="Hora de finalización"></div>`;
+}
+function horarioTareaFalta(ini, fin) {
+  if (!ini || !fin) return "horario (entrada y salida)";
+  if (fin <= ini) return "la hora de fin tiene que ser después de la de inicio";
+  return "";
+}
+
 function guardarHorarios(objetivo) {
   objetivo.hora_inicio = horaInicioEl.value || null;
   objetivo.hora_fin = horaFinEl.value || null;
@@ -1761,13 +1773,13 @@ function guardarHorarios(objetivo) {
 // ============================================================
 document.getElementById("mNuevaBtn").addEventListener("click", () => {
   intervencion.esNueva = true;
-  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-establecimiento");
   showStep("m-establecimiento");
 });
 document.getElementById("mContinuarBtn").addEventListener("click", () => {
   intervencion.esNueva = false;
-  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-continuar-lista");
   showStep("m-continuar-lista");
 });
@@ -2291,13 +2303,13 @@ function renderResumenMipyv() {
 // ============================================================
 document.getElementById("sNuevoBtn").addEventListener("click", () => {
   trabajo.esNuevo = true;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "s-cierre", "horario", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-nuevo");
   showStep("s-cap-nuevo");
 });
 document.getElementById("sContinuarBtn").addEventListener("click", () => {
   trabajo.esNuevo = false;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "s-cierre", "horario", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-continuar");
   showStep("s-cap-continuar");
 });
@@ -2653,6 +2665,7 @@ async function migrarColaVieja() {
 async function guardarEnCola(items) {
   try {
     await colaAgregar(items);
+    try { if (typeof jorRegistrarTareas === "function") jorRegistrarTareas(items); } catch (e) { /* Mis horas: no frena el guardado */ }
     return true;
   } catch (err) {
     alert("No se pudo guardar el registro en el celular. No cierres la app y avisale a Belén.");
@@ -2843,7 +2856,7 @@ renderTiposTarea();
 function armarPasosHys() {
   stepList = ["quien", "acompanante", "h-tipo", "h-lugares"];
   if (esTareaExtintores(tareaHys.tipo_tarea)) stepList.push("h-extintores");
-  stepList.push("h-detalle", "h-hallazgos", "h-confirm", "h-sent");   // 08/11/2026: sin paso de horario (jornada diaria, jornada.js)
+  stepList.push("h-detalle", "h-hallazgos", "horario", "h-confirm", "h-sent");   // 27/11/2026 (Belén): vuelve el horario en cada tarea; suma en Mis horas y en Control de horas
   stepIndex = stepList.indexOf("h-tipo");
 }
 
@@ -4500,6 +4513,7 @@ function tqFaltan(f) {
     if (f.todo === "no") { if (!f.noQue) x.push("qué no pudiste hacer"); else if (!f.noPor) x.push("por qué"); else if (String(f.noTxt || "").trim().length < 4) x.push("escribí qué pasó"); }
   }
   if (!f.FECHA) x.push("fecha");
+  if (f.accion !== "edit") { const hz = horarioTareaFalta(d.hora_inicio, d.hora_fin); if (hz) x.push(hz); }
   return x;
 }
 // 03/11/2026 (Belén): si no saben cuántos litros tiene, eligen el tamaño más parecido y queda como ESTIMADA.
@@ -4585,6 +4599,7 @@ function tqRenderForm() {
     const tit = f.accion === "limp" ? "Foto del F-AGU-01-T firmado (opcional por ahora)" : "Fotos del tanque (de afuera y, si se puede, de adentro)";
     h += `<div class="ext-preg" style="margin-top:16px">${tit} · hasta 5</div><div class="foto-grid" id="tqFotoGrid"></div>`;
   }
+  if (f.accion !== "edit") h += horarioTareaHtml(d.hora_inicio, d.hora_fin);   // 27/11/2026: horario de cada tarea
   h += `<div class="ext-preg" style="margin-top:16px">Observaciones${f.accion === "edit" ? "" : " (opcional)"}</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar">${escX(f.obs)}</textarea>`;
   const faltan = tqFaltan(f);
   h += `<button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta: " + escX(faltan.join(", ")) : "Listo, guardar"}</button></div>`;
@@ -5022,6 +5037,7 @@ function edFaltan(f) {
     else if (r[k] === "Sí" && !edTxtOk(d[k])) x.push("⚠️ Otros riesgos: dónde exactamente y qué se ve o se siente en «" + p + "»");
   });
   if (ED_RIESGOS.some(([id]) => r["rg_" + id] === "Sí") && !f.fotos.riesgos.length) x.push("⚠️ Otros riesgos: al menos 1 foto");
+  const hz = horarioTareaFalta(f.hora_inicio, f.hora_fin); if (hz) x.push("🕐 " + hz.charAt(0).toUpperCase() + hz.slice(1));
   return x;
 }
 
@@ -5124,6 +5140,7 @@ function edRenderForm() {
     ED_RIESGOS.map(([id, p, ph]) => `<div class="ext-preg">${escX(p)}</div>` + opc("rg_" + id, ["Sí", "No"], r["rg_" + id]) + (r["rg_" + id] === "Sí" ? det("rg_" + id, ph, "¿Dónde exactamente y qué se ve, se siente o se huele?") : "")).join("") +
     (hayRg ? `<div class="ext-preg ed-req">Fotos del riesgo · hasta 5 (al menos 1)</div><div class="foto-grid" data-fotos="riesgos"></div><small class="ext-vto er">Queda marcado como URGENTE.</small>` : "") + `</div>`;
   const faltan = edFaltan(f);
+  h += horarioTareaHtml(f.hora_inicio, f.hora_fin);   // 27/11/2026: horario de cada tarea
   h += `<div class="ext-preg">Observaciones generales (opcional)</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar del lugar">${escX(f.obs)}</textarea>
     <button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta completar (" + faltan.length + ")" : "Listo, guardar el relevamiento"}</button>` +
     (faltan.length ? `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${faltan.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>` : "");
@@ -5332,8 +5349,11 @@ function escAbrirExtintor(id, chapa) {
 // MIPyV · Jornada diaria (08/11/2026, pedido de Belén)
 // Una sola carga de horario por persona y por día, con pausa opcional (la pausa no suma). Los horarios ya no se piden en cada
 // registro. Al abrir la app, si hay un día anterior con registros y sin jornada, aparece un cartel que no deja seguir hasta
-// cargarla (uno por uno). El día de hoy se carga con «🕐 Terminar el día» (inicio). Si carga uno por los dos, la app pregunta
-// por el otro: mismo horario, otro horario o no trabajó. Se manda como registro «jornada» (Jornadas_MIPyV.gs › hoja JORNADAS).
+// cargarla (uno por uno). Si carga uno por los dos, la app pregunta por el otro: mismo horario, otro horario o no trabajó.
+// Se manda como registro «jornada» (Jornadas_MIPyV.gs › hoja JORNADAS).
+// 27/11/2026 (Belén: «que en cada tarea tengan que cargar las hs y vayan al control de horas y a la app»): vuelve el horario en
+// cada tarea (visita, saneamiento, otra tarea de HyS, tanques y relevamiento de edificios). Ya no está «Terminar el día»: las horas
+// del día salen de las tareas. El cartel de arriba queda solo para los días anteriores que quedaron sin horario.
 // ============================================================
 const JOR_SRV_KEY = "mipyv_jornadas_srv", JOR_HECHAS_KEY = "mipyv_jornadas_hechas";
 const jorLeer = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } };
@@ -5367,7 +5387,7 @@ function jorRevisar() {
   jorAbrir({ fecha: p.fecha, persona: yo, lugares: p.lugares || [], con: con, obligatorio: true, faltan: jorPendientesDe(yo).length });
 }
 
-// Botón del inicio: «Terminar el día»
+// Botón del inicio: «Mis horas» (27/11/2026: ya no hay «Terminar el día»; las horas salen del horario de cada tarea)
 function jorPintarHome() {
   const home = document.querySelector('.screen[data-step="home"]'); if (!home) return;
   let box = document.getElementById("jorHome");
@@ -5378,18 +5398,11 @@ function jorPintarHome() {
     box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">⏱️ Horas de los operarios (por mes y por día)</button>`;
     box.querySelector("button").onclick = () => jorMisHoras(null); return;
   }
-  const hoy = jorHoyISO(), hecha = jorEsHecha(hoy, yo);
-  box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">🕐 ${hecha ? "Corregir mi horario de hoy" : "Terminar el día: cargar mi horario"}</button>` +
-    `<div class="step-sub" style="margin-top:4px">${hecha ? "Ya cargaste tu horario de hoy. Si cambió, cargalo de nuevo (queda el último)." : "Una vez por día: a qué hora entraste y saliste (y la pausa, si tuviste). Si te olvidás, mañana la app te lo pide al abrir."}</div>`;
-  box.querySelector("button").onclick = () => {
-    const otros = (typeof OPERARIOS !== "undefined" ? OPERARIOS : []).map(o => o.nombre).filter(n => jorNorm(n) !== jorNorm(yo) && !jorEsHecha(hoy, n));
-    jorAbrir({ fecha: hoy, persona: yo, lugares: [], con: otros, obligatorio: false, hoy: true });
-  };
   // 27/11/2026 (Belén): que cada uno vea cuántas horas hizo por mes y por día
-  const t = jorTotalesDe(yo), mes = jorMesISO(jorHoyISO());
-  const bm = document.createElement("button"); bm.type = "button"; bm.className = "ext-agregar"; bm.style.cssText = "border-style:solid;margin-top:10px";
-  bm.innerHTML = `⏱️ Mis horas · este mes: ${jorHs((t[mes] || {}).min || 0)}`; bm.onclick = () => jorMisHoras(yo);
-  box.appendChild(bm);
+  const t = jorTotalesDe(yo), hoy = jorHoyISO(), mes = jorMesISO(hoy), dh = jorMinDia(jorDiasDe(yo)[hoy]);
+  box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">⏱️ Mis horas · hoy: ${jorHs(dh)} · este mes: ${jorHs((t[mes] || {}).min || 0)}</button>` +
+    `<div class="step-sub" style="margin-top:4px">Se suman solas con el horario que ponés en cada tarea.</div>`;
+  box.querySelector("button").onclick = () => jorMisHoras(yo);
 }
 
 function jorTramosHtml(pref, d) {
@@ -5471,8 +5484,9 @@ function jorAbrir(o) {
 
 // ============================================================
 // MIS HORAS (27/11/2026, pedido de Belén: «que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app»)
-// Sale de las jornadas cargadas (planilla › JORNADAS, últimos 40 días, que manda el servidor) más las que se cargaron en este
-// celular y todavía no llegaron. Cada uno ve las suyas; Belén (HyS) ve las de los dos. La pausa no suma.
+// Sale de las jornadas cargadas (planilla › JORNADAS) y, desde el 27/11/2026, del horario de cada tarea (servidor › tramos, últimos
+// 40 días), más lo guardado en este celular que todavía no llegó. Si un día tiene jornada, manda la jornada (como en el portal).
+// Cada uno ve las suyas; Belén (HyS) ve las de los dos. La pausa no suma.
 // ============================================================
 const JOR_PROPIAS_KEY = "mipyv_jornadas_propias";
 const jorMesISO = (f) => String(f || "").slice(0, 7);
@@ -5482,15 +5496,50 @@ function jorGuardarPropia(d) {
   const L = jorLeer(JOR_PROPIAS_KEY, {}); L[d.fecha + "|" + jorNorm(d.persona)] = { fecha: d.fecha, persona: d.persona, entrada1: d.entrada1, salida1: d.salida1, entrada2: d.entrada2, salida2: d.salida2, no_trabajo: d.no_trabajo === "Sí", guardado: Date.now() };
   Object.keys(L).forEach(k => { if (Date.now() - (L[k].guardado || 0) > 45 * 864e5) delete L[k]; }); jorGuardarLS(JOR_PROPIAS_KEY, L);
 }
+// 27/11/2026: horario de cada tarea guardada en este celular (hasta que llega a la planilla y vuelve en «tramos» del servidor)
+const JOR_TAREAS_KEY = "mipyv_tareas_horas";
+function jorFechaDe(d) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d.FECHA || ""))) return d.FECHA;
+  const x = d.fecha ? new Date(d.fecha) : new Date(); if (isNaN(x)) return jorHoyISO();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+function jorRegistrarTareas(items) {   // lo llama guardarEnCola (app.js) con cada registro que se guarda
+  const L = jorLeer(JOR_TAREAS_KEY, {}); let hubo = false;
+  (items || []).forEach(it => {
+    const d = (it && it.data) || {}; if (!it || it.tipo === "jornada" || it.tipo === "editar_tanque") return;
+    const ini = d.hora_inicio || "", fin = d.hora_fin || ""; if (jorMin(ini) == null || jorMin(fin) == null || jorMin(fin) <= jorMin(ini)) return;
+    const f = jorFechaDe(d), id = it.tipo + "|" + (d.id_visita || d.id_avance || d.id_tarea || d.id_relev || d.id_alta || d.id_insp || d.id_limpieza || Date.now());
+    const titular = d.operario || (typeof currentOperario !== "undefined" && currentOperario ? currentOperario.nombre : "");
+    if (titular) { L[id + "|" + jorNorm(titular)] = { fecha: f, persona: titular, ini: ini, fin: fin, guardado: Date.now() }; hubo = true; }
+    String(d.operario_acompanante || "").split(/\s*[,|]\s*/).filter(Boolean).forEach(pa => {
+      const i2 = d.hora_inicio_acompanante || ini, f2 = d.hora_fin_acompanante || fin;
+      if (jorMin(i2) != null && jorMin(f2) > jorMin(i2)) { L[id + "|" + jorNorm(pa)] = { fecha: f, persona: pa, ini: i2, fin: f2, guardado: Date.now() }; hubo = true; }
+    });
+  });
+  Object.keys(L).forEach(k => { if (Date.now() - (L[k].guardado || 0) > 45 * 864e5) delete L[k]; });
+  if (hubo) { jorGuardarLS(JOR_TAREAS_KEY, L); jorPintarHome(); }
+}
+// Junta los tramos que se superponen (dos tareas a la vez no suman doble). Devuelve [[ini, fin] en minutos]
+function jorUnir(tramos) {
+  const t = tramos.map(x => [jorMin(x.ini), jorMin(x.fin)]).filter(([a, b]) => a != null && b != null && b > a).sort((x, y) => x[0] - y[0]), out = [];
+  t.forEach(([a, b]) => { const u = out[out.length - 1]; if (u && a <= u[1]) u[1] = Math.max(u[1], b); else out.push([a, b]); });
+  return out;
+}
+const jorHHMM = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+// Minutos de un día: la jornada si se cargó (días anteriores al 27/11/2026, como en el portal); si no, las tareas sin superponer
+function jorMinDia(x) { if (!x) return 0; if (x.jornada) return jorMinDe(x.jornada); return jorUnir(x.tramos || []).reduce((s, [a, b]) => s + b - a, 0); }
 const jorMinDe = (c) => { if (c.no_trabajo) return 0; const a = jorMin(c.entrada1), b = jorMin(c.salida1), e = jorMin(c.entrada2), f = jorMin(c.salida2);
   return (a != null && b != null && b > a ? b - a : 0) + (e != null && f != null && f > e ? f - e : 0); };
-function jorDiasDe(p) {   // { fecha → jornada } de una persona: lo del servidor y, encima, lo cargado en este celular
-  const out = {}; ((jorLeer(JOR_SRV_KEY, {}).cargadas) || []).filter(c => jorNorm(c.persona) === jorNorm(p)).forEach(c => { out[c.fecha] = c; });
-  const L = jorLeer(JOR_PROPIAS_KEY, {}); Object.keys(L).forEach(k => { const c = L[k]; if (jorNorm(c.persona) === jorNorm(p)) out[c.fecha] = Object.assign({ local: true }, c); });
+function jorDiasDe(p) {   // { fecha → { jornada, tramos[], local } } de una persona: lo del servidor y, encima, lo cargado en este celular
+  const out = {}, dia = (f) => out[f] = out[f] || { tramos: [] }, srv = jorLeer(JOR_SRV_KEY, {}), es = (x) => jorNorm(x.persona) === jorNorm(p);
+  (srv.cargadas || []).filter(es).forEach(c => { dia(c.fecha).jornada = c; });
+  const L = jorLeer(JOR_PROPIAS_KEY, {}); Object.keys(L).forEach(k => { const c = L[k]; if (es(c)) { const d = dia(c.fecha); d.jornada = Object.assign({ local: true }, c); d.local = true; } });
+  (srv.tramos || []).filter(es).forEach(x => dia(x.fecha).tramos.push(x));
+  const T = jorLeer(JOR_TAREAS_KEY, {}); Object.keys(T).forEach(k => { const x = T[k]; if (es(x)) { const d = dia(x.fecha); d.tramos.push(x); d.tlocal = true; } });
   return out;
 }
 function jorTotalesDe(p) {   // { "2026-11" → { min, dias } }
-  const t = {}, D = jorDiasDe(p); Object.keys(D).forEach(f => { const m = jorMesISO(f), x = t[m] = t[m] || { min: 0, dias: 0 }, mi = jorMinDe(D[f]); x.min += mi; if (mi > 0) x.dias++; }); return t;
+  const t = {}, D = jorDiasDe(p); Object.keys(D).forEach(f => { const m = jorMesISO(f), x = t[m] = t[m] || { min: 0, dias: 0 }, mi = jorMinDia(D[f]); x.min += mi; if (mi > 0) x.dias++; }); return t;
 }
 function jorMisHoras(yo) {
   const viejo = document.getElementById("jorOverlay"); if (viejo) viejo.remove();
@@ -5510,11 +5559,14 @@ function jorMisHoras(yo) {
       h += `<div class="ext-card tq" style="margin:8px 0"><h4 style="margin:0 0 4px;text-transform:capitalize">${jorMesTxt(m)}</h4>` +
         `<div style="background:#EAF1F2;border-radius:12px;padding:10px;text-align:center;margin-bottom:8px">Total del mes <b style="font-size:1.4rem;display:block">${jorHs(T[m].min)}</b>` +
         `<span class="step-sub">${T[m].dias} día(s) trabajado(s)${parcial ? " · desde el " + desde.slice(8, 10) + "/" + desde.slice(5, 7) + " (la app guarda los últimos 40 días)" : ""}</span></div>` +
-        fs.map(f => { const c = D[f], mi = jorMinDe(c), tramo = c.no_trabajo ? "No trabajó" : (c.entrada1 || "?") + " a " + (c.salida1 || "?") + (c.entrada2 ? " y " + c.entrada2 + " a " + (c.salida2 || "?") : "");
-          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-top:1px solid #E3EAED"><span><b style="text-transform:capitalize">${jorFechaTxt(f)}</b><small style="display:block;color:#555">${escX(tramo)}${c.local ? " · ⏳ guardado en el celular" : ""}</small></span><b style="white-space:nowrap">${jorHs(mi)}</b></div>`; }).join("") + `</div>`;
+        fs.map(f => { const x = D[f], c = x.jornada, mi = jorMinDia(x), U = jorUnir(x.tramos);
+          const tramo = c ? (c.no_trabajo ? "No trabajó" : "Jornada: " + (c.entrada1 || "?") + " a " + (c.salida1 || "?") + (c.entrada2 ? " y " + c.entrada2 + " a " + (c.salida2 || "?") : ""))
+            : "Tareas: " + U.map(([a, b]) => jorHHMM(a) + " a " + jorHHMM(b)).join(", ");
+          const loc = c ? c.local : x.tlocal;
+          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-top:1px solid #E3EAED"><span><b style="text-transform:capitalize">${jorFechaTxt(f)}</b><small style="display:block;color:#555">${escX(tramo)}${loc ? " · ⏳ guardado en el celular" : ""}</small></span><b style="white-space:nowrap">${jorHs(mi)}</b></div>`; }).join("") + `</div>`;
     });
   });
-  h += `<div class="step-sub" style="margin-top:6px">Sale de los horarios cargados con «🕐 Terminar el día». La pausa no suma. Si un día falta o está mal, cargalo de nuevo: queda el último.</div>` +
+  h += `<div class="step-sub" style="margin-top:6px">Sale del horario que ponés en cada tarea: si dos tareas se pisan, ese rato se cuenta una sola vez. Los días hasta el 26/11 salen de la jornada que cargaste (la pausa no suma). Si un horario está mal, avisale a Belén.</div>` +
     `<button type="button" class="ext-quitar" id="jorCerrar" style="margin-top:12px">Volver</button></div>`;
   ov.innerHTML = h; ov.querySelector("#jorCerrar").onclick = () => ov.remove();
   document.body.appendChild(ov); ov.scrollTop = 0;

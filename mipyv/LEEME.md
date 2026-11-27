@@ -7,6 +7,15 @@ Desde el 12/10/2026 la app vive acá: https://hyslhmh-sudo.github.io/manifiestos
 - Para actualizar la app: cambiar los archivos y subir el número en `version.js` (los celulares bajan la versión nueva solos).
 - `Codigo_AppsScript.gs` y `GUIA_DESPLIEGUE.md` son copias de respaldo y de referencia.
 
+## Horario en cada tarea (27/11/2026, versión 2026.11.27c)
+- Pedido de Belén: «revisar que en cada tarea tengan que cargar las hs y vayan al control de horas y a la app». Eligió «horario en cada tarea».
+- `app.js`: vuelve el paso «horario» (obligatorio, antes de confirmar) en MIPyV, Saneamiento y Otra tarea de HyS. Nuevas `horarioTareaHtml` / `horarioTareaFalta`, usadas en `tanques.js` (alta, relevamiento y limpieza; no en «Corregir los datos») y `edificio.js` (relevamiento de edificios): entrada y salida obligatorias, un horario para los dos.
+- `guardarEnCola` llama a `jorRegistrarTareas` (`jornada.js`): guarda en el celular el horario de cada tarea por persona (el acompañante con el suyo o, si no lo cargó, el del titular).
+- `jornada.js`: ya no está «🕐 Terminar el día». «⏱️ Mis horas · hoy · este mes» suma por día la jornada si existe (días hasta el 26/11, como en el portal) y si no los horarios de las tareas, uniendo los que se superponen. El cartel de días anteriores sin horario sigue (el servidor solo pide los días con registros sin horario).
+- `Jornadas_MIPyV.gs` (Apps Script de la planilla MIP: hay que pegarlo, guardar e implementar nueva versión): jornadasParaApp_ devuelve además `tramos` (visitas, avances, tareas_hys y relevamientos/tanques de TODO LO CARGADO, últimos 40 días). Sin correos.
+- Planilla MIP › «HORAS (para leer)»: la fórmula de A2 suma también tareas de HyS, relevamientos de edificios y tanques (de TODO LO CARGADO). Sin horario: «s/d».
+- Portal (3 · Plagas › Control de horas): sin cambios; ya leía el horario de cada tarea y la jornada manda solo donde existe.
+
 ## Mis horas por mes y por día (27/11/2026, versiones 2026.11.27a y b)
 - Pedido de Belén: «quiero que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app de MIP».
 - `jornada.js`: en el inicio, abajo de «🕐 Terminar el día», botón «⏱️ Mis horas · este mes: N h». Al tocarlo: un cuadro por mes con el total del mes y los días trabajados, y la lista de días (fecha, entrada y salida, pausa, horas). Cada uno ve las suyas; Belén (HyS) ve «⏱️ Horas de los operarios» con las de los dos. «No trabajó» cuenta 0.

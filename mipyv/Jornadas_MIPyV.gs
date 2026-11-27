@@ -8,7 +8,10 @@
  *    «no_trabajo» = Sí: ese día no trabajó con HyS (no suma nada y no se vuelve a pedir).
  *  - La app pide la jornada de cada día anterior en el que la persona figura en un registro (como titular o acompañante)
  *    sin horario propio, desde JOR_DESDE. No deja seguir hasta cargarla (jornada.js). El día de hoy se carga con «Terminar el día».
- *  - Los horarios ya no se piden en cada registro. Los que ya tienen horario (antes del 08/11/2026) se siguen usando.
+ *  - 27/11/2026 (Belén: «que en cada tarea tengan que cargar las horas y vayan al control de horas y a la app»): vuelve el horario
+ *    en cada tarea (visita, saneamiento, otra tarea de HyS, tanques, relevamiento de edificios). La app ya no muestra «Terminar el día».
+ *    Los días de antes que quedaron sin horario se siguen pidiendo con este cartel. «Mis horas» suma: la jornada del día si hay
+ *    (como en el portal) y, si no, los horarios de las tareas, sin contar dos veces el tiempo que se superpone (tramos, abajo).
  *  - El Portal HyS (3 · Plagas › Control de horas) usa la jornada; si no hay, los horarios de los registros. HyS puede cargar
  *    o corregir cualquier jornada desde el portal o directo en esta hoja.
  * No envía correos.
@@ -89,7 +92,37 @@ function jornadasParaApp_(ss) {
     });
   }
   const pendientes = Object.keys(dias).filter(k => !hechas[k] && dias[k].sinHorario).map(k => dias[k]).sort((a, b) => a.fecha.localeCompare(b.fecha));
-  return { desde: JOR_DESDE, hoy: hoy, pendientes: pendientes, cargadas: cargadas };
+  let tramos = []; try { tramos = jorTramosTareas_(ss, hace40); } catch (e) { /* sin tramos: Mis horas usa solo las jornadas */ }
+  return { desde: JOR_DESDE, hoy: hoy, pendientes: pendientes, cargadas: cargadas, tramos: tramos };
+}
+
+// 27/11/2026: horario de cada tarea de los últimos 40 días, por persona (el acompañante con su horario; si no lo cargó, el del titular).
+// Mismas fuentes que el Portal HyS (3 · Plagas › Control de horas): visitas, avances de saneamiento, tareas de HyS y, de TODO LO CARGADO,
+// relevamientos de edificios y tanques. Devuelve [{ fecha, persona, ini, fin, que }]; la app junta los tramos que se superponen.
+function jorTabla_(ss, nombre) {
+  const sh = ss.getSheetByName(nombre); if (!sh || sh.getLastRow() < 2) return [];
+  const v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues(), H = v[0].map(h => String(h).trim());
+  return v.slice(1).map(r => { const o = {}; H.forEach((h, i) => { if (h) o[h] = r[i]; }); return o; });
+}
+function jorTramosTareas_(ss, desde) {
+  const out = [];
+  const add = (r, que) => {
+    const fv = r.fecha, f = typeof fv === "string" && /T\d{2}:/.test(fv) ? jorFecha_(new Date(fv)) : jorFecha_(fv); if (!f || f < desde) return;
+    const ini = jorHora_(r.hora_inicio), fin = jorHora_(r.hora_fin);
+    if (ini && fin && jorTxt_(r.operario)) out.push({ fecha: f, persona: jorTxt_(r.operario), ini: ini, fin: fin, que: que });
+    jorTxt_(r.operario_acompanante).split(/\s*[,|]\s*/).map(jorTxt_).filter(Boolean).forEach(pa => {
+      const i2 = jorHora_(r.hora_inicio_acompanante) || ini, f2 = jorHora_(r.hora_fin_acompanante) || fin;
+      if (i2 && f2) out.push({ fecha: f, persona: pa, ini: i2, fin: f2, que: que });
+    });
+  };
+  jorTabla_(ss, SHEET_VISITAS).forEach(r => add(r, "Plagas"));
+  jorTabla_(ss, SHEET_AVANCES).forEach(r => add(r, "Saneamiento"));
+  jorTabla_(ss, SHEET_TAREAS).forEach(r => add(r, "Tarea de HyS" + (jorTxt_(r.tipo_tarea) ? " · " + jorTxt_(r.tipo_tarea) : "")));
+  jorTabla_(ss, typeof SHEET_TODO !== "undefined" ? SHEET_TODO : "TODO LO CARGADO").filter(t => /^(relev_edificio|alta_tanque|inspeccion_tanque|limpieza_tanque)$/.test(jorTxt_(t.tipo_registro))).forEach(t => {
+    const m = String(t.horario || "").match(/(\d{1,2}[:.]\d{2})\D+(\d{1,2}[:.]\d{2})/);
+    if (m) add({ fecha: t.fecha, operario: t.operario, operario_acompanante: t.operario_acompanante, hora_inicio: m[1], hora_fin: m[2] }, jorTxt_(t.que) || "Relevamiento");
+  });
+  return out.filter(x => { const a = jorMin_(x.ini), b = jorMin_(x.fin); return a != null && b != null && b > a; });
 }
 
 // Para revisar desde el editor: muestra en el registro de ejecución los días que falta cargar

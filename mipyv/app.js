@@ -311,6 +311,18 @@ function actualizarPantallaHorario() {
   }
 }
 
+// 27/11/2026 (Belén): cada tarea pide entrada y salida. Para tanques y relevamiento de edificios (un solo horario; si trabajaron
+// juntos, vale para los dos). Los campos usan data-dato="hora_inicio" / "hora_fin".
+function horarioTareaHtml(ini, fin) {
+  return `<div class="ext-preg" style="margin-top:16px">🕐 Horario de esta tarea</div><div class="step-sub">A qué hora empezaste y terminaste${operarioAcompanante ? " (vale para los dos)" : ""}. Suma en «Mis horas».</div>
+    <div style="display:flex;gap:8px;align-items:center"><input class="ext-inp" type="time" data-dato="hora_inicio" value="${ini || ""}" style="flex:1" aria-label="Hora de inicio"><span>a</span><input class="ext-inp" type="time" data-dato="hora_fin" value="${fin || ""}" style="flex:1" aria-label="Hora de finalización"></div>`;
+}
+function horarioTareaFalta(ini, fin) {
+  if (!ini || !fin) return "horario (entrada y salida)";
+  if (fin <= ini) return "la hora de fin tiene que ser después de la de inicio";
+  return "";
+}
+
 function guardarHorarios(objetivo) {
   objetivo.hora_inicio = horaInicioEl.value || null;
   objetivo.hora_fin = horaFinEl.value || null;
@@ -329,13 +341,13 @@ function guardarHorarios(objetivo) {
 // ============================================================
 document.getElementById("mNuevaBtn").addEventListener("click", () => {
   intervencion.esNueva = true;
-  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-establecimiento", "m-sector", "m-plaga", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-establecimiento");
   showStep("m-establecimiento");
 });
 document.getElementById("mContinuarBtn").addEventListener("click", () => {
   intervencion.esNueva = false;
-  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "m-confirm", "m-sent"];
+  stepList = ["quien", "acompanante", "m-tipo", "m-continuar-lista", "m-sector", "m-producto", "m-seguridad", "m-dosis", "m-epp", "m-resultado", "m-foto", "m-obs", "horario", "m-confirm", "m-sent"];
   stepIndex = stepList.indexOf("m-continuar-lista");
   showStep("m-continuar-lista");
 });
@@ -859,13 +871,13 @@ function renderResumenMipyv() {
 // ============================================================
 document.getElementById("sNuevoBtn").addEventListener("click", () => {
   trabajo.esNuevo = true;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-nuevo", "s-tareas", "s-epp", "s-detalle", "s-cierre", "horario", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-nuevo");
   showStep("s-cap-nuevo");
 });
 document.getElementById("sContinuarBtn").addEventListener("click", () => {
   trabajo.esNuevo = false;
-  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "s-cierre", "s-confirm", "s-sent"];
+  stepList = ["quien", "acompanante", "s-tipo", "s-cap-continuar", "s-tareas", "s-epp", "s-detalle", "s-cierre", "horario", "s-confirm", "s-sent"];
   stepIndex = stepList.indexOf("s-cap-continuar");
   showStep("s-cap-continuar");
 });
@@ -1221,6 +1233,7 @@ async function migrarColaVieja() {
 async function guardarEnCola(items) {
   try {
     await colaAgregar(items);
+    try { if (typeof jorRegistrarTareas === "function") jorRegistrarTareas(items); } catch (e) { /* Mis horas: no frena el guardado */ }
     return true;
   } catch (err) {
     alert("No se pudo guardar el registro en el celular. No cierres la app y avisale a Belén.");
@@ -1411,7 +1424,7 @@ renderTiposTarea();
 function armarPasosHys() {
   stepList = ["quien", "acompanante", "h-tipo", "h-lugares"];
   if (esTareaExtintores(tareaHys.tipo_tarea)) stepList.push("h-extintores");
-  stepList.push("h-detalle", "h-hallazgos", "h-confirm", "h-sent");   // 08/11/2026: sin paso de horario (jornada diaria, jornada.js)
+  stepList.push("h-detalle", "h-hallazgos", "horario", "h-confirm", "h-sent");   // 27/11/2026 (Belén): vuelve el horario en cada tarea; suma en Mis horas y en Control de horas
   stepIndex = stepList.indexOf("h-tipo");
 }
 

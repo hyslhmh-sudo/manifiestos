@@ -109,6 +109,7 @@ function edFaltan(f) {
     else if (r[k] === "Sí" && !edTxtOk(d[k])) x.push("⚠️ Otros riesgos: dónde exactamente y qué se ve o se siente en «" + p + "»");
   });
   if (ED_RIESGOS.some(([id]) => r["rg_" + id] === "Sí") && !f.fotos.riesgos.length) x.push("⚠️ Otros riesgos: al menos 1 foto");
+  const hz = horarioTareaFalta(f.hora_inicio, f.hora_fin); if (hz) x.push("🕐 " + hz.charAt(0).toUpperCase() + hz.slice(1));
   return x;
 }
 
@@ -211,6 +212,7 @@ function edRenderForm() {
     ED_RIESGOS.map(([id, p, ph]) => `<div class="ext-preg">${escX(p)}</div>` + opc("rg_" + id, ["Sí", "No"], r["rg_" + id]) + (r["rg_" + id] === "Sí" ? det("rg_" + id, ph, "¿Dónde exactamente y qué se ve, se siente o se huele?") : "")).join("") +
     (hayRg ? `<div class="ext-preg ed-req">Fotos del riesgo · hasta 5 (al menos 1)</div><div class="foto-grid" data-fotos="riesgos"></div><small class="ext-vto er">Queda marcado como URGENTE.</small>` : "") + `</div>`;
   const faltan = edFaltan(f);
+  h += horarioTareaHtml(f.hora_inicio, f.hora_fin);   // 27/11/2026: horario de cada tarea
   h += `<div class="ext-preg">Observaciones generales (opcional)</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar del lugar">${escX(f.obs)}</textarea>
     <button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta completar (" + faltan.length + ")" : "Listo, guardar el relevamiento"}</button>` +
     (faltan.length ? `<div class="ed-faltan"><b>Para poder guardar falta:</b><ul>${faltan.map(t => `<li>${escX(t)}</li>`).join("")}</ul></div>` : "");

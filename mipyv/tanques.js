@@ -277,6 +277,7 @@ function tqFaltan(f) {
     if (f.todo === "no") { if (!f.noQue) x.push("qué no pudiste hacer"); else if (!f.noPor) x.push("por qué"); else if (String(f.noTxt || "").trim().length < 4) x.push("escribí qué pasó"); }
   }
   if (!f.FECHA) x.push("fecha");
+  if (f.accion !== "edit") { const hz = horarioTareaFalta(d.hora_inicio, d.hora_fin); if (hz) x.push(hz); }
   return x;
 }
 // 03/11/2026 (Belén): si no saben cuántos litros tiene, eligen el tamaño más parecido y queda como ESTIMADA.
@@ -362,6 +363,7 @@ function tqRenderForm() {
     const tit = f.accion === "limp" ? "Foto del F-AGU-01-T firmado (opcional por ahora)" : "Fotos del tanque (de afuera y, si se puede, de adentro)";
     h += `<div class="ext-preg" style="margin-top:16px">${tit} · hasta 5</div><div class="foto-grid" id="tqFotoGrid"></div>`;
   }
+  if (f.accion !== "edit") h += horarioTareaHtml(d.hora_inicio, d.hora_fin);   // 27/11/2026: horario de cada tarea
   h += `<div class="ext-preg" style="margin-top:16px">Observaciones${f.accion === "edit" ? "" : " (opcional)"}</div><textarea class="ext-com" rows="3" data-dato="obs" placeholder="Lo que quieras contar">${escX(f.obs)}</textarea>`;
   const faltan = tqFaltan(f);
   h += `<button type="button" class="ext-listo" data-f="guardar"${faltan.length ? " disabled" : ""}>${faltan.length ? "Falta: " + escX(faltan.join(", ")) : "Listo, guardar"}</button></div>`;

@@ -2,8 +2,11 @@
 // MIPyV · Jornada diaria (08/11/2026, pedido de Belén)
 // Una sola carga de horario por persona y por día, con pausa opcional (la pausa no suma). Los horarios ya no se piden en cada
 // registro. Al abrir la app, si hay un día anterior con registros y sin jornada, aparece un cartel que no deja seguir hasta
-// cargarla (uno por uno). El día de hoy se carga con «🕐 Terminar el día» (inicio). Si carga uno por los dos, la app pregunta
-// por el otro: mismo horario, otro horario o no trabajó. Se manda como registro «jornada» (Jornadas_MIPyV.gs › hoja JORNADAS).
+// cargarla (uno por uno). Si carga uno por los dos, la app pregunta por el otro: mismo horario, otro horario o no trabajó.
+// Se manda como registro «jornada» (Jornadas_MIPyV.gs › hoja JORNADAS).
+// 27/11/2026 (Belén: «que en cada tarea tengan que cargar las hs y vayan al control de horas y a la app»): vuelve el horario en
+// cada tarea (visita, saneamiento, otra tarea de HyS, tanques y relevamiento de edificios). Ya no está «Terminar el día»: las horas
+// del día salen de las tareas. El cartel de arriba queda solo para los días anteriores que quedaron sin horario.
 // ============================================================
 const JOR_SRV_KEY = "mipyv_jornadas_srv", JOR_HECHAS_KEY = "mipyv_jornadas_hechas";
 const jorLeer = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (e) { return d; } };
@@ -37,7 +40,7 @@ function jorRevisar() {
   jorAbrir({ fecha: p.fecha, persona: yo, lugares: p.lugares || [], con: con, obligatorio: true, faltan: jorPendientesDe(yo).length });
 }
 
-// Botón del inicio: «Terminar el día»
+// Botón del inicio: «Mis horas» (27/11/2026: ya no hay «Terminar el día»; las horas salen del horario de cada tarea)
 function jorPintarHome() {
   const home = document.querySelector('.screen[data-step="home"]'); if (!home) return;
   let box = document.getElementById("jorHome");
@@ -48,18 +51,11 @@ function jorPintarHome() {
     box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">⏱️ Horas de los operarios (por mes y por día)</button>`;
     box.querySelector("button").onclick = () => jorMisHoras(null); return;
   }
-  const hoy = jorHoyISO(), hecha = jorEsHecha(hoy, yo);
-  box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">🕐 ${hecha ? "Corregir mi horario de hoy" : "Terminar el día: cargar mi horario"}</button>` +
-    `<div class="step-sub" style="margin-top:4px">${hecha ? "Ya cargaste tu horario de hoy. Si cambió, cargalo de nuevo (queda el último)." : "Una vez por día: a qué hora entraste y saliste (y la pausa, si tuviste). Si te olvidás, mañana la app te lo pide al abrir."}</div>`;
-  box.querySelector("button").onclick = () => {
-    const otros = (typeof OPERARIOS !== "undefined" ? OPERARIOS : []).map(o => o.nombre).filter(n => jorNorm(n) !== jorNorm(yo) && !jorEsHecha(hoy, n));
-    jorAbrir({ fecha: hoy, persona: yo, lugares: [], con: otros, obligatorio: false, hoy: true });
-  };
   // 27/11/2026 (Belén): que cada uno vea cuántas horas hizo por mes y por día
-  const t = jorTotalesDe(yo), mes = jorMesISO(jorHoyISO());
-  const bm = document.createElement("button"); bm.type = "button"; bm.className = "ext-agregar"; bm.style.cssText = "border-style:solid;margin-top:10px";
-  bm.innerHTML = `⏱️ Mis horas · este mes: ${jorHs((t[mes] || {}).min || 0)}`; bm.onclick = () => jorMisHoras(yo);
-  box.appendChild(bm);
+  const t = jorTotalesDe(yo), hoy = jorHoyISO(), mes = jorMesISO(hoy), dh = jorMinDia(jorDiasDe(yo)[hoy]);
+  box.innerHTML = `<button type="button" class="ext-agregar" style="border-style:solid">⏱️ Mis horas · hoy: ${jorHs(dh)} · este mes: ${jorHs((t[mes] || {}).min || 0)}</button>` +
+    `<div class="step-sub" style="margin-top:4px">Se suman solas con el horario que ponés en cada tarea.</div>`;
+  box.querySelector("button").onclick = () => jorMisHoras(yo);
 }
 
 function jorTramosHtml(pref, d) {
@@ -141,8 +137,9 @@ function jorAbrir(o) {
 
 // ============================================================
 // MIS HORAS (27/11/2026, pedido de Belén: «que Paulo y Javier vean cantidad de horas que hacen por mes y por día en la app»)
-// Sale de las jornadas cargadas (planilla › JORNADAS, últimos 40 días, que manda el servidor) más las que se cargaron en este
-// celular y todavía no llegaron. Cada uno ve las suyas; Belén (HyS) ve las de los dos. La pausa no suma.
+// Sale de las jornadas cargadas (planilla › JORNADAS) y, desde el 27/11/2026, del horario de cada tarea (servidor › tramos, últimos
+// 40 días), más lo guardado en este celular que todavía no llegó. Si un día tiene jornada, manda la jornada (como en el portal).
+// Cada uno ve las suyas; Belén (HyS) ve las de los dos. La pausa no suma.
 // ============================================================
 const JOR_PROPIAS_KEY = "mipyv_jornadas_propias";
 const jorMesISO = (f) => String(f || "").slice(0, 7);
@@ -152,15 +149,50 @@ function jorGuardarPropia(d) {
   const L = jorLeer(JOR_PROPIAS_KEY, {}); L[d.fecha + "|" + jorNorm(d.persona)] = { fecha: d.fecha, persona: d.persona, entrada1: d.entrada1, salida1: d.salida1, entrada2: d.entrada2, salida2: d.salida2, no_trabajo: d.no_trabajo === "Sí", guardado: Date.now() };
   Object.keys(L).forEach(k => { if (Date.now() - (L[k].guardado || 0) > 45 * 864e5) delete L[k]; }); jorGuardarLS(JOR_PROPIAS_KEY, L);
 }
+// 27/11/2026: horario de cada tarea guardada en este celular (hasta que llega a la planilla y vuelve en «tramos» del servidor)
+const JOR_TAREAS_KEY = "mipyv_tareas_horas";
+function jorFechaDe(d) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d.FECHA || ""))) return d.FECHA;
+  const x = d.fecha ? new Date(d.fecha) : new Date(); if (isNaN(x)) return jorHoyISO();
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+}
+function jorRegistrarTareas(items) {   // lo llama guardarEnCola (app.js) con cada registro que se guarda
+  const L = jorLeer(JOR_TAREAS_KEY, {}); let hubo = false;
+  (items || []).forEach(it => {
+    const d = (it && it.data) || {}; if (!it || it.tipo === "jornada" || it.tipo === "editar_tanque") return;
+    const ini = d.hora_inicio || "", fin = d.hora_fin || ""; if (jorMin(ini) == null || jorMin(fin) == null || jorMin(fin) <= jorMin(ini)) return;
+    const f = jorFechaDe(d), id = it.tipo + "|" + (d.id_visita || d.id_avance || d.id_tarea || d.id_relev || d.id_alta || d.id_insp || d.id_limpieza || Date.now());
+    const titular = d.operario || (typeof currentOperario !== "undefined" && currentOperario ? currentOperario.nombre : "");
+    if (titular) { L[id + "|" + jorNorm(titular)] = { fecha: f, persona: titular, ini: ini, fin: fin, guardado: Date.now() }; hubo = true; }
+    String(d.operario_acompanante || "").split(/\s*[,|]\s*/).filter(Boolean).forEach(pa => {
+      const i2 = d.hora_inicio_acompanante || ini, f2 = d.hora_fin_acompanante || fin;
+      if (jorMin(i2) != null && jorMin(f2) > jorMin(i2)) { L[id + "|" + jorNorm(pa)] = { fecha: f, persona: pa, ini: i2, fin: f2, guardado: Date.now() }; hubo = true; }
+    });
+  });
+  Object.keys(L).forEach(k => { if (Date.now() - (L[k].guardado || 0) > 45 * 864e5) delete L[k]; });
+  if (hubo) { jorGuardarLS(JOR_TAREAS_KEY, L); jorPintarHome(); }
+}
+// Junta los tramos que se superponen (dos tareas a la vez no suman doble). Devuelve [[ini, fin] en minutos]
+function jorUnir(tramos) {
+  const t = tramos.map(x => [jorMin(x.ini), jorMin(x.fin)]).filter(([a, b]) => a != null && b != null && b > a).sort((x, y) => x[0] - y[0]), out = [];
+  t.forEach(([a, b]) => { const u = out[out.length - 1]; if (u && a <= u[1]) u[1] = Math.max(u[1], b); else out.push([a, b]); });
+  return out;
+}
+const jorHHMM = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+// Minutos de un día: la jornada si se cargó (días anteriores al 27/11/2026, como en el portal); si no, las tareas sin superponer
+function jorMinDia(x) { if (!x) return 0; if (x.jornada) return jorMinDe(x.jornada); return jorUnir(x.tramos || []).reduce((s, [a, b]) => s + b - a, 0); }
 const jorMinDe = (c) => { if (c.no_trabajo) return 0; const a = jorMin(c.entrada1), b = jorMin(c.salida1), e = jorMin(c.entrada2), f = jorMin(c.salida2);
   return (a != null && b != null && b > a ? b - a : 0) + (e != null && f != null && f > e ? f - e : 0); };
-function jorDiasDe(p) {   // { fecha → jornada } de una persona: lo del servidor y, encima, lo cargado en este celular
-  const out = {}; ((jorLeer(JOR_SRV_KEY, {}).cargadas) || []).filter(c => jorNorm(c.persona) === jorNorm(p)).forEach(c => { out[c.fecha] = c; });
-  const L = jorLeer(JOR_PROPIAS_KEY, {}); Object.keys(L).forEach(k => { const c = L[k]; if (jorNorm(c.persona) === jorNorm(p)) out[c.fecha] = Object.assign({ local: true }, c); });
+function jorDiasDe(p) {   // { fecha → { jornada, tramos[], local } } de una persona: lo del servidor y, encima, lo cargado en este celular
+  const out = {}, dia = (f) => out[f] = out[f] || { tramos: [] }, srv = jorLeer(JOR_SRV_KEY, {}), es = (x) => jorNorm(x.persona) === jorNorm(p);
+  (srv.cargadas || []).filter(es).forEach(c => { dia(c.fecha).jornada = c; });
+  const L = jorLeer(JOR_PROPIAS_KEY, {}); Object.keys(L).forEach(k => { const c = L[k]; if (es(c)) { const d = dia(c.fecha); d.jornada = Object.assign({ local: true }, c); d.local = true; } });
+  (srv.tramos || []).filter(es).forEach(x => dia(x.fecha).tramos.push(x));
+  const T = jorLeer(JOR_TAREAS_KEY, {}); Object.keys(T).forEach(k => { const x = T[k]; if (es(x)) { const d = dia(x.fecha); d.tramos.push(x); d.tlocal = true; } });
   return out;
 }
 function jorTotalesDe(p) {   // { "2026-11" → { min, dias } }
-  const t = {}, D = jorDiasDe(p); Object.keys(D).forEach(f => { const m = jorMesISO(f), x = t[m] = t[m] || { min: 0, dias: 0 }, mi = jorMinDe(D[f]); x.min += mi; if (mi > 0) x.dias++; }); return t;
+  const t = {}, D = jorDiasDe(p); Object.keys(D).forEach(f => { const m = jorMesISO(f), x = t[m] = t[m] || { min: 0, dias: 0 }, mi = jorMinDia(D[f]); x.min += mi; if (mi > 0) x.dias++; }); return t;
 }
 function jorMisHoras(yo) {
   const viejo = document.getElementById("jorOverlay"); if (viejo) viejo.remove();
@@ -180,11 +212,14 @@ function jorMisHoras(yo) {
       h += `<div class="ext-card tq" style="margin:8px 0"><h4 style="margin:0 0 4px;text-transform:capitalize">${jorMesTxt(m)}</h4>` +
         `<div style="background:#EAF1F2;border-radius:12px;padding:10px;text-align:center;margin-bottom:8px">Total del mes <b style="font-size:1.4rem;display:block">${jorHs(T[m].min)}</b>` +
         `<span class="step-sub">${T[m].dias} día(s) trabajado(s)${parcial ? " · desde el " + desde.slice(8, 10) + "/" + desde.slice(5, 7) + " (la app guarda los últimos 40 días)" : ""}</span></div>` +
-        fs.map(f => { const c = D[f], mi = jorMinDe(c), tramo = c.no_trabajo ? "No trabajó" : (c.entrada1 || "?") + " a " + (c.salida1 || "?") + (c.entrada2 ? " y " + c.entrada2 + " a " + (c.salida2 || "?") : "");
-          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-top:1px solid #E3EAED"><span><b style="text-transform:capitalize">${jorFechaTxt(f)}</b><small style="display:block;color:#555">${escX(tramo)}${c.local ? " · ⏳ guardado en el celular" : ""}</small></span><b style="white-space:nowrap">${jorHs(mi)}</b></div>`; }).join("") + `</div>`;
+        fs.map(f => { const x = D[f], c = x.jornada, mi = jorMinDia(x), U = jorUnir(x.tramos);
+          const tramo = c ? (c.no_trabajo ? "No trabajó" : "Jornada: " + (c.entrada1 || "?") + " a " + (c.salida1 || "?") + (c.entrada2 ? " y " + c.entrada2 + " a " + (c.salida2 || "?") : ""))
+            : "Tareas: " + U.map(([a, b]) => jorHHMM(a) + " a " + jorHHMM(b)).join(", ");
+          const loc = c ? c.local : x.tlocal;
+          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-top:1px solid #E3EAED"><span><b style="text-transform:capitalize">${jorFechaTxt(f)}</b><small style="display:block;color:#555">${escX(tramo)}${loc ? " · ⏳ guardado en el celular" : ""}</small></span><b style="white-space:nowrap">${jorHs(mi)}</b></div>`; }).join("") + `</div>`;
     });
   });
-  h += `<div class="step-sub" style="margin-top:6px">Sale de los horarios cargados con «🕐 Terminar el día». La pausa no suma. Si un día falta o está mal, cargalo de nuevo: queda el último.</div>` +
+  h += `<div class="step-sub" style="margin-top:6px">Sale del horario que ponés en cada tarea: si dos tareas se pisan, ese rato se cuenta una sola vez. Los días hasta el 26/11 salen de la jornada que cargaste (la pausa no suma). Si un horario está mal, avisale a Belén.</div>` +
     `<button type="button" class="ext-quitar" id="jorCerrar" style="margin-top:12px">Volver</button></div>`;
   ov.innerHTML = h; ov.querySelector("#jorCerrar").onclick = () => ov.remove();
   document.body.appendChild(ov); ov.scrollTop = 0;
